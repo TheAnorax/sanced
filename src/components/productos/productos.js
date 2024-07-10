@@ -4,11 +4,15 @@ import {
   Button, Grid, Paper, Box, IconButton,
   Dialog, DialogActions, DialogContent, DialogTitle, TextField
 } from '@mui/material';
-import { Edit as EditIcon, Delete as DeleteIcon, Add as AddIcon } from '@mui/icons-material';
+import { Visibility as VisibilityIcon, Delete as DeleteIcon, Add as AddIcon } from '@mui/icons-material';
 import { DataGrid } from '@mui/x-data-grid';
 import { useMediaQuery } from '@mui/material';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import Swal from 'sweetalert2';
+import withReactContent from 'sweetalert2-react-content';
+import Barcode from 'react-barcode';
+
+const MySwal = withReactContent(Swal);
 
 const theme = createTheme({
   palette: {
@@ -45,13 +49,15 @@ function ProductoCRUD() {
   const [errors, setErrors] = useState({});
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [readOnly, setReadOnly] = useState(true);
   const [editId, setEditId] = useState(null);
 
   const isSmallScreen = useMediaQuery('(max-width:600px)');
+  const isMediumScreen = useMediaQuery('(max-width:960px)');
 
   const fetchProductos = async () => {
     try {
-      const response = await axios.get('http://localhost:3001/api/productos');
+      const response = await axios.get('http://192.168.3.225:3007/api/productos');
       setProductos(response.data);
       setFilteredProductos(response.data);
     } catch (error) {
@@ -70,8 +76,8 @@ function ProductoCRUD() {
 
   const filterProductos = (searchTerm) => {
     const filtered = productos.filter(producto =>
-      producto.des.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      producto.codigo_pro.toLowerCase().includes(searchTerm.toLowerCase())
+      (producto.des && producto.des.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (producto.codigo_pro && producto.codigo_pro.toLowerCase().includes(searchTerm.toLowerCase()))
     );
     setFilteredProductos(filtered);
   };
@@ -89,30 +95,33 @@ function ProductoCRUD() {
     } else {
       try {
         if (editing) {
-          const confirmUpdate = await Swal.fire({
+          handleClose(); // Cierra el modal primero
+          const confirmUpdate = await MySwal.fire({
             title: '¿Estás seguro?',
             text: "¿Deseas actualizar este producto?",
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#3085d6',
             cancelButtonColor: '#d33',
-            confirmButtonText: 'Sí, actualizar'
+            confirmButtonText: 'Sí, actualizar',
+            customClass: {
+              popup: 'swal2-z-index-higher'
+            }
           });
           if (confirmUpdate.isConfirmed) {
-            await axios.put(`http://localhost:3001/api/productos/${editId}`, form);
+            await axios.put(`http://192.168.3.225:3007/api/productos/${editId}`, form);
             fetchProductos();
-            handleClose();
-            Swal.fire(
+            MySwal.fire(
               'Actualizado',
               'El producto ha sido actualizado correctamente.',
               'success'
             );
           }
         } else {
-          await axios.post('http://localhost:3001/api/productos', form);
+          await axios.post('http://192.168.3.225:3007/api/productos', form);
           fetchProductos();
           handleClose();
-          Swal.fire(
+          MySwal.fire(
             'Guardado',
             'El producto ha sido guardado correctamente.',
             'success'
@@ -120,7 +129,7 @@ function ProductoCRUD() {
         }
       } catch (error) {
         console.error('Error saving producto:', error);
-        Swal.fire('Error', 'Hubo un problema guardando el producto', 'error');
+        MySwal.fire('Error', 'Hubo un problema guardando el producto', 'error');
       }
     }
   };
@@ -133,35 +142,39 @@ function ProductoCRUD() {
     return newErrors;
   };
 
-  const handleEdit = (producto) => {
+  const handleView = (producto) => {
     setForm(producto);
-    setEditing(true);
+    setEditing(false);
+    setReadOnly(true);
     setEditId(producto.id_prod);
     setOpen(true);
   };
 
   const handleDelete = async (id) => {
-    const confirmDelete = await Swal.fire({
+    const confirmDelete = await MySwal.fire({
       title: '¿Estás seguro?',
       text: "No podrás revertir esto",
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#3085d6',
       cancelButtonColor: '#d33',
-      confirmButtonText: 'Sí, eliminar'
+      confirmButtonText: 'Sí, eliminar',
+      customClass: {
+        popup: 'swal2-z-index-higher'
+      }
     });
     if (confirmDelete.isConfirmed) {
       try {
-        await axios.delete(`http://localhost:3001/api/productos/${id}`);
+        await axios.delete(`http://192.168.3.225:3007/api/productos/${id}`);
         fetchProductos();
-        Swal.fire(
+        MySwal.fire(
           'Eliminado',
           'El producto ha sido eliminado.',
           'success'
         );
       } catch (error) {
         console.error('Error deleting producto:', error);
-        Swal.fire('Error', 'Hubo un problema eliminando el producto', 'error');
+        MySwal.fire('Error', 'Hubo un problema eliminando el producto', 'error');
       }
     }
   };
@@ -173,6 +186,7 @@ function ProductoCRUD() {
       code_palet: '', _pz: 0, _pq: 0, _inner: 0, _master: 0, _palet: 0
     });
     setEditing(false);
+    setReadOnly(false);
     setErrors({});  // Limpiar los errores al abrir el modal
     setOpen(true);
   };
@@ -180,6 +194,11 @@ function ProductoCRUD() {
   const handleClose = () => {
     setOpen(false);
     setErrors({});  // Limpiar los errores al cerrar el modal
+  };
+
+  const enableEditing = () => {
+    setReadOnly(false);
+    setEditing(true);
   };
 
   const columns = isSmallScreen ? [
@@ -192,9 +211,9 @@ function ProductoCRUD() {
       headerName: 'Actions',
       width: 150,
       renderCell: (params) => (
-        <Box>
-          <IconButton color="primary" onClick={() => handleEdit(params.row)}>
-            <EditIcon />
+        <Box display="flex" gap={1}>
+          <IconButton color="primary" onClick={() => handleView(params.row)}>
+            <VisibilityIcon />
           </IconButton>
           <IconButton color="secondary" onClick={() => handleDelete(params.row.id_prod)}>
             <DeleteIcon />
@@ -218,9 +237,9 @@ function ProductoCRUD() {
       headerName: 'Actions',
       width: 150,
       renderCell: (params) => (
-        <Box>
-          <IconButton color="primary" onClick={() => handleEdit(params.row)}>
-            <EditIcon />
+        <Box display="flex" gap={1}>
+          <IconButton color="primary" onClick={() => handleView(params.row)}>
+            <VisibilityIcon />
           </IconButton>
           <IconButton color="secondary" onClick={() => handleDelete(params.row.id_prod)}>
             <DeleteIcon />
@@ -232,26 +251,26 @@ function ProductoCRUD() {
 
   return (
     <ThemeProvider theme={theme}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} flexDirection={isSmallScreen ? 'column' : 'row'}>
         <TextField
           label="Buscar"
           value={search}
           onChange={handleSearchChange}
           variant="outlined"
           size="small"
-          sx={{ width: '300px' }}
+          sx={{ width: isSmallScreen ? '100%' : '300px', mb: isSmallScreen ? 2 : 0 }}
         />
         <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={handleClickOpen}>
           Crear Producto
         </Button>
       </Box>
-      <Paper elevation={3} sx={{ p: 3 }}>
-        <div style={{ height: 750, width: '100%' }}>
+      <Paper elevation={3} sx={{ p: 3, overflow: 'auto' }}>
+        <div style={{ height: isMediumScreen ? 500 : 750, width: '100%' }}>
           <DataGrid rows={filteredProductos} columns={columns} pageSize={5} getRowId={(row) => row.id_prod} />
         </div>
       </Paper>
       <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
-        <DialogTitle>{editing ? 'Editar Producto' : 'Crear Producto'}</DialogTitle>
+        <DialogTitle>{readOnly ? 'Vista de Producto' : (editing ? 'Editar Producto' : 'Crear Producto')}</DialogTitle>
         <DialogContent>
           <form onSubmit={handleSubmit}>
             <Grid container spacing={2} mt={1}>
@@ -265,6 +284,9 @@ function ProductoCRUD() {
                   variant="outlined"
                   error={!!errors.codigo_pro}
                   helperText={errors.codigo_pro}
+                  InputProps={{
+                    readOnly: readOnly,
+                  }}
                 />
               </Grid>
               <Grid item xs={12}>
@@ -277,17 +299,24 @@ function ProductoCRUD() {
                   variant="outlined"
                   error={!!errors.des}
                   helperText={errors.des}
+                  InputProps={{
+                    readOnly: readOnly,
+                  }}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Código de barras de PIEZA"
-                  name="code_pz"
-                  value={form.code_pz}
-                  onChange={handleChange}
-                  variant="outlined"
-                />
+                {readOnly ? (
+                  form.code_pz ? <Barcode value={form.code_pz} /> : <Box width={266} height={142}>Sin código</Box>
+                ) : (
+                  <TextField
+                    fullWidth
+                    label="Código de barras de PIEZA"
+                    name="code_pz"
+                    value={form.code_pz}
+                    onChange={handleChange}
+                    variant="outlined"
+                  />
+                )}
               </Grid>
               <Grid item xs={12} sm={6}>
                 <TextField
@@ -298,19 +327,25 @@ function ProductoCRUD() {
                   onChange={handleChange}
                   variant="outlined"
                   type="number"
+                  InputProps={{
+                    readOnly: readOnly,
+                  }}
                 />
               </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Código de barras de PAQUETE"
-                  name="code_pq"
-                  value={form.code_pq}
-                  onChange={handleChange}
-                  variant="outlined"
-                />
+              <Grid item xs={12} sm={6}>  
+                {readOnly ? (
+                  form.code_pq ? <Barcode value={form.code_pq} /> : <Box width={266} height={142}>Sin código</Box>
+                ) : (
+                  <TextField
+                    fullWidth
+                    label="Código de barras de PAQUETE"
+                    name="code_pq"
+                    value={form.code_pq}
+                    onChange={handleChange}
+                    variant="outlined"
+                  />
+                )}
               </Grid>
-              
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
@@ -320,17 +355,24 @@ function ProductoCRUD() {
                   onChange={handleChange}
                   variant="outlined"
                   type="number"
+                  InputProps={{
+                    readOnly: readOnly,
+                  }}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Código de barras de Inner"
-                  name="code_inner"
-                  value={form.code_inner}
-                  onChange={handleChange}
-                  variant="outlined"
-                />
+                {readOnly ? (
+                  form.code_inner ? <Barcode value={form.code_inner} /> : <Box width={266} height={142}>Sin código</Box>
+                ) : (
+                  <TextField
+                    fullWidth
+                    label="Código de barras de Inner"
+                    name="code_inner"
+                    value={form.code_inner}
+                    onChange={handleChange}
+                    variant="outlined"
+                  />
+                )}
               </Grid>
               <Grid item xs={12} sm={6}>
                 <TextField
@@ -341,17 +383,24 @@ function ProductoCRUD() {
                   onChange={handleChange}
                   variant="outlined"
                   type="number"
+                  InputProps={{
+                    readOnly: readOnly,
+                  }}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Código de barras de Master"
-                  name="code_master"
-                  value={form.code_master}
-                  onChange={handleChange}
-                  variant="outlined"
-                />
+                {readOnly ? (
+                  form.code_master ? <Barcode value={form.code_master} /> : <Box width={266} height={142}>Sin código</Box>
+                ) : (
+                  <TextField
+                    fullWidth
+                    label="Código de barras de Master"
+                    name="code_master"
+                    value={form.code_master}
+                    onChange={handleChange}
+                    variant="outlined"
+                  />
+                )}
               </Grid>
               <Grid item xs={12} sm={6}>
                 <TextField
@@ -362,19 +411,29 @@ function ProductoCRUD() {
                   onChange={handleChange}
                   variant="outlined"
                   type="number"
+                  InputProps={{
+                    readOnly: readOnly,
+                  }}
                 />
               </Grid>
             </Grid>
+            <DialogActions>
+              {readOnly && (
+                <Button onClick={enableEditing} color="primary">
+                  Editar
+                </Button>
+              )}
+              <Button onClick={handleClose} color="primary">
+                Cancelar
+              </Button>
+              {!readOnly && (
+                <Button type="submit" color="primary">
+                  {editing ? 'Actualizar' : 'Crear'}
+                </Button>
+              )}
+            </DialogActions>
           </form>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={handleClose} color="primary">
-            Cancelar
-          </Button>
-          <Button type="submit" color="primary">
-            {editing ? 'Actualizar' : 'Crear'}
-          </Button>
-        </DialogActions>
       </Dialog>
     </ThemeProvider>
   );

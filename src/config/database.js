@@ -6,7 +6,10 @@ const pool = mysql.createPool({
     user: 'root',
     password: '',
     database: 'savawms',
-    connectTimeout: 60000,
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0,
+    connectTimeout: 60000, // Manejo de tiempo de espera de conexión largo
 });
 
 module.exports = pool;

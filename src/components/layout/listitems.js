@@ -1,62 +1,199 @@
-import * as React from 'react';
-import ListItemButton from '@mui/material/ListItemButton';
-import ListItemIcon from '@mui/material/ListItemIcon';
-import ListItemText from '@mui/material/ListItemText';
-import DashboardIcon from '@mui/icons-material/Dashboard';
-import HandymanIcon from '@mui/icons-material/Handyman';
-import ListAltIcon from '@mui/icons-material/ListAlt';
-import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
-import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted';
-import LocalShippingIcon from '@mui/icons-material/LocalShipping';
-import GradingIcon from '@mui/icons-material/Grading';
-import { Link } from 'react-router-dom';
+// src/components/layout/listitems.js
 
-export const mainListItems = (
-  <React.Fragment>
-    <ListItemButton component={Link} to="/dashboard">
-      <ListItemIcon >
-        <DashboardIcon />
-      </ListItemIcon>
-      <ListItemText primary="Dashboard" />
-    </ListItemButton>
-    <ListItemButton component={Link} to="/dashboard/productos">
-      <ListItemIcon>
-        <HandymanIcon />
-      </ListItemIcon>
-      <ListItemText primary="Productos" />
-    </ListItemButton>
-    <ListItemButton component={Link} to="/dashboard/pedidos">
-      <ListItemIcon>
-        <ListAltIcon />
-      </ListItemIcon>
-      <ListItemText primary="Pedidos Pendientes" />
-    </ListItemButton>
-    <ListItemButton component={Link} to="/dashboard/surtido">
-      <ListItemIcon>
-        <ShoppingCartIcon />
-      </ListItemIcon>
-      <ListItemText primary="En Surtido" />
-    </ListItemButton>
-    <ListItemButton component={Link} to="/dashboard/pedidos-surtido">
-      <ListItemIcon>
-        <FormatListBulletedIcon />
-      </ListItemIcon>
-      <ListItemText primary="Pedidos" />
-    </ListItemButton>
-    <ListItemButton component={Link} to="/dashboard/finalizados">
-      <ListItemIcon>
-        <GradingIcon />
-      </ListItemIcon>
-      <ListItemText primary="Finalizados" />
-    </ListItemButton>
-    <ListItemButton component={Link} to="/dashboard/paqueteria">
-      <ListItemIcon>
-        <LocalShippingIcon />
-      </ListItemIcon>
-      <ListItemText primary="Paqueteria" />
-    </ListItemButton>
-  </React.Fragment>
-  
-);
+import * as React from "react";
+import ListItemButton from "@mui/material/ListItemButton";
+import ListItemIcon from "@mui/material/ListItemIcon";
+import ListItemText from "@mui/material/ListItemText";
+import HandymanIcon from "@mui/icons-material/Handyman";
+import LocalShippingIcon from "@mui/icons-material/LocalShipping";
+import ViewQuiltIcon from "@mui/icons-material/ViewQuilt";
+import SsidChartIcon from "@mui/icons-material/SsidChart";
+import AodIcon from "@mui/icons-material/Aod";
+import AssignmentIcon from "@mui/icons-material/Assignment";
+import ContentPasteIcon from "@mui/icons-material/ContentPaste";
+import LocalGroceryStoreIcon from "@mui/icons-material/LocalGroceryStore";
+import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
+import ViewModuleIcon from "@mui/icons-material/ViewModule";
+import WarehouseIcon from "@mui/icons-material/Warehouse";
+import RememberMeIcon from "@mui/icons-material/RememberMe";
+import PlaylistAddCheckIcon from "@mui/icons-material/PlaylistAddCheck";
+import DomainVerificationIcon from "@mui/icons-material/DomainVerification";
+import InventoryIcon from "@mui/icons-material/Inventory";
+import AssessmentIcon from '@mui/icons-material/Assessment';
+import { Link } from "react-router-dom";
+import InfoIcon from "@mui/icons-material/Info";
+import { styled } from "@mui/material/styles";
+import Tooltip, { tooltipClasses } from "@mui/material/Tooltip"; 
+
+// Personalizando el Tooltip
+const CustomTooltip = styled(({ className, ...props }) => (
+  <Tooltip {...props} classes={{ popper: className }} placement="top" />  // Se agrega placement="top"
+))(({ theme }) => ({
+  [`& .${tooltipClasses.tooltip}`]: {
+    backgroundColor: "rgba(0, 0, 0, 0.8)",  // Negro translúcido
+    color: "white",  // Color del texto blanco
+    fontSize: theme.typography.pxToRem(12),  // Tamaño del texto
+    display: 'flex',  // Para alinear el icono y el texto
+    alignItems: 'center',
+    padding: '8px 16px',  // Añadiendo algo de padding
+  },
+}));
+
+
+export const mainListItems = (user) => {
+  const items = [
+    {
+      role: ["Master", "Control", "Paquet", "Admin",  "Master2"],
+      path: "/dashboard",
+      icon: <SsidChartIcon />,
+      text: "Dashboard",
+    },
+    {
+      role: ["Master", "Admin", "Control", "Embar"],
+      path: "/dashboard/usuarios",
+      icon: <RememberMeIcon />,
+      text: "Usuarios ",
+    },
+    {
+      role: ["Master", "Control", "Paquet", "Embar", "Admin", "Rep", "Master2", "INV", "Imp", "Audi"],
+      path: "/dashboard/productos",
+      icon: <HandymanIcon />,
+      text: "Productos",
+    },
+    {
+      role: ["Control", "Admin"],
+      path: "/dashboard/pedidos",
+      icon: <AssignmentIcon />,
+      text: "Pedidos Pendientes",
+    },
+    {
+      role: ["Master", "Control", "Admin", "Master2"],
+      path: "/dashboard/surtido",
+      icon: <AodIcon />,
+      text: "Surtiendo",
+    },
+    {
+      role: ["Control", "Admin", "Master", "Master2"],
+      path: "/dashboard/pedidos-surtido",
+      icon: <ContentPasteIcon />,
+      text: "Pedidos",
+    },
+    {
+      role: ["Paquet", "Master", "Control", "Admin", "Embar", "Rep", "Master2"],
+      path: "/dashboard/finalizados",
+      icon: <PlaylistAddCheckIcon />,
+      text: "Finalizados",
+    },
+    {
+      role: ["Paquet", "Admin"],
+      path: "/dashboard/paqueteria",
+      icon: <LocalShippingIcon />,
+      text: "Paqueteria",
+    },
+    {
+      role: ["Admin", "Paquet"],
+      path: "/dashboard/empaquetando",
+      icon: <ViewQuiltIcon />,
+      text: "Empacando",
+    },
+
+    {
+      role: ["Embar", "Admin"],
+      path: "/dashboard/embarques",
+      icon: <LocalShippingIcon />,
+      text: "Embarques",
+    },
+    {
+      role: ["Admin", "Embar"],
+      path: "/dashboard/embarcando",
+      icon: <ViewQuiltIcon />,
+      text: "Embarcando",
+    },
+
+    {
+      role: ["Admin", "Control"],
+      path: "/dashboard/plan",
+      icon: <ViewQuiltIcon />,
+      text: "Plan",
+    },
+    {
+      role: ["Admin", "Control", "Embar", "Master", "Paquet"],
+      path: "/dashboard/bahias",
+      icon: <ViewModuleIcon />,
+      text: "Bahias",
+    },
+    {
+      role: ["Admin", "Master"],
+      path: "/dashboard/ubicaciones",
+      icon: <WarehouseIcon />,
+      text: "Ubicaciones",
+    },
+    {
+      role: ["Admin", "Master", "Imp", "Nac", "Ins", "Plan", "Recibo", "Nac2"],
+      path: "/dashboard/compras",
+      icon: <LocalGroceryStoreIcon />,
+      text: "Compras",
+    },
+    {
+      role: ["Admin", "Master", "Recibo", "INV"],
+      path: "/dashboard/recibo",
+      icon: <ReceiptLongIcon />,
+      text: "Producto a Recibir ",
+    },
+    {
+      role: ["Admin", "INV"],
+      path: "/dashboard/calidad",
+      icon: <DomainVerificationIcon />,
+      text: "Calidad ",
+    },
+    {
+      role: ["Admin", "INV","MONTA6", "Master" , "Control", " Audi" ],
+      path: "/dashboard/inventarios",
+      icon: <InventoryIcon />,
+      text: "Inventarios ",
+    },
+    {
+      role: ["Admin", "Nac", "Imp", "INV", "Recibo", "Nac2","Reporte"],
+      path: "/dashboard/reporter",
+      icon: <InventoryIcon />,
+      text: "Reporte Recibo ",
+    },
+
+    {
+      role: ["Admin","Dep", "INV", "P", "Recibo", "Paquet"],
+      path: "/dashboard/insumos",
+      icon: <AssessmentIcon />,
+      text: "Insumos ",
+    },
+    {
+      role: ["Admin", "Master" , "Master2" ],
+      path: "/dashboard/inventario",
+      icon: <AssessmentIcon />,
+      text: "Inventario dia 0",
+    },
+  ];
+
+  return (
+    <React.Fragment>
+      {items
+        .filter((item) => item.role.includes(user.role))
+        .map((item, index) => (
+          <ListItemButton component={Link} to={item.path} key={index}>
+            <CustomTooltip 
+              title={(
+                <React.Fragment>
+                  <InfoIcon sx={{ mr: 1, fontSize: 'small' }} /> {/* Icono dentro del tooltip */}
+                  {item.text}
+                </React.Fragment>
+              )} 
+            >
+              <ListItemIcon>{item.icon}</ListItemIcon> {/* Tooltip solo en el ícono */}
+            </CustomTooltip>
+            <ListItemText primary={item.text} />
+          </ListItemButton>
+        ))}
+    </React.Fragment>
+  );
+};
 
 export default mainListItems;

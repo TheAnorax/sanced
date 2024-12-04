@@ -13,7 +13,9 @@ const comparePassword = async (password, hash) => {
 };
 
 const generateToken = (user) => {
-  return jwt.sign({ id: user.id_usu, email: user.email }, 'your_jwt_secret', { expiresIn: '1h' });
+  return jwt.sign({ id_usu: user.id_usu, email: user.email }, 'your_jwt_secret', { expiresIn: '1h' });
 };
+
+
 
 module.exports = { getUserByEmail, comparePassword, generateToken };

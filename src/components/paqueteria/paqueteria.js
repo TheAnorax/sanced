@@ -12,7 +12,7 @@ import MuiAlert from '@mui/material/Alert';
 const theme = createTheme({
   palette: {
     primary: { main: '#1976d2' },
-    secondary: { main: '#dc004e' },
+    secondary: { main: '#dc004e' }, 
   },
   components: {
     MuiPaper: {
@@ -45,7 +45,7 @@ const Alert = React.forwardRef(function Alert(props, ref) {
 
 function Paqueteria() {
   const [pedidos, setPedidos] = useState([]);
-  const [filteredPedidos, setFilteredPedidos] = useState([]);
+  const [originalPedidos, setOriginalPedidos] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [usuarios, setUsuarios] = useState([]);
   const [selectedUsuarios, setSelectedUsuarios] = useState({});
@@ -56,23 +56,28 @@ function Paqueteria() {
   useEffect(() => {
     const fetchPedidos = async () => {
       try {
-        const response = await axios.get('http://192.168.3.225:3007/api/paqueterias/paqueteria');
+        const response = await axios.get('http://192.168.3.27:3007/api/paqueterias/paqueteria');
+        setOriginalPedidos(response.data); // Guardar los datos originales
         setPedidos(response.data);
-        setFilteredPedidos(response.data);
       } catch (error) {
         console.error('Error fetching pedidos:', error);
       }
     };
-
+    
     const fetchUsuarios = async () => {
       try {
-        const response = await axios.get('http://192.168.3.225:3007/api/pedidos/usuarios');
-        const paqueteriaUsuarios = response.data.filter(usuario => usuario.name.toLowerCase().includes('paqueteria'));
+        const response = await axios.get('http://192.168.3.27:3007/api/pedidos/usuarios');
+        
+        // Filtra usuarios que tienen un rol definido y contienen 'PQ' en cualquier parte
+        const paqueteriaUsuarios = response.data.filter(usuario =>     usuario.role && usuario.role.toUpperCase().includes('PQ')
+        );
+    
         setUsuarios(paqueteriaUsuarios);
       } catch (error) {
         console.error('Error fetching usuarios:', error);
       }
     };
+    
 
     fetchPedidos();
     fetchUsuarios();
@@ -81,14 +86,26 @@ function Paqueteria() {
     return () => clearInterval(intervalId); // Clear interval on component unmount
   }, []);
 
+  useEffect(() => {
+    if (searchTerm) {
+      const filteredData = originalPedidos.filter((pedido) =>
+        pedido.pedido.toString().includes(searchTerm) ||
+        pedido.tipo.toLowerCase().includes(searchTerm)
+      );
+      setPedidos(filteredData);
+    } else {
+      setPedidos(originalPedidos);
+    }
+  }, [originalPedidos, searchTerm]);
+
   const handleSearch = (event) => {
     const value = event.target.value.toLowerCase();
     setSearchTerm(value);
-    const filteredData = pedidos.filter((pedido) =>
+    const filteredData = originalPedidos.filter((pedido) =>
       pedido.pedido.toString().includes(value) ||
       pedido.tipo.toLowerCase().includes(value)
     );
-    setFilteredPedidos(filteredData);
+    setPedidos(filteredData);
   };
 
   const handleUserChange = async (pedidoId, event) => {
@@ -99,7 +116,7 @@ function Paqueteria() {
     }));
 
     try {
-      await axios.put(`http://192.168.3.225:3007/api/paqueterias/paqueteria/${pedidoId}/usuario-paqueteria`, {
+      await axios.put(`http://192.168.3.27:3007/api/paqueterias/paqueteria/${pedidoId}/usuario-paqueteria`, {
         id_usuario_paqueteria: value,
       });
       setSnackbarMessage('Usuario de paquetería asignado correctamente');
@@ -157,7 +174,12 @@ function Paqueteria() {
         />
         <Paper elevation={3} sx={{ p: 3, width: '100%' }}>
           <div style={{ height: '70vh', width: '100%' }}>
-            <DataGrid rows={filteredPedidos} columns={columns} pageSize={5} getRowId={(row) => row.pedido} />
+            <DataGrid
+              rows={pedidos}
+              columns={columns}
+              pageSize={5}
+              getRowId={(row) => row.pedido || row.id_pedi} // Ensure unique row ID
+            />
           </div>
         </Paper>
       </Box>

@@ -1,9 +1,25 @@
 const express = require('express');
 const router = express.Router();
-const { getSurtidos, updatePedido, updateBahias } = require('../controller/pedidosSurtidosController');
+
+//const express = require('express');
+const bodyParser = require('body-parser');
+const app = express();
+
+// Configurar body-parser para manejar solicitudes JSON con un límite mayor de tamaño
+app.use(bodyParser.json({ limit: '20mb' })); // Puedes ajustar el tamaño, por ejemplo, 20 MB
+app.use(bodyParser.urlencoded({ limit: '20mb', extended: true }));
+const { getSurtidos, updatePedido, updateBahias, authorizePedido, cancelPedido, getPedidosDelDia } = require('../controller/pedidosSurtidosController');
 
 router.get('/pedidos-surtido', getSurtidos);
+router.get('/pedidos-dia', getPedidosDelDia);
 router.put('/pedidos-surtido/:pedidoId', updatePedido);
 router.put('/pedidos-surtido/:pedidoId/bahias', updateBahias);
 
-module.exports = router;
+router.get('/pedidos-surtido', getSurtidos);
+router.put('/pedidos-surtido/:pedidoId', updatePedido);
+router.post('/pedidos-surtido/:pedidoId/authorize', authorizePedido);
+router.put('/pedidos-surtido/:pedidoId/bahias', updateBahias);
+router.put('/pedidos-surtido/:pedidoId/cancel', cancelPedido); 
+
+module.exports = router; 
+

@@ -1,96 +1,209 @@
 const pool = require('../config/database');
 
 const getFinalizados = async (req, res) => {
-    try {
-      const [rows] = await pool.query(`
+  try {
+    const [rows] = await pool.query(`
       SELECT
-      p.id_pedi,
-      p.pedido,
-      p.tipo,
-      p.codigo_ped,
-      prod.des,
-      p.cantidad,
-      p.cant_surti,
-      p.cant_no_env,
-      p.id_usuario,
-      p.um,
-      p._pz,
-      p._pq,
-      p._inner,
-      p._master,
-      p.ubi_bahia,
-      p.inicio_surtido,
-      p.fin_surtido,
-      p.estado,
-      u.cant_stock,
-      u.ubi,
-      u.pasillo,
-      prod.code_pz,
-      prod.code_pq,
-      prod.code_inner,
-      prod.code_master,
-      prod._pz,
-      prod._inner,
-      prod._pq,
-      prod._master,
-      (SELECT COUNT(DISTINCT p2.codigo_ped)
-       FROM pedido_surtido p2
-       WHERE p2.pedido = p.pedido) AS partidas
-    FROM pedido_surtido p
-    LEFT JOIN productos prod ON p.codigo_ped = prod.codigo_pro
-    LEFT JOIN ubicaciones u ON p.codigo_ped = u.code_prod      
-    WHERE p.estado = "E" 
-    GROUP BY p.id_pedi
-    ORDER BY u.ubi ASC;
-      `);
-  
-      const groupedPedidos = rows.reduce((acc, pedido) => {
-        if (!acc[pedido.pedido]) {
-          acc[pedido.pedido] = {
-            id_pedi: pedido.id_pedi,
-            pedido: pedido.pedido,
-            tipo: pedido.tipo,
-            partidas: pedido.partidas,
-            inicio_surtido: pedido.inicio_surtido,
-            fin_surtido: pedido.fin_surtido,
-            fecha_surtido: pedido.inicio_surtido,
-            ubi_bahia: pedido.ubi_bahia,
-            items: [],
-          };
-        }
-        acc[pedido.pedido].items.push({
-          id_pedi: pedido.id_pedi, // Add the unique id for each item
-          codigo_ped: pedido.codigo_ped,
-          des: pedido.des,
-          cantidad: pedido.cantidad,
-          cant_surti: pedido.cant_surti,
-          cant_no_env: pedido.cant_no_env,
-          id_usuario: pedido.id_usuario,
-          um: pedido.um,
-          _pz: pedido._pz,
-          _pq: pedido._pq,        
-          inicio_surtido: pedido.inicio_surtido,
-          fin_surtido: pedido.fin_surtido,
-          _inner: pedido._inner,
-          _master: pedido._master,
-          ubi_bahia: pedido.ubi_bahia,
-          estado: pedido.estado,
-          cant_stock: pedido.cant_stock,
-          ubi: pedido.ubi,
-          code_pz: pedido.code_pz,
-          code_pq: pedido.code_pq,
-          code_inner: pedido.code_inner,
-          code_master: pedido.code_master,
-          pasillo: pedido.pasillo,
-          um: pedido.um,
-        });
-        return acc;
-      }, {});
-  
-      res.json(Object.values(groupedPedidos));
-    } catch (error) {
-      res.status(500).json({ message: 'Error al obtener los pedidos', error: error.message });
-    }
-  };
+        'pedido_surtido' AS origen,
+        ps.pedido,
+        ps.tipo,
+        ps.codigo_ped,
+        ps.ubi_bahia,
+        ps.registro,
+        ps.registro_surtido,
+        NULL AS registro_embarque
+      FROM pedido_surtido ps
 
-module.exports = { getFinalizados };
+      UNION ALL
+
+      SELECT
+        'pedido_embarque' AS origen,
+        pe.pedido,
+        pe.tipo, 
+        pe.codigo_ped,
+        pe.ubi_bahia,
+        pe.registro,
+        pe.registro_surtido,
+        pe.registro_embarque
+      FROM pedido_embarque pe
+
+      UNION ALL
+
+      SELECT
+        'pedido_fin' AS origen,
+        pf.pedido,
+        pf.tipo,
+        pf.codigo_ped,
+        pf.ubi_bahia,
+        pf.registro,
+        pf.registro_surtido,
+        NULL AS registro_embarque
+      FROM pedido_finalizado pf
+    `);
+
+    // Agrupar resultados por 'pedido'
+    const groupedPedidos = rows.reduce((acc, pedido) => {
+      if (!acc[pedido.pedido]) {
+        acc[pedido.pedido] = {
+          origen: pedido.origen,
+          pedido: pedido.pedido,
+          tipo: pedido.tipo,
+          partidas: 0, // Contador de partidas
+          registro: pedido.registro,
+          registro_surtido: pedido.registro_surtido,
+          registro_embarque: pedido.registro_embarque || null, // Manejar el valor de registro_embarque
+        };
+      }
+      acc[pedido.pedido].partidas += 1; // Incrementa el contador de partidas
+      return acc;
+    }, {});
+
+    // Convertir el objeto agrupado en un array
+    const response = Object.values(groupedPedidos);
+
+    res.json(response);
+  } catch (error) {
+    console.error('Error al obtener los pedidos finalizados:', error);
+    res.status(500).json({ message: 'Error al obtener los pedidos', error: error.message });
+  }
+};
+
+
+const getPedidoDetalles = async (req, res) => {
+  const { pedido } = req.params;
+
+  try {
+    const [rows] = await pool.query(
+      `
+SELECT
+    'pedido_surtido' AS origen,
+    ps.pedido,
+    ps.tipo,
+    ps.codigo_ped,
+    prod1.des AS descripcion,
+    ps.cantidad,
+    ps.cant_surti,
+    ps.cant_no_env,    
+    ps.um,
+    ps._pz,
+    ps._pq, 
+    ps._inner,
+    ps._master,    
+    NULL AS v_pz,         
+    NULL AS v_pq,           
+    NULL AS v_inner,          
+    NULL AS v_master,
+    ps.ubi_bahia, 
+    us_surtido.name AS usuario_surtido,
+    us_paqueteria.name AS usuario_paqueteria,    
+    ps.registro,    
+    ps.registro_surtido,
+    ps.inicio_surtido,
+    ps.fin_surtido,   
+    NULL AS registro_embarque,
+    NULL AS inicio_embarque,
+    NULL AS fin_embarque,
+    ps.motivo,
+    ps.unificado,
+    NULL AS registro_fin
+FROM
+    pedido_surtido ps
+LEFT JOIN productos prod1 ON ps.codigo_ped = prod1.codigo_pro
+LEFT JOIN usuarios us_surtido ON ps.id_usuario_surtido = us_surtido.id_usu
+LEFT JOIN usuarios us_paqueteria ON ps.id_usuario_paqueteria = us_paqueteria.id_usu
+WHERE
+    ps.pedido = ?
+
+UNION ALL
+
+SELECT
+    'pedido_embarque' AS origen,
+    pe.pedido,
+    pe.tipo,
+    pe.codigo_ped,
+    prod2.des AS descripcion,
+    pe.cantidad,
+    pe.cant_surti,
+    pe.cant_no_env,
+    pe.um,
+    pe._pz,
+    pe._pq,
+    pe._inner,
+    pe._master,    
+    pe.v_pz,         
+    pe.v_pq,           
+    pe.v_inner,          
+    pe.v_master,
+    pe.ubi_bahia,   
+    us_surtido.name AS usuario_surtido,
+    us_paqueteria.name AS usuario_paqueteria,
+    pe.registro,
+    pe.registro_surtido,
+    pe.inicio_surtido,
+    pe.fin_surtido, 
+    pe.registro_embarque,
+    pe.inicio_embarque,
+    pe.fin_embarque,
+    pe.motivo,
+    pe.unificado,
+    NULL AS registro_fin
+FROM
+    pedido_embarque pe
+LEFT JOIN productos prod2 ON pe.codigo_ped = prod2.codigo_pro
+LEFT JOIN usuarios us_surtido ON pe.id_usuario_surtido = us_surtido.id_usu
+LEFT JOIN usuarios us_paqueteria ON pe.id_usuario_paqueteria = us_paqueteria.id_usu
+WHERE
+    pe.pedido = ?
+
+UNION ALL
+
+SELECT
+    'pedido_fin' AS origen,
+    pf.pedido,
+    pf.tipo,
+    pf.codigo_ped,
+    prod3.des AS descripcion,
+    pf.cantidad,
+    pf.cant_surti,
+    pf.cant_no_env,
+    pf.um,
+    pf._pz,
+    pf._pq,
+    pf._inner,
+    pf._master,
+    pf.v_pz,         
+    pf.v_pq,           
+    pf.v_inner,          
+    pf.v_master,
+    pf.ubi_bahia,
+    us_surtido.name AS usuario_surtido,
+    us_paqueteria.name AS usuario_paqueteria,
+    pf.registro,
+    pf.registro_surtido,
+    pf.inicio_surtido,
+    pf.fin_surtido,
+    pf.registro_embarque,
+    pf.inicio_embarque,
+    pf.fin_embarque,
+    pf.motivo,
+    pf.unificado,
+    pf.registro_fin
+FROM
+    pedido_finalizado pf
+LEFT JOIN productos prod3 ON pf.codigo_ped = prod3.codigo_pro
+LEFT JOIN usuarios us_surtido ON pf.id_usuario_surtido = us_surtido.id_usu
+LEFT JOIN usuarios us_paqueteria ON pf.id_usuario_paqueteria = us_paqueteria.id_usu
+WHERE
+    pf.pedido = ?;`, 
+      [pedido, pedido, pedido]
+    );
+
+    res.json(rows);
+  } catch (error) {
+    console.error('Error al obtener los detalles del pedido:', error);
+    res.status(500).json({ message: 'Error al obtener los detalles del pedido', error: error.message });
+  }
+};
+
+
+module.exports = { getFinalizados, getPedidoDetalles };

@@ -1,23 +1,32 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import axios from 'axios';
-import { Card, CardContent, Typography, Box, Divider, Button, Autocomplete, TextField, FormControl, CircularProgress } from '@mui/material';
+import { Card, CardContent, Typography, Box, Divider, Button, Autocomplete, TextField, FormControl, CircularProgress, Checkbox, FormControlLabel } from '@mui/material';
 import Swal from 'sweetalert2';
 import debounce from 'lodash.debounce';
 import { AutoSizer, List, CellMeasurer, CellMeasurerCache } from 'react-virtualized';
 
 const fetchPedidos = async () => {
-  const response = await axios.get('http://192.168.3.225:3007/api/pedidos/pedidos');
+  const response = await axios.get('http://192.168.3.27:3007/api/pedidos/pedidos');
   return response.data;
 };
 
+// const fetchBahias = async () => {
+//   const response = await axios.get('http://192.168.3.27:3007/api/pedidos/bahias'); 
+  
+//   // Filtrar las bahías que no comiencen con "B" o "C"
+//   const filteredBahias = response.data.filter(bahia => !/^C-/.test(bahia.bahia));
+  
+//   return filteredBahias;
+// };
+
 const fetchBahias = async () => {
-  const response = await axios.get('http://192.168.3.225:3007/api/pedidos/bahias');
+  const response = await axios.get('http://192.168.3.27:3007/api/pedidos/bahias');
   return response.data;
 };
 
 const fetchUsuarios = async () => {
-  const response = await axios.get('http://192.168.3.225:3007/api/pedidos/usuarios');
+  const response = await axios.get('http://192.168.3.27:3007/api/pedidos/usuarios');
   return response.data;
 };
 
@@ -39,7 +48,7 @@ const usePedidos = () => {
   const mutation = useMutation({
     mutationFn: async (pedidoData) => {
       const { pedido, estado, bahias, items, usuarioId } = pedidoData;
-      await axios.post('http://192.168.3.225:3007/api/pedidos/surtir', {
+      await axios.post('http://192.168.3.27:3007/api/pedidos/surtir', {
         pedido,
         estado,
         bahias,
@@ -67,6 +76,8 @@ const Pedidos = React.memo(() => {
   const [localPedidos, setLocalPedidos] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isPorPasillo, setIsPorPasillo] = useState(true);
+  const [selectedPedidos, setSelectedPedidos] = useState([]);
+  const [isFusionEnabled, setIsFusionEnabled] = useState(false); // Estado para habilitar fusión
   const cache = useRef(new CellMeasurerCache({
     fixedWidth: true,
     defaultHeight: 200,
@@ -95,6 +106,7 @@ const Pedidos = React.memo(() => {
       return pedidoStr.includes(lowerSearchTerm);
     });
   }, [localPedidos, debouncedSearchTerm]);
+  
 
   const handleSelectChange = useCallback((pedido, value) => {
     setSelectedItems((prev) => ({
@@ -146,8 +158,91 @@ const Pedidos = React.memo(() => {
     setIsPorPasillo(!isPorPasillo);
   };
 
+  const toggleFusion = () => {
+    setIsFusionEnabled(!isFusionEnabled);
+    setSelectedPedidos([]); // Limpiar la selección de pedidos al activar/desactivar fusión
+  };
+
+  const handlePedidoSelection = (pedidoId) => {
+    setSelectedPedidos((prev) => {
+      const newSelectedPedidos = [...prev];
+      if (newSelectedPedidos.includes(pedidoId)) {
+        return newSelectedPedidos.filter((id) => id !== pedidoId);
+      } else {
+        if (newSelectedPedidos.length < 2) {
+          newSelectedPedidos.push(pedidoId);
+        } else {
+          Swal.fire('Error', 'Solo puedes seleccionar dos pedidos a la vez', 'error');
+        }
+        return newSelectedPedidos;
+      }
+    });
+  };
+
+  const mergePedidos = async () => {
+    if (selectedPedidos.length !== 2) {
+      Swal.fire('Error', 'Debes seleccionar dos pedidos para fusionar', 'error');
+      return;
+    }
+  
+    const [pedido1, pedido2] = selectedPedidos.map(id => pedidos.find(p => p.pedido === id));
+    if (!pedido1 || !pedido2) {
+      Swal.fire('Error', 'No se pudieron encontrar los pedidos seleccionados', 'error');
+      return;
+    }
+  
+    // Verificar que los usuarios sean los mismos solo si están asignados
+    const usuario1 = selectedUsuario[pedido1.pedido]?.[0]?.id_usu;
+    const usuario2 = selectedUsuario[pedido2.pedido]?.[0]?.id_usu;
+    if (usuario1 && usuario2 && usuario1 !== usuario2) {
+      Swal.fire('Error', 'El usuario debe ser el mismo para los pedidos fusionados', 'error');
+      return;
+    }
+  
+    // Fusionar ubicaciones
+    const mergedBahias = [...new Set([...selectedItems[pedido1.pedido].map(b => b.bahia), ...selectedItems[pedido2.pedido].map(b => b.bahia)])];
+  
+    const mergedPedido = {
+      pedido: `${pedido1.pedido}-${pedido2.pedido}`,
+      tipo: `${pedido1.tipo}, ${pedido2.tipo}`,
+      registro: new Date(),
+      items: [],
+      bahias: mergedBahias,
+      usuarioId: usuario1 || usuario2, // Asignar el usuario si está presente
+      unificado: [] // Campo para almacenar la información unificada por cada item
+    };
+  
+    const itemsMap = {};
+  
+    pedido1.items.concat(pedido2.items).forEach(item => {
+      const tipo = pedido1.items.includes(item) ? pedido1.tipo : pedido2.tipo;
+  
+      if (!itemsMap[item.codigo_ped]) {
+        itemsMap[item.codigo_ped] = { ...item, unificado: `${tipo}:${item.cantidad} ` };
+      } else {
+        itemsMap[item.codigo_ped].cantidad += item.cantidad;
+        itemsMap[item.codigo_ped].unificado += `| ${tipo}:${item.cantidad} `;
+      }
+    });
+  
+    mergedPedido.items = Object.values(itemsMap);
+    mergedPedido.unificado = mergedPedido.items.map(item => item.unificado); // Crear un arreglo con los registros 'unificado' de cada item
+  
+    try {
+      await axios.post('http://192.168.3.27:3007/api/pedidos/merge', mergedPedido);
+      Swal.fire('Éxito', 'Pedidos fusionados correctamente', 'success');
+      setSelectedPedidos([]);
+    } catch (error) {
+      console.error('Error al fusionar pedidos:', error);
+      Swal.fire('Error', 'Ocurrió un error al fusionar los pedidos', 'error');
+    }
+  };
+  
+  
   const rowRenderer = ({ index, key, parent, style }) => {
     const pedido = filteredPedidos[index];
+    const isSelected = selectedPedidos.includes(pedido.pedido);
+
     return (
       <CellMeasurer
         key={key}
@@ -156,7 +251,7 @@ const Pedidos = React.memo(() => {
         columnIndex={0}
         rowIndex={index}
       >
-        <div style={{ ...style, padding: '10px', boxSizing: 'border-box' }}>
+        <div style={{ ...style, padding: '10px', boxSizing: 'border-box', backgroundColor: isSelected ? '#e0e0e0' : 'transparent' }}>
           <Card>
             <CardContent>
               <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
@@ -173,41 +268,57 @@ const Pedidos = React.memo(() => {
                 </Box>
               </Box>
               <Divider sx={{ mb: 2 }} />
-                  <Box display="flex" alignItems="center" mt={2}>
-                    <FormControl sx={{ minWidth: 300 }}>
-                      <Autocomplete
-                        multiple
-                        options={bahias}
-                        getOptionLabel={(option) => option.bahia}
-                        filterSelectedOptions
-                        value={selectedItems[pedido.pedido] || []}
-                        onChange={(event, value) => handleSelectChange(pedido.pedido, value)}
-                        renderInput={(params) => (
-                          <TextField {...params} variant="outlined" label="Bahías" placeholder="Seleccionar Bahías" />
-                        )}
+              {isFusionEnabled && (
+                <Box display="flex" justifyContent="center" alignItems="center" mb={2}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={isSelected}
+                        onChange={() => handlePedidoSelection(pedido.pedido)}
+                        color="primary"
                       />
-                    </FormControl>
-                    {!isPorPasillo && (
-                      <FormControl sx={{ minWidth: 300, ml: 2 }}>
-                        <Autocomplete
-                          multiple
-                          options={usuarios.filter((usuario) => usuario.name && usuario.name.toLowerCase().includes('pasillo'))}
-                          getOptionLabel={(option) => option.name}
-                          filterSelectedOptions
-                          value={selectedUsuario[pedido.pedido] || []}
-                          onChange={(event, value) => handleUsuarioChange(pedido.pedido, value)}
-                          renderInput={(params) => (
-                            <TextField {...params} variant="outlined" label="Usuarios" placeholder="Seleccionar Usuarios" />
-                          )}
-                        />
-                      </FormControl>
+                    }
+                    label="Seleccionar"
+                  />
+                </Box>
+              )}
+              <Box display="flex" alignItems="center" mt={2}>
+                <FormControl sx={{ minWidth: 300 }}>
+                  <Autocomplete
+                    multiple
+                    options={bahias}
+                    getOptionLabel={(option) => option.bahia}
+                    filterSelectedOptions
+                    value={selectedItems[pedido.pedido] || []}
+                    onChange={(event, value) => handleSelectChange(pedido.pedido, value)}
+                    renderInput={(params) => (
+                      <TextField {...params} variant="outlined" label="Bahías" placeholder="Seleccionar Bahías" />
                     )}
-                    <Button variant="contained" color="primary" sx={{ ml: 2 }} onClick={() => handleSave(pedido)} disabled={isSaving}>
-                      {isSaving ? <CircularProgress size={24} /> : 'Agregar'}
-                    </Button>
-                  </Box>
-                  
-              
+                  />
+                </FormControl>
+                {!isPorPasillo && (
+                  <FormControl sx={{ minWidth: 300, ml: 2 }}>
+                    <Autocomplete
+                      multiple
+                      options={usuarios.filter((usuario) => {
+                        // Filtrar usuarios que tienen un 'role' que empieza con 'P' seguido de un número
+                        return usuario.role && /^P\d/.test(usuario.role);
+                      })}
+                      getOptionLabel={(option) => option.name}
+                      filterSelectedOptions
+                      value={selectedUsuario[pedido.pedido] || []}
+                      onChange={(event, value) => handleUsuarioChange(pedido.pedido, value)}
+                      renderInput={(params) => (
+                        <TextField {...params} variant="outlined" label="Usuarios" placeholder="Seleccionar Usuarios" />
+                      )}
+                    />
+                  </FormControl>
+                )}
+
+                <Button variant="contained" color="primary" sx={{ ml: 2 }} onClick={() => handleSave(pedido)} disabled={isSaving || isFusionEnabled}>
+                  {isSaving ? <CircularProgress size={24} /> : 'Agregar'}
+                </Button>
+              </Box>
               <Divider sx={{ mb: 2, mt: 2 }} />
               <Box mb={2}>
                 <Typography variant="h6" align="center">Productos</Typography>
@@ -271,7 +382,17 @@ const Pedidos = React.memo(() => {
         <Button variant="contained" color="primary" style={{ marginBottom: '10px' }} onClick={toggleTitle}>
           {isPorPasillo ? 'Por Pedido' : 'Por Pasillo'}
         </Button>
+        <Button variant="contained" color="secondary" style={{ marginBottom: '10px' }} onClick={toggleFusion}>
+          Fusionar
+        </Button>
       </Box>
+      {isFusionEnabled && (
+        <Box mb={2}>
+          <Button variant="contained" color="secondary" onClick={mergePedidos} disabled={selectedPedidos.length !== 2}>
+            Fusionar Pedidos
+          </Button>
+        </Box>
+      )}
       <Box flexGrow={1} width="80%" >
         <AutoSizer>
           {({ height, width }) => (

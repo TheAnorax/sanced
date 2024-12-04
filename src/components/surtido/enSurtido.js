@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Box, Typography, CircularProgress } from '@mui/material';
+import {
+  Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Box, Typography, CircularProgress, LinearProgress
+} from '@mui/material';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 
 const theme = createTheme({
@@ -11,8 +13,9 @@ const theme = createTheme({
     MuiTableCell: {
       styleOverrides: {
         root: {
-          padding: '16px',
-          fontSize: '1.7rem',
+          padding: '8px',
+          fontSize: '1.1rem',
+          whiteSpace: 'nowrap', // Asegura que el contenido no se divida
         },
       },
     },
@@ -26,11 +29,8 @@ function EnSurtido() {
   useEffect(() => {
     const fetchPedidos = async () => {
       try {
-        const response = await axios.get('http://192.168.3.225:3007/api/surtidos/surtido');
-        const pedidosConSurtido = response.data.filter(pedido => pedido.estado && pedido.pasillo !== null);
-        const pedidosAgrupados = agruparPedidos(pedidosConSurtido);
-        const pedidosActualizados = actualizarPedidos(pedidosAgrupados);
-        setPedidos(pedidosActualizados);
+        const response = await axios.get('http://192.168.3.27:3007/api/surtidos/surtido');
+        setPedidos(response.data);
         setLoading(false);
       } catch (error) {
         console.error('Error al obtener los pedidos:', error);
@@ -38,71 +38,36 @@ function EnSurtido() {
       }
     };
 
-    const agruparPedidos = (pedidos) => {
-      const pedidosAgrupados = pedidos.reduce((acumulador, pedido) => {
-        const { pedido: numeroPedido, cantidad, cant_surti, pasillo, ubi_bahia, usuario } = pedido;
-
-        if (!acumulador[numeroPedido]) {
-          acumulador[numeroPedido] = {
-            numeroPedido,
-            totalProductos: 0,
-            totalSurtido: 0,
-            productos: [],
-            pasilloProductos: {},
-            ubi_bahia: ubi_bahia,
-            usuario: usuario
-          };
-        }
-        acumulador[numeroPedido].totalProductos += cantidad;
-        acumulador[numeroPedido].totalSurtido += cant_surti;
-        acumulador[numeroPedido].productos.push(pedido);
-
-        acumulador[numeroPedido].pasilloProductos[pasillo] = {
-          cantidadTotal: (acumulador[numeroPedido].pasilloProductos[pasillo]?.cantidadTotal || 0) + cantidad,
-          cantidadSurtida: (acumulador[numeroPedido].pasilloProductos[pasillo]?.cantidadSurtida || 0) + cant_surti
-        };
-
-        return acumulador;
-      }, {});
-      return Object.values(pedidosAgrupados);
-    };
-
-    const actualizarPedidos = (pedidos) => {
-      return pedidos.filter(pedido => {
-        const productosCompletos = pedido.productos.every(producto => producto.estado === 'B');
-        return !productosCompletos;
-      });
-    };
-
     fetchPedidos();
     const intervalId = setInterval(() => {
       fetchPedidos();
-    }, 9000); // Actualizar cada 9 segundos
+    }, 3000); // Actualizar cada 3 segundos
 
     return () => clearInterval(intervalId);
   }, []);
 
   const calcularPorcentajeSurtido = (totalSurtido, totalProductos) => {
     if (totalProductos === 0) return 0;
-    return (totalSurtido / totalProductos) * 100;
+    return Math.round((totalSurtido / totalProductos) * 100);
   };
 
-  const getColorPorcentaje = (porcentaje) => {
-    if (porcentaje === 0) return 'red';
-    if (porcentaje > 0 && porcentaje < 50) return 'orange';
-    if (porcentaje >= 50 && porcentaje < 75) return 'yellow';
-    if (porcentaje >= 75 && porcentaje < 100) return 'lightgreen';
-    if (porcentaje >= 100 && porcentaje < 101) return 'green';
+  const interpolateColor = (percentage) => {
+    if (percentage === 100) {
+      return 'rgb(0, 128, 0)'; // Verde semáforo
+    }
+    const r = percentage < 50 ? 255 : Math.floor(255 - ((percentage - 50) * 5.1));
+    const g = percentage < 50 ? Math.floor(percentage * 5.1) : 255;
+    return `rgb(${r}, ${g}, 0)`;
   };
 
   const renderPasillos = (pasilloProductos) => {
-    const allPasillos = ['AV','1', '2', '3', '4', '5', '6', '7', '8'];
+    const allPasillos = ['AV', '1', '2', '3', '4', '5', '6', '7', '8'];
     return allPasillos.map(pasillo => (
       <TableCell key={pasillo}>
         {pasilloProductos[pasillo] ? (
           <Box>
-            Total: {pasilloProductos[pasillo].cantidadTotal} <br />
-            Surtido: {pasilloProductos[pasillo].cantidadSurtida}
+            <Typography variant="body2" fontWeight="bold" noWrap>Tot: {pasilloProductos[pasillo].cantidadTotal}</Typography>
+            <Typography variant="body2" fontWeight="bold" noWrap>Surt: {pasilloProductos[pasillo].cantidadSurtida}</Typography>
           </Box>
         ) : (
           <Box>-</Box>
@@ -126,48 +91,54 @@ function EnSurtido() {
     const otroUsuario = pedido.productos.find(producto => producto.pasillo !== 'AV' && producto.usuario);
     return otroUsuario ? otroUsuario.usuario : 'Por Pasillo';
   };
-  
 
   return (
     <ThemeProvider theme={theme}>
-      <Box p={2}>
+      <Box p={2} sx={{ overflowX: 'auto' }}>
         {loading ? (
           <CircularProgress />
         ) : (
           <>
-            <Typography variant="h5" gutterBottom>
+            <Typography variant="h4" gutterBottom>
               Total de pedidos en surtido: {pedidos.length}
             </Typography>
-            <TableContainer component={Paper}>
+            <TableContainer component={Paper} sx={{ mb: 2 }}>
               <Table>
                 <TableHead>
                   <TableRow>
                     <TableCell>O.C</TableCell>
-                    <TableCell>Usuario</TableCell>
-                    <TableCell>Total</TableCell>
                     <TableCell>Surtido</TableCell>
-                    <TableCell>Pasillo:AV</TableCell>
-                    <TableCell>Pasillo:1</TableCell>
-                    <TableCell>Pasillo:2</TableCell>
-                    <TableCell>Pasillo:3</TableCell>
-                    <TableCell>Pasillo:4</TableCell>
-                    <TableCell>Pasillo:5</TableCell>
-                    <TableCell>Pasillo:6</TableCell>
-                    <TableCell>Pasillo:7</TableCell>
-                    <TableCell>Pasillo:8</TableCell>
-                    <TableCell></TableCell>
+                    <TableCell>Total</TableCell>
+                    <TableCell>Progreso </TableCell>
+                    {['AV', '1', '2', '3', '4', '5', '6', '7', '8'].map(pasillo => (
+                      <TableCell key={pasillo}>Pasillo {pasillo}</TableCell>
+                    ))}
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {pedidos.map((pedido, index) => {
-                    const porcentajeSurtido = calcularPorcentajeSurtido(pedido.totalSurtido, pedido.totalProductos).toFixed(1);
-                    const color = getColorPorcentaje(porcentajeSurtido);
+                    const porcentajeSurtido = calcularPorcentajeSurtido(pedido.totalSurtido, pedido.totalProductos);                    
                     return (
                       <TableRow key={index}>
                         <TableCell>{pedido.numeroPedido}</TableCell>
                         <TableCell>{obtenerUsuario(pedido)}</TableCell>
                         <TableCell>{pedido.totalProductos}</TableCell>
-                        <TableCell sx={{ backgroundColor: color }}>{porcentajeSurtido}%</TableCell>
+                        <TableCell>
+                          <Box >
+                            <Typography variant="h6" fontWeight="bold">{porcentajeSurtido}%</Typography>
+                            <LinearProgress 
+                              variant="determinate" 
+                              value={porcentajeSurtido} 
+                              sx={{ 
+                                height: 9, 
+                                borderRadius: 5,
+                                '& .MuiLinearProgress-bar': {
+                                  backgroundColor: interpolateColor(porcentajeSurtido)
+                                }
+                              }} 
+                            />
+                          </Box>
+                        </TableCell>
                         {renderPasillos(pedido.pasilloProductos)}
                       </TableRow>
                     );

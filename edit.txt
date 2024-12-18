@@ -18,7 +18,6 @@ import {
   Divider,
   Card,
   CardContent,
-  TextField,
 } from "@mui/material";
 import Barcode from "react-barcode";
 import { UserContext } from "../context/UserContext";
@@ -28,22 +27,12 @@ function Usuarios() {
   const [turno4Usuarios, setTurno4Usuarios] = useState([]); // Almacena usuarios del Turno 4
   const [usuariosEmbarques, setUsuariosEmbarques] = useState([]); // Usuarios de Embarques
   const [usuariosPaqueteria, setUsuariosPaqueteria] = useState([]);
-  const [usuariosMonta, setUsuariosMonta] = useState([]); // Usuarios con rol MONTA
   const [selectedUser, setSelectedUser] = useState(null);
   const [openModal, setOpenModal] = useState(false);
-  const [openModalUser, setOpenModalUser] = useState(false);
   const [openAccessModal, setOpenAccessModal] = useState(false);
   const [accesos, setAccesos] = useState([]);
   const [secciones, setSecciones] = useState([]);
   const { user } = useContext(UserContext); // Usuario logueado
-  const [isEditMode, setIsEditMode] = useState(false); // Controla si el modal es para editar o crear
-  const [userForm, setUserForm] = useState({
-    email: "",
-    name: "",
-    password: "",
-    unidad: "",
-    role: "",
-  });
 
   useEffect(() => {
     const fetchUsuarios = async () => {
@@ -53,22 +42,16 @@ function Usuarios() {
         );
         let usuariosFiltrados = response.data;
 
-
-        // Filtrar usuarios con el rol MONTA
-        const usuariosMontaFiltrados = usuariosFiltrados.flatMap((turno) =>
-          turno.usuarios.filter((usuario) => usuario.role.includes("MONTA"))
-        );
-        setUsuariosMonta(usuariosMontaFiltrados);
-
         if (user?.role === "Control") {
           usuariosFiltrados = usuariosFiltrados.map((turnoData) => ({
             ...turnoData,
-            usuarios: turnoData.usuarios.filter(
-              (usuario) =>
-                usuario.role.includes("Pasillo") || usuario.role.includes("AV") // Incluye roles que contengan "Pasillo" o "AV"
+            usuarios: turnoData.usuarios.filter((usuario) =>
+              usuario.role.includes("Pasillo") || usuario.role.includes("AV") // Incluye roles que contengan "Pasillo" o "AV"
             ),
           }));
         }
+        
+        
 
         // Filtrar los usuarios del Turno 4
         const turno4 = usuariosFiltrados.find((turno) => turno.turno === 4);
@@ -79,13 +62,15 @@ function Usuarios() {
           );
         }
 
+
         if (user?.role === "Embar") {
           usuariosFiltrados = usuariosFiltrados.map((turnoData) => ({
-            usuarios: turnoData.usuarios.filter(
-              (usuario) => usuario.role.includes("EB") // Incluye roles que contengan "Pasillo" o "AV"
+            usuarios: turnoData.usuarios.filter((usuario) =>
+              usuario.role.includes("EB") // Incluye roles que contengan "Pasillo" o "AV"
             ),
           }));
         }
+        
 
         // Filtrar usuarios de Embarques (rol que contiene "EMB")
         const usuariosEmbarquesFiltrados = usuariosFiltrados.flatMap((turno) =>
@@ -122,82 +107,13 @@ function Usuarios() {
   }, [user]);
 
   // Función para abrir el modal con los detalles del usuario
-  const handleOpenModalUsers = (usuario = null) => {
-    if (usuario) {
-      setIsEditMode(true);
-      setUserForm({
-        email: usuario.email,
-        name: usuario.name,
-        password: "", // Vaciar la contraseña al editar
-        unidad: usuario.unidad,
-        role: usuario.role,
-      });
-    } else {
-      setIsEditMode(false);
-      setUserForm({
-        email: "",
-        name: "",
-        password: "",
-        unidad: "",
-        role: "",
-      });
-    }
-    setSelectedUser(usuario);
-    setOpenModalUser(true);
-  };
-
-  // Función para abrir el modal con los detalles del usuario
   const handleOpenModal = (usuario) => {
     setSelectedUser(usuario);
     setOpenModal(true);
   };
 
-  const handleSaveUser = async () => {
-    try {
-      if (isEditMode) {
-        // Actualizar usuario
-        await axios.put(
-          `http://192.168.3.27:3007/api/usuarios/usuarios/${selectedUser.id_usu}`,
-          userForm
-        );
-        alert("Usuario actualizado correctamente");
-      } else {
-        // Crear nuevo usuario
-        await axios.post(
-          `http://192.168.3.27:3007/api/usuarios/usuarios`,
-          userForm
-        );
-        alert("Usuario creado correctamente");
-      }
-      setOpenModalUser(false);
-      //fetchUsuarios(); // Refrescar la lista de usuarios
-    } catch (error) {
-      console.error("Error al guardar el usuario:", error);
-      alert("Error al guardar el usuario");
-    }
-  };
-
-  const handleDeleteUser = async (id_usu) => {
-    const confirm = window.confirm(
-      "¿Estás seguro de que deseas eliminar este usuario?"
-    );
-    if (!confirm) return;
-
-    try {
-      await axios.delete(
-        `http://192.168.3.27:3007/api/usuarios/usuarios/${id_usu}`
-      );
-      alert("Usuario eliminado correctamente");
-      //fetchUsuarios(); // Refrescar la lista de usuarios
-    } catch (error) {
-      console.error("Error al eliminar el usuario:", error);
-      alert("Error al eliminar el usuario");
-    }
-  };
-
   const handleCloseModal = () => {
     setOpenModal(false);
-    setOpenModalUser(false);
     setSelectedUser(null);
   };
 
@@ -206,7 +122,7 @@ function Usuarios() {
     setSelectedUser(usuario);
     try {
       const response = await axios.get(
-        `http://192.168.3.27:3007/api/usuarios/usuarios/${usuario.id_usu}/accesos`
+        `http://192.168.3.27:3007/api/usuarios/${usuario.id_usu}/accesos`
       );
       console.log(response.data);
       setAccesos(response.data); // Cargar accesos del usuario seleccionado
@@ -247,7 +163,7 @@ function Usuarios() {
   const handleSaveAccess = async () => {
     try {
       await axios.put(
-        `http://192.168.3.27:3007/api/usuarios/usuarios/${selectedUser.id_usu}/accesos`,
+        `http://192.168.3.27:3007/api/usuarios/${selectedUser.id_usu}/accesos`,
         {
           secciones: accesos,
         }
@@ -272,27 +188,25 @@ function Usuarios() {
   };
 
   return (
+
+
+    
     <Box sx={{ p: 3 }}>
+
+      
       <Typography variant="h4" gutterBottom>
         Usuarios por Turno {user?.role} {user?.name}
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={() => handleOpenModalUsers(null)}
-          sx={{ mb: 3 }}
-        >
-          Crear Usuario
-        </Button>
       </Typography>
 
-      {/* Mostrar tabla "Accesos Web" solo a los administradores */}
-      {(user?.role === "Admin" || user?.role === "Master") &&
+
+       {/* Mostrar tabla "Accesos Web" solo a los administradores */}
+       {(user?.role === "Admin" || user?.role === "Master") &&
         turno4Usuarios.length > 0 && (
           <Box sx={{ mb: 5 }}>
             <Typography variant="h5" sx={{ mb: 2 }}>
               Accesos Web
             </Typography>
-            <TableContainer component={Paper}> 
+            <TableContainer component={Paper}>
               <Table>
                 <TableHead>
                   <TableRow>
@@ -300,11 +214,7 @@ function Usuarios() {
                     <TableCell>Nombre</TableCell>
                     <TableCell>Pasillo</TableCell>
                     <TableCell>Unidad de Negocio</TableCell>
-                    <TableCell>Accesos</TableCell>
-                    {(user?.role === "Master" ||
-                          user?.role === "Admin") && (
-                          <TableCell>Acciones</TableCell>
-                          )}
+                    <TableCell>Acciones</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -315,16 +225,16 @@ function Usuarios() {
                       <TableCell>{usuario.role}</TableCell>
                       <TableCell>{usuario.unidad}</TableCell>
                       <TableCell>
-                        {/* <Button
+                        <Button
                           variant="contained"
                           color="primary"
                           onClick={() => handleOpenModal(usuario)}
                         >
                           Ver Accesos
-                        </Button> */}
+                        </Button>
 
                         {/* Mostrar el botón de "Administrar Accesos" solo si el usuario tiene el rol de "master" o "admin" */}
-                        {/* {(user?.role === "Master" ||
+                        {(user?.role === "Master" ||
                           user?.role === "Admin") && (
                           <Button
                             variant="contained"
@@ -334,29 +244,6 @@ function Usuarios() {
                           >
                             Administrar Accesos
                           </Button>
-                        )} */}
-                      </TableCell>
-                      <TableCell>
-                      {(user?.role === "Master" ||
-                          user?.role === "Admin") && (
-                        <Button
-                          variant="contained"
-                          color="primary"
-                          onClick={() => handleOpenModalUsers(usuario)}
-                          sx={{ mr: 1 }}
-                        >
-                          Editar
-                        </Button>
-                        )}
-                        {(user?.role === "Master" ||
-                          user?.role === "Admin") && (
-                        <Button
-                          variant="contained"
-                          color="error"
-                          onClick={() => handleDeleteUser(usuario.id_usu)}
-                        >
-                          Eliminar
-                        </Button>
                         )}
                       </TableCell>
                     </TableRow>
@@ -382,10 +269,6 @@ function Usuarios() {
                   <TableCell>Pasillo</TableCell>
                   <TableCell>Unidad de Negocio</TableCell>
                   <TableCell>Acciones</TableCell>
-                  {(user?.role === "Master" ||
-                          user?.role === "Admin") && (
-                          <TableCell>Acciones</TableCell>
-                          )}
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -405,30 +288,8 @@ function Usuarios() {
                       </Button>
 
                       {/* Mostrar el botón de "Administrar Accesos" solo si el usuario tiene el rol de "master" o "admin" */}
+                     
                     </TableCell>
-                    <TableCell>
-                      {(user?.role === "Master" ||
-                          user?.role === "Admin") && (
-                        <Button
-                          variant="contained"
-                          color="primary"
-                          onClick={() => handleOpenModalUsers(usuario)}
-                          sx={{ mr: 1 }}
-                        >
-                          Editar
-                        </Button>
-                        )}
-                        {(user?.role === "Master" ||
-                          user?.role === "Admin") && (
-                        <Button
-                          variant="contained"
-                          color="error"
-                          onClick={() => handleDeleteUser(usuario.id_usu)}
-                        >
-                          Eliminar
-                        </Button>
-                        )}
-                      </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -437,7 +298,8 @@ function Usuarios() {
         </Box>
       ))}
 
-      {usuariosEmbarques.length > 0 && (
+     
+         {usuariosEmbarques.length > 0 && (
         <Box sx={{ mb: 5 }}>
           <Typography variant="h5" sx={{ mb: 2 }}>
             Usuarios de Embarques
@@ -451,10 +313,6 @@ function Usuarios() {
                   <TableCell>Rol</TableCell>
                   <TableCell>Unidad de Negocio</TableCell>
                   <TableCell>Acciones</TableCell>
-                  {(user?.role === "Master" ||
-                          user?.role === "Admin") && (
-                          <TableCell>Acciones</TableCell>
-                          )}
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -472,30 +330,8 @@ function Usuarios() {
                       >
                         Ver Accesos
                       </Button>
+                     
                     </TableCell>
-                    <TableCell>
-                      {(user?.role === "Master" ||
-                          user?.role === "Admin") && (
-                        <Button
-                          variant="contained"
-                          color="primary"
-                          onClick={() => handleOpenModalUsers(usuario)}
-                          sx={{ mr: 1 }}
-                        >
-                          Editar
-                        </Button>
-                        )}
-                        {(user?.role === "Master" ||
-                          user?.role === "Admin") && (
-                        <Button
-                          variant="contained"
-                          color="error"
-                          onClick={() => handleDeleteUser(usuario.id_usu)}
-                        >
-                          Eliminar
-                        </Button>
-                        )}
-                      </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -519,10 +355,6 @@ function Usuarios() {
                   <TableCell>Rol</TableCell>
                   <TableCell>Unidad de Negocio</TableCell>
                   <TableCell>Acciones</TableCell>
-                  {(user?.role === "Master" ||
-                          user?.role === "Admin") && (
-                          <TableCell>Acciones</TableCell>
-                          )}
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -540,30 +372,8 @@ function Usuarios() {
                       >
                         Ver Accesos
                       </Button>
+                      
                     </TableCell>
-                    <TableCell>
-                      {(user?.role === "Master" ||
-                          user?.role === "Admin") && (
-                        <Button
-                          variant="contained"
-                          color="primary"
-                          onClick={() => handleOpenModalUsers(usuario)}
-                          sx={{ mr: 1 }}
-                        >
-                          Editar
-                        </Button>
-                        )}
-                        {(user?.role === "Master" ||
-                          user?.role === "Admin") && (
-                        <Button
-                          variant="contained"
-                          color="error"
-                          onClick={() => handleDeleteUser(usuario.id_usu)}
-                        >
-                          Eliminar
-                        </Button>
-                        )}
-                      </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -571,65 +381,6 @@ function Usuarios() {
           </TableContainer>
         </Box>
       )}
-
-      {/* Tabla para usuarios con rol MONTA */}
-{usuariosMonta.length > 0 && (
-  <Box sx={{ mb: 5 }}>
-    <Typography variant="h5" sx={{ mb: 2 }}>
-      Usuarios MONTA
-    </Typography>
-    <TableContainer component={Paper}>
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell>ID</TableCell>
-            <TableCell>Nombre</TableCell>
-            <TableCell>Rol</TableCell>
-            <TableCell>Unidad de Negocio</TableCell>
-            <TableCell>Acciones</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {usuariosMonta.map((usuario) => (
-            <TableRow key={usuario.id_usu}>
-              <TableCell>{usuario.id_usu}</TableCell>
-              <TableCell>{usuario.name}</TableCell>
-              <TableCell>{usuario.role}</TableCell>
-              <TableCell>{usuario.unidad}</TableCell>
-              <TableCell>
-                      <Button
-                        variant="contained"
-                        color="primary"
-                        onClick={() => handleOpenModal(usuario)}
-                      >
-                        Ver Accesos
-                      </Button>
-                    </TableCell>
-              <TableCell>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={() => handleOpenModalUsers(usuario)}
-                  sx={{ mr: 1 }}
-                >
-                  Editar
-                </Button>
-                <Button
-                  variant="contained"
-                  color="error"
-                  onClick={() => handleDeleteUser(usuario.id_usu)}
-                >
-                  Eliminar
-                </Button>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
-  </Box>
-)}
-
 
       {/* Modal para mostrar los detalles del usuario */}
       <Modal open={openModal} onClose={handleCloseModal}>
@@ -855,92 +606,6 @@ function Usuarios() {
               </Box>
             </>
           )}
-        </Box>
-      </Modal>
-
-      <Modal open={openModalUser} onClose={handleCloseModal}>
-        <Box
-          sx={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            width: 500,
-            bgcolor: "background.paper",
-            boxShadow: 24,
-            p: 4,
-            borderRadius: 2,
-          }}
-        >
-          <Typography variant="h5" gutterBottom>
-            {isEditMode ? "Editar Usuario" : "Crear Usuario"}
-          </Typography>
-          <form>
-            <TextField
-              label="Nombre"
-              fullWidth
-              value={userForm.name}
-              onChange={(e) =>
-                setUserForm({ ...userForm, name: e.target.value })
-              }
-              sx={{ mb: 2 }}
-            />
-            <TextField
-              label="Correo Electrónico"
-              fullWidth
-              value={userForm.email}
-              onChange={(e) =>
-                setUserForm({ ...userForm, email: e.target.value })
-              }
-              sx={{ mb: 2 }}
-            />
-            <TextField
-              label="Contraseña"
-              type="password"
-              fullWidth
-              value={userForm.password}
-              onChange={(e) =>
-                setUserForm({ ...userForm, password: e.target.value })
-              }
-              sx={{ mb: 2 }}
-              disabled={isEditMode} // Solo habilitar en modo creación
-            />
-            <TextField
-              label="Unidad"
-              fullWidth
-              value={userForm.unidad}
-              onChange={(e) =>
-                setUserForm({ ...userForm, unidad: e.target.value })
-              }
-              sx={{ mb: 2 }}
-            />
-            <TextField
-              label="Rol"
-              fullWidth
-              value={userForm.role}
-              onChange={(e) =>
-                setUserForm({ ...userForm, role: e.target.value })
-              }
-              sx={{ mb: 2 }}
-            />
-            <Box sx={{ textAlign: "right" }}>
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={handleSaveUser}
-              >
-                Guardar
-              </Button>
-              <Button
-                variant="contained"
-                color="secondary"
-                onClick={handleCloseModal}
-                sx={{ ml: 2 }}
-              >
-                Cancelar
-              </Button>
-            </Box>
-          </form>
         </Box>
       </Modal>
     </Box>

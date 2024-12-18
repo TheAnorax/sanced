@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import {
   Typography, Box, Button, Modal, Paper, TextField,
@@ -13,6 +13,7 @@ import Swal from 'sweetalert2';
 import { jsPDF } from "jspdf";
 import 'jspdf-autotable';
 import * as XLSX from 'xlsx'; // Importa la librería xlsx
+import { UserContext } from "../context/UserContext";
 
 const theme = createTheme({
   palette: {
@@ -86,6 +87,7 @@ function EnSurtido() {
   const [totalPartidas, setTotalPartidas] = useState(0); // Nuevo estado para el total de partidas
   const[totalPiezas, setTotalPiezas] = useState(0); 
   const [usuarios, setUsuarios] = useState({});
+  const { user } = useContext(UserContext);
 
   useEffect(() => {
     const fetchPedidos = async () => {
@@ -646,18 +648,33 @@ function EnSurtido() {
   const renderActions = (params) => {
     const buttonColor = getButtonColor(params.row);
 
+    // if (params.row.items.some(item => item.estado === 'S')) {
+    //   return (
+    //     user.role === "Admin" || user.role === "INV" ? (
+    //     <IconButton color="primary" onClick={() => handleOpenModal(params.row, true, false)}>
+    //       <EditIcon />
+    //     </IconButton>
+    //     ) : null,
+    //   );
+    // }
+
     if (params.row.items.some(item => item.estado === 'S')) {
       return (
-        <IconButton color="primary" onClick={() => handleOpenModal(params.row, true, false)}>
-          <EditIcon />
-        </IconButton>
+        (user.role === "Admin" || user.role === "Control") ? (
+          <IconButton color="primary" onClick={() => handleOpenModal(params.row, true, false)}>
+            <EditIcon />
+          </IconButton>
+        ) : null
       );
     }
+    
 
     return (
+      (user.role === "Admin" || user.role === "Control") ? (
       <Button variant="contained" color={buttonColor} onClick={() => handleOpenModal(params.row, false, true)}>
         Autorización
       </Button>
+       ) : null
     );
   };
 
@@ -1019,11 +1036,14 @@ function EnSurtido() {
                       <TableCell>{pedido.pedido}</TableCell>
                       <TableCell>{pedido.tipo}</TableCell>
                       <TableCell>{pedido.partidas}</TableCell>
-                      <TableCell>
-                        <Button variant="contained" color="error" onClick={() => confirmCancelPedido(pedido.pedido)}>
-                          Cancelar
-                        </Button>
-                      </TableCell>
+                     <TableCell>
+  {(user.role === "Admin" || user.role === "Control") && (
+    <Button variant="contained" color="error" onClick={() => confirmCancelPedido(pedido.pedido)}>
+      Cancelar
+    </Button>
+  )}
+</TableCell>
+
                     </TableRow>
                   ))}
                 </TableBody>

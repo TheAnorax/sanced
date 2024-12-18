@@ -264,12 +264,12 @@ function ReporteReciboCedis() {
 
 
     /////////
-    if (selectedFiles.referencia && Array.isArray(selectedFiles.referencia)) {
-      selectedFiles.referencia.forEach((file) => {
+    if (selectedFiles.oe && Array.isArray(selectedFiles.oe)) {
+      selectedFiles.oe.forEach((file) => {
         formData.append("pdf_6", file); // Añadir cada archivo individualmente
       });
-    } else if (selectedFiles.referencia) {
-      formData.append("pdf_6", selectedFiles.referencia);
+    } else if (selectedFiles.oe) {
+      formData.append("pdf_6", selectedFiles.oe);
     }
 
     //////
@@ -282,7 +282,8 @@ function ReporteReciboCedis() {
       !selectedFiles.packingList &&
       !selectedFiles.pedimento &&
       !selectedFiles.referencia &&
-      !selectedFiles.ordenCompra
+      !selectedFiles.ordenCompra && 
+      !selectedFiles.oe
     ) {
       Swal.fire("Error", "Debes subir al menos un archivo.", "error");
       return;
@@ -293,6 +294,7 @@ function ReporteReciboCedis() {
     formData.append("pedimento", detalleData.pedimento || ""); // Agregar pedimento si está disponible
     formData.append("referencia", detalleData.referencia || ""); // Agregar factura si está disponible
     formData.append("ordenCompra", detalleData.oc || ""); // Agregar orden de compra si está disponible
+    formData.append("oe", detalleData.oe || "");  
 
     try {
       // Realizar la solicitud de subida con axios

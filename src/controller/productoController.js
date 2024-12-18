@@ -47,7 +47,7 @@ const getVoluProducts = async (req, res) => {
         v.cajas_tarima   
       FROM productos p
       LEFT JOIN volumetria v ON p.codigo_pro = v.codigo
-      WHERE p.codigo_pro = ?`, 
+      WHERE p.codigo_pro = ?`,
       [codigo_pro]
     );
 
@@ -57,9 +57,9 @@ const getVoluProducts = async (req, res) => {
 
     res.json(rows);
   } catch (error) {
-    res.status(500).json({ 
-      message: "Error al obtener los productos", 
-      error: error.message 
+    res.status(500).json({
+      message: "Error al obtener los productos",
+      error: error.message
     });
   }
 };
@@ -234,7 +234,7 @@ const deleteProduct = async (req, res) => {
       deleteImage(product.img_pz);
       deleteImage(product.img_pq);
       deleteImage(product.img_inner);
-      deleteImage(product.img_master); 
+      deleteImage(product.img_master);
     }
 
     await pool.query('DELETE FROM productos WHERE id_prod = ?', [id]);
@@ -244,4 +244,45 @@ const deleteProduct = async (req, res) => {
   }
 };
 
-module.exports = { getAllProducts, createProduct, updateProduct, deleteProduct, getAllProductsUbi, getVoluProducts, upload };
+const updateVolumetria = async (req, res) => {
+  const { codigo } = req.params; // El valor que viene en la URL será tomado como 'codigo'
+  const { cajas_cama, pieza_caja, cajas_tarima, camas_tarima, pieza_tarima } = req.body;
+
+  if (!codigo) {
+    return res.status(400).json({ message: "El código del producto es obligatorio" });
+  }
+
+  try {
+    // Verifica si el producto existe usando 'codigo'
+    const [producto] = await pool.query(
+      `SELECT * FROM volumetria WHERE codigo = ?`,
+      [codigo]
+    );
+
+    if (producto.length === 0) {
+      return res.status(404).json({ message: "Producto no encontrado" });
+    }
+
+    // Actualiza los datos de volumetría
+    const [result] = await pool.query(
+      `UPDATE volumetria 
+       SET cajas_cama = ?, pieza_caja = ?, cajas_tarima = ?, camas_tarima = ?, pieza_tarima = ? 
+       WHERE codigo = ?`,
+      [cajas_cama, pieza_caja, cajas_tarima, camas_tarima, pieza_tarima, codigo]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(500).json({ message: "No se pudo actualizar la volumetría" });
+    }
+
+    res.json({ message: "Volumetría actualizada correctamente" });
+  } catch (error) {
+    console.error("Error al actualizar la volumetría:", error);
+    res.status(500).json({ message: "Error al actualizar la volumetría", error: error.message });
+  }
+};
+
+
+
+
+module.exports = { getAllProducts, createProduct, updateProduct, deleteProduct, getAllProductsUbi, getVoluProducts, updateVolumetria, upload };

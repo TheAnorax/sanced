@@ -18,7 +18,7 @@ import {
   Modal,
   Grid,
   TablePagination,
-  LinearProgress
+  LinearProgress,
 } from "@mui/material";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
@@ -74,7 +74,7 @@ function Compras() {
   const [openUploadModal, setOpenUploadModal] = useState(false);
   const [detalleData, setDetalleData] = useState(null);
   const [selectedDate, setSelectedDate] = useState(null);
-  const [uploadProgress, setUploadProgress] = useState(0); 
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   const [selectedFiles, setSelectedFiles] = useState({
     cartaPorte: null,
@@ -579,60 +579,61 @@ function Compras() {
   const handleFilesChangeMasibe = (event) => {
     const files = event.target.files;
     if (files.length > 30) {
-      Swal.fire("Error", "Solo puedes subir un máximo de 30 archivos.", "error");
+      Swal.fire(
+        "Error",
+        "Solo puedes subir un máximo de 30 archivos.",
+        "error"
+      );
       return;
     }
     // Almacena los archivos seleccionados
     setSelectedFiles(files);
   };
-  
-  
-// Función para manejar la subida de archivos
-// const handleFilesUploadMasibe = async () => {
-//   if (selectedFiles.length === 0) {
-//     Swal.fire("Error", "No has seleccionado ningún archivo.", "error");
-//     return;
-//   }
 
-//   const formData = new FormData();
-//   formData.append('ordenCompra', oc);  // Agregar la Orden de Compra al FormData
-//   Array.from(selectedFiles).forEach((file, index) => {
-//     formData.append(`pdf_${index + 1}`, file);
-//   });
+  // Función para manejar la subida de archivos
+  // const handleFilesUploadMasibe = async () => {
+  //   if (selectedFiles.length === 0) {
+  //     Swal.fire("Error", "No has seleccionado ningún archivo.", "error");
+  //     return;
+  //   }
 
-//   setLoading(true);
-//   try {
-//     await axios.post(
-//       "http://192.168.3.27:3007/api/compras/compras/upload-pdfsOC",
-//       formData,
-//       {
-//         headers: { "Content-Type": "multipart/form-data" },
-//         onUploadProgress: (progressEvent) => {
-//           const total = progressEvent.total;
-//           const current = progressEvent.loaded;
-//           const percentage = Math.round((current * 100) / total);
-//           setUploadProgress(percentage);
-//           console.log("Upgrade", percentage);
-//         },
-//       }
-//     );
-//     Swal.fire("Éxito", "Archivos subidos correctamente", "success");
-//   } catch (error) {
-//     Swal.fire("Error", "Hubo un problema al subir los archivos.", "error");
-//   } finally {
-//     setLoading(false);
-//     setUploadProgress(0);
-//   }
-// };
+  //   const formData = new FormData();
+  //   formData.append('ordenCompra', oc);  // Agregar la Orden de Compra al FormData
+  //   Array.from(selectedFiles).forEach((file, index) => {
+  //     formData.append(`pdf_${index + 1}`, file);
+  //   });
 
-
-
+  //   setLoading(true);
+  //   try {
+  //     await axios.post(
+  //       "http://192.168.3.27:3007/api/compras/compras/upload-pdfsOC",
+  //       formData,
+  //       {
+  //         headers: { "Content-Type": "multipart/form-data" },
+  //         onUploadProgress: (progressEvent) => {
+  //           const total = progressEvent.total;
+  //           const current = progressEvent.loaded;
+  //           const percentage = Math.round((current * 100) / total);
+  //           setUploadProgress(percentage);
+  //           console.log("Upgrade", percentage);
+  //         },
+  //       }
+  //     );
+  //     Swal.fire("Éxito", "Archivos subidos correctamente", "success");
+  //   } catch (error) {
+  //     Swal.fire("Error", "Hubo un problema al subir los archivos.", "error");
+  //   } finally {
+  //     setLoading(false);
+  //     setUploadProgress(0);
+  //   }
+  // };
 
   const handleFilesUpload = async () => {
     const formData = new FormData();
-  
+
     // Agregar archivos PDF al formData
-    if (selectedFiles.cartaPorte) formData.append("pdf_1", selectedFiles.cartaPorte);
+    if (selectedFiles.cartaPorte)
+      formData.append("pdf_1", selectedFiles.cartaPorte);
     if (selectedFiles.packingList && Array.isArray(selectedFiles.packingList)) {
       selectedFiles.packingList.forEach((file) => {
         formData.append("pdf_2", file);
@@ -640,7 +641,8 @@ function Compras() {
     } else if (selectedFiles.packingList) {
       formData.append("pdf_2", selectedFiles.packingList);
     }
-    if (selectedFiles.pedimento) formData.append("pdf_3", selectedFiles.pedimento);
+    if (selectedFiles.pedimento)
+      formData.append("pdf_3", selectedFiles.pedimento);
     if (selectedFiles.referencia && Array.isArray(selectedFiles.referencia)) {
       selectedFiles.referencia.forEach((file) => {
         formData.append("pdf_4", file);
@@ -648,8 +650,9 @@ function Compras() {
     } else if (selectedFiles.referencia) {
       formData.append("pdf_4", selectedFiles.referencia);
     }
-    if (selectedFiles.ordenCompra) formData.append("pdf_5", selectedFiles.ordenCompra);
-  
+    if (selectedFiles.ordenCompra)
+      formData.append("pdf_5", selectedFiles.ordenCompra);
+
     if (
       !selectedFiles.cartaPorte &&
       !selectedFiles.packingList &&
@@ -660,15 +663,16 @@ function Compras() {
       Swal.fire("Error", "Debes subir al menos un archivo.", "error");
       return;
     }
-  
+
     // Agregar datos adicionales al formData
     formData.append("id_recibo", detalleData.id_recibo);
     formData.append("pedimento", detalleData.pedimento || "");
     formData.append("referencia", detalleData.referencia || "");
     formData.append("ordenCompra", detalleData.oc || "");
-  
+
     setLoading(true); // Mostrar el loader
-  setOpenUploadModal(false); // Cerrar temporalmente el modal
+    setOpenUploadModal(false); // Cerrar temporalmente el modal
+
     try {
       const response = await axios.post(
         "http://192.168.3.27:3007/api/compras/compras/upload-pdfs",
@@ -683,13 +687,13 @@ function Compras() {
           },
         }
       );
-  
+
       const successMessages = [
         "Recibo actualizado exitosamente",
         "Recibo agregado exitosamente desde recibo_compras",
-        "Documentos procesados correctamente para los productos con el mismo pedimento y Packing list"
+        "Documentos procesados correctamente para los productos con el mismo pedimento y Packing list",
       ];
-  
+
       if (successMessages.includes(response.data.message)) {
         Swal.fire("Éxito", "Archivos subidos con éxito.", "success");
         handleCloseUploadModal();
@@ -703,13 +707,31 @@ function Compras() {
       }
     } catch (error) {
       console.error("Error al subir archivos:", error);
-      Swal.fire("Error", "Hubo un problema al subir los archivos.", "error");
-    }finally {
-      setLoading(false); // Detener el loader después de la operación (éxito o error)
-    setUploadProgress(0); // Reiniciar el progreso // Reabrir el modal al finalizar la operación
+
+      // Manejo de errores detallado
+      if (error.response) {
+        // Errores del servidor
+        Swal.fire(
+          "Error",
+          `El servidor respondió con un error: ${error.response.status} - ${error.response.data.message}`,
+          "error"
+        );
+      } else if (error.request) {
+        // Errores de red o conexión
+        Swal.fire(
+          "Error",
+          "No se pudo conectar con el servidor. Verifica tu conexión a la red.",
+          "error"
+        );
+      } else {
+        // Otros errores
+        Swal.fire("Error", "Hubo un problema al subir los archivos.", "error");
+      }
+    } finally {
+      setLoading(false); // Detener el loader después de la operación
+      setUploadProgress(0); // Reiniciar el progreso
     }
   };
-  
 
   // Resto del código sigue igual...
 
@@ -860,7 +882,7 @@ function Compras() {
           Importaciones
         </Button>
       );
-    } else if (user?.role === "Nac"  ) {
+    } else if (user?.role === "Nac") {
       return (
         <Button
           variant={tipo === "Nacionales" ? "contained" : "outlined"}
@@ -878,7 +900,7 @@ function Compras() {
           Insumos
         </Button>
       );
-    } else if (user?.role === "Admin" ) {
+    } else if (user?.role === "Admin") {
       return (
         <>
           <Button
@@ -947,7 +969,7 @@ function Compras() {
           </Button>
         </>
       );
-    } else if (user?.role === "Nac2" ) {
+    } else if (user?.role === "Nac2") {
       return (
         <>
           <Button
@@ -970,7 +992,7 @@ function Compras() {
           </Button>
         </>
       );
-    } 
+    }
     return null;
   };
 
@@ -999,13 +1021,13 @@ function Compras() {
             ? "Recibo"
             : user?.role === "Plan"
             ? "Ingreso de Almacenes"
-             : user?.role === "Nac2"
+            : user?.role === "Nac2"
             ? "Llegadas Cedis"
             : ""}
         </Typography>
 
         <Box>
-      {/* <Button component="label" variant="contained" startIcon={<CloudUploadIcon />}>
+          {/* <Button component="label" variant="contained" startIcon={<CloudUploadIcon />}>
         Subir PDFs (Máximo 30)
         <VisuallyHiddenInput
           type="file"
@@ -1015,7 +1037,7 @@ function Compras() {
         />
       </Button> */}
 
-      {/* {selectedFiles.length > 0 && (
+          {/* {selectedFiles.length > 0 && (
         <Typography sx={{ mt: 2 }}>
           {selectedFiles.length} archivos seleccionados
         </Typography>
@@ -1041,7 +1063,7 @@ function Compras() {
           </Box>
         )}
       </Backdrop> */}
-    </Box>
+        </Box>
         <Button variant="contained" component="label">
           Cargar Excel
           <input type="file" hidden onChange={handleFileUpload} />
@@ -1254,7 +1276,7 @@ function Compras() {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>Imagen</TableCell>              
+              <TableCell>Imagen</TableCell>
               <TableCell>Descripción</TableCell>
               <TableCell>Código</TableCell>
               <TableCell>Cantidad a Recibir</TableCell>
@@ -1281,7 +1303,7 @@ function Compras() {
             </TableRow>
             <TableRow>
               <TableCell />
-              
+
               <TableCell></TableCell>
               <TableCell>
                 <TextField
@@ -1314,18 +1336,18 @@ function Compras() {
                   />
                 </LocalizationProvider> */}
                 <LocalizationProvider
-                dateAdapter={AdapterDayjs}
-                adapterLocale="es"
-              >
-                <DatePicker
-                  label="Arribo *"
-                  value={selectedDate}
-                  onChange={handleDateChange}
+                  dateAdapter={AdapterDayjs}
+                  adapterLocale="es"
+                >
+                  <DatePicker
+                    label="Arribo *"
+                    value={selectedDate}
+                    onChange={handleDateChange}
                     renderInput={(params) => (
                       <TextField {...params} size="small" variant="outlined" />
                     )}
-                />
-              </LocalizationProvider>
+                  />
+                </LocalizationProvider>
               </TableCell>
               <TableCell>
                 <TextField
@@ -1385,10 +1407,12 @@ function Compras() {
                   <TableCell>{compra.des}</TableCell>
                   <TableCell>{compra.codigo}</TableCell>
                   <TableCell>{compra.cant_recibir}</TableCell>
-                  <TableCell>{new Date(compra.arribo).toLocaleDateString()}</TableCell>
+                  <TableCell>
+                    {new Date(compra.arribo).toLocaleDateString()}
+                  </TableCell>
                   <TableCell>{compra.oc}</TableCell>
                   <TableCell>{compra.contenedor}</TableCell>
-                  <TableCell>{compra.pedimento}</TableCell>                  
+                  <TableCell>{compra.pedimento}</TableCell>
                   <TableCell>{compra.referencia}</TableCell>
                   {user?.role !== "Plan" && (
                     <>
@@ -1418,7 +1442,9 @@ function Compras() {
                           variant="contained"
                           onClick={() => handleOpenUploadModal(compra)}
                         >
-                          {user?.role!== "Recibo" ? "Subir Documentos" : "Ver Documentos"}
+                          {user?.role !== "Recibo"
+                            ? "Subir Documentos"
+                            : "Ver Documentos"}
                         </Button>
                       </TableCell>
                       <TableCell>
@@ -1583,12 +1609,17 @@ function Compras() {
 
       {/* Modal para subir documentos */}
 
-      <Backdrop sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1 }} open={loading}>
+      <Backdrop
+        sx={{ color: "#fff", zIndex: (theme) => theme.zIndex.drawer + 1 }}
+        open={loading}
+      >
         {uploadProgress === 0 ? (
           <CircularProgress color="inherit" />
         ) : (
-          <Box sx={{ width: '80%', textAlign: 'center' }}>
-            <Typography variant="h6">Subiendo archivos pdf : {uploadProgress}%</Typography>
+          <Box sx={{ width: "80%", textAlign: "center" }}>
+            <Typography variant="h6">
+              Subiendo archivos pdf : {uploadProgress}%
+            </Typography>
             <LinearProgress variant="determinate" value={uploadProgress} />
           </Box>
         )}
@@ -1631,7 +1662,7 @@ function Compras() {
                     sx={{
                       backgroundColor: "rgba(76, 175, 80, 0.5)", // Verde con transparencia
                       color: "white",
-                      width:"300px",
+                      width: "300px",
                       justifyContent: "flex-start", // Alinea el contenido a la izquierda
                       textAlign: "left", // Alinea el texto a la izquierda
                       "&:hover": {
@@ -1640,38 +1671,38 @@ function Compras() {
                       marginBottom: "10px",
                     }}
                   >
-                    {detalleData.pdf_1.split('-').slice(3).join('-')}
+                    {detalleData.pdf_1.split("-").slice(3).join("-")}
                   </Button>
                   {user?.role !== "Recibo" && (
-                  <Button
-                    component="label"
-                    variant="outlined"
-                    startIcon={<CloudUploadIcon />}
-                    sx={{ mt: 1 }}
-                  >
-                    Reemplazar
-                    <VisuallyHiddenInput
-                      type="file"
-                      onChange={(e) => handleFilesChange(e, "cartaPorte")}
-                    />
-                  </Button>
-                    )}
+                    <Button
+                      component="label"
+                      variant="outlined"
+                      startIcon={<CloudUploadIcon />}
+                      sx={{ mt: 1 }}
+                    >
+                      Reemplazar
+                      <VisuallyHiddenInput
+                        type="file"
+                        onChange={(e) => handleFilesChange(e, "cartaPorte")}
+                      />
+                    </Button>
+                  )}
                 </div>
               ) : (
                 <>
-                {user?.role !== "Recibo" && (
-                  <Button
-                    component="label"
-                    variant="contained"
-                    startIcon={<CloudUploadIcon />}
-                  >
-                    Seleccionar Documento
-                    <VisuallyHiddenInput
-                      type="file"
-                      onChange={(e) => handleFilesChange(e, "cartaPorte")}
-                    />
-                  </Button>
-                   )}
+                  {user?.role !== "Recibo" && (
+                    <Button
+                      component="label"
+                      variant="contained"
+                      startIcon={<CloudUploadIcon />}
+                    >
+                      Seleccionar Documento
+                      <VisuallyHiddenInput
+                        type="file"
+                        onChange={(e) => handleFilesChange(e, "cartaPorte")}
+                      />
+                    </Button>
+                  )}
                   {selectedFiles.cartaPorte && (
                     <Typography sx={{ mt: 1 }}>
                       {selectedFiles.cartaPorte.name}
@@ -1696,8 +1727,8 @@ function Compras() {
                       rel="noopener noreferrer"
                       variant="contained"
                       sx={{
-                        backgroundColor: "rgba(76, 175, 80, 0.5)",                        
-                        width:"300px",
+                        backgroundColor: "rgba(76, 175, 80, 0.5)",
+                        width: "300px",
                         justifyContent: "flex-start", // Alinea el contenido a la izquierda
                         textAlign: "left", // Alinea el texto a la izquierda
                         color: "white",
@@ -1707,44 +1738,44 @@ function Compras() {
                         marginBottom: "10px",
                       }}
                     >
-                       {pdfName.trim().split('-').slice(3).join('-')}
+                      {pdfName.trim().split("-").slice(3).join("-")}
                     </Button>
                   ))}
                   {user?.role !== "Recibo" && (
-                  <Button
-                    component="label"
-                    variant="outlined"
-                    startIcon={<CloudUploadIcon />}
-                    sx={{ mt: 1 }}
-                  >
-                    Reemplazar
-                    <VisuallyHiddenInput
-                      type="file"
-                      multiple
-                      onChange={(e) =>
-                        handleFilesChange(e, "packingList", true)
-                      }
-                    />
-                  </Button>
-                   )}
+                    <Button
+                      component="label"
+                      variant="outlined"
+                      startIcon={<CloudUploadIcon />}
+                      sx={{ mt: 1 }}
+                    >
+                      Reemplazar
+                      <VisuallyHiddenInput
+                        type="file"
+                        multiple
+                        onChange={(e) =>
+                          handleFilesChange(e, "packingList", true)
+                        }
+                      />
+                    </Button>
+                  )}
                 </div>
               ) : (
                 <>
-                {user?.role !== "Recibo" && (
-                  <Button
-                    component="label"
-                    variant="contained"
-                    startIcon={<CloudUploadIcon />}
-                  >
-                    Seleccionar Documento
-                    <VisuallyHiddenInput
-                      type="file"
-                      multiple
-                      onChange={(e) =>
-                        handleFilesChange(e, "packingList", true)
-                      }
-                    />
-                  </Button>
+                  {user?.role !== "Recibo" && (
+                    <Button
+                      component="label"
+                      variant="contained"
+                      startIcon={<CloudUploadIcon />}
+                    >
+                      Seleccionar Documento
+                      <VisuallyHiddenInput
+                        type="file"
+                        multiple
+                        onChange={(e) =>
+                          handleFilesChange(e, "packingList", true)
+                        }
+                      />
+                    </Button>
                   )}
                   {selectedFiles.packingList && (
                     <Typography sx={{ mt: 1 }}>
@@ -1773,7 +1804,7 @@ function Compras() {
                     sx={{
                       backgroundColor: "rgba(76, 175, 80, 0.5)",
                       color: "white",
-                      width:"300px", 
+                      width: "300px",
                       justifyContent: "flex-start", // Alinea el contenido a la izquierda
                       textAlign: "left", // Alinea el texto a la izquierda
                       "&:hover": {
@@ -1782,37 +1813,37 @@ function Compras() {
                       marginBottom: "10px",
                     }}
                   >
-                    {detalleData.pdf_3.split('-').slice(3).join('-')}
+                    {detalleData.pdf_3.split("-").slice(3).join("-")}
                   </Button>
                   {user?.role !== "Recibo" && (
-                  <Button
-                    component="label"
-                    variant="outlined"
-                    startIcon={<CloudUploadIcon />}
-                    sx={{ mt: 1 }}
-                  >
-                    Reemplazar
-                    <VisuallyHiddenInput
-                      type="file"
-                      onChange={(e) => handleFilesChange(e, "pedimento")}
-                    />
-                  </Button>
+                    <Button
+                      component="label"
+                      variant="outlined"
+                      startIcon={<CloudUploadIcon />}
+                      sx={{ mt: 1 }}
+                    >
+                      Reemplazar
+                      <VisuallyHiddenInput
+                        type="file"
+                        onChange={(e) => handleFilesChange(e, "pedimento")}
+                      />
+                    </Button>
                   )}
                 </div>
               ) : (
                 <>
-                {user?.role !== "Recibo" && (
-                  <Button
-                    component="label"
-                    variant="contained"
-                    startIcon={<CloudUploadIcon />}
-                  >
-                    Seleccionar Documento
-                    <VisuallyHiddenInput
-                      type="file"
-                      onChange={(e) => handleFilesChange(e, "pedimento")}
-                    />
-                  </Button>
+                  {user?.role !== "Recibo" && (
+                    <Button
+                      component="label"
+                      variant="contained"
+                      startIcon={<CloudUploadIcon />}
+                    >
+                      Seleccionar Documento
+                      <VisuallyHiddenInput
+                        type="file"
+                        onChange={(e) => handleFilesChange(e, "pedimento")}
+                      />
+                    </Button>
                   )}
                   {selectedFiles.pedimento && (
                     <Typography sx={{ mt: 1 }}>
@@ -1826,7 +1857,7 @@ function Compras() {
             {/* Documento: Factura */}
             <Grid item xs={2}>
               <Typography variant="h6" gutterBottom>
-                Factura 
+                Factura
               </Typography>
               {detalleData?.pdf_4 ? (
                 <div>
@@ -1840,7 +1871,7 @@ function Compras() {
                       sx={{
                         backgroundColor: "rgba(76, 175, 80, 0.5)",
                         color: "white",
-                        width:"300px",
+                        width: "300px",
                         justifyContent: "flex-start", // Alinea el contenido a la izquierda
                         textAlign: "left", // Alinea el texto a la izquierda
                         "&:hover": {
@@ -1849,40 +1880,44 @@ function Compras() {
                         marginBottom: "10px",
                       }}
                     >
-                      {pdfName.trim().split('-').slice(3).join('-')}
+                      {pdfName.trim().split("-").slice(3).join("-")}
                     </Button>
                   ))}
                   {user?.role !== "Recibo" && (
-                  <Button
-                    component="label"
-                    variant="outlined"
-                    startIcon={<CloudUploadIcon />}
-                    sx={{ mt: 1 }}
-                  >
-                    Reemplazar
-                    <VisuallyHiddenInput
-                      type="file"
-                      multiple // Permitir seleccionar múltiples archivos
-                      onChange={(e) => handleFilesChange(e, "referencia", true)}
-                    />
-                  </Button>
+                    <Button
+                      component="label"
+                      variant="outlined"
+                      startIcon={<CloudUploadIcon />}
+                      sx={{ mt: 1 }}
+                    >
+                      Reemplazar
+                      <VisuallyHiddenInput
+                        type="file"
+                        multiple // Permitir seleccionar múltiples archivos
+                        onChange={(e) =>
+                          handleFilesChange(e, "referencia", true)
+                        }
+                      />
+                    </Button>
                   )}
                 </div>
               ) : (
                 <>
-                {user?.role !== "Recibo" && (
-                  <Button
-                    component="label"
-                    variant="contained"
-                    startIcon={<CloudUploadIcon />}
-                  >
-                    Seleccionar Documento
-                    <VisuallyHiddenInput
-                      type="file"
-                      multiple // Permitir seleccionar múltiples archivos
-                      onChange={(e) => handleFilesChange(e, "referencia", true)}
-                    />
-                  </Button>
+                  {user?.role !== "Recibo" && (
+                    <Button
+                      component="label"
+                      variant="contained"
+                      startIcon={<CloudUploadIcon />}
+                    >
+                      Seleccionar Documento
+                      <VisuallyHiddenInput
+                        type="file"
+                        multiple // Permitir seleccionar múltiples archivos
+                        onChange={(e) =>
+                          handleFilesChange(e, "referencia", true)
+                        }
+                      />
+                    </Button>
                   )}
                   {selectedFiles.referencia && (
                     <Typography sx={{ mt: 1 }}>
@@ -1910,7 +1945,7 @@ function Compras() {
                     sx={{
                       backgroundColor: "rgba(76, 175, 80, 0.5)",
                       color: "white",
-                      width:"300px",
+                      width: "300px",
                       justifyContent: "flex-start", // Alinea el contenido a la izquierda
                       textAlign: "left", // Alinea el texto a la izquierda
                       "&:hover": {
@@ -1919,37 +1954,37 @@ function Compras() {
                       marginBottom: "10px",
                     }}
                   >
-                    {detalleData.pdf_5.split('-').slice(3).join('-')}
+                    {detalleData.pdf_5.split("-").slice(3).join("-")}
                   </Button>
                   {user?.role !== "Recibo" && (
-                  <Button
-                    component="label"
-                    variant="outlined"
-                    startIcon={<CloudUploadIcon />}
-                    sx={{ mt: 1 }}
-                  >
-                    Reemplazar
-                    <VisuallyHiddenInput
-                      type="file"
-                      onChange={(e) => handleFilesChange(e, "ordenCompra")}
-                    />
-                  </Button>
+                    <Button
+                      component="label"
+                      variant="outlined"
+                      startIcon={<CloudUploadIcon />}
+                      sx={{ mt: 1 }}
+                    >
+                      Reemplazar
+                      <VisuallyHiddenInput
+                        type="file"
+                        onChange={(e) => handleFilesChange(e, "ordenCompra")}
+                      />
+                    </Button>
                   )}
                 </div>
               ) : (
                 <>
-                {user?.role !== "Recibo" && (
-                  <Button
-                    component="label"
-                    variant="contained"
-                    startIcon={<CloudUploadIcon />}
-                  >
-                    Seleccionar Documento
-                    <VisuallyHiddenInput
-                      type="file"
-                      onChange={(e) => handleFilesChange(e, "ordenCompra")}
-                    />
-                  </Button>
+                  {user?.role !== "Recibo" && (
+                    <Button
+                      component="label"
+                      variant="contained"
+                      startIcon={<CloudUploadIcon />}
+                    >
+                      Seleccionar Documento
+                      <VisuallyHiddenInput
+                        type="file"
+                        onChange={(e) => handleFilesChange(e, "ordenCompra")}
+                      />
+                    </Button>
                   )}
                   {selectedFiles.ordenCompra && (
                     <Typography sx={{ mt: 1 }}>
@@ -1962,15 +1997,15 @@ function Compras() {
 
             {/* Botón para subir todos los archivos */}
             <Grid item xs={12} sx={{ textAlign: "center", mt: 2 }}>
-            {user?.role !== "Recibo" && (
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={handleFilesUpload}
-                startIcon={<UploadFileIcon />}
-              >
-                Subir Archivos
-              </Button>
+              {user?.role !== "Recibo" && (
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={handleFilesUpload}
+                  startIcon={<UploadFileIcon />}
+                >
+                  Subir Archivos
+                </Button>
               )}
             </Grid>
           </Grid>

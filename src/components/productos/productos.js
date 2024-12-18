@@ -14,7 +14,7 @@ import {
   Tabs,
   Tab,
   Divider,
-  Typography, 
+  Typography,
 } from "@mui/material";
 import {
   Visibility as VisibilityIcon,
@@ -73,6 +73,7 @@ const theme = createTheme({
 });
 
 function ProductoCRUD() {
+  const [isEditingVolumetria, setIsEditingVolumetria] = useState(false);
   const [productos, setProductos] = useState([]);
   const [filteredProductos, setFilteredProductos] = useState([]);
   const { user } = useContext(UserContext);
@@ -122,7 +123,7 @@ function ProductoCRUD() {
   const [calculatorOpen, setCalculatorOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [calculatedTotal, setCalculatedTotal] = useState(0);
-  const [flyerData, setFlyerData] = useState(null); 
+  const [flyerData, setFlyerData] = useState(null);
 
   const isSmallScreen = useMediaQuery("(max-width:600px)");
   const isMediumScreen = useMediaQuery("(max-width:960px)");
@@ -334,10 +335,10 @@ function ProductoCRUD() {
     setReadOnly(true);
     setEditId(producto.id_prod);
     setOpen(true);
-  
+
     // Carga las ubicaciones
     await fetchUbicaciones(producto.codigo_pro);
-  
+
     // Carga los datos de la volumetría para el Flyer
     try {
       const response = await axios.get(
@@ -345,13 +346,14 @@ function ProductoCRUD() {
       );
       console.log("Datos de volumetría:", response.data); // Verifica los datos
       setFlyerData(response.data);
-      console.log("datosfiktesxdxd",setFlyerData)
+      console.log("datosfiktesxdxd", setFlyerData)
     } catch (error) {
       console.error("Error fetching flyer data:", error);
       setFlyerData(null);
     }
-    
+
   };
+
 
   const handleDelete = async (id) => {
     const confirmDelete = await MySwal.fire({
@@ -381,6 +383,40 @@ function ProductoCRUD() {
       }
     }
   };
+
+
+
+  const handleVolumetriaSubmit = async () => {
+    try {
+      const volumetriaData = {
+        cajas_cama: flyerData[0].cajas_cama,
+        pieza_caja: flyerData[0].pieza_caja,
+        cajas_tarima: flyerData[0].cajas_tarima,
+        camas_tarima: flyerData[0].camas_tarima,
+        pieza_tarima: flyerData[0].pieza_tarima,
+      };
+
+      // Usa form.codigo_pro pero pásalo como 'codigo' en la URL
+      await axios.put(
+        `http://192.168.3.27:3007/api/productos/volumetria/${form.codigo_pro}`, // Aquí envías el código correctamente
+        volumetriaData // Datos del cuerpo de la solicitud
+      );
+
+      setIsEditingVolumetria(false); // Desactiva el modo de edición
+      MySwal.fire(
+        "Actualizado",
+        "La volumetría ha sido actualizada correctamente.",
+        "success"
+      );
+    } catch (error) {
+      console.error("Error al actualizar la volumetría:", error);
+      MySwal.fire("Error", "No se pudo actualizar la volumetría.", "error");
+    }
+  };
+
+
+
+
 
   const handleClickOpen = () => {
     setForm({
@@ -429,6 +465,7 @@ function ProductoCRUD() {
     setOpen(false);
     setErrors({}); // Limpiar los errores al cerrar el modal
     setUbicaciones([]);
+    setIsEditingVolumetria(false);
   };
 
   const enableEditing = () => {
@@ -476,38 +513,88 @@ function ProductoCRUD() {
 
   const columns = isSmallScreen
     ? [
-        { field: "codigo_pro", headerName: "Código", width: 150 },
-        {
-          field: "des",
-          headerName: "Descripción",
-          width: 150,
-          renderCell: (params) => <span>{params.value.slice(0, 6)}</span>,
-        },
-        {
-          field: "image",
-          headerName: "Imagen",
-          width: 100,
-          renderCell: (params) => (
-            <img
-              src={`../assets/image/img_pz/${params.row.codigo_pro}.jpg`}
-              alt="Producto"
-              style={{
-                width: "100px",
-                height: "100px",
-                objectFit: "cover",
-              }}
-              onError={(e) => {
-                e.target.onerror = null;
-                e.target.src = "../assets/image/img_pz/noimage.png";
-              }}
-            />
-          ),
-        },
-        {
-          field: "actions",
-          headerName: "Actions",
-          width: 150,
-          renderCell: (params) => (
+      { field: "codigo_pro", headerName: "Código", width: 150 },
+      {
+        field: "des",
+        headerName: "Descripción",
+        width: 150,
+        renderCell: (params) => <span>{params.value.slice(0, 6)}</span>,
+      },
+      {
+        field: "image",
+        headerName: "Imagen",
+        width: 100,
+        renderCell: (params) => (
+          <img
+            src={`../assets/image/img_pz/${params.row.codigo_pro}.jpg`}
+            alt="Producto"
+            style={{
+              width: "100px",
+              height: "100px",
+              objectFit: "cover",
+            }}
+            onError={(e) => {
+              e.target.onerror = null;
+              e.target.src = "../assets/image/img_pz/noimage.png";
+            }}
+          />
+        ),
+      },
+      {
+        field: "actions",
+        headerName: "Actions",
+        width: 150,
+        renderCell: (params) => (
+          <Box display="flex" gap={1}>
+            <IconButton
+              color="primary"
+              onClick={() => handleView(params.row)}
+            >
+              <VisibilityIcon />
+            </IconButton>
+            <IconButton
+              color="secondary"
+              onClick={() => handleDelete(params.row.id_prod)}
+            >
+              <DeleteIcon />
+            </IconButton>
+          </Box>
+        ),
+      },
+    ]
+    : [
+      {
+        field: "image",
+        headerName: "Imagen",
+        width: 100,
+        renderCell: (params) => (
+          <img
+            src={`../assets/image/img_pz/${params.row.codigo_pro}.jpg`}
+            alt="Producto"
+            style={{
+              width: "50px",
+              height: "50px",
+              objectFit: "cover",
+            }}
+            onError={(e) => {
+              e.target.onerror = null;
+              e.target.src = "../assets/image/img_pz/noimage.png";
+            }}
+          />
+        ),
+      },
+      { field: "codigo_pro", headerName: "Código", width: 100 },
+      { field: "des", headerName: "Descripción", width: 300 },
+      { field: "_pz", headerName: "PZ", width: 150 },
+      { field: "_pq", headerName: "PQ", width: 150 },
+      { field: "_inner", headerName: "Inner", width: 150 },
+      { field: "_master", headerName: "Master", width: 150 },
+      {
+        field: "actions",
+        headerName: "Actions",
+        width: 150,
+        renderCell: (params) => {
+          return (
             <Box display="flex" gap={1}>
               <IconButton
                 color="primary"
@@ -515,73 +602,35 @@ function ProductoCRUD() {
               >
                 <VisibilityIcon />
               </IconButton>
-              <IconButton
-                color="secondary"
-                onClick={() => handleDelete(params.row.id_prod)}
-              >
-                <DeleteIcon />
-              </IconButton>
-            </Box>
-          ),
-        },
-      ]
-    : [
-        {
-          field: "image",
-          headerName: "Imagen",
-          width: 100,
-          renderCell: (params) => (
-            <img
-              src={`../assets/image/img_pz/${params.row.codigo_pro}.jpg`}
-              alt="Producto"
-              style={{
-                width: "50px",
-                height: "50px",
-                objectFit: "cover",
-              }}
-              onError={(e) => {
-                e.target.onerror = null;
-                e.target.src = "../assets/image/img_pz/noimage.png";
-              }}
-            />
-          ),
-        },
-        { field: "codigo_pro", headerName: "Código", width: 100 },
-        { field: "des", headerName: "Descripción", width: 300 },
-        { field: "_pz", headerName: "PZ", width: 150 },
-        { field: "_pq", headerName: "PQ", width: 150 },
-        { field: "_inner", headerName: "Inner", width: 150 },
-        { field: "_master", headerName: "Master", width: 150 },
-        {
-          field: "actions",
-          headerName: "Actions",
-          width: 150,
-          renderCell: (params) => {
-            return (
-              <Box display="flex" gap={1}>
+              {user?.role === "Admin" && (
                 <IconButton
-                  color="primary"
-                  onClick={() => handleView(params.row)}
+                  color="secondary"
+                  onClick={() => handleDelete(params.row.id_prod)}
                 >
-                  <VisibilityIcon />
+                  <DeleteIcon />
                 </IconButton>
-                {user?.role === "Admin" && (
-                  <IconButton
-                    color="secondary"
-                    onClick={() => handleDelete(params.row.id_prod)}
-                  >
-                    <DeleteIcon />
-                  </IconButton>
-                )}
-              </Box>
-            );
-          },
+              )}
+            </Box>
+          );
         },
-      ];
+      },
+    ];
 
   const handleTabChange = (event, newValue) => {
     setTabIndex(newValue);
   };
+
+  const enableVolumetriaEditing = (data) => {
+    setForm({
+      ...form,
+      pieza_caja: data.pieza_caja,
+      cajas_tarima: data.cajas_tarima,
+      camas_tarima: data.camas_tarima,
+      pieza_tarima: data.pieza_tarima,
+    });
+    setIsEditingVolumetria(true);
+  };
+
 
   return (
     <ThemeProvider theme={theme}>
@@ -732,8 +781,8 @@ function ProductoCRUD() {
           {readOnly
             ? "Vista de Producto"
             : editing
-            ? "Editar Producto"
-            : "Crear Producto"}
+              ? "Editar Producto"
+              : "Crear Producto"}
         </DialogTitle>
         <DialogContent>
           <Tabs value={tabIndex} onChange={handleTabChange}>
@@ -767,8 +816,8 @@ function ProductoCRUD() {
                     value={
                       ubicaciones.length > 0
                         ? ubicaciones
-                            .map((ubicacion) => ubicacion.ubi)
-                            .join(", ")
+                          .map((ubicacion) => ubicacion.ubi)
+                          .join(", ")
                         : "Sin ubicación"
                     }
                     variant="outlined"
@@ -1373,41 +1422,126 @@ function ProductoCRUD() {
                 {/* Fin Nuevos Campos */}
 
                 {/* Datos de volumetría debajo de los campos de MASTER */}
-      <Grid item xs={12} sm={12} mt={20}>
-        <Divider>
-          <Typography variant="h6">Volumetría del Producto</Typography>
-        </Divider>
-      </Grid>
-      {flyerData && flyerData.length > 0 ? (
-  <>
-    <Grid item xs={6}>
-      <Typography variant="body1">
-        <strong>Piezas por Caja:</strong> {flyerData[0].pieza_caja}
-      </Typography>
-    </Grid>
-    <Grid item xs={6}>
-      <Typography variant="body1">
-        <strong>Cajas por Tarima:</strong> {flyerData[0].cajas_tarima}
-      </Typography>
-    </Grid>
-    <Grid item xs={6}>
-      <Typography variant="body1">
-        <strong>Camas por Tarima:</strong> {flyerData[0].camas_tarima}
-      </Typography>
-    </Grid>
-    <Grid item xs={6}>
-      <Typography variant="body1">
-        <strong>Piezas por Tarima:</strong> {flyerData[0].pieza_tarima}
-      </Typography>
-    </Grid>
-  </>
-) : (
-  <Grid item xs={12}>
-    <Typography variant="body2">
-      Cargando datos de volumetría o no disponibles.
-    </Typography>
-  </Grid>
-)}
+                
+                <Grid item xs={12} sm={12} mt={20}>
+                  <Divider>
+                    <Typography variant="h6">Datos de Volumetría</Typography>
+                  </Divider>
+                </Grid>
+
+                {flyerData && flyerData.length > 0 ? (
+                  <>
+                    <Grid item xs={6}>
+                      <TextField
+                        fullWidth
+                        label="Cajas por Cama"
+                        value={flyerData[0].cajas_cama}
+                        onChange={(e) =>
+                          setFlyerData([{ ...flyerData[0], cajas_cama: e.target.value }])
+                        }
+                        InputProps={{
+                          readOnly: !isEditingVolumetria, // Solo editable si está en modo edición
+                        }}
+                      />
+                    </Grid>
+                    <Grid item xs={6}>
+                      <TextField
+                        fullWidth
+                        label="Piezas por Caja"
+                        value={flyerData[0].pieza_caja}
+                        onChange={(e) =>
+                          setFlyerData([{ ...flyerData[0], pieza_caja: e.target.value }])
+                        }
+                        InputProps={{
+                          readOnly: !isEditingVolumetria, // Solo editable si está en modo edición
+                        }}
+                      />
+                    </Grid>
+                    <Grid item xs={6}>
+                      <TextField
+                        fullWidth
+                        label="Cajas por Tarima"
+                        value={flyerData[0].cajas_tarima}
+                        onChange={(e) =>
+                          setFlyerData([{ ...flyerData[0], cajas_tarima: e.target.value }])
+                        }
+                        InputProps={{
+                          readOnly: !isEditingVolumetria,
+                        }}
+                      />
+                    </Grid>
+                    <Grid item xs={6}>
+                      <TextField
+                        fullWidth
+                        label="Camas por Tarima"
+                        value={flyerData[0].camas_tarima}
+                        onChange={(e) =>
+                          setFlyerData([{ ...flyerData[0], camas_tarima: e.target.value }])
+                        }
+                        InputProps={{
+                          readOnly: !isEditingVolumetria,
+                        }}
+                      />
+                    </Grid>
+                    <Grid item xs={6}>
+                      <TextField
+                        fullWidth
+                        label="Piezas por Tarima"
+                        value={flyerData[0].pieza_tarima}
+                        onChange={(e) =>
+                          setFlyerData([{ ...flyerData[0], pieza_tarima: e.target.value }])
+                        }
+                        InputProps={{
+                          readOnly: !isEditingVolumetria,
+                        }}
+                      />
+                    </Grid>
+
+                    {/* Botones de Acción */}
+                    <Grid item xs={12} mt={2} ml={2}>
+                      {isEditingVolumetria ? (
+                        <>
+                        <Grid item xs={6} mt={2} ml={2}>
+                          <Button
+                            variant="contained"
+                            color="primary"
+                            onClick={handleVolumetriaSubmit}
+                            ml={2}
+                          >
+                            Guardar Cambios
+                          </Button>
+                          </Grid>
+                          <Grid item xs={6} mt={2} ml={2}>
+                        
+                          <Button
+                            variant="outlined"
+                            color="secondary"
+                            onClick={() => setIsEditingVolumetria(false)} // Cancelar edición
+                          >
+                            Cancelar
+                          </Button>
+                          </Grid>
+                        </>
+                      ) : (
+                        <Button
+                          variant="contained"
+                          color="secondary"
+                          onClick={() => setIsEditingVolumetria(true)} // Habilitar edición
+                        >
+                          Editar Volumetría
+                        </Button>
+                      )}
+                    </Grid>
+                  </>
+                ) : (
+                  <Grid item xs={12}>
+                    <Typography variant="body2">
+                      Cargando datos de volumetría o no disponibles.
+                    </Typography>
+                  </Grid>
+                )}
+
+
 
               </Grid>
               <DialogActions>
@@ -1416,7 +1550,6 @@ function ProductoCRUD() {
                     Editar
                   </Button>
                 )}
-
                 <Button onClick={handleClose} color="primary">
                   Cancelar
                 </Button>
@@ -1428,7 +1561,7 @@ function ProductoCRUD() {
               </DialogActions>
             </form>
           )}
-       {tabIndex === 1 && <div>Contenido de Ficha Técnica</div>}
+          {tabIndex === 1 && <div>Contenido de Ficha Técnica</div>}
 
           {tabIndex === 2 && <div>Contenido de Ficha Técnica</div>}
           {tabIndex === 3 && <div>Contenido de Ficha Comercial</div>}

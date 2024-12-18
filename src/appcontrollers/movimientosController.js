@@ -50,4 +50,82 @@ const consultarUbicacionEspecifica = async (req, res) => {
   }
 };
 
-module.exports = { consultarUbicacionEspecifica };
+// Nueva consulta: Consultar información de ubicaciones y productos
+const consultarUbicacionesConProductos = async (req, res) => {
+  console.log("Consulta de ubicaciones y productos:", req.body);
+
+  const query = `
+    SELECT 
+      u.id_ubi,
+      u.ubi,
+      u.code_prod,
+      p.des
+    FROM ubicaciones u
+    LEFT JOIN productos p ON u.code_prod = p.codigo_pro;
+  `;
+
+  let connection;
+  try {
+    connection = await pool.getConnection(); // Obtiene una conexión del pool
+
+    // Ejecutar la consulta
+    const [results] = await connection.query(query);
+
+    if (results.length === 0) {
+      return res.status(404).json({ error: "No se encontraron ubicaciones" });
+    }
+
+    // Estructura la respuesta con los datos obtenidos
+    const response = results.map((row) => ({
+      id_ubicacion: row.id_ubi,
+      ubicacion: row.ubi,
+      codigo_producto: row.code_prod,
+      descripcion_producto: row.des,
+    }));
+
+    res.status(200).json(response); // Retornar la respuesta estructurada
+  } catch (error) {
+    console.error("Error en la consulta de ubicaciones y productos:", error);
+    res.status(500).send("Error en la consulta de ubicaciones y productos");
+  } finally {
+    if (connection) connection.release();
+  }
+};
+
+const actualizarCodigo = async (req, res) => {
+  console.log("Actualización de código:", req.body);
+  const { id_ubicacion, codigo_producto, id_usuario } = req.body;
+
+  if (!id_ubicacion || !codigo_producto || !id_usuario) {
+    return res.status(400).json({ error: "Faltan datos requeridos" });
+  }
+
+  const query = `
+    UPDATE ubicaciones 
+    SET code_prod = ? 
+    WHERE id_ubi = ?;
+  `;
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+
+    // Ejecutar la actualización
+    const [result] = await connection.query(query, [codigo_producto, id_ubicacion]);
+
+    if (result.affectedRows > 0) {
+      res.status(200).json({ message: "Código actualizado correctamente" });
+    } else {
+      res.status(404).json({ error: "No se encontró la ubicación" });
+    }
+  } catch (error) {
+    console.error("Error en la actualización del código:", error);
+    res.status(500).json({ error: "Error en el servidor" });
+  } finally {
+    if (connection) connection.release();
+  }
+};
+
+
+
+module.exports = { consultarUbicacionEspecifica, consultarUbicacionesConProductos, actualizarCodigo };

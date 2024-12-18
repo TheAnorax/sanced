@@ -69,7 +69,7 @@ function Recibo() {
 
     try {
       // Guardar los datos en la base de datos antes de generar el PDF
-      await axios.post("http://192.168.3.27192.168.3.27:3007/api/recibo/guardarRecibo", {
+      await axios.post("http://192.168.3.27:3007/api/recibo/guardarRecibo", {
         codigo: tarimaData.recibido?.codigo,
         cantidad_recibida: tarimaData.recibido?.cant_recibir,
         fecha_recibo: new Date().toLocaleDateString("es-MX"),
@@ -82,20 +82,25 @@ function Recibo() {
 
       // Generar las páginas de tarimas completas
       const generateTarimasPages = async () => {
-        const promises = Array.from({ length: tarimasCompletas }, async (_, i) => {
-          const input = printRef.current;
-          const canvas = await html2canvas(input, { scale: 1.5, useCORS: true });
-          const imgData = canvas.toDataURL("image/png");
-          const imgWidth = 297; // Ancho de la página en mm
-          const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      
-          pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
-          if (i < tarimasCompletas - 1) pdf.addPage();
-        });
-      
+        const promises = Array.from(
+          { length: tarimasCompletas },
+          async (_, i) => {
+            const input = printRef.current;
+            const canvas = await html2canvas(input, {
+              scale: 1.5,
+              useCORS: true,
+            });
+            const imgData = canvas.toDataURL("image/png");
+            const imgWidth = 297; // Ancho de la página en mm
+            const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+            pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
+            if (i < tarimasCompletas - 1) pdf.addPage();
+          }
+        );
+
         await Promise.all(promises);
       };
-      
 
       // Generar la página de "Piezas restantes"
       const generateRestantesPage = async () => {
@@ -141,7 +146,8 @@ function Recibo() {
           const imgWidth = 297; // Ancho en mm para PDF (A4 horizontal)
           const imgHeight = (canvas.height * imgWidth) / canvas.width; // Calcular altura proporcional
 
-          // Agregar imagen al PDF
+          // Agregar imagen al PDF en una nueva página
+          pdf.addPage();
           pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
 
           // Limpiar contenedor temporal
@@ -387,9 +393,12 @@ function Recibo() {
     const cajasMaster = Math.floor(piezasRestantes / piezas_caja);
     const piezasRestantesMaster = piezasRestantes % piezas_caja;
 
+    // Si hay piezas restantes, debe considerarse una tarima incompleta extra.
+    const tarimasIncompletas = piezasRestantes > 0 ? 1 : 0;
+
     return {
       tarimasCompletas, // Número de tarimas completas
-      tarimasIncompletas: piezasRestantes > 0 ? 1 : 0, // Si hay piezas restantes, hay una tarima incompleta
+      tarimasIncompletas, // Si hay piezas restantes, hay una tarima incompleta
       piezasRestantes, // Piezas que no llenan una tarima completa
       cajasMaster, // Número de cajas completas que caben en las piezas restantes
       piezasRestantesMaster, // Piezas que sobran después de llenar las cajas

@@ -349,6 +349,20 @@ function Insumos() {
         printWindow.onload = () => {
             printWindow.print();
             printWindow.close();
+
+
+                        // Mensaje para WhatsApp
+                        const message = `
+                        Hola, se ha generado un informe de inventario bajo en Insumos. 
+                        Observaciones: ${observationText || "Sin Observaciones"}.
+                        Fecha: ${new Date().toLocaleDateString()}.
+                    `;
+                            const phoneNumber = "5524433962"; // Número de teléfono destino
+                            const whatsappURL = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
+                
+                            // Abrir WhatsApp después de generar el reporte
+                            window.open(whatsappURL, '_blank');
+
         };
     };
     

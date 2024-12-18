@@ -54,6 +54,7 @@ export default function SignInSide() {
       const rolesInventario=['INV'];
       const roleFinanzas = ['Reporte'];
       const roleauditoria = ["Audi"];
+      const roleVentas = ["VENT"];
 
       if (rolesDeCompras.includes(user.role)) {
         navigate('/dashboard/compras');  // Redirigir al componente de compras
@@ -77,6 +78,9 @@ export default function SignInSide() {
       }
       else if (roleFinanzas.includes(user.role)) {
         navigate('/dashboard/reporter');
+      }
+      else if (roleVentas.includes(user.role)) {
+        navigate('/dashboard/productos');
       }
       else {
         navigate('/dashboard');  // Redirigir al Dashboard general

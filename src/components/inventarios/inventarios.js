@@ -39,13 +39,15 @@ import {
   Settings,
   Dashboard,
   CheckCircle,
-  RiceBowl,
 } from "@mui/icons-material";
 import Swal from "sweetalert2";
 import { UserContext } from "../context/UserContext";
 import { DataGrid } from "@mui/x-data-grid";
 import EditIcon from "@mui/icons-material/Edit";
 import MySwal from "sweetalert2";
+import PlusOneIcon from "@mui/icons-material/PlusOne";
+import RemoveIcon from "@mui/icons-material/Remove"; // Ícono para disminuir
+import DeleteIcon from "@mui/icons-material/Delete"; // Ícono para eliminar
 
 import RefreshIcon from "@mui/icons-material/Refresh";
 
@@ -58,6 +60,18 @@ function InventarioAdmin() {
   const [descripcionFilter, setDecripcionFilter] = useState("");
   const [codigoFilter, setCodigoFilter] = useState("");
   const [rowsPerPage, setRowsPerPage] = useState(25);
+  const [formData, setFormData] = useState([]); // Para manejar los datos de cada formulario
+  const [counter, setCounter] = useState(0); // Contador para las veces que se presiona "Aumentar"
+  const [isCompartido, setIsCompartido] = useState(false); // Estado para saber si se selec
+  const [openModalInsertUbi, setOpenModalInsertUbi] = useState(false);
+  const [formDataNuevaUbi, setFormDataNuevaUbi] = useState({
+    nuevaUbi: "",
+    nuevoCodigoProd: "",
+    nuevaCantStock: "",
+    nuevoPasillo: "",
+    nuevoLote: "",
+    nuevoAlmacen: "",
+  });
 
   // Estado para controlar la apertura del modal
   const [openModal, setOpenModal] = useState(false);
@@ -100,6 +114,7 @@ function InventarioAdmin() {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [selectedDato, setSelectedDato] = useState(null);
   const [paginatedData, setPaginatedData] = useState([]);
+  const [estado, setEstado] = useState("");
   const [editedData, setEditedData] = useState({
     ubi: "",
     code_prod: "",
@@ -210,7 +225,6 @@ function InventarioAdmin() {
               cantidad_recibida: recibo.cantidad_recibida,
               fecha_recibo: recibo.fecha_recibo,
               userId: user.id_usu,
-              id_recibo_compras: recibo.id_recibo_compras,
             }
           );
 
@@ -235,6 +249,33 @@ function InventarioAdmin() {
         }
       }
     });
+  };
+
+  const handleIncrease = () => {
+    setCounter(counter + 1); // Aumenta el contador
+    setFormData([...formData, { code_prod: "", cant_stock: "", ubi: "" }]); // Agrega un nuevo formulario vacío
+  };
+
+  const handleDecrease = () => {
+    if (counter > 0) {
+      setCounter(counter - 1); // Disminuir el contador
+      const updatedFormData = [...formData];
+      updatedFormData.pop(); // Eliminar el último formulario
+      setFormData(updatedFormData); // Actualizar el estado de los formularios
+    }
+  };
+
+  const handleFormChange = (index, field, value) => {
+    const updatedFormData = [...formData]; // Copiar el estado actual
+    updatedFormData[index] = {
+      ...updatedFormData[index], // Mantener los otros valores
+      [field]: value, // Solo actualizar el campo que cambió
+    };
+    setFormData(updatedFormData); // Actualizar el estado con el nuevo valor
+  };
+
+  const handleCompartido = () => {
+    setIsCompartido(true); // Mostrar los formularios cuando se selecciona "Compartido"
   };
 
   //almacenamiento
@@ -456,20 +497,26 @@ function InventarioAdmin() {
   const fetchAllInsumos = async () => {
     setLoading(true);
     setError(null);
+
     try {
-      const response = await axios.post(
-        "http://192.168.3.27:3007/api/Inventario_P/Obtubi"
+      // Cambiar el método a GET y usar la URL adecuada
+      const response = await axios.get(
+        "http://192.168.3.27:3007/api/inventarios/inventarios/obtenerUbiAlma"
       );
+
+      // Validar la respuesta de la API
       if (response.data && !response.data.resultado.error) {
         const nuevosInsumos = response.data.resultado.list.map((insumo) => ({
           id: insumo.id_ubi,
           ...insumo,
-          cant_stock: Number(insumo.cant_stock),
-          ingreso: new Date(insumo.ingreso).toLocaleDateString("es-Es", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-          }),
+          cant_stock: insumo.cant_stock ? Number(insumo.cant_stock) : null,
+          ingreso: insumo.ingreso
+            ? new Date(insumo.ingreso).toLocaleDateString("es-ES", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+              })
+            : null,
         }));
         setInsumos(nuevosInsumos);
       } else {
@@ -558,9 +605,6 @@ function InventarioAdmin() {
         lote: updateData.lote || null,
         almacen: updateData.almacen || null,
         estado: updateData.estado || null,
-        new_code_prod: updateData.estado === "Compartido" ? newCodeProd : null, // Solo enviar si es "Compartido"
-        new_cant_stock:
-          updateData.estado === "Compartido" ? newCantStock : null, // Solo enviar si es "Compartido"
       };
 
       console.log("Datos a actualizar:", filteredData);
@@ -606,47 +650,6 @@ function InventarioAdmin() {
 
   const closeInsertModal = () => {
     setInsertModalOpen(false);
-  };
-
-  const handleInsert = async () => {
-    // Validar que los campos no estén vacíos
-    if (!newData.code_prod || !newData.cant_stock) {
-      setError("Por favor, completa todos los campos.");
-      return;
-    }
-
-    const filteredData = {
-      ubi: newData.ubi,
-      code_prod: newData.code_prod,
-      cant_stock: newData.cant_stock,
-      pasillo: newData.pasillo,
-      lote: newData.lote,
-      almacen: newData.almacen,
-    };
-
-    console.log("Datos enviados:", filteredData); // Depuración para ver los datos enviados
-
-    try {
-      const response = await axios.post(
-        "http://192.168.3.27:3007/api/inventarios/inventarios/insertarPeaking",
-        filteredData
-      );
-
-      if (response.data.success) {
-        setError("");
-        closeInsertModal(); // Cierra el modal al insertar exitosamente
-        alert("Producto insertado exitosamente.");
-      } else {
-        setError(response.data.message || "No se pudo insertar el producto.");
-      }
-    } catch (error) {
-      // Mostrar la respuesta completa de error
-      console.error(
-        "Error al insertar:",
-        error.response?.data || error.message
-      );
-      setError("Error al insertar el producto.");
-    }
   };
 
   const fetchDepInsumos = async () => {
@@ -937,6 +940,69 @@ function InventarioAdmin() {
     setSelectedDato(null);
   };
 
+  const handleOpenModalInsertUbi = () => {
+    setOpenModalInsertUbi(true);
+  };
+
+  // Función para cerrar el modal de inserción
+  const handleCloseModalInsertUbi = () => {
+    setOpenModalInsertUbi(false);
+  };
+
+  const handleInputChangeNuevaUbi = (e) => {
+    const { name, value } = e.target;
+    setFormDataNuevaUbi((prevData) => ({
+      ...prevData,
+      [name]: value,
+    }));
+  };
+
+  const handleGuardarNuevaUbi = async () => {
+    // Asegúrate de que todos los campos estén completos
+    if (
+      !formDataNuevaUbi.nuevaUbi ||
+      !formDataNuevaUbi.nuevoCodigoProd ||
+      !formDataNuevaUbi.nuevaCantStock
+    ) {
+      Swal.fire("Error", "Por favor complete todos los campos", "error");
+      return;
+    }
+
+    // Mapeo de los datos para que coincidan con los nombres esperados por el backend
+    const formData = {
+      new_code_prod: formDataNuevaUbi.nuevoCodigoProd, // mapeo a new_code_prod
+      new_cant_stock: formDataNuevaUbi.nuevaCantStock, // mapeo a new_cant_stock
+      ubi: formDataNuevaUbi.nuevaUbi, // mapeo a ubi
+      pasillo: formDataNuevaUbi.nuevoPasillo, // mapeo a pasillo
+      lote: formDataNuevaUbi.nuevoLote, // mapeo a lote
+      almacen: formDataNuevaUbi.nuevoAlmacen, // mapeo a almacen
+      estado: formDataNuevaUbi.nuevoEstado, // mapeo a estado
+    };
+
+    console.log("Datos que se están enviando:", formData);
+
+    try {
+      const response = await axios.post(
+        "http://192.168.3.27:3007/api/inventarios/inventarios/AgregarNuevaUbi",
+        formData
+      );
+
+      if (response.data.success) {
+        Swal.fire(
+          "Éxito",
+          "La ubicación se ha insertado correctamente",
+          "success"
+        );
+        setOpenModalInsertUbi(false); // Cerrar el modal
+      } else {
+        Swal.fire("Error", "No se pudo insertar la ubicación", "error");
+      }
+    } catch (error) {
+      console.error("Error al guardar nueva ubicación:", error);
+      Swal.fire("Error", "Hubo un problema al insertar la ubicación", "error");
+    }
+  };
+
   const handleEditChange = (field, value) => {
     setEditedData((prevData) => ({
       ...prevData,
@@ -1005,27 +1071,27 @@ function InventarioAdmin() {
     }
   };
 
-  const handleDelete = async (ubi) => {
-    if (!ubi) {
-      return; // Salir de la función si 'ubi' no es válido
-    }
+  const handleDelete = async (id_ubi) => {
+    console.log("Eliminando producto con 'id_ubi':", id_ubi); // Verifica que estamos recibiendo el id_ubi correctamente
 
     try {
-      const response = await axios.post(
-        "http://192.168.3.27:3007/api/Inventario_P/Borrar",
+      // Realiza la solicitud DELETE
+      const response = await axios.delete(
+        "http://192.168.3.27:3007/api/inventarios/inventarios/borrar",
         {
-          ubi, // Enviamos la ubicación que se desea borrar
+          data: { id_ubi: id_ubi }, // Asegúrate de que estamos enviando el id_ubi
         }
       );
-      if (response.data.error) {
-        setError(response.data.message);
+
+      if (response.data.success) {
+        alert("Producto eliminado correctamente");
+        setDepMue((prev) => prev.filter((item) => item.id_ubi !== id_ubi)); // Actualiza el estado eliminando el producto
       } else {
-        alert(response.data.message); // Mensaje de éxito
-        setDepMue((prev) => prev.filter((item) => item.ubi !== ubi)); // Filtra la lista
+        alert("No se pudo eliminar el producto");
       }
-    } catch (err) {
-      console.error("Error deleting data:", err);
-      setError("Error al borrar los datos.");
+    } catch (error) {
+      console.error("Error al eliminar el producto:", error);
+      alert("Hubo un error al intentar eliminar el producto");
     }
   };
 
@@ -1116,6 +1182,104 @@ function InventarioAdmin() {
     }
   };
 
+  const handleInsert = async () => {
+    if (updateData.id_ubi) {
+      await handleUpdate();
+    } else {
+      await handleInsert(); // Si no hay id, debe ser inserción
+    }
+    try {
+      for (let i = 0; i < formData.length; i++) {
+        const form = formData[i];
+
+        // Asegúrate de que cant_stock sea un número
+        const cant_stock = parseInt(form.cant_stock, 10);
+
+        const response = await axios.post(
+          "http://192.168.3.27:3007/api/inventarios/inventarios/AgregarNuevaUbi",
+          {
+            new_code_prod: form.code_prod,
+            new_cant_stock: cant_stock,
+            ubi: form.ubi,
+          }
+        );
+
+        if (response.status === 200 && response.data.success) {
+          console.log("Producto insertado correctamente:", response.data);
+        } else {
+          setError("No se pudo insertar el producto.");
+          console.warn("Advertencia en la inserción:", response.data);
+          break;
+        }
+      }
+
+      setAlertOpen(true);
+    } catch (error) {
+      console.error("Error al insertar productos:", error);
+      setError("Error al insertar los productos.");
+    }
+  };
+
+  // Función para cargar ubicaciones impares
+  const fetchImpares = async () => {
+    setLoading(true);
+    setInsumos([]); // Limpiar los datos previos
+
+    try {
+      const response = await fetch(
+        "http://192.168.3.27:3007/api/inventarios/impares"
+      );
+      if (!response.ok) throw new Error("Error al obtener datos de impares");
+
+      const data = await response.json();
+
+      // Asegúrate de que cada fila tenga una propiedad `id` única
+      const updatedData = data
+        .map((item, index) => ({
+          ...item,
+          id: `${item.ubi || "impar"}-${index}`, // Asegura un ID único
+        }))
+        .sort((a, b) => (a.ubi > b.ubi ? 1 : -1)); // Ordenar por 'ubi'
+
+      console.log("Datos de impares ordenados:", updatedData); // Depuración
+      setInsumos(updatedData); // Actualizar estado
+    } catch (err) {
+      console.error("Error al obtener ubicaciones impares:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Función para cargar ubicaciones pares
+  const fetchPares = async () => {
+    setLoading(true);
+    setInsumos([]); // Limpiar los datos previos
+
+    try {
+      const response = await fetch(
+        "http://192.168.3.27:3007/api/inventarios/pares"
+      );
+      if (!response.ok) throw new Error("Error al obtener datos de pares");
+
+      const data = await response.json();
+
+      // Asegúrate de que cada fila tenga una propiedad `id` única
+      const updatedData = data
+        .map((item, index) => ({
+          ...item,
+          id: `${item.ubi || "par"}-${index}`, // Asegura un ID único
+        }))
+        .sort((a, b) => (a.ubi > b.ubi ? 1 : -1)); // Ordenar por 'ubi'
+
+      console.log("Datos de pares ordenados:", updatedData); // Depuración
+      setInsumos(updatedData); // Actualizar estado
+    } catch (err) {
+      console.error("Error al obtener ubicaciones pares:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const columns = [
     {
       field: "ubi",
@@ -1176,60 +1340,64 @@ function InventarioAdmin() {
       field: "movimiento",
       headerName: "Movimiento",
       width: 150,
-      renderCell: (params) =>
-        user.role === "Admin" || user.role === "INV" ? (
-          <Box sx={{ display: "flex", justifyContent: "center" }}>
-            <IconButton
-              onClick={() => handleOpenUpdateModal(params.row)}
-              color="primary"
-            >
-              <EditIcon />
-            </IconButton>
-          </Box>
-        ) : null,
+      renderCell: (params) => (
+        <Box sx={{ display: "flex", justifyContent: "center" }}>
+          <IconButton
+            onClick={() => handleOpenUpdateModal(params.row)}
+            color="primary"
+          >
+            <EditIcon />
+          </IconButton>
+        </Box>
+      ),
     },
     {
       field: "actions",
       headerName: "Acciones",
       width: 200,
-      renderCell: (params) =>
-        user.role === "Admin" ? ( // Verifica si el usuario es admin
-          <Box display="flex" gap={1}>
-            <Button
-              color="primary"
-              onClick={() => handleView(params.row, params.row)}
-              sx={{
-                backgroundColor: "primary.main",
-                color: "white",
-                "&:hover": {
-                  backgroundColor: "primary.dark",
-                },
-                padding: "8px 16px",
-                margin: "0 4px",
-                borderRadius: "8px",
-              }}
-            >
-              Traspaso
-            </Button>
+      renderCell: (params) => (
+        <Box display="flex" gap={1}>
+          <Button
+            color="primary"
+            onClick={() => handleView(params.row, params.row)}
+            sx={{
+              backgroundColor: "primary.main",
+              color: "white",
+              "&:hover": {
+                backgroundColor: "primary.dark",
+              },
+              padding: "8px 16px",
+              margin: "0 4px",
+              borderRadius: "8px",
+            }}
+          >
+            Traspaso
+          </Button>
 
-            <Button
-              color="primary"
-              onClick={() => handleDelete(params.row.ubi)}
-              sx={{
-                backgroundColor: "primary.main",
-                color: "white",
-                "&:hover": {
-                  backgroundColor: "primary.dark",
-                },
-                padding: "8px 16px",
-                margin: "0 4px",
-                borderRadius: "8px",
-              }}
-            >
-              Borrar
-            </Button>
-          </Box>
-        ) : null, // Si el usuario no es Admin, no se renderizan los botones
+          <Button
+            color="primary"
+            onClick={() => {
+              console.log(
+                "Eliminando producto con 'id_ubi':",
+                params.row.id_ubi
+              ); // Aquí mostramos el id_ubi
+              handleDelete(params.row.id_ubi); // Enviar id_ubi al backend para eliminar
+            }}
+            sx={{
+              backgroundColor: "primary.main",
+              color: "white",
+              "&:hover": {
+                backgroundColor: "primary.dark",
+              },
+              padding: "8px 16px",
+              margin: "0 4px",
+              borderRadius: "8px",
+            }}
+          >
+            Borrar
+          </Button>
+        </Box>
+      ),
     },
   ];
 
@@ -1569,15 +1737,9 @@ function InventarioAdmin() {
       <Box sx={{ padding: 2 }}>
         <Typography variant="h4">{titulo}</Typography>
         <TableContainer component={Paper} sx={{ marginTop: 2 }}>
-          {user.role === "Admin" || user.role === "Manager" ? (
-            <Button
-              onClick={openInsertModal}
-              variant="contained"
-              color="primary"
-            >
-              Insertar Producto
-            </Button>
-          ) : null}
+          <Button onClick={openInsertModal} variant="contained" color="primary">
+            Insertar Producto
+          </Button>
 
           <Table>
             <TableHead>
@@ -1657,11 +1819,9 @@ function InventarioAdmin() {
                   <TableCell>{dato.lote || "N/A"}</TableCell>
                   <TableCell>{dato.almacen || "N/A"}</TableCell>
                   <TableCell>
-                    {user.role === "Admin" || user.role === "INV" ? (
-                      <IconButton onClick={() => handleOpenEditModal(dato)}>
-                        <EditIcon color="primary" />
-                      </IconButton>
-                    ) : null}
+                    <IconButton onClick={() => handleOpenEditModal(dato)}>
+                      <EditIcon color="primary" />
+                    </IconButton>
                   </TableCell>
                 </TableRow>
               ))}
@@ -1849,7 +2009,27 @@ function InventarioAdmin() {
           Buscar
         </Button>
 
-        <Button onClick={handleOpenDetailsModal}>Mostrar Detalles</Button>
+        {/* Botón para abrir el modal */}
+        <Button
+          variant="contained"
+          onClick={handleOpenModalInsertUbi}
+          sx={{ ml: 2, background: "green" }}
+        >
+          Insertar Nueva Ubicación
+        </Button>
+
+        <Box sx={{ mb: 2 }}>
+          {/* Botones para filtrar */}
+          <Button variant="contained" color="primary" onClick={fetchImpares}>
+            Mostrar Impares
+          </Button>
+
+          <Button variant="contained" color="secondary" onClick={fetchPares}>
+            Mostrar Pares
+          </Button>
+        </Box>
+
+       {/*  <Button onClick={handleOpenDetailsModal}>Mostrar Detalles</Button> */}
 
         <Dialog open={openUpdateModal} onClose={handleClose}>
           <DialogTitle>Actualizar Ubicación</DialogTitle>
@@ -1909,75 +2089,111 @@ function InventarioAdmin() {
             />
 
             {/* RadioGroup para seleccionar el Estado */}
-            <FormControl component="fieldset" margin="normal" fullWidth>
-              <FormLabel component="legend">Estado</FormLabel>
-              <RadioGroup
-                row
-                value={updateData.estado || ""}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setUpdateData({ ...updateData, estado: value });
-                  // Ocultar campos de entrada si no es "Compartido"
-                  if (value !== "Compartido") {
-                    setShowInputFields(false);
-                    setNewCodeProd(""); // Limpiar el campo
-                    setNewCantStock(""); // Limpiar el campo
-                  } else {
-                    setShowInputFields(true); // Mostrar campos de entrada
-                  }
-                }}
-              >
-                <FormControlLabel
-                  value=""
-                  control={<Radio />}
-                  label="Ninguno"
-                />
-                <FormControlLabel
-                  value="Unico"
-                  control={<Radio />}
-                  label="Unico"
-                />
-                <FormControlLabel
-                  value="Compartido"
-                  control={<Radio />}
-                  label="Compartido"
-                />
-              </RadioGroup>
 
-              {/* Mostrar campos adicionales solo si se selecciona "Compartido" */}
-              {showInputFields && (
-                <Box mt={2}>
-                  <TextField
-                    label="ID de Ubicación" // Cambia este texto si es necesario
-                    type="text"
-                    value={updateData.ubi} // Asegúrate de que aquí uses "ubi"
-                    onChange={(e) =>
-                      setUpdateData({ ...updateData, ubi: e.target.value })
-                    } // Cambia a "ubi"
-                    fullWidth
-                    InputProps={{ readOnly: true }} // Campo solo de lectura
-                    margin="normal"
-                  />
+            <div>
+              {/* Radio buttons para seleccionar el estado */}
+              <FormControl component="fieldset" margin="normal" fullWidth>
+                <FormLabel component="legend">Estado</FormLabel>
+                <RadioGroup
+                  row
+                  value={updateData.estado || ""}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setUpdateData({ ...updateData, estado: value });
 
-                  <TextField
-                    label="Código del Producto"
-                    value={newCodeProd}
-                    onChange={(e) => setNewCodeProd(e.target.value)}
-                    fullWidth
-                    margin="normal"
+                    if (value === "Compartido") {
+                      setIsCompartido(true); // Mostrar los formularios cuando se selecciona "Compartido"
+                    } else {
+                      setIsCompartido(false); // Ocultar el formulario cuando se selecciona otro estado
+                    }
+                  }}
+                >
+                  <FormControlLabel
+                    value="Ninguno"
+                    control={<Radio />}
+                    label="Ninguno"
                   />
-                  <TextField
-                    label="Cantidad en Stock"
-                    type="number"
-                    value={newCantStock}
-                    onChange={(e) => setNewCantStock(e.target.value)}
-                    fullWidth
-                    margin="normal"
+                  <FormControlLabel
+                    value="Unico"
+                    control={<Radio />}
+                    label="Unico"
                   />
-                  {/* Otros campos como pasillo, lote, etc. aquí */}
-                </Box>
-              )}
-            </FormControl>
+                  <FormControlLabel
+                    value="Compartido"
+                    control={<Radio />}
+                    label="Compartido"
+                  />
+                </RadioGroup>
+
+                {/* Mostrar formulario de "Compartido" */}
+                {isCompartido && (
+                  <Box mt={2}>
+                    <Button
+                      onClick={handleIncrease}
+                      startIcon={<PlusOneIcon />} // Agregar el ícono de aumentar
+                    />
+
+                    {/* Botón para disminuir el contador */}
+                    <Button
+                      onClick={handleDecrease} // Llamada a la función que disminuye
+                      startIcon={<RemoveIcon />} // Ícono para disminuir
+                      style={{ marginLeft: 10 }} // Espaciado entre botones
+                    />
+
+                    <Typography variant="h6" sx={{ marginTop: "10px" }}>
+                      {`Productos a insertar: ${counter} veces`}
+                    </Typography>
+
+                    {/* Renderizar formularios dinámicamente */}
+                    {formData.map((form, index) => (
+                      <Box key={index} sx={{ marginTop: "20px" }}>
+                        <TextField
+                          label="Código del Producto"
+                          value={form.code_prod}
+                          onChange={(e) =>
+                            handleFormChange(index, "code_prod", e.target.value)
+                          }
+                          fullWidth
+                          margin="normal"
+                          required // Campo obligatorio
+                        />
+                        <TextField
+                          label="Cantidad en Stock"
+                          type="number"
+                          value={form.cant_stock}
+                          onChange={(e) =>
+                            handleFormChange(
+                              index,
+                              "cant_stock",
+                              e.target.value
+                            )
+                          }
+                          fullWidth
+                          margin="normal"
+                          required // Campo obligatorio
+                        />
+                        <TextField
+                          label="bicación"
+                          value={form.ubi}
+                          onChange={(e) =>
+                            handleFormChange(index, "ubi", e.target.value)
+                          }
+                          fullWidth
+                          margin="normal"
+                          required // Campo obligatorio
+                        />
+                      </Box>
+                    ))}
+                  </Box>
+                )}
+                {/* Botón para insertar los productos al backend */}
+                {updateData.estado === "Compartido" && (
+                  <Button onClick={handleInsert} color="primary" sx={{ mt: 2 }}>
+                    Insertar Productos
+                  </Button>
+                )}
+              </FormControl>
+            </div>
           </DialogContent>
           <DialogActions>
             <Button onClick={handleClose}>Cancelar</Button>
@@ -2010,7 +2226,7 @@ function InventarioAdmin() {
           pagination
           paginationMode="client"
           getRowId={(row) => row.id}
-          style={{ height: 600, width: "100%" }} // Establecer una altura fija
+          style={{ height: 800, width: "100%" }} // Establecer una altura fija
           getRowClassName={(params) => {
             if (params.row.cant_stock === 0) {
               return "stock-cero";
@@ -2021,6 +2237,52 @@ function InventarioAdmin() {
             return "";
           }}
         />
+
+        <div>
+          {/* Modal de inserción */}
+          <Dialog open={openModalInsertUbi} onClose={handleCloseModalInsertUbi}>
+            <DialogTitle>Insertar Nueva Ubicación</DialogTitle>
+            <DialogContent>
+              <Box>
+                <TextField
+                  label="Ubicación"
+                  name="nuevaUbi" // Aquí aseguramos que 'name' coincide con el campo en el estado
+                  value={formDataNuevaUbi.nuevaUbi}
+                  onChange={handleInputChangeNuevaUbi}
+                  fullWidth
+                  margin="normal"
+                />
+
+                <TextField
+                  label="Código Producto"
+                  name="nuevoCodigoProd" // Asegúrate de que 'name' sea correcto
+                  value={formDataNuevaUbi.nuevoCodigoProd}
+                  onChange={handleInputChangeNuevaUbi}
+                  fullWidth
+                  margin="normal"
+                />
+
+                <TextField
+                  label="Cantidad en Stock"
+                  type="number"
+                  name="nuevaCantStock" // Aquí también
+                  value={formDataNuevaUbi.nuevaCantStock}
+                  onChange={handleInputChangeNuevaUbi}
+                  fullWidth
+                  margin="normal"
+                />
+              </Box>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={handleCloseModalInsertUbi} color="secondary">
+                Cancelar
+              </Button>
+              <Button onClick={handleGuardarNuevaUbi} color="primary">
+                Guardar
+              </Button>
+            </DialogActions>
+          </Dialog>
+        </div>
 
         <Modal open={open} onClose={handleClose}>
           <div

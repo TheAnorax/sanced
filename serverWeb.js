@@ -22,6 +22,10 @@ const embarqueLista = require('./src/routesaplication/embarqueRoutes')
 const insumo = require('./src/routesaplication/insumos')
 const Inventario_P = require('./src/routesaplication/Inventario_P')
 const inventory = require('./src/routes/inventoryRouters')
+const muestras = require('./src/routes/muestrasRouters')
+const historial= require('./src/routes/historialRoutes')
+const devs = require('./src/routes/devRoutes')
+const rh = require('./src/routes/rhRoutes')
 
 
 const app = express();
@@ -52,7 +56,11 @@ app.use('/recibo', reciboCedis)
 app.use('/insumo',insumo)
 app.use('/api/Inventario_P',Inventario_P)
 app.use('/api/inventory',inventory)
+app.use('/api/muestras',muestras)
+app.use('/api/historial',historial)
 app.use(embarqueLista)
+app.use('/api/devs',devs)
+app.use('/api/rh',rh)
 
 
 app.listen(port, () => {

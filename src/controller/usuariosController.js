@@ -1,4 +1,5 @@
 const pool = require('../config/database');
+const bcrypt = require('bcrypt');
 
 const getUsuarios = async (req, res) => {
   try {
@@ -17,7 +18,7 @@ const getUsuarios = async (req, res) => {
       P9: 'Pasillo 9',
       P10: 'Pasillo 10',
       P11: 'Pasillo 11',
-      P12: 'Pasillo 12',
+      P12: 'Pasillo 12', 
       P13: 'Pasillo 13',
     };
 
@@ -120,5 +121,67 @@ const getSecciones = async (req, res) => {
   }
 };
 
+const createUsuario = async (req, res) => {
+  const { email, password, unidad, name, role } = req.body;
 
-module.exports = { getUsuarios, getAccesosUsuario, updateAccesosUsuario, getSecciones  };
+  try {
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const [result] = await pool.query(
+      'INSERT INTO usuarios (email, password, unidad, name, role) VALUES (?, ?, ?, ?, ?)',
+      [email, hashedPassword, unidad, name, role]
+    );
+    res.status(201).json({ message: 'Usuario creado', id: result.insertId });
+  } catch (error) {
+    res.status(500).json({ message: 'Error al crear el usuario', error: error.message });
+  }
+};
+
+const updateUsuario = async (req, res) => {
+  const { id } = req.params;
+  const { email, name, unidad, role } = req.body;
+
+  try {
+    await pool.query(
+      'UPDATE usuarios SET email = ?, name = ?, unidad = ?, role = ? WHERE id_usu = ?',
+      [email, name, unidad, role, id]
+    );
+    res.json({ message: 'Usuario actualizado' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error al actualizar el usuario', error: error.message });
+  }
+};
+
+const deleteUsuario = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    await pool.query('DELETE FROM usuarios WHERE id_usu = ?', [id]);
+    res.json({ message: 'Usuario eliminado' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error al eliminar el usuario', error: error.message });
+  }
+};
+
+
+// Middleware para verificar permisos
+const checkAccess = async (req, res, next) => {
+  const userId = req.user.id; // Supón que el usuario ya está autenticado
+  const userRole = req.user.role; // Obtén el rol del usuario
+  const requestedRoute = req.originalUrl;
+
+  // Verifica si el usuario tiene acceso
+  const [access] = await pool.query(
+    "SELECT COUNT(*) as count FROM roles_rutas WHERE role = ? AND ruta = ?",
+    [userRole, requestedRoute]
+  );
+
+  if (access.count > 0) {
+    return next(); // Usuario autorizado
+  }
+
+  return res.status(403).json({ error: "No tienes permiso para acceder a esta ruta" });
+};
+
+
+
+module.exports = { getUsuarios, getAccesosUsuario, updateAccesosUsuario, getSecciones, createUsuario, updateUsuario, deleteUsuario, checkAccess };

@@ -34,8 +34,15 @@ WHERE r.fecha_recibo >= CURDATE()
 
 // Autorizar recibo (cambiar estado a "I")
 const autorizarRecibo = async (req, res) => {
-  const { codigo, oc, cantidad_recibida, fecha_recibo, id_recibo_compras, userId } = req.body;
-  console.log("inventrioaut", req.body)
+  const {
+    codigo,
+    oc,
+    cantidad_recibida,
+    fecha_recibo,
+    id_recibo_compras,
+    userId,
+  } = req.body;
+  console.log("inventrioaut", req.body);
 
   try {
     // Actualizamos el estado del recibo a "I" (autorizado), la fecha y hora de `validacion_calidad` y el usuario en `usu_inventario`
@@ -60,7 +67,6 @@ const actualizarUbicacion = async (req, res) => {
     id_ubi,
     code_prod,
     cant_stock,
-    pasillo,
     lote,
     almacen,
     estado,
@@ -73,7 +79,6 @@ const actualizarUbicacion = async (req, res) => {
   // Definir valores en `null` en caso de recibir campos vacíos
   const finalCodeProd = code_prod || null;
   const finalCantStock = cant_stock || null;
-  const finalPasillo = pasillo || null;
   const finalLote = lote || null;
   const finalAlmacen = almacen || null;
   const finalEstado = estado || null;
@@ -83,7 +88,6 @@ const actualizarUbicacion = async (req, res) => {
       `UPDATE ubi_alma 
        SET code_prod = ?,
            cant_stock = ?,
-           pasillo = ?,
            lote = ?,
            almacen = ?,
            estado = ?
@@ -91,7 +95,6 @@ const actualizarUbicacion = async (req, res) => {
       [
         finalCodeProd,
         finalCantStock,
-        finalPasillo,
         finalLote,
         finalAlmacen,
         finalEstado,
@@ -174,12 +177,10 @@ LEFT JOIN productos prod ON u.code_prod = prod.codigo_pro
     `);
     res.json(rows);
   } catch (error) {
-    res
-      .status(500)
-      .json({
-        message: "Error al obtener el inventario",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Error al obtener el inventario",
+      error: error.message,
+    });
   }
 };
 const updatePeacking = async (req, res) => {
@@ -198,11 +199,10 @@ const updatePeacking = async (req, res) => {
       `UPDATE ubicaciones 
        SET code_prod = ?,
            cant_stock = ?,
-           pasillo = ?,
            lote = ?,
            almacen = ?
        WHERE id_ubi = ?`,
-      [code_prod, cant_stock, pasillo, lote, almacen, id_ubi]
+      [code_prod, cant_stock, lote, almacen, id_ubi]
     );
 
     // Verificar si la actualización afectó alguna fila
@@ -225,12 +225,21 @@ const updatePeacking = async (req, res) => {
 };
 
 const insertPeacking = async (req, res) => {
-  console.log("Datos recibidos en el backend:", req.body);
+  console.log("Datos recibidos en el backend:", req.body); 
 
-  const {ubi, code_prod, cant_stock, pasillo, lote, almacen } = req.body;
+  const { ubi, code_prod, cant_stock, pasillo, lote, almacen } = req.body;
 
-  if (!code_prod || !code_prod || !cant_stock || !pasillo || !lote || !almacen) {
-    return res.status(400).json({ success: false, message: "Todos los campos son requeridos." });
+  if (
+    !code_prod ||
+    !code_prod ||
+    !cant_stock ||
+    !pasillo ||
+    !lote ||
+    !almacen
+  ) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Todos los campos son requeridos." });
   }
 
   try {
@@ -255,6 +264,121 @@ const insertPeacking = async (req, res) => {
   }
 };
 
+const obtenerUbiAlma = async (req, res) => {
+  try {
+    // Realizar la consulta para obtener todos los registros
+    const [rows] = await pool.query(`
+      SELECT 
+        id_ubi, 
+        ubi, 
+        code_prod, 
+        cant_stock, 
+        pasillo, 
+        lote, 
+        almacen, 
+        codigo_ubi, 
+        ingreso, 
+        estado, 
+        codigo_ingreso,
+        CASE 
+          WHEN pasillo REGEXP '^[0-9]+$' THEN 'Almacen' 
+          WHEN pasillo REGEXP 'AV' THEN 'Picking'
+          ELSE 'Otro'
+        END AS area
+      FROM ubi_alma
+    `);
+
+    // Estructura de la respuesta
+    const result = {
+      resultado: {
+        error: false,
+        list: rows,
+      },
+    };
+
+    // Enviar el JSON como respuesta
+    res.json(result);
+  } catch (error) {
+    console.error("Error al obtener ubicaciones:", error);
+    res.status(500).json({
+      resultado: {
+        error: true,
+        message: "Error al obtener las ubicaciones",
+        details: error.message,
+      },
+    });
+  }
+};
+
+// Función para eliminar una tarea
+const deleteTarea = async (req, res) => {
+  // Obtén 'id_ubi' del cuerpo de la solicitud
+  const { id_ubi } = req.body;
+
+  // Verifica que el id_ubi esté presente
+  if (!id_ubi) {
+    return res.status(400).json({
+      success: false,
+      message: "Falta el ID de la tarea.",
+    });
+  }
+
+  try {
+    // Ejecuta la consulta para eliminar la tarea usando `pool` en lugar de `promisePool`
+    const [result] = await pool.query("DELETE FROM ubi_alma WHERE id_ubi = ?", [
+      id_ubi,
+    ]);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No se encontró la tarea para eliminar.",
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: "Tarea eliminada correctamente.",
+    });
+  } catch (error) {
+    console.error("Error al eliminar la tarea:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error al eliminar la tarea.",
+    });
+  }
+};
+
+// Obtener ubicaciones con número intermedio impar
+const getUbicacionesImpares = async (req, res) => {
+  try {
+    const [result] = await pool.query(`
+      SELECT ubi , code_prod, cant_stock, pasillo, lote, almacen, estado
+      FROM ubi_alma
+      WHERE CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(ubi, '-', 2), '-', -1) AS UNSIGNED) % 2 = 1;
+    `);
+    res.json(result);
+  } catch (error) {
+    console.error("Error al obtener ubicaciones impares:", error);
+    res.status(500).json({ error: "Error al obtener ubicaciones impares" });
+  }
+};
+
+// Obtener ubicaciones con número intermedio par
+const getUbicacionesPares = async (req, res) => {
+  try {
+    const [result] = await pool.query(`
+      SELECT ubi, code_prod, cant_stock, pasillo, lote, almacen, estado
+      FROM ubi_alma
+      WHERE CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(ubi, '-', 2), '-', -1) AS UNSIGNED) % 2 = 0;
+    `);
+    res.json(result);
+  } catch (error) {
+    console.error("Error al obtener ubicaciones pares:", error);
+    res.status(500).json({ error: "Error al obtener ubicaciones pares" });
+  }
+};
+
 
 module.exports = {
   getInventarios,
@@ -264,4 +388,8 @@ module.exports = {
   getPeacking,
   updatePeacking,
   insertPeacking,
+  obtenerUbiAlma,
+  deleteTarea,
+  getUbicacionesImpares,
+  getUbicacionesPares,
 };

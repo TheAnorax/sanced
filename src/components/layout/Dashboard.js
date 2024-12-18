@@ -144,6 +144,14 @@ const getTitle = (pathname) => {
       return "Insumos";
     case "/dashboard/inventario":
       return "Inventario dia 0";
+    case "/dashboard/muetras":
+      return "muestras";
+    case "/dashboard/historial":
+      return "historial";
+    case "/dashboard/devs":
+      return "devs";
+      case "/dashboard/RH":
+      return "RH";
     default:
       return "Dashboard";
   }
@@ -301,7 +309,7 @@ export default function Dashboard() {
               </Grid>
             </Grid>
           </Container>
-        </Box>
+        </Box> 
       </Box>
     </ThemeProvider>
   );

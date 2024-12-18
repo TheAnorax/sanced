@@ -13,7 +13,7 @@ const Obtenerinv = async (req, res) => {
     }
 };
 
-const ReduccionInv = async (req, res) => {
+const ReduccionInv = async (req, res) => { 
     try {
         const bodyL = req.body;
         const listarecibo = new Inventario_P(bodyL);
@@ -27,7 +27,7 @@ const ReduccionInv = async (req, res) => {
 const redInventario = async (req, res) => {
     try {
         res.json(await Inventario_P.Obtinv());
-
+ 
     } catch (error) {
         res.json({ message: error.message });
     }

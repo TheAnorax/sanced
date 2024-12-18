@@ -26,6 +26,10 @@ import Reporter from './components/reporte/reporterecibo'
 import Insumos from './components/insumos/insumos'
 import Embarcando  from './components/embarques/embarcando';
 import Inventario from './components/inventory/inventory';
+import Muestras from './components/Muestras/Muestras';
+import Historial from './components/Historial/Historial';
+import Devs from './components/devs/tareas'
+import RH from './components/RH/insumos_rh'
 
 function App() {
   return (        
@@ -55,6 +59,10 @@ function App() {
             <Route path="insumos" element={<ProtectedRoute><Insumos /></ProtectedRoute>}/>
             <Route path="embarcando" element={<ProtectedRoute><Embarcando  /></ProtectedRoute>} />
             <Route path="inventario" element={<ProtectedRoute><Inventario  /></ProtectedRoute>} />
+            <Route path="muestras" element={<ProtectedRoute><Muestras  /></ProtectedRoute>} />
+            <Route path="Historial" element={<ProtectedRoute><Historial  /></ProtectedRoute>} />
+            <Route path="devs" element={<ProtectedRoute><Devs  /></ProtectedRoute>} />
+            <Route path="RH" element={<ProtectedRoute><RH  /></ProtectedRoute>} />
           </Route>
         </Routes>
       </Router>

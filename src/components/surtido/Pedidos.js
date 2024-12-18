@@ -5,6 +5,7 @@ import { Card, CardContent, Typography, Box, Divider, Button, Autocomplete, Text
 import Swal from 'sweetalert2';
 import debounce from 'lodash.debounce';
 import { AutoSizer, List, CellMeasurer, CellMeasurerCache } from 'react-virtualized';
+import * as XLSX from 'xlsx'; // Importar la librería para manejar archivos Excel
 
 const fetchPedidos = async () => {
   const response = await axios.get('http://192.168.3.27:3007/api/pedidos/pedidos');
@@ -108,6 +109,36 @@ const Pedidos = React.memo(() => {
   }, [localPedidos, debouncedSearchTerm]);
   
 
+
+    // Función para generar y descargar el archivo Excel
+    const downloadExcel = () => {
+      if (!filteredPedidos || filteredPedidos.length === 0) {
+        Swal.fire('Error', 'No hay datos filtrados para exportar.', 'error');
+        return;
+      }
+    
+      // Generar datos detallados para exportar
+      const data = filteredPedidos.flatMap((pedido) =>
+        pedido.items.map((item) => ({
+          Pedido: pedido.pedido,
+          Tipo: pedido.tipo,
+          Registro: new Date(pedido.registro).toLocaleString(),
+          Código: item.codigo_ped,
+          Descripción: item.des,
+          Cantidad: item.cantidad,
+          Pasillo: item.ubi || 'Sin pasillo',
+        }))
+      );
+    
+      // Crear hoja de Excel
+      const worksheet = XLSX.utils.json_to_sheet(data);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Detalles del Pedido');
+    
+      // Descargar archivo
+      XLSX.writeFile(workbook, `Pedido_Filtrado_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    };
+    
   const handleSelectChange = useCallback((pedido, value) => {
     setSelectedItems((prev) => ({
       ...prev,
@@ -376,6 +407,11 @@ const Pedidos = React.memo(() => {
           onChange={(e) => setSearchTerm(e.target.value)}
           style={{ marginBottom: '10px', width: '200px' }}
         />
+         {filteredPedidos.length > 0 && (
+          <Button variant="contained" color="primary" onClick={downloadExcel}>
+            Descargar Excel
+          </Button>
+        )}
         <Typography variant="h6" sx={{ marginBottom: '10px', textAlign: 'center' }}>
           {isPorPasillo ? 'Surtido por Pasillo' : 'Surtido por Pedido'}
         </Typography>

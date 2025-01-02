@@ -30,6 +30,8 @@ import Muestras from './components/Muestras/Muestras';
 import Historial from './components/Historial/Historial';
 import Devs from './components/devs/tareas'
 import RH from './components/RH/insumos_rh'
+import Queretaro from './components/Proyecto/ProyectoQueretaro';
+import Visitantes from './components/visitas/visitantes';
 
 function App() {
   return (        
@@ -63,6 +65,8 @@ function App() {
             <Route path="Historial" element={<ProtectedRoute><Historial  /></ProtectedRoute>} />
             <Route path="devs" element={<ProtectedRoute><Devs  /></ProtectedRoute>} />
             <Route path="RH" element={<ProtectedRoute><RH  /></ProtectedRoute>} />
+            <Route path="Queretaro" element={<ProtectedRoute><Queretaro  /></ProtectedRoute>} />
+            <Route path="visitas" element={<ProtectedRoute><Visitantes  /></ProtectedRoute>} />
           </Route>
         </Routes>
       </Router>

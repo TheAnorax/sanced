@@ -19,9 +19,44 @@ import {
   Card,
   CardContent,
   TextField,
+  List,
+  ListItem,
+  ListItemText,
+  CardHeader
 } from "@mui/material";
 import Barcode from "react-barcode";
 import { UserContext } from "../context/UserContext";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import LockIcon from "@mui/icons-material/Lock";
+import HighlightOffIcon from "@mui/icons-material/HighlightOff";
+
+
+const roleAccessMap = {
+  Master: ["Dashboard", "Usuarios", "Productos", "Surtiendo", "Pedidos", "Finalizados", "Bahias", "Ubicaciones", "Compras", "Producto a Recibir", "Calidad", "Inventarios", "Insumos", "Historial de Mov", "Tareas", "PQ"],
+  Control: ["Dashboard", "Usuarios", "Productos", "Pedidos Pendientes", "Surtiendo", "Pedidos", "Finalizados", "Plan", "Bahias", "Inventarios"],
+  Admin: ["Dashboard", "Usuarios", "Productos", "Pedidos Pendientes", "Surtiendo", "Pedidos", "Finalizados", "Paqueteria", "Empacando", "Embarques", "Embarcando", "Plan", "Bahias", "Ubicaciones", "Compras", "Producto a Recibir", "Calidad", "Inventarios", "Reporte Recibo", "Insumos", "Muestras", "Historial de Mov", "Tareas", "RH", "PQ", "Visitas"],
+  Paquet: ["Dashboard", "Productos", "Finalizados", "Paqueteria", "Empacando", "Bahias", "Insumos"],
+  Embar: ["Usuarios", "Productos", "Finalizados", "Embarques", "Embarcando", "Bahias"],
+  Rep: ["Productos", "Finalizados"],
+  INV: ["Productos", "Producto a Recibir", "Calidad", "Inventarios", "Reporte Recibo", "Insumos", "Historial de Mov"],
+  Imp: ["Productos", "Compras", "Reporte Recibo"],
+  Audi: ["Productos", "Finalizados", "Inventarios"],
+  Plan: ["Productos", "Compras", "Plan"],
+  VENT: ["Productos", "Pedidos"],
+  CON: ["Productos"],
+  Nac: ["Compras", "Reporte Recibo"],
+  Nac2: ["Compras", "Reporte Recibo"],
+  Ins: ["Compras", "Insumos"],
+  Recibo: ["Compras", "Producto a Recibir", "Reporte Recibo", "Insumos"],
+  MONTA6: ["Inventarios"],
+  ECOMERCE: ["Inventarios"],
+  Reporte: ["Reporte Recibo"],
+  Dep: ["Insumos"],
+  P: ["Insumos"],
+  RH: ["RH"]
+};
+ 
+
 
 function Usuarios() {
   const [usuariosPorTurno, setUsuariosPorTurno] = useState([]);
@@ -33,6 +68,8 @@ function Usuarios() {
   const [openModal, setOpenModal] = useState(false);
   const [openModalUser, setOpenModalUser] = useState(false);
   const [openAccessModal, setOpenAccessModal] = useState(false);
+  const [openPermissionsModal, setOpenPermissionsModal] = useState(false);
+  const [userPermissions, setUserPermissions] = useState([]);
   const [accesos, setAccesos] = useState([]);
   const [secciones, setSecciones] = useState([]);
   const { user } = useContext(UserContext); // Usuario logueado
@@ -271,20 +308,43 @@ function Usuarios() {
     }
   };
 
+
+  const handleOpenPermissionsModal = (usuario) => {
+    setSelectedUser(usuario);
+    setUserPermissions(roleAccessMap[usuario.role] || []);
+    setOpenPermissionsModal(true);
+  };
+
+  const handleClosePermissionsModal = () => {
+    setOpenPermissionsModal(false);
+    setSelectedUser(null);
+    setUserPermissions([]);
+  };
+
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom>
-        Usuarios por Turno {user?.role} {user?.name}
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={() => handleOpenModalUsers(null)}
-          sx={{ mb: 3 }}
-        >
-          Crear Usuario
-        </Button>
-      </Typography>
+      <Box
+  sx={{
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    mb: 3, // Espaciado inferior
+  }}
+>
+  <Typography variant="h4">
+    Usuarios por Turno {user?.role} {user?.name}
+  </Typography>
 
+  {(user?.role === "Master" || user?.role === "Admin") && (
+    <Button
+      variant="contained"
+      color="primary"
+      onClick={() => handleOpenModalUsers(null)}
+    >
+      Crear Usuario
+    </Button>
+  )}
+</Box>
       {/* Mostrar tabla "Accesos Web" solo a los administradores */}
       {(user?.role === "Admin" || user?.role === "Master") &&
         turno4Usuarios.length > 0 && (
@@ -314,27 +374,16 @@ function Usuarios() {
                       <TableCell>{usuario.name}</TableCell>
                       <TableCell>{usuario.role}</TableCell>
                       <TableCell>{usuario.unidad}</TableCell>
+                    
                       <TableCell>
-                        {/* <Button
+                      <Button
                           variant="contained"
-                          color="primary"
-                          onClick={() => handleOpenModal(usuario)}
-                        >
-                          Ver Accesos
-                        </Button> */}
-
-                        {/* Mostrar el botón de "Administrar Accesos" solo si el usuario tiene el rol de "master" o "admin" */}
-                        {/* {(user?.role === "Master" ||
-                          user?.role === "Admin") && (
-                          <Button
-                            variant="contained"
-                            color="secondary"
-                            onClick={() => handleOpenAccessModal(usuario)}
-                            sx={{ ml: 2 }}
+                          ml="3px"
+                          color="info"
+                          onClick={() => handleOpenPermissionsModal(usuario)}
                           >
-                            Administrar Accesos
-                          </Button>
-                        )} */}
+                          Permisos Vistas
+                        </Button>
                       </TableCell>
                       <TableCell>
                       {(user?.role === "Master" ||
@@ -357,7 +406,7 @@ function Usuarios() {
                         >
                           Eliminar
                         </Button>
-                        )}
+                        )}                         
                       </TableCell>
                     </TableRow>
                   ))}
@@ -627,6 +676,98 @@ function Usuarios() {
         </TableBody>
       </Table>
     </TableContainer>
+    
+<Modal open={openPermissionsModal} onClose={handleClosePermissionsModal}>
+  <Box
+    sx={{
+      position: "absolute",
+      top: "50%",
+      left: "50%",
+      transform: "translate(-50%, -50%)",
+      width: "90vw", // 90% del ancho de la ventana
+      maxWidth: "1200px", // Ancho máximo
+      maxHeight: "85vh", // Altura máxima
+      overflowY: "auto", // Habilita el desplazamiento si el contenido es demasiado grande
+      bgcolor: "background.paper",
+      boxShadow: 24,
+      p: 4,
+      borderRadius: 2,
+    }}
+  >
+    {selectedUser && (
+      <>
+        {/* Encabezado del Modal */}
+        <Typography
+          variant="h4"
+          gutterBottom
+          sx={{ textAlign: "center", fontWeight: "bold", color: "primary.main" }}
+        >
+          Permisos de {selectedUser.name} ({selectedUser.role})
+        </Typography>
+        <Divider sx={{ my: 2 }} />
+
+        {/* Lista de Permisos en Grid */}
+        {userPermissions.length > 0 ? (
+          <Grid container spacing={2}>
+            {userPermissions.map((seccion, index) => (
+              <Grid item xs={12} sm={6} md={3} key={index}>
+                <Card
+                  variant="outlined"
+                  sx={{
+                    borderRadius: 2,
+                    boxShadow: 1,
+                    textAlign: "center",
+                    transition: "0.3s",
+                    "&:hover": {
+                      boxShadow: 4,
+                      transform: "scale(1.05)",
+                    },
+                  }}
+                >
+                  <CardHeader
+                    title={seccion}
+                    titleTypographyProps={{ variant: "subtitle1", fontWeight: "bold" }}
+                    sx={{
+                      backgroundColor: "primary.light",
+                      color: "primary.contrastText",
+                      borderRadius: "8px 8px 0 0",
+                      textAlign: "center",
+                      p: 1,
+                    }}
+                  />
+                  <CardContent>
+                    <CheckCircleIcon color="success" sx={{ fontSize: 40 }} />
+                    <Typography variant="body2" sx={{ mt: 1 }}>
+                      Acceso Autorizado
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        ) : (
+          <Box sx={{ textAlign: "center", mt: 4 }}>
+            <HighlightOffIcon color="error" sx={{ fontSize: 50 }} />
+            <Typography variant="h6" color="textSecondary">
+              No hay secciones disponibles para este rol.
+            </Typography>
+          </Box>
+        )}
+
+        {/* Botón de Cerrar */}
+        <Box sx={{ mt: 4, textAlign: "right" }}>
+          <Button
+            variant="contained"
+            color="secondary"
+            onClick={handleClosePermissionsModal}
+          >
+            Cerrar
+          </Button>
+        </Box>
+      </>
+    )}
+  </Box>
+</Modal>;
   </Box>
 )}
 

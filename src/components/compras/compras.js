@@ -756,7 +756,7 @@ function Compras() {
       setCantidad("");
       setReferencia("");
       setUnidadMedida("");
-      setContenedor("");
+      setContenedor(""); 
       setNaviera("");
       setPedimento("");
       setRecepcionDate(dayjs());

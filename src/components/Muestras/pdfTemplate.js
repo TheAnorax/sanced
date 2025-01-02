@@ -1,7 +1,7 @@
-import logo from './logob.png'; // Si estás usando una imagen local en src
+import logo from './logob.png'; 
 
 export const pdfTemplate = (solicitud) => {
-    const { nombre, departamento, motivo, regresaArticulo, requiereEnvio, detalleEnvio, carrito, folio, fecha } = solicitud;
+    const { nombre, departamento, motivo, regresaArticulo, requiereEnvio, detalleEnvio, carrito, folio, fecha, des } = solicitud;
 
     return `
         <html>
@@ -21,7 +21,7 @@ export const pdfTemplate = (solicitud) => {
                     display: flex;
                     justify-content: space-between;
                     align-items: center;
-                    border-bottom: 2px solid black;
+                    border-bottom: 2px solid black; 
                     padding: 10px;
                 }
                 .header img {
@@ -119,41 +119,21 @@ export const pdfTemplate = (solicitud) => {
                         <thead>
                             <tr>
                                 <th>Código</th>
+                                <th>Descripción</th>
                                 <th>Cantidad</th>
-                                <th>Ubicación</th>
                             </tr>
                         </thead>
                         <tbody>
                             ${carrito.map(item => `  
                             <tr>
                                 <td>${item.codigo}</td>
+                                <td>${item.des}</td>
                                 <td>${item.cantidad}</td>
-                                <td>${item.ubi}</td>
+                                
                             </tr>
                             `).join('')}
                         </tbody>
                     </table>
-                </div>
-
-                <div class="footer">
-                    <div class="signatures">
-                        <div>
-                            <img src="${logo}" alt="Firma Solicitante" /><br>
-                            <div class="signature-line">Nombre y firma Solicitante</div>
-                        </div>
-                        <div>
-                            <img src="${logo}" alt="Firma Gerente de área" /><br>
-                            <div class="signature-line">Nombre y firma Gerente de área</div>
-                        </div>
-                        <div>
-                            <img src="${logo}" alt="Firma Autorización" /><br>
-                            <div class="signature-line">Nombre y firma Autorización</div>
-                        </div>
-                        <div>
-                            <img src="${logo}" alt="Firma Gerente de Cedis" /><br>
-                            <div class="signature-line">Nombre y firma Gerente de Cedis</div>
-                        </div>
-                    </div>
                 </div>
             </div>
         </body>

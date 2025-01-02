@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getUsuarios, getAccesosUsuario, updateAccesosUsuario, getSecciones, createUsuario, updateUsuario, deleteUsuario } = require('../controller/usuariosController');
+const { getUsuarios, getAccesosUsuario, updateAccesosUsuario, getSecciones, createUsuario, updateUsuario, deleteUsuario, getRolesWithAccess, updateRoleAccess  } = require('../controller/usuariosController');
 
 router.get('/usuarios', getUsuarios);
 router.get('/secciones', getSecciones);
@@ -11,6 +11,11 @@ router.get('/usuarios', getUsuarios);
 router.post('/usuarios', createUsuario);
 router.put('/usuarios/:id', updateUsuario);
 router.delete('/usuarios/:id', deleteUsuario);
+
+
+
+router.get('/roles/access', getRolesWithAccess);
+router.put('/roles/access/:id_role', updateRoleAccess);
 
 
 
@@ -26,4 +31,4 @@ module.exports = router;
 // router.put('/usuarios/:id', updateUsuario);
 // router.delete('/usuarios/:id', deleteUsuario);
 
-// module.exports = router;
+// module.exports = router; 

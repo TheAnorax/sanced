@@ -308,7 +308,7 @@ function Recibo() {
     try {
       const response = await axios.post(
         "http://192.168.3.27:3007/recibo/tarima",
-        {
+        { 
           id_recibo: recibo.id_recibo,
         }
       );

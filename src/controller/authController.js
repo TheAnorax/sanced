@@ -17,7 +17,7 @@ const login = async (req, res) => {
     const isMatch = await comparePassword(password, user.password);
     console.log('Password match:', isMatch);  // Agregar esto
     if (!isMatch) {
-      console.log('Password does not match');
+      console.log('Password does not match'); 
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 

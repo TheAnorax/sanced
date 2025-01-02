@@ -121,6 +121,43 @@ const actualizarUbicacion = async (req, res) => {
   }
 };
 
+
+const insertNuevaUbicacion = async (req, res) => {
+  console.log("Datos recibidos en el backend:", req.body);
+
+  const { ubi, code_prod, cant_stock, pasillo, lote, almacen } = req.body;
+
+  // Validar que todos los campos estén presentes
+  if (!ubi || !code_prod || !cant_stock || !pasillo || !lote || !almacen) {
+    return res.status(400).json({
+      success: false,
+      message: "Todos los campos son requeridos.",
+    });
+  }
+
+  try {
+    const [result] = await pool.query(
+      `INSERT INTO ubicaciones (ubi, code_prod, cant_stock, pasillo, lote, almacen) 
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [ubi, code_prod, cant_stock, pasillo, lote, almacen]
+    );
+
+    res.json({
+      success: true,
+      message: "Nueva ubicación insertada correctamente",
+      insertId: result.insertId,
+    });
+  } catch (error) {
+    console.error("Error al insertar la nueva ubicación:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error al insertar la nueva ubicación",
+      error: error.message,
+    });
+  }
+};
+
+
 const insertarNuevoProducto = async (req, res) => {
   try {
     const {
@@ -163,7 +200,7 @@ const insertarNuevoProducto = async (req, res) => {
 const getPeacking = async (req, res) => {
   try {
     const [rows] = await pool.query(`
-     SELECT 
+SELECT 
 u.id_ubi,
 u.ubi,
 prod.des,
@@ -174,6 +211,7 @@ u.lote,
 u.almacen
 FROM ubicaciones u
 LEFT JOIN productos prod ON u.code_prod = prod.codigo_pro
+ORDER BY u.ubi ASC
     `);
     res.json(rows);
   } catch (error) {
@@ -392,4 +430,5 @@ module.exports = {
   deleteTarea,
   getUbicacionesImpares,
   getUbicacionesPares,
+  insertNuevaUbicacion,
 };

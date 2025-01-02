@@ -393,13 +393,13 @@ const uploadPDFs = async (req, res) => {
           if (existingRecibo.length === 0) {
             const insertValues = [
               producto.codigo, producto.cant_recibir, 0, producto.arribo, producto.oc, producto.referencia, 
-              producto.contenedor, producto.naviera, producto.pedimento, estado, null, null, null, null, null, producto.id_recibo
+              producto.contenedor, producto.naviera, producto.pedimento, estado, null, null, null, null, null, null, producto.id_recibo
             ];
 
             await pool.query(`
               INSERT INTO recibo_cedis (codigo, cantidad_total, cantidad_recibida, fecha_recibo, oc, referencia, 
               contenedor, naviera, pedimento, est, pdf_1, pdf_2, pdf_3, pdf_4, pdf_5, pdf_6, id_recibo_compras)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, insertValues);
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, insertValues);
               console.log(`Producto insertado en recibo_cedis con OC: ${producto.oc}`);
           }
           else {
@@ -542,7 +542,7 @@ const uploadPDFs = async (req, res) => {
       res.status(500).json({ message: 'Error al procesar el recibo', error: error.message });
     }
   });
-};
+}; 
 
 
 

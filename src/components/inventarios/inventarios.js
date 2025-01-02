@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext } from "react";
 import axios from "axios";
+import * as XLSX from "xlsx";
 import {
   Typography,
   Table,
@@ -1003,6 +1004,54 @@ function InventarioAdmin() {
     }
   };
 
+  const handleGuardarNuevaUbipICK = async () => {
+    if (
+      !newData.ubi ||
+      !newData.code_prod ||
+      !newData.cant_stock ||
+      !newData.pasillo ||
+      !newData.lote ||
+      !newData.almacen
+    ) {
+      Swal.fire("Error", "Por favor complete todos los campos", "error");
+      return;
+    }
+  
+    try {
+      const response = await axios.post(
+        "http://192.168.3.27:3007/api/inventarios/inventarios/insertNuevaUbicacion",
+        {
+          ubi: newData.ubi,
+          code_prod: newData.code_prod,
+          cant_stock: parseInt(newData.cant_stock, 10),
+          pasillo: newData.pasillo,
+          lote: newData.lote,
+          almacen: newData.almacen,
+        }
+      );
+  
+      if (response.data.success) {
+        Swal.fire("Éxito", "La nueva ubicación se ha guardado correctamente", "success");
+        closeInsertModal(); // Cerrar el modal
+        setNewData({
+          ubi: "",
+          code_prod: "",
+          cant_stock: "",
+          pasillo: "",
+          lote: "",
+          almacen: "",
+        });
+        // Aquí puedes recargar los datos si es necesario
+      } else {
+        Swal.fire("Error", "No se pudo guardar la nueva ubicación", "error");
+      }
+    } catch (error) {
+      console.error("Error al guardar la nueva ubicación:", error);
+      Swal.fire("Error", "Hubo un problema al guardar la nueva ubicación", "error");
+    }
+  };
+   
+
   const handleEditChange = (field, value) => {
     setEditedData((prevData) => ({
       ...prevData,
@@ -1249,6 +1298,26 @@ function InventarioAdmin() {
       setLoading(false);
     }
   };
+
+  const exportToExcel = () => {
+    // Usar filteredData para exportar solo los datos visibles
+    const dataToExport = filteredData.map((dato) => ({
+      Ubicación: dato.ubi || "N/A",
+      Descripción: dato.des || "N/A",
+      "Código Producto": dato.code_prod || "N/A",
+      "Cantidad Stock": dato.cant_stock || 0,
+      Pasillo: dato.pasillo || "N/A",
+      Lote: dato.lote || "N/A",
+      Almacén: dato.almacen || "N/A",
+    }));
+  
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Picking");
+  
+    XLSX.writeFile(workbook, "Filtered_Picking.xlsx");
+  };
+  
 
   // Función para cargar ubicaciones pares
   const fetchPares = async () => {
@@ -1741,6 +1810,11 @@ function InventarioAdmin() {
             Insertar Producto
           </Button>
 
+          <Button onClick={exportToExcel} variant="contained" color="secondary">
+  Exportar Todo a Excel
+</Button>
+
+
           <Table>
             <TableHead>
               <TableRow>
@@ -1902,7 +1976,7 @@ function InventarioAdmin() {
         </DialogContent>
         <DialogActions>
           <Button onClick={closeInsertModal}>Cancelar</Button>
-          <Button onClick={handleInsert} color="primary">
+          <Button onClick={handleGuardarNuevaUbipICK} color="primary">
             Guardar
           </Button>
         </DialogActions>

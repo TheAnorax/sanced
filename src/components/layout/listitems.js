@@ -26,6 +26,9 @@ import InfoIcon from "@mui/icons-material/Info";
 import { styled } from "@mui/material/styles";
 import Tooltip, { tooltipClasses } from "@mui/material/Tooltip";
 import SummarizeIcon from "@mui/icons-material/Summarize";
+import AnalyticsIcon from '@mui/icons-material/Analytics';
+import PersonAddAltIcon from '@mui/icons-material/PersonAddAlt';
+import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
 
 // Personalizando el Tooltip
 const CustomTooltip = styled(({ className, ...props }) => (
@@ -69,6 +72,7 @@ export const mainListItems = (user) => {
         "Audi",
         "Plan",
         "VENT",
+        "CON",
       ],
       path: "/dashboard/productos",
       icon: <HandymanIcon />,
@@ -171,7 +175,7 @@ export const mainListItems = (user) => {
       text: "Calidad ",
     },
     {
-      role: ["Admin", "INV", "MONTA6", "Master", "Control", "Audi"],
+      role: ["Admin", "INV", "MONTA6", "Master", "Control", "Audi", "ECOMERCE"],
       path: "/dashboard/inventarios",
       icon: <InventoryIcon />,
       text: "Inventarios ",
@@ -196,7 +200,7 @@ export const mainListItems = (user) => {
     //   text: "Inventario dia 0",
     // },
     {
-      role: ["Admin"],
+      role: ["Admin", "Master", "Master2"],
       path: "/dashboard/muestras",
       icon: <SummarizeIcon />,
       text: "Muestras",
@@ -204,8 +208,8 @@ export const mainListItems = (user) => {
     {
       role: ["Admin", "INV", "Master"],
       path: "/dashboard/historial",
-      icon: <ManageSearchIcon />,
-      text: "Historial",
+      icon: <CompareArrowsIcon />,
+      text: "Historial de Mov",
     },
     {
       role: ["Admin", "Master"],
@@ -218,6 +222,18 @@ export const mainListItems = (user) => {
       path: "/dashboard/RH",
       icon: <ManageSearchIcon />,
       text: "RH",
+    },
+    {
+      role: ["Admin", "Master", "Master2",],
+      path: "/dashboard/Queretaro",
+      icon: <AnalyticsIcon />,
+      text: "PQ",
+    },
+    {
+      role: ["Admin","Master"  ],
+      path: "/dashboard/visitas",
+      icon: <PersonAddAltIcon />,
+      text: "Visitas",
     },
   ];
 

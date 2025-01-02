@@ -261,7 +261,7 @@ function ReporteReciboCedis() {
     } else if (selectedFiles.referencia) {
       formData.append("pdf_4", selectedFiles.referencia);
     }
-
+ 
 
     /////////
     if (selectedFiles.oe && Array.isArray(selectedFiles.oe)) {
@@ -995,7 +995,7 @@ function ReporteReciboCedis() {
                           <VisuallyHiddenInput
                             type="file"
                             multiple // Permitir seleccionar múltiples archivos
-                            onChange={(e) =>
+                             onChange={(e) =>
                               handleFilesChange(e, "referencia", true)
                             }
                           />
@@ -1017,58 +1017,59 @@ function ReporteReciboCedis() {
                       Orden de Compra
                     </Typography>
                     {detalleData?.pdf_5 ? (
-                      <div>
-                        <Button
-                           href={`http://192.168.3.27:3011/docs/${detalleData.pdf_5}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          variant="contained"
-                          sx={{
-                            backgroundColor: "rgba(76, 175, 80, 0.5)",
-                            color: "white",
-                            "&:hover": {
-                              backgroundColor: "rgba(76, 175, 80, 0.8)",
-                            },
-                            marginBottom: "10px",
-                          }}
-                        >
-                          {detalleData.pdf_5.split("-").slice(3).join("-")}
-                        </Button>
-                        <Button
-                          component="label"
-                          variant="outlined"
-                          startIcon={<CloudUploadIcon />}
-                          sx={{ mt: 1 }}
-                        >
-                          Reemplazar
-                          <VisuallyHiddenInput
-                            type="file"
-                            onChange={(e) =>
-                              handleFilesChange(e, "ordenCompra")
-                            }
-                          />
-                        </Button>
-                      </div>
-                    ) : (
+                <div>
+                  <Button
+                    href={`http://192.168.3.27:3011/docs/${detalleData.pdf_5}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    variant="contained"
+                    sx={{
+                      backgroundColor: "rgba(76, 175, 80, 0.5)",
+                      color: "white",
+                      width: "300px",
+                      justifyContent: "flex-start", // Alinea el contenido a la izquierda
+                      textAlign: "left", // Alinea el texto a la izquierda
+                      "&:hover": {
+                        backgroundColor: "rgba(76, 175, 80, 0.8)",
+                      },
+                      marginBottom: "10px",
+                    }}
+                  >
+                    {detalleData.pdf_5.split("-").slice(3).join("-")}
+                  </Button>
+                 
+                    <Button
+                      component="label"
+                      variant="outlined"
+                      startIcon={<CloudUploadIcon />}
+                      sx={{ mt: 1 }}
+                    >
+                      Reemplazar
+                      <VisuallyHiddenInput
+                        type="file"
+                        onChange={(e) => handleFilesChange(e, "ordenCompra")}
+                      />
+                    </Button>
+                 
+                </div>
+              ) : (
                       <>
-                        <Button
-                          component="label"
-                          variant="contained"
-                          startIcon={<CloudUploadIcon />}
-                        >
-                          Seleccionar Documento
-                          <VisuallyHiddenInput
-                            type="file"
-                            onChange={(e) =>
-                              handleFilesChange(e, "ordenCompra")
-                            }
-                          />
-                        </Button>
-                        {selectedFiles.ordenCompra && (
-                          <Typography sx={{ mt: 1 }}>
-                            {selectedFiles.ordenCompra.name}
-                          </Typography>
-                        )}
+                    <Button
+                      component="label"
+                      variant="contained"
+                      startIcon={<CloudUploadIcon />}
+                    >
+                      Seleccionar Documento
+                      <VisuallyHiddenInput
+                        type="file"
+                        onChange={(e) => handleFilesChange(e, "ordenCompra")}
+                      />
+                    </Button>
+                  {selectedFiles.ordenCompra && (
+                    <Typography sx={{ mt: 1 }}>
+                      {selectedFiles.ordenCompra.name}
+                    </Typography>
+                  )}
                       </>
                     )}
                   </Grid>

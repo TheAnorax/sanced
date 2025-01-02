@@ -184,4 +184,54 @@ const checkAccess = async (req, res, next) => {
 
 
 
-module.exports = { getUsuarios, getAccesosUsuario, updateAccesosUsuario, getSecciones, createUsuario, updateUsuario, deleteUsuario, checkAccess };
+// Obtener roles con sus permisos
+const getRolesWithAccess = async (req, res) => {
+  try {
+    const [roles] = await pool.query(`
+      SELECT r.id_role, r.name AS role, s.name AS section, a.permiso
+      FROM roles r
+      LEFT JOIN accesos a ON r.id_role = a.id_role
+      LEFT JOIN secciones s ON a.id_seccion = s.id_seccion
+    `);
+
+    const result = roles.reduce((acc, row) => {
+      if (!acc[row.role]) {
+        acc[row.role] = [];
+      }
+      if (row.section) {
+        acc[row.role].push({ section: row.section, permiso: row.permiso });
+      }
+      return acc;
+    }, {});
+
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ message: 'Error al obtener roles y permisos', error: error.message });
+  }
+};
+
+// Actualizar accesos de un rol
+const updateRoleAccess = async (req, res) => {
+  const { id_role } = req.params;
+  const { accesos } = req.body; // Array con { id_seccion, permiso }
+
+  try {
+    await pool.query('DELETE FROM accesos WHERE id_role = ?', [id_role]);
+    for (const acceso of accesos) {
+      await pool.query(
+        'INSERT INTO accesos (id_role, id_seccion, permiso) VALUES (?, ?, ?)',
+        [id_role, acceso.id_seccion, acceso.permiso]
+      );
+    }
+
+    res.json({ message: 'Accesos actualizados correctamente' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error al actualizar accesos', error: error.message });
+  }
+};
+
+
+
+
+
+module.exports = { getUsuarios, getAccesosUsuario, updateAccesosUsuario, getSecciones, createUsuario, updateUsuario, deleteUsuario, checkAccess, getRolesWithAccess, updateRoleAccess };

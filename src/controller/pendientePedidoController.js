@@ -23,7 +23,7 @@ const getPedidos = async (req, res) => {
       }
       acc[pedido.pedido].items.push({
         clave: pedido.clave,
-        codigo_ped: pedido.codigo_ped,
+        codigo_ped: pedido.codigo_ped, 
         des: pedido.des,
         cantidad: pedido.cantidad,
         pasillo: pedido.pasillo,

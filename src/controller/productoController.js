@@ -29,7 +29,7 @@ const getVoluProducts = async (req, res) => {
   if (!codigo_pro) {
     return res.status(400).json({ message: "El código del producto es requerido" });
   }
-
+ 
   try {
     const [rows] = await pool.query(
       `SELECT 
@@ -246,7 +246,7 @@ const deleteProduct = async (req, res) => {
 
 const updateVolumetria = async (req, res) => {
   const { codigo } = req.params; // El valor que viene en la URL será tomado como 'codigo'
-  const { cajas_cama, pieza_caja, cajas_tarima, camas_tarima, pieza_tarima } = req.body;
+  const { cajas_cama, pieza_caja, cajas_tarima, camas_tarima, pieza_tarima } = req.body; 
 
   if (!codigo) {
     return res.status(400).json({ message: "El código del producto es obligatorio" });

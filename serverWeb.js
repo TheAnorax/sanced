@@ -26,7 +26,8 @@ const muestras = require('./src/routes/muestrasRouters')
 const historial= require('./src/routes/historialRoutes')
 const devs = require('./src/routes/devRoutes')
 const rh = require('./src/routes/rhRoutes')
-
+const Queretaro= require('./src/routes/queretaroRoutes')
+const visi = require('./src/routes/visitasRoutes')
 
 const app = express();
 const port = 3007;
@@ -61,6 +62,9 @@ app.use('/api/historial',historial)
 app.use(embarqueLista)
 app.use('/api/devs',devs)
 app.use('/api/rh',rh)
+app.use('/api/Queretaro',Queretaro)
+app.use('/api/visitas', visi)
+app.use('/api/fotos', express.static('C:/acc-ced/'));
 
 
 app.listen(port, () => {

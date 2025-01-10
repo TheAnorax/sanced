@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import {
     Card, CardContent, CardMedia, Grid, Typography, Dialog, DialogActions, DialogContent, DialogTitle, Button, IconButton, Box, TextField, TablePagination,
-    Tabs, Tab, MenuItem, Select, InputLabel, FormControl,
+    Tabs, Tab, MenuItem, Select, InputLabel, FormControl, Table, TableHead, TableRow, TableCell, TableBody,
 } from '@mui/material';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 
 function ProyectoQueretaro() {
+    // 📊 **Estados Principales**
     const [data, setData] = useState([]);
     const [filteredData, setFilteredData] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
@@ -15,16 +16,27 @@ function ProyectoQueretaro() {
     const [open, setOpen] = useState(false);
     const [selectedProject, setSelectedProject] = useState(null);
     const [tabIndex, setTabIndex] = useState(0);
-    const [tabData, setTabData] = useState([]);  // State to hold data for the second tab
-    const [selectedZone, setSelectedZone] = useState('');  // State for selected zone
-    const [rutaReparto, setRutaReparto] = useState('');
-    const [diaVisita, setDiaVisita] = useState('');
-    const [currentDay, setCurrentDay] = useState('');
-    const [selectedPersona, setSelectedPersona] = useState('');
-    const [personas, setPersonas] = useState([]); // Lista de personas disponibles
-    const [rutas, setRutas] = useState([]); // Lista de rutas disponibles
+    const [tabData, setTabData] = useState([]);
     const [selectedZona, setSelectedZona] = useState('');
     const [selectedRuta, setSelectedRuta] = useState('');
+    const [diaVisita, setDiaVisita] = useState('');
+    const [rutaReparto, setRutaReparto] = useState('');
+    const [currentDay, setCurrentDay] = useState('');
+    const [currentView, setCurrentView] = useState('empty'); // Vista inicial vacía
+    const [selectedZone, setSelectedZone] = useState('');  // State for selected zone
+    const [selectedPersona, setSelectedPersona] = useState('');
+    const [selectedRoutes, setSelectedRoutes] = useState([]);
+
+    // 📅 **Obtener Día Actual**
+    useEffect(() => {
+        const daysOfWeek = ['DOMINGO', 'LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SÁBADO'];
+        const today = new Date().getDay();
+        setCurrentDay(daysOfWeek[today]);
+    }, []);
+
+    useEffect(() => {
+        filterData();
+    }, [selectedZona, selectedRuta, diaVisita]);
 
     useEffect(() => {
         if (currentDay) {
@@ -40,7 +52,6 @@ function ProyectoQueretaro() {
                 });
         }
     }, [currentDay]);
-
 
     const handleRutaRepartoChange = (event) => {
         setRutaReparto(event.target.value);
@@ -206,14 +217,12 @@ function ProyectoQueretaro() {
         }
     };
 
-    // Trigger filter on diaVisita or rowsPerPage change
     useEffect(() => {
         const daysOfWeek = ['DOMINGO', 'LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SÁBADO'];
         const today = new Date().getDay();  // Obtén el día de la semana como número (0-6)
         console.log("Día actual:", daysOfWeek[today]);  // Verifica que este valor sea correcto
         setCurrentDay(daysOfWeek[today]);  // Establece el día actual en la variable `currentDay`
     }, []);
-
 
     useEffect(() => {
         filterData();  // Vuelve a filtrar cuando el día actual cambie
@@ -235,11 +244,35 @@ function ProyectoQueretaro() {
         filterData(); // Actualiza los datos cuando cambie algún filtro
     }, [selectedZona, selectedRuta, diaVisita]);
 
+    // Manejo de las rutas seleccionadas
+    const handleRoutesChange = (event) => {
+        const value = event.target.value;
+        const routes = value.split(',').map(route => route.trim());  // Convertir las rutas en un array
+        setSelectedRoutes(routes);
+    };
 
+    // Obtener datos filtrados cuando se aplican filtros
+    const fetchFilteredData = () => {
+        if (!selectedZone || selectedRoutes.length === 0) return; // No hacer nada si no hay filtros
 
+        axios.get('http://192.168.3.27:3007/api/Queretaro/proyectoqueretaro/filtrado', {
+            params: {
+                zona: selectedZone,
+                rutas: selectedRoutes.join(',')  // Pasar las rutas como una cadena
+            }
+        })
+            .then(response => {
+                setData(response.data);  // Establecer los datos filtrados
+            })
+            .catch(error => {
+                console.error('Error al obtener los datos filtrados:', error);
+            });
+    };
 
-
-    return (
+    /*
+     * 🟢 **Vista Principal: Formulario y Resultados**
+     */
+    const renderVistaPrincipal = () => (
         <>
 
             <Grid container spacing={2} justifyContent="center" alignItems="center">
@@ -257,8 +290,6 @@ function ProyectoQueretaro() {
                             <MenuItem value="Zona 1">Zona 1</MenuItem>
                             <MenuItem value="Zona 2">Zona 2</MenuItem>
                             <MenuItem value="Zona 3">Zona 3</MenuItem>
-                            <MenuItem value="Zona 4">Zona 4</MenuItem>
-                            <MenuItem value="Zona 5">Zona 5</MenuItem>
                         </Select>
                     </FormControl>
                 </Grid>
@@ -279,13 +310,10 @@ function ProyectoQueretaro() {
                             <MenuItem value="3">Ruta 3</MenuItem>
                             <MenuItem value="4">Ruta 4</MenuItem>
                             <MenuItem value="5">Ruta 5</MenuItem>
-                            <MenuItem value="20">Ruta 20 (Especial)</MenuItem>
                         </Select>
                     </FormControl>
 
-                </Grid>
-                
-                <Grid item xs={12} mt={2}>
+
                     <Button
                         variant="outlined"
                         color="secondary"
@@ -299,7 +327,9 @@ function ProyectoQueretaro() {
                     >
                         Reiniciar Filtros
                     </Button>
+
                 </Grid>
+
             </Grid>
 
             <br />
@@ -430,6 +460,16 @@ function ProyectoQueretaro() {
                                             variant="outlined"
                                             fullWidth
                                             value={selectedProject.num_ext}
+                                            sx={{ marginBottom: 2 }}
+                                            InputProps={{ readOnly: true }}
+                                        />
+                                    </Grid>
+                                    <Grid item xs={12} sm={6}>
+                                        <TextField
+                                            label="Ruta"
+                                            variant="outlined"
+                                            fullWidth
+                                            value={selectedProject.ruta}
                                             sx={{ marginBottom: 2 }}
                                             InputProps={{ readOnly: true }}
                                         />
@@ -574,7 +614,6 @@ function ProyectoQueretaro() {
                             </Box>
                         )}
 
-
                     </DialogContent >
                     <DialogActions>
                         <Button onClick={handleClose} color="primary">
@@ -583,7 +622,98 @@ function ProyectoQueretaro() {
                     </DialogActions>
                 </Dialog >
             )}
+        </>
+        
+    );
 
+    /*
+     * 🟠 **Vista 1: Formulario Adicional**
+     */
+    const renderTable = () => (
+        <Table>
+            <TableHead>
+                <TableRow>
+                    <TableCell>Nombre</TableCell>
+                    <TableCell>Zona</TableCell>
+                    <TableCell>Ruta</TableCell>
+                    <TableCell>Día de Visita</TableCell>
+                    <TableCell>Segmento</TableCell>
+                </TableRow>
+            </TableHead>
+            <TableBody>
+                {data.map((row, index) => (
+                    <TableRow key={index}>
+                        <TableCell>{row.nombre}</TableCell>
+                        <TableCell>{row.zona}</TableCell>
+                        <TableCell>{row.ruta}</TableCell>
+                        <TableCell>{row.dia_visita}</TableCell>
+                        <TableCell>{row.segmento}</TableCell>
+                    </TableRow>
+                ))}
+            </TableBody>
+        </Table>
+    );
+
+    // Renderizado del formulario
+    const renderVista1 = () => (
+        <Box sx={{ p: 3 }}>
+            <Typography variant="h5">Vista 1: Formulario Personalizado</Typography>
+
+            <FormControl fullWidth sx={{ mt: 3 }}>
+                <InputLabel>Seleccionar Zona</InputLabel>
+                <Select
+                    value={selectedZone}
+                    onChange={handleZoneChange}
+                    label="Seleccionar Zona"
+                >
+                    <MenuItem value="">Todas las Zonas</MenuItem>
+                    <MenuItem value="Zona 1">Zona 1</MenuItem>
+                    <MenuItem value="Zona 2">Zona 2</MenuItem>
+                    <MenuItem value="Zona 3">Zona 3</MenuItem>
+                </Select>
+            </FormControl>
+
+            {/* Mostrar la tabla con los datos filtrados */}
+            {data.length > 0 ? renderTable() : <Typography variant="body1" sx={{ mt: 2 }}>No hay datos disponibles</Typography>}
+        </Box>
+    );
+
+    /*
+     🔵 Vista 2: Mapa Personalizado de Google Maps
+    */
+    const renderVista2 = () => (
+        <Box sx={{ p: 3 }}>
+            <iframe
+                src="https://www.google.com/maps/d/embed?mid=16AT0b4cYTSNQQVQYHkQKC8Rp4Q1g2VE&ll=20.561320310882667,-100.38615969894488&z=15"
+                width="100%"
+                height="600px"
+                title="Mapa Personalizado"
+                style={{ border: 'none' }}
+                allowFullScreen
+            />
+        </Box>
+    );
+
+    /*
+     * 🎯 **Renderizar Vistas**
+     */
+    const renderView = () => {
+        switch (currentView) {
+            case 'default': return renderVistaPrincipal();
+            case 'view1': return renderVista2();
+            case 'view2': return renderVista1();
+            default: return <Typography variant="h6">Selecciona una vista para empezar</Typography>;
+        }
+    };
+
+    return (
+        <>
+            <Grid container spacing={2} justifyContent="center" sx={{ mb: 3 }}>
+                <Button onClick={() => setCurrentView('view1')}>Mapeo</Button>
+                <Button onClick={() => setCurrentView('view2')}>Informacion</Button>
+                <Button onClick={() => setCurrentView('default')}>Lugares de visita</Button>
+            </Grid>
+            {renderView()}
         </>
     );
 }

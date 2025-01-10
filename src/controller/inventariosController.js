@@ -220,47 +220,56 @@ ORDER BY u.ubi ASC
       error: error.message,
     });
   }
-};
-const updatePeacking = async (req, res) => {
-  const { id_ubi, code_prod, cant_stock, pasillo, lote, almacen } = req.body;
+};const updatePeacking = async (req, res) => {
+  const { id_ubi, code_prod, cant_stock, pasillo, lote, almacen, user_id, ubi } = req.body;
+  //console.log("Update Pick:", req.body);
 
-  // Validación de entrada: asegurarse de que `id_ubi` esté presente
-  if (!id_ubi) {
-    return res
-      .status(400)
-      .json({ success: false, message: "ID de ubicación es requerido." });
+  // Validación de entrada
+  if (!id_ubi || !user_id) {
+    return res.status(400).json({
+      success: false,
+      message: "ID de ubicación y user_id son requeridos.",
+    });
   }
 
   try {
-    // Realizar la actualización en la base de datos
+    // Actualizar la tabla principal
     const [result] = await pool.query(
       `UPDATE ubicaciones 
-       SET code_prod = ?,
-           cant_stock = ?,
-           lote = ?,
-           almacen = ?
+       SET code_prod = ?, cant_stock = ?, lote = ?, almacen = ?
        WHERE id_ubi = ?`,
       [code_prod, cant_stock, lote, almacen, id_ubi]
     );
 
-    // Verificar si la actualización afectó alguna fila
     if (result.affectedRows > 0) {
-      res.json({ success: true, message: "Actualización exitosa" });
+      // Insertar un registro en el historial de actualizaciones
+      await pool.query(
+        `INSERT INTO historial_pick 
+         (id_ubi, ubi, code_prod, cant_stock, lote, almacen, user_id) 
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [id_ubi, ubi || 'N/A', code_prod, cant_stock, lote, almacen, user_id]
+      );
+
+      return res.json({
+        success: true,
+        message: "Actualización exitosa y registrada en el historial.",
+      });
     } else {
-      res.status(404).json({
+      return res.status(404).json({
         success: false,
-        message: "No se encontró la ubicación para actualizar",
+        message: "No se encontró la ubicación para actualizar.",
       });
     }
   } catch (error) {
-    console.error("Error en la actualización de ubicación:", error);
-    res.status(500).json({
+    console.error("❌ Error en la actualización de ubicación:", error);
+    return res.status(500).json({
       success: false,
-      message: "Error en la actualización de ubicación",
+      message: "Error en la actualización de ubicación.",
       error: error.message,
     });
   }
 };
+
 
 const insertPeacking = async (req, res) => {
   console.log("Datos recibidos en el backend:", req.body); 
@@ -431,4 +440,4 @@ module.exports = {
   getUbicacionesImpares,
   getUbicacionesPares,
   insertNuevaUbicacion,
-};
+}; 

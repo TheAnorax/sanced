@@ -289,7 +289,7 @@ export default function Dashboard() {
                 ? theme.palette.grey[100]
                 : theme.palette.grey[900],
             flexGrow: 1,
-            height: "100vh",
+            height: "auto",
             overflow: "auto",
             marginTop: theme.spacing(8),
             transition: theme.transitions.create(["margin-left"], {

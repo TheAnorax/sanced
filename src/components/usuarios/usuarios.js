@@ -74,6 +74,10 @@ function Usuarios() {
   const [secciones, setSecciones] = useState([]);
   const { user } = useContext(UserContext); // Usuario logueado
   const [isEditMode, setIsEditMode] = useState(false); // Controla si el modal es para editar o crear
+  const [editModePermissions, setEditModePermissions] = useState(false); // Nuevo estado para activar/desactivar edición de permisos
+  const [editablePermissions, setEditablePermissions] = useState([]); // Estado para manejar permisos editables
+  const [inactivePermissions, setInactivePermissions] = useState([]); // Permisos inactivos
+
   const [userForm, setUserForm] = useState({
     email: "",
     name: "",
@@ -311,8 +315,39 @@ function Usuarios() {
 
   const handleOpenPermissionsModal = (usuario) => {
     setSelectedUser(usuario);
-    setUserPermissions(roleAccessMap[usuario.role] || []);
+    setUserPermissions(roleAccessMap[usuario.role] || []); // Permisos activos actuales
+    
+    // Permisos activos
+    setEditablePermissions(roleAccessMap[usuario.role] || []);
+    
+    // Permisos inactivos
+    const allPermissions = Object.keys(roleAccessMap).flatMap((role) => roleAccessMap[role]);
+    setInactivePermissions(allPermissions.filter((perm) => !editablePermissions.includes(perm)));
+  
+    setEditModePermissions(false); // Comenzar en modo vista
     setOpenPermissionsModal(true);
+  };
+  
+  const toggleEditablePermission = (section) => {
+    setEditablePermissions((prev) =>
+      prev.includes(section)
+        ? prev.filter((permiso) => permiso !== section) // Desactivar permiso
+        : [...prev, section] // Activar permiso
+    );
+  };
+
+  const saveEditablePermissions = async () => {
+    try {
+      await axios.put(
+        `http://192.168.3.27:3007/api/usuarios/usuarios/${selectedUser.id_usu}/permisos`,
+        { permisos: editablePermissions }
+      );
+      alert("Permisos actualizados correctamente");
+      setOpenPermissionsModal(false);
+    } catch (error) {
+      console.error("Error al actualizar permisos:", error);
+      alert("Error al actualizar permisos");
+    }
   };
 
   const handleClosePermissionsModal = () => {
@@ -677,17 +712,17 @@ function Usuarios() {
       </Table>
     </TableContainer>
     
-<Modal open={openPermissionsModal} onClose={handleClosePermissionsModal}>
+    <Modal open={openPermissionsModal} onClose={handleClosePermissionsModal}>
   <Box
     sx={{
       position: "absolute",
       top: "50%",
       left: "50%",
       transform: "translate(-50%, -50%)",
-      width: "90vw", // 90% del ancho de la ventana
-      maxWidth: "1200px", // Ancho máximo
-      maxHeight: "85vh", // Altura máxima
-      overflowY: "auto", // Habilita el desplazamiento si el contenido es demasiado grande
+      width: "90vw",
+      maxWidth: "1200px",
+      maxHeight: "85vh",
+      overflowY: "auto",
       bgcolor: "background.paper",
       boxShadow: 24,
       p: 4,
@@ -696,7 +731,7 @@ function Usuarios() {
   >
     {selectedUser && (
       <>
-        {/* Encabezado del Modal */}
+        {/* Encabezado */}
         <Typography
           variant="h4"
           gutterBottom
@@ -706,56 +741,136 @@ function Usuarios() {
         </Typography>
         <Divider sx={{ my: 2 }} />
 
-        {/* Lista de Permisos en Grid */}
-        {userPermissions.length > 0 ? (
+        {/* Botón para alternar entre Modo Vista y Edición */}
+        <Box sx={{ textAlign: "right", mb: 2 }}>
+          <Button
+            variant="contained"
+            color={editModePermissions ? "warning" : "primary"}
+            onClick={() => setEditModePermissions(!editModePermissions)}
+          >
+            {editModePermissions ? "Cancelar Edición" : "Editar Permisos"}
+          </Button>
+        </Box>
+
+        {/* MODO VISTA */}
+        {!editModePermissions ? (
           <Grid container spacing={2}>
             {userPermissions.map((seccion, index) => (
               <Grid item xs={12} sm={6} md={3} key={index}>
-                <Card
-                  variant="outlined"
-                  sx={{
-                    borderRadius: 2,
-                    boxShadow: 1,
-                    textAlign: "center",
-                    transition: "0.3s",
-                    "&:hover": {
-                      boxShadow: 4,
-                      transform: "scale(1.05)",
-                    },
-                  }}
-                >
+                <Card variant="outlined" sx={{ textAlign: "center" }}>
                   <CardHeader
                     title={seccion}
-                    titleTypographyProps={{ variant: "subtitle1", fontWeight: "bold" }}
                     sx={{
                       backgroundColor: "primary.light",
-                      color: "primary.contrastText",
+                      color: "white",
                       borderRadius: "8px 8px 0 0",
-                      textAlign: "center",
-                      p: 1,
                     }}
                   />
                   <CardContent>
                     <CheckCircleIcon color="success" sx={{ fontSize: 40 }} />
-                    <Typography variant="body2" sx={{ mt: 1 }}>
-                      Acceso Autorizado
-                    </Typography>
+                    <Typography>Acceso Autorizado</Typography>
                   </CardContent>
                 </Card>
               </Grid>
             ))}
           </Grid>
         ) : (
-          <Box sx={{ textAlign: "center", mt: 4 }}>
-            <HighlightOffIcon color="error" sx={{ fontSize: 50 }} />
-            <Typography variant="h6" color="textSecondary">
-              No hay secciones disponibles para este rol.
+          /* MODO EDICIÓN */
+          <>
+            <Typography variant="h6" sx={{ mb: 2 }}>
+              Permisos Activos
             </Typography>
-          </Box>
+            <Grid container spacing={2}>
+              {editablePermissions.map((seccion, index) => (
+                <Grid item xs={12} sm={6} md={3} key={index}>
+                  <Card
+                    variant="outlined"
+                    sx={{
+                      borderRadius: 2,
+                      textAlign: "center",
+                      boxShadow: 1,
+                      backgroundColor: "success.light",
+                    }}
+                  >
+                    <CardHeader
+                      title={seccion}
+                      sx={{
+                        backgroundColor: "success.dark",
+                        color: "white",
+                        borderRadius: "8px 8px 0 0",
+                      }}
+                    />
+                    <CardContent>
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={editablePermissions.includes(seccion)}
+                            onChange={() => toggleEditablePermission(seccion)}
+                          />
+                        }
+                        label="Habilitar"
+                      />
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
+
+            <Divider sx={{ my: 3 }} />
+
+            {/* Permisos Inactivos */}
+<Typography variant="h6" sx={{ mb: 2 }}>Permisos Inactivos</Typography>
+<Grid container spacing={2}>
+  {inactivePermissions.map((seccion, index) => (
+    <Grid item xs={12} sm={6} md={3} key={index}>
+      <Card
+        variant="outlined"
+        sx={{
+          borderRadius: 2,
+          textAlign: "center",
+          boxShadow: 1,
+          backgroundColor: "grey.300",
+        }}
+      >
+        <CardHeader
+          title={seccion}
+          sx={{
+            backgroundColor: "grey.500",
+            color: "white",
+            borderRadius: "8px 8px 0 0",
+          }}
+        />
+        <CardContent>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={editablePermissions.includes(seccion)}
+                onChange={() => toggleEditablePermission(seccion)}
+              />
+            }
+            label="Habilitar"
+          />
+        </CardContent>
+      </Card>
+    </Grid>
+  ))}
+</Grid>
+
+          </>
         )}
 
-        {/* Botón de Cerrar */}
+        {/* Botones de Acción */}
         <Box sx={{ mt: 4, textAlign: "right" }}>
+          {editModePermissions && (
+            <Button
+              variant="contained"
+              color="success"
+              onClick={saveEditablePermissions}
+              sx={{ mr: 2 }}
+            >
+              Guardar Permisos
+            </Button>
+          )}
           <Button
             variant="contained"
             color="secondary"
@@ -767,7 +882,10 @@ function Usuarios() {
       </>
     )}
   </Box>
-</Modal>;
+</Modal>
+
+
+
   </Box>
 )}
 

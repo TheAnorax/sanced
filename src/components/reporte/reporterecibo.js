@@ -5,7 +5,7 @@ import {
   TableBody,
   TableCell,
   TableContainer,
-  TableHead, 
+  TableHead,
   TableRow,
   Paper,
   Box,
@@ -17,6 +17,7 @@ import {
   Divider,
   Button,
   Input,
+  LinearProgress,
   TextField,
   Card,
   TablePagination,
@@ -82,7 +83,8 @@ function ReporteReciboCedis() {
 
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
-
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
   const formatFechaHora = (fecha) => {
     if (!fecha || isNaN(new Date(fecha).getTime()))
       return "Fecha no disponible";
@@ -244,9 +246,11 @@ function ReporteReciboCedis() {
       [oc]: !prevState[oc],
     }));
   };
+
+
   const handleFilesUpload = async () => {
     const formData = new FormData();
-
+  
     // Agregar archivos PDF al formData
     if (selectedFiles.cartaPorte)
       formData.append("pdf_1", selectedFiles.cartaPorte);
@@ -256,74 +260,117 @@ function ReporteReciboCedis() {
       formData.append("pdf_3", selectedFiles.pedimento);
     if (selectedFiles.referencia && Array.isArray(selectedFiles.referencia)) {
       selectedFiles.referencia.forEach((file) => {
-        formData.append("pdf_4", file); // Añadir cada archivo individualmente
+        formData.append("pdf_4", file);
       });
     } else if (selectedFiles.referencia) {
       formData.append("pdf_4", selectedFiles.referencia);
     }
- 
-
-    /////////
     if (selectedFiles.oe && Array.isArray(selectedFiles.oe)) {
       selectedFiles.oe.forEach((file) => {
-        formData.append("pdf_6", file); // Añadir cada archivo individualmente
+        formData.append("pdf_6", file);
       });
     } else if (selectedFiles.oe) {
       formData.append("pdf_6", selectedFiles.oe);
     }
-
-    //////
     if (selectedFiles.ordenCompra)
       formData.append("pdf_5", selectedFiles.ordenCompra);
-
-    // Verificar si al menos un archivo ha sido subido
+  
+    // Verificar si hay archivos para subir
     if (
       !selectedFiles.cartaPorte &&
       !selectedFiles.packingList &&
       !selectedFiles.pedimento &&
       !selectedFiles.referencia &&
-      !selectedFiles.ordenCompra && 
+      !selectedFiles.ordenCompra &&
       !selectedFiles.oe
     ) {
-      Swal.fire("Error", "Debes subir al menos un archivo.", "error");
+      await Swal.fire("Error", "Debes subir al menos un archivo.", "error");
       return;
     }
-
+  
     // Agregar datos adicionales al formData
-    formData.append("id_recibo", detalleData.id_recibo); // Asegúrate de que detalleData contiene id_recibo
-    formData.append("pedimento", detalleData.pedimento || ""); // Agregar pedimento si está disponible
-    formData.append("referencia", detalleData.referencia || ""); // Agregar factura si está disponible
-    formData.append("ordenCompra", detalleData.oc || ""); // Agregar orden de compra si está disponible
-    formData.append("oe", detalleData.oe || "");  
-
+    formData.append("id_recibo", detalleData.id_recibo);
+    formData.append("pedimento", detalleData.pedimento || "");
+    formData.append("referencia", detalleData.referencia || "");
+    formData.append("ordenCompra", detalleData.oc || "");
+    formData.append("oe", detalleData.oe || "");
+  
     try {
-      // Realizar la solicitud de subida con axios
+      setIsUploading(true); // Iniciar la barra de progreso
+      setUploadProgress(0); // Reiniciar progreso
+  
       const response = await axios.post(
         "http://192.168.3.27:3007/api/compras/compras/upload-pdfs",
         formData,
         {
           headers: { "Content-Type": "multipart/form-data" },
+          onUploadProgress: (progressEvent) => {
+            const progress = Math.round(
+              (progressEvent.loaded * 100) / progressEvent.total
+            );
+            setUploadProgress(progress);
+          },
         }
       );
-
+  
+      setIsUploading(false); // Detener la barra de progreso
+      setUploadProgress(100); // Asegurar que se vea completo
+  
+      // Cerrar modal antes de mostrar SweetAlert
+      setModalOpen(false);
+  
+      // Subida exitosa
       if (
-        response.data.message === "Recibo actualizado exitosamente" ||
-        response.data.message ===
+        response.data?.message === "Recibo actualizado exitosamente" ||
+        response.data?.message ===
           "Recibo agregado exitosamente desde recibo_compras"
       ) {
-        Swal.fire("Éxito", "Archivos subidos con éxito.", "success");
+        await Swal.fire({
+          title: "Éxito",
+          text: "Archivos subidos con éxito.",
+          icon: "success",
+          confirmButtonText: "Aceptar",
+        });
       } else {
-        Swal.fire(
-          "Error",
-          response.data.message || "Error al subir los archivos.",
-          "error"
-        );
+        await Swal.fire({
+          title: "Atención",
+          text: response.data?.message || "Error al subir los archivos.",
+          icon: "warning",
+          confirmButtonText: "Aceptar",
+        });
       }
+  
+      // Reabrir modal con datos actualizados
+      handleViewDetails(detalleData.id_recibo);
+      setModalOpen(true);
     } catch (error) {
       console.error("Error al subir archivos:", error);
-      Swal.fire("Error", "Hubo un problema al subir los archivos.", "error");
+      setIsUploading(false); // Detener la barra de progreso
+  
+      // Cerrar modal antes de mostrar SweetAlert
+      setModalOpen(false);
+  
+      await Swal.fire({
+        title: "Error",
+        text:
+          error.response?.data?.message ||
+          "Hubo un problema al subir los archivos. Inténtalo de nuevo.",
+        icon: "error",
+        confirmButtonText: "Aceptar",
+      });
+  
+      // Reabrir modal con datos actualizados
+      handleViewDetails(detalleData.id_recibo);
+      setModalOpen(true);
+    } finally {
+      setUploadProgress(0); // Reiniciar el progreso
     }
   };
+  
+
+  
+
+
   return (
     <Box sx={{ p: 4 }}>
       <Typography variant="h4" gutterBottom align="center">
@@ -749,36 +796,43 @@ function ReporteReciboCedis() {
                   sx={{ display: "flex", justifyContent: "space-between" }}
                 >
                   {/* Documento: Carta Porte */}
-                  <Grid item xs={2}>
+                  <Grid item xs={4}>
                     <Typography variant="h6" gutterBottom>
                       Carta Porte
                     </Typography>
                     {detalleData?.pdf_1 ? (
-                      <div>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 1,
+                        }}
+                      >
+                        {/* Botón principal */}
                         <Button
                           href={`http://192.168.3.27:3011/docs/${detalleData.pdf_1}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           variant="contained"
                           sx={{
-                            backgroundColor: "rgba(76, 175, 80, 0.5)", // Verde con transparencia
+                            backgroundColor: "rgba(76, 175, 80, 0.5)",
                             color: "white",
-                            width: "300px",
-                            justifyContent: "flex-start", // Alinea el contenido a la izquierda
-                            textAlign: "left", // Alinea el texto a la izquierda
+                            width: "100%",
+                            justifyContent: "flex-start",
+                            textAlign: "left",
                             "&:hover": {
-                              backgroundColor: "rgba(76, 175, 80, 0.8)", // Hover más oscuro
+                              backgroundColor: "rgba(76, 175, 80, 0.8)",
                             },
-                            marginBottom: "10px",
                           }}
                         >
                           {detalleData.pdf_1.split("-").slice(3).join("-")}
                         </Button>
+
+                        {/* Botón reemplazar */}
                         <Button
                           component="label"
                           variant="outlined"
                           startIcon={<CloudUploadIcon />}
-                          sx={{ mt: 1 }}
                         >
                           Reemplazar
                           <VisuallyHiddenInput
@@ -786,9 +840,16 @@ function ReporteReciboCedis() {
                             onChange={(e) => handleFilesChange(e, "cartaPorte")}
                           />
                         </Button>
-                      </div>
+                      </Box>
                     ) : (
-                      <>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 1,
+                        }}
+                      >
+                        {/* Botón seleccionar */}
                         <Button
                           component="label"
                           variant="contained"
@@ -805,17 +866,17 @@ function ReporteReciboCedis() {
                             {selectedFiles.cartaPorte.name}
                           </Typography>
                         )}
-                      </>
+                      </Box>
                     )}
                   </Grid>
 
                   {/* Documento: Packing List */}
-                  <Grid item xs={2}>
+                  <Grid item xs={4}>
                     <Typography variant="h6" gutterBottom>
                       Packing List
                     </Typography>
                     {detalleData?.pdf_2 ? (
-                      <div>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                         {detalleData.pdf_2.split(",").map((pdfName, index) => (
                           <Button
                             key={index}
@@ -825,14 +886,13 @@ function ReporteReciboCedis() {
                             variant="contained"
                             sx={{
                               backgroundColor: "rgba(76, 175, 80, 0.5)",
-                              width: "300px",
-                              justifyContent: "flex-start", // Alinea el contenido a la izquierda
-                              textAlign: "left", // Alinea el texto a la izquierda
                               color: "white",
+                              width: "100%",
+                              justifyContent: "flex-start",
+                              textAlign: "left",
                               "&:hover": {
                                 backgroundColor: "rgba(76, 175, 80, 0.8)",
                               },
-                              marginBottom: "10px",
                             }}
                           >
                             {pdfName.trim().split("-").slice(3).join("-")}
@@ -842,7 +902,7 @@ function ReporteReciboCedis() {
                           component="label"
                           variant="outlined"
                           startIcon={<CloudUploadIcon />}
-                          sx={{ mt: 1 }}
+                        
                         >
                           Reemplazar
                           <VisuallyHiddenInput
@@ -853,9 +913,9 @@ function ReporteReciboCedis() {
                             }
                           />
                         </Button>
-                      </div>
+                      </Box>
                     ) : (
-                      <>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                         <Button
                           component="label"
                           variant="contained"
@@ -874,17 +934,23 @@ function ReporteReciboCedis() {
                             {selectedFiles.packingList.name}
                           </Typography>
                         )}
-                      </>
+                      </Box>
                     )}
                   </Grid>
 
                   {/* Documento: Pedimento */}
-                  <Grid item xs={2}>
+                  <Grid item xs={4}>
                     <Typography variant="h6" gutterBottom>
                       Pedimento
                     </Typography>
                     {detalleData?.pdf_3 ? (
-                      <div>
+                        <Box
+                        sx={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 1,
+                        }}
+                      >
                         <Button
                           href={`http://192.168.3.27:3011/docs/${detalleData.pdf_3}`}
                           target="_blank"
@@ -893,13 +959,12 @@ function ReporteReciboCedis() {
                           sx={{
                             backgroundColor: "rgba(76, 175, 80, 0.5)",
                             color: "white",
-                            width: "300px",
-                            justifyContent: "flex-start", // Alinea el contenido a la izquierda
+                            width: "100%",
+                            justifyContent: "flex-start",
                             textAlign: "left",
                             "&:hover": {
                               backgroundColor: "rgba(76, 175, 80, 0.8)",
                             },
-                            marginBottom: "10px",
                           }}
                         >
                           {detalleData.pdf_3.split("-").slice(3).join("-")}
@@ -916,9 +981,15 @@ function ReporteReciboCedis() {
                             onChange={(e) => handleFilesChange(e, "pedimento")}
                           />
                         </Button>
-                      </div>
+                      </Box>
                     ) : (
-                      <>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 1,
+                        }}
+                      >
                         <Button
                           component="label"
                           variant="contained"
@@ -935,17 +1006,23 @@ function ReporteReciboCedis() {
                             {selectedFiles.pedimento.name}
                           </Typography>
                         )}
-                      </>
+                      </Box>
                     )}
                   </Grid>
 
                   {/* Documento: Factura */}
-                  <Grid item xs={2}>
+                  <Grid item xs={4}>
                     <Typography variant="h6" gutterBottom>
                       Factura
                     </Typography>
                     {detalleData?.pdf_4 ? (
-                      <div>
+                      <Box
+                      sx={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 1,
+                      }}
+                    >
                         {detalleData.pdf_4.split(",").map((pdfName, index) => (
                           <Button
                             key={index}
@@ -956,13 +1033,12 @@ function ReporteReciboCedis() {
                             sx={{
                               backgroundColor: "rgba(76, 175, 80, 0.5)",
                               color: "white",
-                              width: "300px",
-                              justifyContent: "flex-start", // Alinea el contenido a la izquierda
-                              textAlign: "left", // Alinea el texto a la izquierda
+                              width: "100%",
+                              justifyContent: "flex-start",
+                              textAlign: "left",
                               "&:hover": {
                                 backgroundColor: "rgba(76, 175, 80, 0.8)",
                               },
-                              marginBottom: "10px",
                             }}
                           >
                             {pdfName.trim().split("-").slice(3).join("-")}
@@ -983,9 +1059,15 @@ function ReporteReciboCedis() {
                             }
                           />
                         </Button>
-                      </div>
+                      </Box>
                     ) : (
-                      <>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 1,
+                        }}
+                      >
                         <Button
                           component="label"
                           variant="contained"
@@ -995,7 +1077,7 @@ function ReporteReciboCedis() {
                           <VisuallyHiddenInput
                             type="file"
                             multiple // Permitir seleccionar múltiples archivos
-                             onChange={(e) =>
+                            onChange={(e) =>
                               handleFilesChange(e, "referencia", true)
                             }
                           />
@@ -1007,79 +1089,99 @@ function ReporteReciboCedis() {
                               .join(", ")}
                           </Typography>
                         )}
-                      </>
+                      </Box>
                     )}
                   </Grid>
 
                   {/* Documento: Orden de Compra */}
-                  <Grid item xs={2}>
+                  <Grid item xs={4}>
                     <Typography variant="h6" gutterBottom>
                       Orden de Compra
                     </Typography>
                     {detalleData?.pdf_5 ? (
-                <div>
-                  <Button
-                    href={`http://192.168.3.27:3011/docs/${detalleData.pdf_5}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    variant="contained"
-                    sx={{
-                      backgroundColor: "rgba(76, 175, 80, 0.5)",
-                      color: "white",
-                      width: "300px",
-                      justifyContent: "flex-start", // Alinea el contenido a la izquierda
-                      textAlign: "left", // Alinea el texto a la izquierda
-                      "&:hover": {
-                        backgroundColor: "rgba(76, 175, 80, 0.8)",
-                      },
-                      marginBottom: "10px",
-                    }}
-                  >
-                    {detalleData.pdf_5.split("-").slice(3).join("-")}
-                  </Button>
-                 
-                    <Button
-                      component="label"
-                      variant="outlined"
-                      startIcon={<CloudUploadIcon />}
-                      sx={{ mt: 1 }}
+                      <Box
+                      sx={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 1,
+                      }}
                     >
-                      Reemplazar
-                      <VisuallyHiddenInput
-                        type="file"
-                        onChange={(e) => handleFilesChange(e, "ordenCompra")}
-                      />
-                    </Button>
-                 
-                </div>
-              ) : (
-                      <>
-                    <Button
-                      component="label"
-                      variant="contained"
-                      startIcon={<CloudUploadIcon />}
-                    >
-                      Seleccionar Documento
-                      <VisuallyHiddenInput
-                        type="file"
-                        onChange={(e) => handleFilesChange(e, "ordenCompra")}
-                      />
-                    </Button>
-                  {selectedFiles.ordenCompra && (
-                    <Typography sx={{ mt: 1 }}>
-                      {selectedFiles.ordenCompra.name}
-                    </Typography>
-                  )}
-                      </>
+                        <Button
+                          href={`http://192.168.3.27:3011/docs/${detalleData.pdf_5}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          variant="contained"
+                          sx={{
+                            backgroundColor: "rgba(76, 175, 80, 0.5)",
+                            color: "white",
+                            width: "100%",
+                            justifyContent: "flex-start",
+                            textAlign: "left",
+                            "&:hover": {
+                              backgroundColor: "rgba(76, 175, 80, 0.8)",
+                            },
+                          }}
+                        >
+                          {detalleData.pdf_5.split("-").slice(3).join("-")}
+                        </Button>
+
+                        <Button
+                          component="label"
+                          variant="outlined"
+                          startIcon={<CloudUploadIcon />}
+                          sx={{ mt: 1 }}
+                        >
+                          Reemplazar
+                          <VisuallyHiddenInput
+                            type="file"
+                            onChange={(e) =>
+                              handleFilesChange(e, "ordenCompra")
+                            }
+                          />
+                        </Button>
+                      </Box>
+                    ) : (
+                      <Box
+                        sx={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 1,
+                        }}
+                      >
+                        <Button
+                          component="label"
+                          variant="contained"
+                          startIcon={<CloudUploadIcon />}
+                        >
+                          Seleccionar Documento
+                          <VisuallyHiddenInput
+                            type="file"
+                            onChange={(e) =>
+                              handleFilesChange(e, "ordenCompra")
+                            }
+                          />
+                        </Button>
+                        {selectedFiles.ordenCompra && (
+                          <Typography sx={{ mt: 1 }}>
+                            {selectedFiles.ordenCompra.name}
+                          </Typography>
+                        )}
+                      </Box>
                     )}
                   </Grid>
                   {/* Documento: Orden de entrada  */}
-                  <Grid item xs={2}>
+                  <Grid item xs={4}>
                     <Typography variant="h6" gutterBottom>
                       Orden de entrada
                     </Typography>
                     {detalleData?.pdf_6 ? (
-                      <div>
+                      <Box
+                      sx={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 1,
+                      }}
+                    >
                         {detalleData.pdf_6.split(",").map((pdfName, index) => (
                           <Button
                             key={index}
@@ -1090,13 +1192,12 @@ function ReporteReciboCedis() {
                             sx={{
                               backgroundColor: "rgba(76, 175, 80, 0.5)",
                               color: "white",
-                              width: "300px",
-                              justifyContent: "flex-start", // Alinea el contenido a la izquierda
-                              textAlign: "left", // Alinea el texto a la izquierda
+                              width: "100%",
+                              justifyContent: "flex-start",
+                              textAlign: "left",
                               "&:hover": {
                                 backgroundColor: "rgba(76, 175, 80, 0.8)",
                               },
-                              marginBottom: "10px",
                             }}
                           >
                             {pdfName.trim().split("-").slice(3).join("-")}
@@ -1112,14 +1213,18 @@ function ReporteReciboCedis() {
                           <VisuallyHiddenInput
                             type="file"
                             multiple // Permitir seleccionar múltiples archivos
-                            onChange={(e) =>
-                              handleFilesChange(e, "oe", true)
-                            }
+                            onChange={(e) => handleFilesChange(e, "oe", true)}
                           />
                         </Button>
-                      </div>
+                      </Box>
                     ) : (
-                      <>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 1,
+                        }}
+                      >
                         <Button
                           component="label"
                           variant="contained"
@@ -1129,9 +1234,7 @@ function ReporteReciboCedis() {
                           <VisuallyHiddenInput
                             type="file"
                             multiple // Permitir seleccionar múltiples archivos
-                            onChange={(e) =>
-                              handleFilesChange(e, "oe", true)
-                            }
+                            onChange={(e) => handleFilesChange(e, "oe", true)}
                           />
                         </Button>
                         {selectedFiles.oe && (
@@ -1141,20 +1244,32 @@ function ReporteReciboCedis() {
                               .join(", ")}
                           </Typography>
                         )}
-                      </>
+                      </Box>
                     )}
                   </Grid>
                   {/* Botón para subir todos los archivos */}
                   <Grid item xs={12} sx={{ textAlign: "center", mt: 2 }}>
-                    <Button
-                      variant="contained"
-                      color="primary"
-                      onClick={handleFilesUpload}
-                      startIcon={<UploadFileIcon />}
-                    >
-                      Subir Archivos
-                    </Button>
-                  </Grid>
+                  {isUploading && (
+  <Box sx={{ width: '100%', mb: 2 }}>
+    <Typography variant="body2" color="textSecondary">
+      {`Progreso: ${uploadProgress}%`}
+    </Typography>
+    <Box sx={{ width: '100%' }}>
+      <LinearProgress variant="determinate" value={uploadProgress} />
+    </Box>
+  </Box>
+)}
+
+  <Button
+    variant="contained"
+    color="primary"
+    onClick={handleFilesUpload}
+    startIcon={<UploadFileIcon />}
+    disabled={isUploading}
+  >
+    {isUploading ? "Subiendo..." : "Subir Archivos"}
+  </Button>
+</Grid>
                 </Grid>
               </Card>
 

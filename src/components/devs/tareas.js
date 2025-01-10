@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import axios from "axios";
 import {
   Table,
@@ -19,6 +19,7 @@ import {
   IconButton,
 } from "@mui/material";
 import { Delete, PlayArrow, CheckCircle } from "@mui/icons-material";
+import { UserContext } from "../context/UserContext";
 
 function TareaDev() {
   const [tareas, setTareas] = useState([]);
@@ -32,6 +33,10 @@ function TareaDev() {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
   const [modalOpen, setModalOpen] = useState(false);
+  const [tareaSeleccionada, setTareaSeleccionada] = useState(null);
+  const [modalDetallesOpen, setModalDetallesOpen] = useState(false);
+  const { user } = useContext(UserContext);
+  const [usuarios, setUsuarios] = useState([]);
 
   // Fetch tasks from API
   useEffect(() => {
@@ -50,21 +55,68 @@ function TareaDev() {
     fetchTareas();
   }, []);
 
-  // Create a new task
+  useEffect(() => {
+    const fetchUsuarios = async () => {
+      try {
+        const response = await axios.get("http://192.168.3.27:3007/api/usuarios/usuarios");
+        console.log("Datos de la API:", response.data); // Para verificar la estructura
+  
+        // Busca el grupo con turno === 4
+        const turno4 = response.data.find((grupo) => grupo.turno === 4);
+        const usuariosTurno4 = turno4 ? turno4.usuarios : []; // Si no hay usuarios, retorna un arreglo vacío
+  
+        console.log("Usuarios con turno 4:", usuariosTurno4); // Verifica que se carguen los usuarios correctamente
+        setUsuarios(usuariosTurno4);
+      } catch (error) {
+        console.error("Error al cargar usuarios:", error);
+      }
+    };
+  
+    fetchUsuarios();
+  }, []);
+  
   const handleCrearTarea = async () => {
     try {
+      const tareaConAsignador = {
+        ...nuevaTarea,
+        asignador: user?.id_usu,
+      };
+  
+      console.log("Tarea que se enviará al backend:", tareaConAsignador);
+  
       const response = await axios.post(
         "http://192.168.3.27:3007/api/devs/tareas",
-        nuevaTarea
+        tareaConAsignador
       );
+  
       setTareas([...tareas, response.data]);
-      setNuevaTarea({ titulo: "", descripcion: "", asignado_a: "" });
+  
+      setNuevaTarea({
+        titulo: "",
+        area: "",
+        descripcion: "",
+        asignado_a: "",
+        asignador: "",
+        fecha_inicio: "",
+        fecha_fin: "",
+      });
+  
       setAlerta("Tarea creada correctamente");
       setModalOpen(false);
     } catch (error) {
       console.error("Error al crear tarea:", error);
       setAlerta("Error al crear la tarea");
     }
+  };
+  
+
+  const formatFecha = (fecha) => {
+    if (!fecha) return "N/A";
+    return new Date(fecha).toLocaleDateString("es-MX", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
   };
 
   // Delete a task
@@ -81,12 +133,19 @@ function TareaDev() {
 
   // Change the task state (start or finish)
   const handleCambiarEstado = async (id, estado) => {
+    const tarea = tareas.find((t) => t.id === id);
+    if (!tarea) return;
+  
     try {
       await axios.put(`http://192.168.3.27:3007/api/devs/tareas/${id}`, {
-        estado,
+        ...tarea, // Enviar todos los datos actuales de la tarea
+        estado, // Actualizar únicamente el estado
       });
+  
       setTareas(
-        tareas.map((tarea) => (tarea.id === id ? { ...tarea, estado } : tarea))
+        tareas.map((tarea) =>
+          tarea.id === id ? { ...tarea, estado } : tarea
+        )
       );
       setAlerta("Estado de la tarea actualizado");
     } catch (error) {
@@ -94,10 +153,20 @@ function TareaDev() {
       setAlerta("Error al actualizar el estado");
     }
   };
+  
+  
 
   // Open and close modal for new task
   const handleModalOpen = () => setModalOpen(true);
   const handleModalClose = () => setModalOpen(false);
+  const handleVerDetalles = (tarea) => {
+    setTareaSeleccionada(tarea);
+    setModalDetallesOpen(true);
+  };
+  const handleCerrarDetalles = () => {
+    setTareaSeleccionada(null);
+    setModalDetallesOpen(false);
+  };
 
   return (
     <Container sx={{ mt: 4 }}>
@@ -140,24 +209,34 @@ function TareaDev() {
           </Box>
 
           {/* Table of tasks */}
-          <TableContainer component={Paper} sx={{ boxShadow: 5 }}>
+          <TableContainer
+            component={Paper}
+            sx={{ boxShadow: 5, height: "auto" }}
+          >
             <Table>
               <TableHead sx={{ backgroundColor: "#f4f4f4" }}>
                 <TableRow>
                   <TableCell>
+                    <strong>Área</strong>
+                  </TableCell>
+                  <TableCell>
                     <strong>Título</strong>
                   </TableCell>
                   <TableCell>
-                    <strong>Descripción</strong>
+                    <strong>Responsable</strong>
                   </TableCell>
                   <TableCell>
-                    <strong>Estado</strong>
+                    <strong>Fecha Inicio</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>Fecha Fin</strong>
                   </TableCell>
                   <TableCell>
                     <strong>Acciones</strong>
                   </TableCell>
                 </TableRow>
               </TableHead>
+
               <TableBody>
                 {tareas
                   .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
@@ -166,23 +245,11 @@ function TareaDev() {
                       key={tarea.id}
                       sx={{ "&:hover": { backgroundColor: "#e1f5fe" } }}
                     >
+                      <TableCell>{tarea.area}</TableCell>
                       <TableCell>{tarea.titulo}</TableCell>
-                      <TableCell>{tarea.descripcion}</TableCell>
-                      <TableCell>
-                        <Box
-                          sx={{
-                            backgroundColor:
-                              tarea.estado === "Finalizado"
-                                ? "green"
-                                : "orange",
-                            color: "white",
-                            borderRadius: "8px",
-                            padding: "2px 8px",
-                          }}
-                        >
-                          {tarea.estado}
-                        </Box>
-                      </TableCell>
+                      <TableCell>{tarea.asignado}</TableCell>
+                      <TableCell>{formatFecha(tarea.fecha_inicio)}</TableCell>
+                      <TableCell>{formatFecha(tarea.fecha_fin)}</TableCell>
                       <TableCell>
                         <IconButton
                           color="success"
@@ -206,6 +273,14 @@ function TareaDev() {
                         >
                           <Delete />
                         </IconButton>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          onClick={() => handleVerDetalles(tarea)}
+                          sx={{ ml: 1 }}
+                        >
+                          Ver Detalles
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -263,6 +338,15 @@ function TareaDev() {
               />
 
               <TextField
+                label="Área"
+                fullWidth
+                value={nuevaTarea.area}
+                onChange={(e) =>
+                  setNuevaTarea({ ...nuevaTarea, area: e.target.value })
+                }
+              />
+
+              <TextField
                 label="Descripción"
                 fullWidth
                 multiline
@@ -274,16 +358,58 @@ function TareaDev() {
                 sx={{ mb: 2 }}
               />
 
+<TextField
+  select
+  label="Asignado a"
+  fullWidth
+  value={nuevaTarea.asignado_a}
+  onChange={(e) => {
+    setNuevaTarea({ ...nuevaTarea, asignado_a: e.target.value });
+    console.log("Usuario seleccionado:", e.target.value); // Verifica el id_usu del usuario
+  }}
+  SelectProps={{
+    native: true,
+  }}
+  sx={{ mb: 2 }}
+>
+  <option value="" disabled>
+    Selecciona un usuario
+  </option>
+  {usuarios.length === 0 ? (
+    <option value="" disabled>
+      No hay usuarios disponibles para el turno 4
+    </option>
+  ) : (
+    usuarios.map((usuario) => (
+      <option key={usuario.id_usu} value={usuario.id_usu}>
+        {usuario.name}
+      </option>
+    ))
+  )}
+</TextField>
+
+
               <TextField
-                label="Asignado a"
+                label="Fecha de Inicio"
                 fullWidth
-                value={nuevaTarea.asignado_a}
+                type="date"
+                value={nuevaTarea.fecha_inicio}
                 onChange={(e) =>
-                  setNuevaTarea({ ...nuevaTarea, asignado_a: e.target.value })
+                  setNuevaTarea({ ...nuevaTarea, fecha_inicio: e.target.value })
                 }
-                sx={{ mb: 2 }}
+                InputLabelProps={{ shrink: true }}
               />
 
+              <TextField
+                label="Fecha de Fin"
+                fullWidth
+                type="date"
+                value={nuevaTarea.fecha_fin}
+                onChange={(e) =>
+                  setNuevaTarea({ ...nuevaTarea, fecha_fin: e.target.value })
+                }
+                InputLabelProps={{ shrink: true }}
+              />
               <Box
                 sx={{
                   display: "flex",
@@ -307,6 +433,78 @@ function TareaDev() {
                   Cancelar
                 </Button>
               </Box>
+            </Box>
+          </Modal>
+          <Modal
+            open={modalDetallesOpen}
+            onClose={handleCerrarDetalles}
+            aria-labelledby="modal-tarea-detalles"
+            aria-describedby="modal-detalles-descripcion"
+          >
+            <Box
+              sx={{
+                position: "absolute",
+                top: "50%",
+                left: "50%",
+                transform: "translate(-50%, -50%)",
+                width: 400,
+                bgcolor: "background.paper",
+                boxShadow: 24,
+                p: 4,
+                borderRadius: "16px",
+              }}
+            >
+              <Typography
+                id="modal-tarea-detalles"
+                variant="h6"
+                component="h2"
+                gutterBottom
+              >
+                Detalles de la Tarea
+              </Typography>
+              {tareaSeleccionada ? (
+                <>
+                  <Typography>
+                    <strong>Área:</strong> {tareaSeleccionada.area || "N/A"}
+                  </Typography>
+                  <Typography>
+                    <strong>Título:</strong> {tareaSeleccionada.titulo}
+                  </Typography>
+                  <Typography>
+                    <strong>Descripción:</strong>{" "}
+                    {tareaSeleccionada.descripcion}
+                  </Typography>
+                  <Typography>
+                    <strong>Responsable:</strong> {tareaSeleccionada.asignado}
+                  </Typography>
+                  <Typography>
+                    <strong>Estado:</strong> {tareaSeleccionada.estado}
+                  </Typography>
+                  <Typography>
+                    <strong>Fecha de Inicio:</strong>{" "}
+                    {formatFecha(tareaSeleccionada.fecha_inicio)}
+                  </Typography>
+                  <Typography>
+                    <strong>Fecha de Fin:</strong>{" "}
+                    {formatFecha(tareaSeleccionada.fecha_fin)}
+                  </Typography>
+                  <Box
+                    sx={{ mt: 3, display: "flex", justifyContent: "flex-end" }}
+                  >
+                    <Button
+                      variant="contained"
+                      onClick={handleCerrarDetalles}
+                      sx={{ borderRadius: "12px" }}
+                    >
+                      Cerrar
+                    </Button>
+                  </Box>
+                </>
+              ) : (
+                <Typography>
+                  No se encontraron detalles para esta tarea.
+                </Typography>
+              )}
             </Box>
           </Modal>
         </>

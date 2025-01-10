@@ -138,12 +138,12 @@ export const mainListItems = (user) => {
       text: "Embarcando",
     },
 
-    {
-      role: ["Admin", "Control"],
-      path: "/dashboard/plan",
-      icon: <ViewQuiltIcon />,
-      text: "Plan",
-    },
+    // {
+    //   role: ["Admin"],
+    //   path: "/dashboard/plan",
+    //   icon: <ViewQuiltIcon />,
+    //   text: "Plan",
+    // },
     {
       role: ["Admin", "Control", "Embar", "Master", "Paquet"],
       path: "/dashboard/bahias",
@@ -175,7 +175,7 @@ export const mainListItems = (user) => {
       text: "Calidad ",
     },
     {
-      role: ["Admin", "INV", "MONTA6", "Master", "Control", "Audi", "ECOMERCE"],
+      role: ["Admin", "INV", "MONTA6", "Master", "Control", "Audi", "ECOMERCE" ,"Recibo"],
       path: "/dashboard/inventarios",
       icon: <InventoryIcon />,
       text: "Inventarios ",

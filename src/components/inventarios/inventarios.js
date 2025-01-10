@@ -205,6 +205,7 @@ function InventarioAdmin() {
       );
       return;
     }
+     
 
     Swal.fire({
       title: "¿Estás seguro?",
@@ -779,7 +780,7 @@ function InventarioAdmin() {
     } finally {
       setLoading(false);
     }
-  };
+  }; 
 
   const fetchSegData = async () => {
     setLoading(true);
@@ -804,7 +805,7 @@ function InventarioAdmin() {
         setDepSeg(list);
       } else {
         setDepSeg([]);
-        setError("No se encontraron datos.");
+        setError("No se encontraron datos."); 
       }
     } catch (err) {
       console.error("Error fetching Seg data:", err);
@@ -1061,64 +1062,74 @@ function InventarioAdmin() {
   // Asegúrate de importar SweetAlert2 o MySwal de la manera adecuada en tu proyecto.
 
   const handleSaveChanges = async () => {
-    // Cierra el modal antes de abrir SweetAlert
-    handleCloseEditModal();
+  // Cierra el modal antes de abrir SweetAlert
+  handleCloseEditModal();
 
-    // Mostrar un diálogo de confirmación antes de guardar
-    const confirmSave = await MySwal.fire({
-      title: "¿Guardar cambios?",
-      text: "¿Estás seguro de que deseas actualizar esta información?",
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#3085d6",
-      cancelButtonColor: "#d33",
-      confirmButtonText: "Sí, guardar",
-      cancelButtonText: "Cancelar",
-      customClass: {
-        popup: "swal2-z-index-higher",
-      },
-    });
+  // Mostrar un diálogo de confirmación antes de guardar
+  const confirmSave = await MySwal.fire({
+    title: "¿Guardar cambios?",
+    text: "¿Estás seguro de que deseas actualizar esta información?",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#3085d6",
+    cancelButtonColor: "#d33",
+    confirmButtonText: "Sí, guardar",
+    cancelButtonText: "Cancelar",
+    customClass: {
+      popup: "swal2-z-index-higher",
+    },
+  });
 
-    if (confirmSave.isConfirmed) {
-      try {
-        // Realiza la solicitud PUT para actualizar los datos
-        await axios.put(
-          `http://192.168.3.27:3007/api/inventarios/inventarios/updatePeacking`,
-          {
-            id_ubi: selectedDato.id_ubi,
-            ...editedData,
-          }
-        );
+  if (confirmSave.isConfirmed) {
+    try {
+      // Imprimir los datos que se enviarán
+      console.log("🔄 Datos que se enviarán a la API:");
+      console.log("ID de Ubicación:", selectedDato.id_ubi);
+      console.log("Datos editados:", editedData);
+      console.log("ID de Usuario:", user.id_usu); // Nuevo log
 
-        // Actualizar la tabla localmente
-        const updatedData = paginatedData.map((dato) =>
-          dato.id_ubi === selectedDato.id_ubi
-            ? { ...dato, ...editedData }
-            : dato
-        );
-        setPaginatedData(updatedData); // Actualiza los datos en la tabla
+      // Realiza la solicitud PUT para actualizar los datos
+      await axios.put(
+        `http://192.168.3.27:3007/api/inventarios/inventarios/updatePeacking`,
+        {
+          id_ubi: selectedDato.id_ubi,
+          ...editedData,
+          user_id: user.id_usu,
+        }
+      );
 
-        // Muestra un mensaje de éxito
-        MySwal.fire(
-          "Actualizado",
-          "Los datos han sido actualizados exitosamente.",
-          "success"
-        );
-      } catch (error) {
-        console.error("Error al actualizar los datos:", error);
+      // Actualizar la tabla localmente
+      const updatedData = paginatedData.map((dato) =>
+        dato.id_ubi === selectedDato.id_ubi
+          ? { ...dato, ...editedData }
+          : dato
+      );
+      console.log("✅ Datos actualizados localmente:", updatedData);
 
-        // Muestra un mensaje de error si la actualización falla
-        MySwal.fire(
-          "Error",
-          "Hubo un problema actualizando los datos.",
-          "error"
-        );
-      }
-    } else {
-      // Si el usuario cancela, reabre el modal
-      setEditModalOpen(true);
+      setPaginatedData(updatedData); // Actualiza los datos en la tabla
+
+      // Muestra un mensaje de éxito
+      MySwal.fire(
+        "Actualizado",
+        "Los datos han sido actualizados exitosamente.",
+        "success"
+      );
+    } catch (error) {
+      console.error("❌ Error al actualizar los datos:", error);
+
+      // Muestra un mensaje de error si la actualización falla
+      MySwal.fire(
+        "Error",
+        "Hubo un problema actualizando los datos.",
+        "error"
+      );
     }
-  };
+  } else {
+    // Si el usuario cancela, reabre el modal
+    setEditModalOpen(true);
+  }
+};
+
 
   const handleDelete = async (id_ubi) => {
     console.log("Eliminando producto con 'id_ubi':", id_ubi); // Verifica que estamos recibiendo el id_ubi correctamente

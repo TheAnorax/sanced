@@ -499,6 +499,9 @@ function Insumos() {
 
       setSelectedInsumo(data);
       setOpen(true);
+
+      // Mostrar los datos del insumo al abrir el modal
+      console.log("Datos del insumo al abrir el modal:", data);
     } catch (error) {
       console.error("Error fetching insumo details:", error);
     }
@@ -544,26 +547,75 @@ function Insumos() {
   };
 
   const handleConsumeInsumo = async () => {
-    const isAnyFieldEmpty = Object.values(consumeData).some((value) => {
-      return typeof value === "string" ? value.trim() === "" : value === "";
-    });
+    if (!selectedInsumo) {
+      console.error("No se ha seleccionado un insumo.");
+      setAlertMessage("No se ha seleccionado un insumo.");
+      setAlertOpen(true);
+      return; // No continúes si no hay insumo seleccionado
+    }
 
-    if (isAnyFieldEmpty) {
-      setAlertMessage("Por favor, completa todos los campos.");
+    const inventario = Number(selectedInsumo.inv); // Convierte el inventario a un número
+    const cantidadReducida = Number(consumeData.cantidad_reducida); // Convierte la cantidad reducida a un número
+
+    console.log("Inventario disponible:", inventario);
+    console.log("Cantidad reducida:", cantidadReducida);
+
+    if (isNaN(inventario) || isNaN(cantidadReducida)) {
+      console.error("Inventario o cantidad reducida no válidos.");
+      setAlertMessage("Inventario o cantidad reducida no válidos.");
       setAlertOpen(true);
       return;
     }
 
+    // Verificamos si la cantidad a reducir no excede el inventario disponible
+    if (cantidadReducida > inventario) {
+      console.error("La cantidad a reducir excede el inventario disponible.");
+      setAlertMessage("La cantidad a reducir excede el inventario disponible.");
+      setAlertOpen(true);
+      return;
+    }
+
+    // Si la validación es exitosa, proceder con la actualización del inventario
     try {
       const response = await axios.post(
         "http://192.168.3.27:3007/insumo/updateinventario",
         consumeData
       );
-      fetchInsumos();
-      handleConsumeFormClose();
+
+      if (response.data.error) {
+        console.error(
+          "Error en la respuesta del servidor:",
+          response.data.message
+        );
+        setAlertMessage(response.data.message);
+        setAlertOpen(true);
+      } else {
+        console.log("Reducción exitosa en el servidor.");
+
+        // Recargar los insumos para reflejar la reducción
+        fetchInsumos(); // Refresca la lista de insumos
+
+        // Opcional: puedes actualizar el estado local directamente si es necesario
+        setInsumos((prevInsumos) =>
+          prevInsumos.map((insumo) =>
+            insumo.id_codigo === selectedInsumo.id_codigo
+              ? { ...insumo, inv: insumo.inv - cantidadReducida }
+              : insumo
+          )
+        );
+
+        handleConsumeFormClose(); // Cierra el formulario de consumo
+      }
     } catch (error) {
-      console.error("Error consuming insumo:", error);
+      console.error("Error al consumir insumo:", error);
+      setAlertMessage("Error al consumir insumo.");
+      setAlertOpen(true);
     }
+
+    console.log(
+      "Inventario después de reducción:",
+      inventario - cantidadReducida
+    );
   };
 
   const handleUpdate = async () => {
@@ -679,12 +731,15 @@ function Insumos() {
   };
 
   const handleConsumeFormOpen = (insumo) => {
+    console.log("Insumo seleccionado:", insumo); // Agrega un log para verificar los datos
+
     setConsumeData({
       ...consumeData,
       codigopropuesto: insumo.id_codigo,
       responsable_salida: user.id_usu,
     });
 
+    setSelectedInsumo(insumo); // Asegúrate de que este estado esté actualizado
     setIngresoData({
       ...ingresoData,
       codigopropuesto: insumo.id_codigo,
@@ -778,19 +833,27 @@ function Insumos() {
       width: 150,
       renderCell: (params) => (
         <Box display="flex" gap={1}>
-          <IconButton
-            sx={{ color: "#51acf8" }}
-            onClick={() => handleView(params.row)}
-          >
-            <EditIcon />
-          </IconButton>
+          {(user?.role === "Admin" ||
+            user?.role === "Master" ||
+            user?.role === "INV") && (
+            <IconButton
+              sx={{ color: "#51acf8" }}
+              onClick={() => handleView(params.row)}
+            >
+              <EditIcon />
+            </IconButton>
+          )}
 
-          <IconButton
-            sx={{ color: "black" }}
-            onClick={() => handleConsumeFormOpen(params.row)}
-          >
-            <ExposureIcon />
-          </IconButton>
+          {(user?.role === "Admin" ||
+            user?.role === "Master" ||
+            user?.role === "INV") && (
+            <IconButton
+              sx={{ color: "black" }}
+              onClick={() => handleConsumeFormOpen(params.row)}
+            >
+              <ExposureIcon />
+            </IconButton>
+          )}
         </Box>
       ),
     },
@@ -817,13 +880,17 @@ function Insumos() {
             Agregar Insumo
           </Button>
 
-          <Button
-            variant="contained"
-            sx={{ background: "green" }}
-            onClick={handleShowInsumo}
-          >
-            Informacion de Insumo
-          </Button>
+          {(user?.role === "Admin" ||
+            user?.role === "Master" ||
+            user?.role === "INV") && (
+            <Button
+              variant="contained"
+              sx={{ background: "green" }}
+              onClick={handleShowInsumo}
+            >
+              Informacion de Insumo
+            </Button>
+          )}
 
           <Button
             variant="contained"
@@ -837,9 +904,13 @@ function Insumos() {
           <div>
             {/* Botón con Tooltip para activar el filtro */}
             <Tooltip title="Filtro de datos vacíos" placement="top">
-              <IconButton onClick={handleFilterToggle} color="primary">
-                <NotificationsIcon />
-              </IconButton>
+              {(user?.role === "Admin" ||
+                user?.role === "Master" ||
+                user?.role === "INV") && (
+                <IconButton onClick={handleFilterToggle} color="primary">
+                  <NotificationsIcon />
+                </IconButton>
+              )}
             </Tooltip>
 
             {/* Contenedor de insumos con scroll habilitado al aplicar el filtro */}
@@ -954,6 +1025,7 @@ function Insumos() {
                     fullWidth
                   />
                 </Grid>
+
                 <Grid item xs={6}>
                   <TextField
                     label="Tiempo de Fabricación"
@@ -963,6 +1035,20 @@ function Insumos() {
                       setSelectedInsumo({
                         ...selectedInsumo,
                         tiempodefabricacion: e.target.value,
+                      })
+                    }
+                    fullWidth
+                  />
+                </Grid>
+                <Grid item xs={6}>
+                  <TextField
+                    label="Unidad de Medida"
+                    variant="outlined"
+                    value={selectedInsumo.um}
+                    onChange={(e) =>
+                      setSelectedInsumo({
+                        ...selectedInsumo,
+                        um: e.target.value,
                       })
                     }
                     fullWidth

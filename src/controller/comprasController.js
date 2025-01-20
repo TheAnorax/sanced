@@ -182,31 +182,95 @@ const addRecibo = async (req, res) => {
 };
 
 
+// const uploadExcel = async (req, res) => {
+//   const data = req.body;
+//   const estado = "C";
+
+//   try {
+//     const insertData = [];
+//     const updatePromises = [];
+//     console.log('Agregando recibo con datos:', req.body); // Verifica que el usuario está siendo recibido correctamente
+
+//     for (const row of data) {
+//       const { codigo, oc, cant_recibir, tipoP, referencia, unidad_medida, contenedor, naviera, pedimento, arribo, usuario, sucursal, factura } = row;
+
+//       // Validación en el servidor
+//       if (!codigo || !oc || !cant_recibir || !arribo) {
+//         return res.status(400).json({ message: 'Uno o más campos obligatorios están vacíos.' });
+//       }
+
+//       // Verifica si el recibo ya existe con el mismo codigo, oc y cantidad
+//       const [existingRecibo] = await pool.query('SELECT * FROM recibo_compras WHERE codigo = ? AND oc = ? AND cant_recibir = ?', [codigo, oc, cant_recibir]);
+
+//       if (existingRecibo.length > 0) {
+//         // Si ya existe, actualizamos todos los campos que sea necesario
+//         console.log('Código ya existe con la misma cantidad, se actualizarán todos los campos si es necesario.');
+        
+//         updatePromises.push(
+//           pool.query(
+//             `UPDATE recibo_compras 
+//              SET arribo = ?, tipo = ?, referencia = ?, unidad_medida = ?, contenedor = ?, naviera = ?, pedimento = ?, usuario = ?, estado = ?, sucursal = ?, factura = ?
+//              WHERE codigo = ? AND oc = ? AND cant_recibir = ?`,
+//             [arribo, tipoP, referencia, unidad_medida, contenedor, naviera, pedimento, usuario, estado, sucursal, factura, codigo, oc, cant_recibir]
+//           )
+//         );
+//       } else {
+//         // Si no existe, lo añadimos al array de inserciones en lote
+//         insertData.push([oc, cant_recibir, arribo, codigo, tipoP, referencia, unidad_medida, contenedor, naviera, pedimento, usuario, estado, sucursal, factura]);
+//       }
+//     }
+
+//     // Ejecutar las actualizaciones primero
+//     await Promise.all(updatePromises);
+
+//     // Inserción en lote si hay nuevos registros
+//     if (insertData.length > 0) {
+//       const insertQuery = `
+//         INSERT INTO recibo_compras (oc, cant_recibir, arribo, codigo, tipo, referencia, unidad_medida, contenedor, naviera, pedimento, usuario, estado, sucursal, factura)
+//         VALUES ?
+//       `;
+//       await pool.query(insertQuery, [insertData]);
+//     }
+
+//     res.json({ message: 'Datos del Excel cargados exitosamente' });
+//   } catch (error) {
+//     console.error('Error al cargar los datos del Excel:', error);
+//     res.status(500).json({ message: 'Error al cargar los datos del Excel', error: error.message });
+//   }
+// };
+
+
+
 const uploadExcel = async (req, res) => {
   const data = req.body;
   const estado = "C";
 
   try {
-    const insertData = [];
-    const updatePromises = [];
-    console.log('Agregando recibo con datos:', req.body); // Verifica que el usuario está siendo recibido correctamente
+    const insertDataCompras = [];
+    const insertDataCedis = [];
+    const updatePromisesCompras = [];
+    const updatePromisesCedis = [];
+    console.log('Agregando recibo con datos:', req.body);
 
     for (const row of data) {
       const { codigo, oc, cant_recibir, tipoP, referencia, unidad_medida, contenedor, naviera, pedimento, arribo, usuario, sucursal, factura } = row;
 
-      // Validación en el servidor
+      // Validación
       if (!codigo || !oc || !cant_recibir || !arribo) {
         return res.status(400).json({ message: 'Uno o más campos obligatorios están vacíos.' });
       }
 
-      // Verifica si el recibo ya existe con el mismo codigo, oc y cantidad
-      const [existingRecibo] = await pool.query('SELECT * FROM recibo_compras WHERE codigo = ? AND oc = ? AND cant_recibir = ?', [codigo, oc, cant_recibir]);
+      // Verifica si el recibo ya existe en recibo_compras
+      const [existingRecibo] = await pool.query(
+        'SELECT * FROM recibo_compras WHERE codigo = ? AND oc = ? AND cant_recibir = ?', 
+        [codigo, oc, cant_recibir]
+      );
 
       if (existingRecibo.length > 0) {
-        // Si ya existe, actualizamos todos los campos que sea necesario
         console.log('Código ya existe con la misma cantidad, se actualizarán todos los campos si es necesario.');
-        
-        updatePromises.push(
+
+        // Actualizar recibo_compras
+        updatePromisesCompras.push(
           pool.query(
             `UPDATE recibo_compras 
              SET arribo = ?, tipo = ?, referencia = ?, unidad_medida = ?, contenedor = ?, naviera = ?, pedimento = ?, usuario = ?, estado = ?, sucursal = ?, factura = ?
@@ -214,22 +278,45 @@ const uploadExcel = async (req, res) => {
             [arribo, tipoP, referencia, unidad_medida, contenedor, naviera, pedimento, usuario, estado, sucursal, factura, codigo, oc, cant_recibir]
           )
         );
+
+        // Actualizar recibo_cedis
+        updatePromisesCedis.push(
+          pool.query(
+            `UPDATE recibo_cedis 
+             SET cantidad_total = ?, referencia = ?, contenedor = ?, naviera = ?, pedimento = ?, id_usuario = ?, est = ?, fecha_recibo = NOW()
+             WHERE codigo = ? AND oc = ?`,
+            [cant_recibir, referencia, contenedor, naviera, pedimento, usuario, estado, codigo, oc]
+          )
+        );
+
       } else {
-        // Si no existe, lo añadimos al array de inserciones en lote
-        insertData.push([oc, cant_recibir, arribo, codigo, tipoP, referencia, unidad_medida, contenedor, naviera, pedimento, usuario, estado, sucursal, factura]);
+        // Insertar en recibo_compras
+        insertDataCompras.push([oc, cant_recibir, arribo, codigo, tipoP, referencia, unidad_medida, contenedor, naviera, pedimento, usuario, estado, sucursal, factura]);
+
+        // Insertar en recibo_cedis
+        insertDataCedis.push([codigo, cant_recibir, 0, arribo, oc, referencia, contenedor, naviera, pedimento, estado, usuario]);
       }
     }
 
-    // Ejecutar las actualizaciones primero
-    await Promise.all(updatePromises);
+    // Ejecutar actualizaciones
+    await Promise.all([...updatePromisesCompras, ...updatePromisesCedis]);
 
-    // Inserción en lote si hay nuevos registros
-    if (insertData.length > 0) {
-      const insertQuery = `
+    // Insertar en recibo_compras si hay nuevos registros
+    if (insertDataCompras.length > 0) {
+      const insertQueryCompras = `
         INSERT INTO recibo_compras (oc, cant_recibir, arribo, codigo, tipo, referencia, unidad_medida, contenedor, naviera, pedimento, usuario, estado, sucursal, factura)
         VALUES ?
       `;
-      await pool.query(insertQuery, [insertData]);
+      await pool.query(insertQueryCompras, [insertDataCompras]);
+    }
+
+    // Insertar en recibo_cedis si hay nuevos registros
+    if (insertDataCedis.length > 0) {
+      const insertQueryCedis = `
+        INSERT INTO recibo_cedis (codigo, cantidad_total, cantidad_recibida, fecha_recibo, oc, referencia, contenedor, naviera, pedimento, est, id_usuario)
+        VALUES ?
+      `;
+      await pool.query(insertQueryCedis, [insertDataCedis]);
     }
 
     res.json({ message: 'Datos del Excel cargados exitosamente' });

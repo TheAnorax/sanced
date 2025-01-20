@@ -28,6 +28,7 @@ const devs = require('./src/routes/devRoutes')
 const rh = require('./src/routes/rhRoutes')
 const Queretaro= require('./src/routes/queretaroRoutes')
 const visi = require('./src/routes/visitasRoutes')
+const Trasporte= require('./src/routes/TransporteRouter')
 
 const app = express();
 const port = 3007;
@@ -65,6 +66,7 @@ app.use('/api/rh',rh)
 app.use('/api/Queretaro',Queretaro)
 app.use('/api/visitas', visi)
 app.use('/api/fotos', express.static('C:/acc-ced/'));
+app.use('/api/Trasporte',Trasporte)
 
 
 app.listen(port, () => {

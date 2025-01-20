@@ -161,7 +161,7 @@ const PapeletaTarimaRestante = ({
 
     };
 
-    const qrData = `Código: ${codigo},\nDescripción: ${descripcion},\nRestante: ${restante}`;
+    const qrData = `Código: ${codigo},\nDescripción: ${descripcion}, \nTotal de piezas: ${restante}`; 
 
     return (
         <table style={styles.table}>

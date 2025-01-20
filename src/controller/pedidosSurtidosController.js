@@ -112,6 +112,8 @@ const updatePedido = async (req, res) => {
     res.status(500).json({ message: 'Error al actualizar el pedido', error: error.message });
   }
 };
+
+
 const authorizePedido = async (req, res) => {
   const connection = await pool.getConnection();
   try {
@@ -166,6 +168,8 @@ const authorizePedido = async (req, res) => {
     await connection.query('DELETE FROM pedido_surtido WHERE pedido = ?', [pedidoId]);
 
     await connection.commit();
+    await updateUMLogic();
+    
     res.status(200).json({ message: 'Pedido autorizado y transferido a embarque correctamente' });
   } catch (error) {
     await connection.rollback();
@@ -502,8 +506,147 @@ SELECT * FROM (
 
 
 
+const calculateUnits = (cantidadTotal, minPz, minPq, minInner, minMaster) => {
+  let remaining = cantidadTotal; // Cantidad restante por asignar
+  const result = { _pz: 0, _pq: 0, _inner: 0, _master: 0 };
+
+  if (minMaster > 0) {
+    result._master = Math.floor(remaining / minMaster);
+    remaining %= minMaster;
+  }
+
+  if (minInner > 0) {
+    result._inner = Math.floor(remaining / minInner);
+    remaining %= minInner;
+  }
+
+  if (minPq > 0) {
+    result._pq = Math.floor(remaining / minPq);
+    remaining %= minPq;
+  }
+
+  if (minPz > 0) {
+    result._pz = Math.floor(remaining / minPz);
+    remaining %= minPz;
+  }
+
+  if (remaining > 0) {
+    console.warn(`No se pudo ajustar exactamente la cantidad: Restante = ${remaining}`);
+  }
+
+  return result;
+};
+
+const updateUM = async (req, res) => {
+  try {
+    await updateUMLogic();
+    res.status(200).json({ message: 'Unidades actualizadas correctamente' });
+  } catch (error) {
+    console.error("Error en updateUM:", error.message);
+    res.status(500).json({ message: 'Error al ejecutar la actualización de unidades', error: error.message });
+  }
+};
 
 
+
+
+const updateUMLogic = async () => {
+  const connection = await pool.getConnection();
+  try {
+    const [rows] = await connection.query(`
+      SELECT
+        prod.des,
+        p.pedido,
+        p.tipo,
+        p.codigo_ped,
+        p.cantidad,
+        p.cant_surti,
+        p.cant_no_env,
+        p.um,
+        p._pz,
+        p._pq,
+        p._inner,
+        p._master,
+        p.estado,
+        prod._pz AS min_pz,
+        prod._inner AS min_inner,
+        prod._pq AS min_pq,
+        prod._master AS min_master,
+        p.motivo,
+        p.id_usuario_paqueteria,
+        p.registro 
+      FROM
+        pedido_embarque p
+      LEFT JOIN		
+        productos prod ON p.codigo_ped = prod.codigo_pro
+      LEFT JOIN
+        ubicaciones u ON p.codigo_ped = u.code_prod
+      LEFT JOIN
+        usuarios us ON p.id_usuario = us.id_usu
+      WHERE p.cant_no_env != p.cantidad
+        AND (
+          (p._pz * prod._pz) +
+          (p._pq * prod._pq) +
+          (p._inner * prod._inner) +
+          (p._master * prod._master)
+        ) != p.cantidad
+        AND p.motivo IS NULL
+      GROUP BY
+        p.id_pedi
+      ORDER BY
+        u.ubi ASC;
+    `);
+
+    if (rows.length === 0) {
+      console.log("No se encontraron registros para actualizar.");
+      return;
+    }
+
+    await connection.beginTransaction();
+
+    for (const row of rows) {
+      const { pedido, codigo_ped, cantidad, min_pz, min_pq, min_inner, min_master } = row;
+
+      // Calcular las unidades correctas
+      const correctedUnits = calculateUnits(
+        cantidad,
+        min_pz,
+        min_pq,
+        min_inner,
+        min_master
+      );
+
+      // Actualizar las unidades en la base de datos
+      await connection.query(
+        `
+        UPDATE pedido_embarque 
+        SET _pz = ?, 
+            _pq = ?, 
+            _inner = ?, 
+            _master = ?
+        WHERE pedido = ? AND codigo_ped = ? AND motivo IS NULL;
+        `,
+        [
+          correctedUnits._pz,
+          correctedUnits._pq,
+          correctedUnits._inner,
+          correctedUnits._master,
+          pedido,
+          codigo_ped,
+        ]
+      );
+    }
+
+    await connection.commit();
+    console.log("Unidades actualizadas correctamente.");
+  } catch (error) {
+    await connection.rollback();
+    console.error("Error durante la actualización de unidades:", error.message);
+    throw error;
+  } finally {
+    connection.release();
+  }
+};
 
 
 

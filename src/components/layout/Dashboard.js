@@ -156,6 +156,10 @@ const getTitle = (pathname) => {
       return "Proyecto Queretaro";
     case "dashboard/visitas":
       return "Visitas";
+    case "dashboard/visitas-reporte":
+      return "Visitas Reporte";
+    case "/dashboard/Trasporte":
+      return "Trasporte";
     default:
       return "Dashboard";
   }

@@ -26,9 +26,10 @@ import InfoIcon from "@mui/icons-material/Info";
 import { styled } from "@mui/material/styles";
 import Tooltip, { tooltipClasses } from "@mui/material/Tooltip";
 import SummarizeIcon from "@mui/icons-material/Summarize";
-import AnalyticsIcon from '@mui/icons-material/Analytics';
-import PersonAddAltIcon from '@mui/icons-material/PersonAddAlt';
-import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
+import AnalyticsIcon from "@mui/icons-material/Analytics";
+import CompareArrowsIcon from "@mui/icons-material/CompareArrows";
+import PersonPinCircleIcon from "@mui/icons-material/PersonPinCircle";
+import { AdminPanelSettings } from "@mui/icons-material";
 
 // Personalizando el Tooltip
 const CustomTooltip = styled(({ className, ...props }) => (
@@ -63,7 +64,7 @@ export const mainListItems = (user) => {
         "Master",
         "Control",
         "Paquet",
-        "Embar", 
+        "Embar",
         "Admin",
         "Rep",
         "Master2",
@@ -79,6 +80,12 @@ export const mainListItems = (user) => {
       text: "Productos",
     },
     {
+      role: ["Admin", "Master", "Master2"],
+      path: "/dashboard/Trasporte",
+      icon: <ManageSearchIcon />,
+      text: "Trasporte",
+    },
+    {
       role: ["Control", "Admin"],
       path: "/dashboard/pedidos",
       icon: <AssignmentIcon />,
@@ -91,7 +98,7 @@ export const mainListItems = (user) => {
       text: "Surtiendo",
     },
     {
-      role: ["Control", "Admin", "Master", "Master2", "VENT"],
+      role: ["Control", "Admin", "Master", "Master2", "VENT", "INV"],
       path: "/dashboard/pedidos-surtido",
       icon: <ContentPasteIcon />,
       text: "Pedidos",
@@ -175,7 +182,16 @@ export const mainListItems = (user) => {
       text: "Calidad ",
     },
     {
-      role: ["Admin", "INV", "MONTA6", "Master", "Control", "Audi", "ECOMERCE" ,"Recibo"],
+      role: [
+        "Admin",
+        "INV",
+        "MONTA6",
+        "Master",
+        "Control",
+        "Audi",
+        "ECOMERCE",
+        "Recibo",
+      ],
       path: "/dashboard/inventarios",
       icon: <InventoryIcon />,
       text: "Inventarios ",
@@ -188,7 +204,7 @@ export const mainListItems = (user) => {
     },
 
     {
-      role: ["Admin", "Dep", "INV", "P", "Recibo", "Paquet", "Ins" , "Master"],
+      role: ["Admin", "Dep", "INV", "P", "Recibo", "Paquet", "Ins", "Master"],
       path: "/dashboard/insumos",
       icon: <AssessmentIcon />,
       text: "Insumos ",
@@ -224,16 +240,22 @@ export const mainListItems = (user) => {
       text: "RH",
     },
     {
-      role: ["Admin", "Master", "Master2",],
+      role: ["Admin", "Master", "Master2"],
       path: "/dashboard/Queretaro",
       icon: <AnalyticsIcon />,
       text: "PQ",
     },
     {
-      role: ["Admin","Master"  ],
+      role: ["Admin", "Master", "Master2"],
       path: "/dashboard/visitas",
-      icon: <PersonAddAltIcon />,
+      icon: <PersonPinCircleIcon />,
       text: "Visitas",
+    },
+    {
+      role: ["Admin", "Master", "Master2"],
+      path: "/dashboard/visitas-reporte",
+      icon: <AdminPanelSettings />,
+      text: "Visitas Reporte",
     },
   ];
 

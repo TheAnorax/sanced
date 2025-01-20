@@ -177,7 +177,7 @@ const savePedidoSurtido = async (req, res) => {
     const codigoBLs = [4299,4300,2463,3496,3494,2466,3450,3449,3495,3497,3448,3451,2464,4295,4307,2461,4303,2467,2471,4298,2462,4311,2465,4313,2468,2470,8307,1574,7410,7412];
     const codigosExcluir = [8792, 8793, 8247, 8291, 8293, 8294, 8805, 8295, 8863];
     const coidigoPQ =[ 6970,6971,6972,7023,7024,7029,7100,6969,6973,6974,6975,6976,6977,6978,6979,7015,7016,7017,7018,7019,7020,7021,7022,7025,7026,7027,7049,7068,7069,7098,7099,7862,7863]
-
+    const codigoPZ = [1323];
     const now = new Date();
 
 
@@ -197,6 +197,10 @@ const savePedidoSurtido = async (req, res) => {
           if (coidigoPQ.includes(item.codigo_ped)) {
             um = 'PQTE';
           }
+          if (codigoPZ.includes(item.codigo_ped)) {
+            um = 'PZ';
+          }
+    
     
           const unido = item.unido != null ? item.unido : 0;
           let cant_no_env = 0;

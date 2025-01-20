@@ -32,6 +32,8 @@ import Devs from './components/devs/tareas'
 import RH from './components/RH/insumos_rh'
 import Queretaro from './components/Proyecto/ProyectoQueretaro';
 import Visitantes from './components/visitas/visitantes';
+import VisitasReporte from './components/visitas/visitasReporte';
+import Trasporte from './components/Transporte/Transporte';
 
 function App() {
   return (        
@@ -67,6 +69,8 @@ function App() {
             <Route path="RH" element={<ProtectedRoute><RH  /></ProtectedRoute>} />
             <Route path="Queretaro" element={<ProtectedRoute><Queretaro  /></ProtectedRoute>} />
             <Route path="visitas" element={<ProtectedRoute><Visitantes  /></ProtectedRoute>} />
+            <Route path="visitas-reporte" element={<ProtectedRoute><VisitasReporte  /></ProtectedRoute>} />
+            <Route path="Trasporte" element={<ProtectedRoute><Trasporte  /></ProtectedRoute>} />
           </Route>
         </Routes>
       </Router>

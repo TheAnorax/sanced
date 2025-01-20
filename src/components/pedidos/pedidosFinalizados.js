@@ -27,6 +27,8 @@ function Finalizados() {
           registro_surtido: pedido.registro_surtido ? new Date(pedido.registro_surtido).toLocaleString('es-MX', { timeZone: 'America/Mexico_City' }) : 'N/A',
           inicio_surtido: pedido.inicio_surtido ? new Date(pedido.inicio_surtido).toLocaleString('es-MX', { timeZone: 'America/Mexico_City' }) : 'N/A',
           fin_surtido: pedido.fin_surtido ? new Date(pedido.fin_surtido).toLocaleString('es-MX', { timeZone: 'America/Mexico_City' }) : 'N/A',
+          inicio_embarque: pedido.inicio_embarque ? new Date(pedido.inicio_embarque).toLocaleString('es-MX', { timeZone: 'America/Mexico_City' }) : 'N/A',
+          fin_embarque: pedido.fin_embarque ? new Date(pedido.fin_embarque).toLocaleString('es-MX', { timeZone: 'America/Mexico_City' }) : 'N/A',
           registro_embarque: pedido.registro_embarque ? new Date(pedido.registro_embarque).toLocaleString('es-MX', { timeZone: 'America/Mexico_City' }) : 'N/A',
         }));
         setPedidos(dataWithFormattedTimes);
@@ -54,6 +56,8 @@ function Finalizados() {
           registro_surtido: detalle.registro_surtido ? new Date(detalle.registro_surtido).toLocaleString('es-MX', { timeZone: 'America/Mexico_City' }) : 'N/A',
           inicio_surtido: detalle.inicio_surtido ? new Date(detalle.inicio_surtido).toLocaleString('es-MX', { timeZone: 'America/Mexico_City' }) : 'N/A',
           fin_surtido: detalle.fin_surtido ? new Date(detalle.fin_surtido).toLocaleString('es-MX', { timeZone: 'America/Mexico_City' }) : 'N/A',
+          inicio_embarque: pedido.inicio_embarque ? new Date(pedido.inicio_embarque).toLocaleString('es-MX', { timeZone: 'America/Mexico_City' }) : 'N/A',
+          fin_embarque: pedido.fin_embarque ? new Date(pedido.fin_embarque).toLocaleString('es-MX', { timeZone: 'America/Mexico_City' }) : 'N/A',
           registro_embarque: detalle.registro_embarque ? new Date(detalle.registro_embarque).toLocaleString('es-MX', { timeZone: 'America/Mexico_City' }) : 'N/A',
         }));
       setPedidoDetalles(detallesOrdenados);
@@ -267,7 +271,9 @@ function Finalizados() {
     { field: 'v_pq', headerName: 'V. PQ', width: 80 },    
     { field: 'v_inner', headerName: 'V. INNER', width: 80 },
     { field: 'v_master', headerName: 'V. MASTER', width: 90 },    
-    { field: 'usuario_paqueteria', headerName: 'Validador', width: 120},  
+    { field: 'usuario_paqueteria', headerName: 'Validador', width: 120}, 
+    { field: 'inicio_embarque', headerName: 'Inicio', width: 180},
+    { field: 'fin_embarque', headerName: 'Fin', width: 150}, 
     { field: 'motivo', headerName: 'Motivo No Enviado', width: 170 },
     { field: 'unificado', headerName: 'Unificado', width: 170 },
     { field: 'ubi_bahia', headerName: 'Bahia', width: 170 },

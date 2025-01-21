@@ -49,6 +49,8 @@
     "sweetalert2-react-content": "^5.0.7",
     "web-vitals": "^2.1.4",
     "xlsx": "^0.18.5",
+    "esc-pos-encoder": "^3.0.0",
+    "escpos-network": "^3.0.0-alpha.5",
     "xlsx-style": "^0.8.13"
   },
   "scripts": {

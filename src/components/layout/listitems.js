@@ -246,15 +246,15 @@ export const mainListItems = (user) => {
       text: "PQ",
     },
     {
-      role: ["Admin", "Master", "Master2"],
+      role: ["Admin",'POLIA', 'POLIB', 'POLIP', 'POLIAR', 'CONTROL', 'RH', 'TRAFICO', 'Nac'],
       path: "/dashboard/visitas",
-      icon: <PersonPinCircleIcon />,
+      icon: <PersonPinCircleIcon/>,
       text: "Visitas",
     },
     {
-      role: ["Admin", "Master", "Master2"],
+      role: ["Admin", 'CONTROL'],
       path: "/dashboard/visitas-reporte",
-      icon: <AdminPanelSettings />,
+      icon: <AdminPanelSettings/>,
       text: "Visitas Reporte",
     },
   ];

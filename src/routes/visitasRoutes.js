@@ -8,6 +8,10 @@ const { createVisita, darAccesoVisitante, getVisitas, getVisitasAct, getVisitant
     getAreas, getEmpleados, createEmpleadoExcel,
     validacionProveedor,
     createVehiculo,
+    getAreasTransp,
+    desactivarEmpleado,
+    updateEmpleado,
+    pasarLlegada,
 } = require('../controller/visitasController');
 
 
@@ -26,7 +30,8 @@ router.post('/create/visita/proveedor', createVisitaProveedor);
 router.post('/up/imgs', uploadImgVehiculo.fields([{ name: 'img1', maxCount: 1 }, { name: 'img2', maxCount: 1 }, { name: 'img3', maxCount: 1 }, { name: 'img4', maxCount: 1 }]), validacionVehiculo);
 router.put('/up/foto/proveedor', upload.single('foto'), validacionProveedor);
 router.put('/up/acceso/:id_visit', darAccesoVisitante);
-router.put('/up/validar/:id_visit', pasarValidar);
+router.put('/llegada/:id_visit', pasarLlegada);
+router.put('/validar/:id_visit', pasarValidar);
 router.put('/up/salida/:id_visit', darSalidaVisitante);
 router.get('/agenda/activas', getVisitasAct);
 router.get('/reporte', getVisitasReporte);
@@ -57,8 +62,12 @@ router.post('/actividad/vigilancia', actividadVigilancia);
 router.get('/actividad', getActividadVigilancia);
 
 router.get('/areas', getAreas);
+router.get('/areas/tr', getAreasTransp);
 router.post('/create/empleado', upload.single('foto'), createEmpleado);
+router.put('/update/empleado', upload.single('foto'),  updateEmpleado);
+router.put('/cancel/empleado/:id_emp', desactivarEmpleado);
 router.get('/list/empleados', getEmpleados);
 router.post('/import/empleados', createEmpleadoExcel);
+
 
 module.exports = router;

@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const { parse, format, isValid } = require('date-fns');
 
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, path.join( 'C:/acc-ced'));
@@ -58,6 +59,7 @@ const getVisitas = async (req, res) => {
             visitas.acc_veh,
             visitas.rango_horas,
             visitas.llegada, 
+            visitas.validar, 
             vehiculos.id_veh,
             vehiculos.placa,
             vehiculos.acc_dir,
@@ -109,6 +111,7 @@ const getVisitas = async (req, res) => {
             visitas.clave_visit,
             visitas.acc_veh,
             visitas.llegada,
+            visitas.validar, 
             vehiculos.id_veh,
             vehiculos.placa,
             vehiculos.acc_dir,
@@ -152,6 +155,11 @@ const createVisita = async (req, res) => {
     console.log('Cuerpo de la solicitud:', req.body);
     const { reg_entrada, hora_entrada, id_vit, motivo, area_per, personal, acompanantes, access, id_veh, motivo_acc } = req.body;
 
+    const cleanString = (str) => str.trim().replace(/\s+/g, ' ');
+    const cleanedMotivo = cleanString(motivo);
+    const cleanedPersonal = cleanString(personal);
+    const cleanedMotivoAcc = cleanString(motivo_acc);
+
     const SQL_CHECK_VISIT = `
         SELECT 1 
         FROM visitas 
@@ -163,64 +171,67 @@ const createVisita = async (req, res) => {
         VALUES (?, ?, ?, ?, ?, ?)
     `;
     const SQL_INSERT_ACOMPANANTES = `
-        INSERT INTO acomp (nombre_acomp, apellidos_acomp, no_ine_acomp, id_vit, id_visit, clave_visit ) 
+        INSERT INTO acomp (nombre_acomp, apellidos_acomp, no_ine_acomp, id_vit, id_visit, clave_visit) 
         VALUES ?
     `;
-
-    const SQL_INSERT_ACCESO_VEHICULO =` INSERT INTO vehiculo_per (id_visit, id_vit, id_veh, motivo_acc) 
-        VALUES (?,?,?,?) `
-
-    const SQL_UPDATE_CLAVE_VISITA = `UPDATE visitas SET clave_visit = ? WHERE id_vit = ?`;
-
-    const SQL_UPDATE_CLAVE_ACCESO = `UPDATE visitas SET acc_veh = ? WHERE id_vit = ?`;
+    const SQL_INSERT_ACCESO_VEHICULO = `
+        INSERT INTO vehiculo_per (id_visit, id_vit, id_veh, motivo_acc) 
+        VALUES (?, ?, ?, ?)
+    `;
+    const SQL_UPDATE_CLAVE_VISITA = `
+        UPDATE visitas SET clave_visit = ? WHERE id_vit = ?
+    `;
+    const SQL_UPDATE_CLAVE_ACCESO = `
+        UPDATE visitas SET acc_veh = ? WHERE id_vit = ?
+    `;
 
     try {
         const [checkResult] = await pool.query(SQL_CHECK_VISIT, [id_vit, reg_entrada]);
         if (checkResult.length > 0) {
-            return res.status(404).json({
+            return res.status(400).json({
                 success: false,
                 error: 'Este invitado ya tiene una visita registrada para la fecha indicada.',
             });
         }
 
         const [insertResult] = await pool.query(SQL_INSERT_VISIT, [
-            id_vit, reg_entrada, hora_entrada, motivo, area_per, personal,
+            id_vit, reg_entrada, hora_entrada, cleanedMotivo, area_per, cleanedPersonal,
         ]);
         const visitaId = insertResult.insertId;
 
         const prefix = id_vit.startsWith('TR') ? 'TR' : id_vit.startsWith('VT') ? 'VT' : 'GEN';
         const random = Math.floor(1000 + Math.random() * 900).toString();
-        
         const claveVisita = `${prefix}${random}${visitaId}`;
-
-        const prefixAc = id_vit.startsWith('TR') ? 'TR' : id_vit.startsWith('PR') ? 'PR' : 'GEN';
-        const acceso = 'S'
 
         await pool.query(SQL_UPDATE_CLAVE_VISITA, [claveVisita, id_vit]);
 
-        if(access === 1){
-            await pool.query(SQL_INSERT_ACCESO_VEHICULO, [visitaId, id_vit, id_veh, motivo_acc]);
+        if (access === 1) {
+            await pool.query(SQL_INSERT_ACCESO_VEHICULO, [visitaId, id_vit, id_veh, cleanedMotivoAcc]);
         }
 
         if (acompanantes && acompanantes.length > 0) {
-            const values = acompanantes.map((acomp) => [acomp.nombre_acomp, acomp.apellidos_acomp, acomp.no_ine_acomp, id_vit, visitaId, claveVisita]);
+            const values = acompanantes.map(acomp => [
+                acomp.nombre_acomp, acomp.apellidos_acomp, acomp.no_ine_acomp, id_vit, visitaId, claveVisita
+            ]);
             await pool.query(SQL_INSERT_ACOMPANANTES, [values]);
 
             return res.json({
                 success: true,
                 message: 'Visita y acompañantes registrados correctamente.',
-                data: { id_vit, reg_entrada, hora_entrada, motivo, area_per, personal, acompanantes, claveVisita },
+                data: { id_vit, reg_entrada, hora_entrada, motivo: cleanedMotivo, area_per, personal, acompanantes, claveVisita },
             });
         }
 
-        
-
-        if(prefixAc === 'TR' || prefixAc === 'PR'){
-            await pool.query(SQL_UPDATE_CLAVE_ACCESO, [acceso, id_vit]);
+        if (['TR', 'PR'].includes(prefix)) {
+            await pool.query(SQL_UPDATE_CLAVE_ACCESO, ['S', id_vit]);
         }
 
         return res.json({
-            message: 'Visita registrada correctamente sin acompañantes.'});
+            success: true,
+            message: 'Visita registrada correctamente sin acompañantes.',
+            data: { id_vit, reg_entrada, hora_entrada, motivo: cleanedMotivo, area_per, personal, claveVisita },
+        });
+
     } catch (error) {
         console.error('Error en la operación:', error);
         return res.status(500).json({
@@ -230,9 +241,16 @@ const createVisita = async (req, res) => {
     }
 };
 
+
 const createVisitaProveedor = async (req, res) => {
     console.log('Cuerpo de la solicitud:', req.body);
-    const { reg_entrada, hora_entrada, id_vit, motivo, area_per, personal, contenedor, naviera } = req.body;
+    let { reg_entrada, hora_entrada, id_vit, motivo, area_per, personal, contenedor, naviera } = req.body;
+
+    const cleanString = (str) => str?.trim().replace(/\s+/g, ' ') || '';
+    motivo = cleanString(motivo); 
+    personal = cleanString(personal); 
+    contenedor = cleanString(contenedor);
+    naviera = cleanString(naviera);
 
     // SQL Queries
     const SQL_CHECK_VISIT = `
@@ -253,14 +271,13 @@ const createVisitaProveedor = async (req, res) => {
     `;
 
     const SQL_UPDATE_CLAVE_VISITA = `UPDATE visitas SET clave_visit = ? WHERE id_vit = ?`;
-
     const SQL_UPDATE_CLAVE_ACCESO = `UPDATE visitas SET acc_veh = ? WHERE id_vit = ?`;
 
     try {
         // Validar el formato de fecha y hora
         const entradaCompleta = `${reg_entrada} ${hora_entrada}`;
-        console.log('Fecha y hora combinadas:', entradaCompleta); // Verifica que la combinación de fecha y hora sea correcta
-    
+        console.log('Fecha y hora combinadas:', entradaCompleta);
+
         const horaEntrada = parse(entradaCompleta, 'yyyy-MM-dd hh:mm a', new Date());
         if (!isValid(horaEntrada)) {
             return res.status(400).json({
@@ -272,7 +289,7 @@ const createVisitaProveedor = async (req, res) => {
         // Verificar si ya existe una visita para el día
         const [checkResult] = await pool.query(SQL_CHECK_VISIT, [id_vit, reg_entrada]);
         if (checkResult.length > 0) {
-            return res.status(404).json({
+            return res.status(400).json({
                 success: false,
                 error: 'Este invitado ya tiene una visita registrada para la fecha indicada.',
             });
@@ -281,7 +298,6 @@ const createVisitaProveedor = async (req, res) => {
         // Calcular el rango de horas
         const horaSalida = new Date(horaEntrada);
         horaSalida.setHours(horaSalida.getHours() + 24);
-        const rangoHoras = `${horaEntrada.toISOString()} a ${horaSalida.toISOString()}`;
         const rangoHorasFormateado = `${format(horaEntrada, 'hh:mm a')} a ${format(horaSalida, 'hh:mm a')}`;
 
         // Insertar la visita
@@ -304,8 +320,7 @@ const createVisitaProveedor = async (req, res) => {
         await pool.query(SQL_UPDATE_CLAVE_VISITA, [claveVisita, id_vit]);
 
         // Actualizar acceso si aplica
-        const prefixAc = id_vit.startsWith('PR') && 'PR' ;
-        if (prefixAc === 'TR' || prefixAc === 'PR') {
+        if (id_vit.startsWith('PR') || id_vit.startsWith('TR')) {
             await pool.query(SQL_UPDATE_CLAVE_ACCESO, ['S', id_vit]);
         }
 
@@ -322,10 +337,11 @@ const createVisitaProveedor = async (req, res) => {
         console.error('Error en la operación:', error);
         return res.status(500).json({
             success: false,
-            error: 'Error del servidor al registrar la visita.',
+            error: 'Error interno al registrar la visita.',
         });
     }
 };
+
 
 const cancelarVisita = async (req, res) => {
     const SQL_CANCELAR_VISITAS = `
@@ -345,7 +361,7 @@ const cancelarVisita = async (req, res) => {
         res.status(500).json({ error: 'Error al obtener los datos' });
     }
 };
- cancelarVisita();
+cancelarVisita();
 
 // Programar la función para que se ejecute cada hora (3600000 ms)
  setInterval(async () => {
@@ -355,7 +371,7 @@ const cancelarVisita = async (req, res) => {
 
 const validacionVehiculo = async (req, res) => {
     console.log('Request body:', req.body);
-    const { id_veh, id_visit, comentario, id_usu } = req.body;
+    const { id_veh, id_visit, comentario, id_usu, nombre_acomp, apellidos_acomp, no_ine_acomp, id_vit, clave_visit, proveedor } = req.body;
 
     const img1 = req.files?.img1?.[0]?.filename || null;
     const img2 = req.files?.img2?.[0]?.filename || null;
@@ -448,6 +464,35 @@ const validacionProveedor = async (req, res) => {
 };
 
 const pasarValidar = async (req, res) => { 
+    console.log('Body', req.body);
+
+
+    const SQL_PASAR_A_VALIDAR = `UPDATE visitas SET validar = ? WHERE id_visit = ?`;
+
+    try {
+        const { id_visit } = req.params; 
+        const { validar } = req.body; 
+        const [result] = await pool.query(SQL_PASAR_A_VALIDAR, [validar, id_visit]);
+
+        if (result.affectedRows > 0) {
+            res.status(200).json({ 
+                message: 'Datos de visita actualizados correctamente' 
+            });
+        } else {
+            res.status(404).json({
+                message: 'Visita no encontrada o no se realizaron cambios'
+            });
+        }
+    } catch (error) {
+        console.error('Error al actualizar la visita:', error);
+        res.status(500).json({ 
+            message: 'Error al actualizar la visita', 
+            error: error.message 
+        });
+    }
+};
+
+const pasarLlegada = async (req, res) => { 
     console.log('Body', req.body);
 
     const hora_llegada = new Date(); 
@@ -1072,9 +1117,11 @@ const getVisitanteId = async (req, res) => {
     }
 }
 
+
 const createVisitante = async (req, res) => {
     console.log('Cuerpo de la solicitud:', req.body);
-    const { id_catv, nombre, apellidos, empresa, telefono, no_licencia, no_ine, marca, modelo, placa, anio, seguro, puesto, no_empleado } = req.body;
+
+    let { id_catv, nombre, apellidos, empresa, telefono, no_licencia, no_ine, marca, modelo, placa, anio, seguro, puesto, no_empleado } = req.body;
     const foto = req.file ? req.file.filename : null;
     const registro = new Date();
     const est = 'A';
@@ -1082,62 +1129,66 @@ const createVisitante = async (req, res) => {
     const dia = fechaRegistro.getDate().toString().padStart(2, '0');
     const acc_dir = 'S';
 
+    const cleanString = (str) => str.trim().replace(/\s+/g, ' ');
+    nombre = cleanString(nombre || '');
+    apellidos = cleanString(apellidos || '');
+    empresa = cleanString(empresa || '');
+
+    if (!nombre || !apellidos || !id_catv) {
+        return res.status(400).json({ message: 'Faltan campos obligatorios.' });
+    }
+
     const SQL_INSERT_VISITA = `
-        INSERT INTO visitantes (id_catv, nombre, apellidos, empresa, telefono, foto, no_licencia, no_ine,puesto, no_empleado, registro, est)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO visitantes (id_catv, nombre, apellidos, empresa, telefono, foto, no_licencia, no_ine,puesto, no_empleado, registro, est)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const SQL_UPDATE_CLAVE = `UPDATE visitantes SET clave = ? WHERE id_vit = ?`;
     const SQL_INSERT_VEHICULO = `
-        INSERT INTO vehiculos (clave_con, empresa,marca, modelo, placa, anio, seguro, registro,est)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO vehiculos (clave_con, empresa,marca, modelo, placa, anio, seguro, registro,est)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const SQL_INSERT_VEHICULO_PAQUETERIA = `
-        INSERT INTO vehiculos (clave_con, empresa,marca, modelo, placa, anio, seguro, acc_dir, registro, est)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO vehiculos (clave_con, empresa,marca, modelo, placa, anio, seguro, acc_dir, registro, est)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+    const SQL_INSERT_TRANSPORTISTA = `
+    INSERT INTO transportista (id_catv, nombre, apellidos, empresa, telefono, foto, no_licencia, no_ine, registro, est)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
-    try {
-        let clavePersonalizada;
-        let id_persona;
+    const generarClavePersonalizada = (id_catv, dia, id_persona) => {
+        const prefijo = id_catv === '4' ? 'PR' : id_catv === '6' ? 'MN' : 'VT';
+        return `${prefijo}${dia}${id_persona}`;
+    };
 
+    try {
         const [insertResult] = await pool.query(SQL_INSERT_VISITA, [
             id_catv, nombre, apellidos, empresa, telefono, foto, no_licencia, no_ine, puesto, no_empleado, registro, est,
         ]);
 
-        id_persona = insertResult.insertId;
-        //clavePersonalizada = `VT${id_catv}${dia}${id_persona}`;
-        clavePersonalizada = `${id_catv === '4' ? 'PR' : 'VT'}${dia}${id_persona}`;
+        const id_persona = insertResult.insertId;
+        const clavePersonalizada = generarClavePersonalizada(id_catv, dia, id_persona);
 
         await pool.query(SQL_UPDATE_CLAVE, [clavePersonalizada, id_persona]);
-        
 
         if (no_licencia) {
-            if (id_catv === '7') {
-                await pool.query(SQL_INSERT_VEHICULO_PAQUETERIA, [
-                    clavePersonalizada, empresa, marca, modelo, placa, anio, seguro, acc_dir,registro, est,
-                ]);
-            } else {
-                await pool.query(SQL_INSERT_VEHICULO, [
-                    clavePersonalizada, empresa, marca, modelo, placa, anio, seguro, registro, est,
-                ]);
+            const vehiculoQuery = id_catv === '7' ? SQL_INSERT_VEHICULO_PAQUETERIA : SQL_INSERT_VEHICULO;
+            await pool.query(vehiculoQuery, [
+                clavePersonalizada, empresa, marca, modelo, placa, anio, seguro, acc_dir, registro, est,
+            ]);
+        }
+
+        res.json({ tipo: id_catv === '4' ? 'PR' : id_catv === '6' ? 'MN' : 'VT', message: `${clavePersonalizada}` });
+    } catch (error) {
+        if (foto) {
+            try {
+                fs.unlinkSync(path.join('C:/acc-ced', foto));
+            } catch (err) {
+                console.error("Error al eliminar el archivo:", err);
             }
         }
 
-        res.json({ 
-            tipo: id_catv === '4' ? 'PR' : id_catv === '6' ? 'MN' : 'VT', 
-            message: `${clavePersonalizada}` 
-        });
-    } catch (error) {
-        if (foto) {
-            fs.unlink(path.join('C:/acc-ced', foto), (err) => {
-                if (err) console.error("Error al eliminar el archivo:", err);
-            });
-        }
-
-        console.error('Error al registrar visitante:', {
-            error: error.message,
-            stack: error.stack,
-        });
+        console.error('Error al registrar visitante:', error);
         res.status(500).json({ message: 'Error al registrar', error: error.message });
     }
 };
@@ -1413,6 +1464,16 @@ const getAreas = async (req, res) => {
     }
 }
 
+const getAreasTransp = async (req, res) => {
+    const SQL_QUERY = `SELECT * FROM areas WHERE id_area IN (4, 5)`;
+    try {
+        const [catv] = await pool.query(SQL_QUERY);
+        res.json(catv);
+    } catch (error) {
+        res.status(500).json({message: 'Error al obtener las areas.'})
+    }
+}
+
 const createEmpleado = async (req, res) => {
     console.log('Cuerpo de la solicitud:', req.body);
     const { id_catv, nombre, apellidos, no_empleado, no_ine, telefono, puesto} = req.body;
@@ -1423,6 +1484,15 @@ const createEmpleado = async (req, res) => {
 
     const fechaRegistro = new Date(registro);
     const dia = fechaRegistro.getDate().toString().padStart(2, '0');
+
+    const cleanString = (str) => str.trim().replace(/\s+/g, ' ');
+
+    nombre = cleanString(nombre);
+    apellidos = cleanString(apellidos);
+    no_empleado = cleanString(no_empleado);
+    no_ine = cleanString(no_ine);
+    telefono = cleanString(telefono);
+    puesto = cleanString(puesto);
 
     const SQL_INSERT_EMPLEADO = `
         INSERT INTO empleados (id_catv, nombre, apellidos, foto, no_empleado, no_ine, telefono, puesto, registro, est)
@@ -1456,6 +1526,102 @@ const createEmpleado = async (req, res) => {
         res.status(500).json({ message: 'Error al registrar', error: error.message });
     }
 };
+
+const updateEmpleado = async (req, res) => {
+    console.log('Cuerpo de la solicitud:', req.body);
+
+    const { id_emp, nombre, apellidos, no_empleado, no_ine, telefono, puesto } = req.body;
+    const foto = req.file ? req.file.filename : null;
+
+    // Validar que el ID del empleado esté presente
+    if (!id_emp) {
+        return res.status(400).json({
+            message: 'El ID del empleado es obligatorio para actualizar los datos',
+        });
+    }
+
+    // Función para limpiar espacios extra entre palabras
+    const cleanString = (str) => str.trim().replace(/\s+/g, ' ');
+
+    // Limpiar los datos
+    const nombreLimpio = cleanString(nombre);
+    const apellidosLimpios = cleanString(apellidos);
+    const noEmpleadoLimpio = cleanString(no_empleado);
+    const noIneLimpio = cleanString(no_ine);
+    const telefonoLimpio = cleanString(telefono);
+    const puestoLimpio = cleanString(puesto);
+    const registro = new Date(); // Fecha actual
+    const est = 'A';
+
+    // Consulta SQL para actualizar empleado
+    const SQL_UPDATE_EMPLEADO = `
+        UPDATE empleados
+        SET nombre = ?, apellidos = ?, foto = ?, no_empleado = ?, no_ine = ?, telefono = ?, puesto = ?, registro = ?, est = ?
+        WHERE id_emp = ?
+    `;
+
+    try {
+        // Actualizar empleado en la base de datos
+        await pool.query(SQL_UPDATE_EMPLEADO, [
+            nombreLimpio,
+            apellidosLimpios,
+            foto,
+            noEmpleadoLimpio,
+            noIneLimpio,
+            telefonoLimpio,
+            puestoLimpio,
+            registro,
+            est,
+            id_emp,
+        ]);
+
+        // Respuesta de éxito
+        res.status(200).json({
+            message: 'Empleado actualizado exitosamente',
+            empleado: {
+                id_emp,
+                nombre: nombreLimpio,
+                apellidos: apellidosLimpios,
+                foto,
+                no_empleado: noEmpleadoLimpio,
+                no_ine: noIneLimpio,
+                telefono: telefonoLimpio,
+                puesto: puestoLimpio,
+                registro,
+                est,
+            },
+        });
+    } catch (error) {
+        // Manejo de errores
+        if (foto) {
+            fs.unlink(path.join('C:/acc-ced', foto), (err) => {
+                if (err) console.error("Error al eliminar el archivo:", err);
+            });
+        }
+
+        console.error('Error al actualizar el empleado:', error);
+        res.status(500).json({
+            message: 'Error al actualizar el empleado',
+            error: error.message,
+        });
+    }
+};
+
+
+const desactivarEmpleado = async (req, res) => {
+    const { id_emp } = req.params;
+    const { est } = req.body;
+
+    const SQL_UPDATE_EMPLEADO = `UPDATE empleados SET est = ? WHERE id_emp = ?`;
+
+    res.status(201).json({message: 'Empleado cancelado correctamente.'});
+
+    try {
+        await pool.query(SQL_UPDATE_EMPLEADO, [est, id_emp]);
+    } catch (error) {
+        console.error('Error al cancelar empleado:', error);
+    }
+}
 
 const getEmpleados = async (req, res) => {
     const SQL_QUERY = `SELECT 
@@ -1612,6 +1778,79 @@ const permisosAutos = async(req, res) =>{
 //#endregion
 
 //#region multa
+// const createMulta = async (req, res) => {
+//     console.log('Cuerpo de la solicitud:', req.body);
+//     const { id_vit, id_usu_mul, id_multa } = req.body;
+//     const fecha_multa = new Date();
+
+//     // Consultas SQL
+//     const SQL_CHECK_MULTA = `SELECT 1 FROM multas_visitas WHERE id_vit = ?`;
+//     const SQL_CHECK_TOTAL_MULTA = `
+//         SELECT visitantes.clave, COUNT(multas_visitas.id_vit) AS total_multas 
+//         FROM visitantes 
+//         LEFT JOIN multas_visitas ON visitantes.clave = multas_visitas.id_vit 
+//         WHERE visitantes.clave = ?
+//         GROUP BY visitantes.clave
+//     `;
+//     const SQL_CHECK_TOTAL_MULTA_2 = `
+//         SELECT transportista.clave, COUNT(multas_visitas.id_vit) AS total_multas 
+//         FROM transportista 
+//         LEFT JOIN multas_visitas ON transportista.clave = multas_visitas.id_vit 
+//         WHERE transportista.clave = ?
+//         GROUP BY transportista.clave
+//     `;
+//     const SQL_INSERT_MULTA = `
+//         INSERT INTO multas_visitas (id_vit, id_usu_mul, id_multa, fecha_multa) 
+//         VALUES (?, ?, ?, ?)
+//     `;
+
+//     try {
+//         await pool.query(SQL_CHECK_MULTA, [id_vit]);
+
+//         let totalMultas = 0;
+
+//         const [checkTotalMulta] = await pool.query(SQL_CHECK_TOTAL_MULTA, [id_vit]);
+//         if (checkTotalMulta.length > 0) {
+//             totalMultas = checkTotalMulta[0].total_multas;
+//         } else {
+//             const [checkTotalMulta2] = await pool.query(SQL_CHECK_TOTAL_MULTA_2, [id_vit]);
+//             if (checkTotalMulta2.length > 0) {
+//                 totalMultas = checkTotalMulta2[0].total_multas;
+//             }
+//         }
+
+//         if (totalMultas >= 3) {
+//             await pool.query(SQL_INSERT_MULTA, [id_vit, id_usu_mul, id_multa, fecha_multa]);
+//             return res.json({
+//                 success: true,
+//                 message: 'Este visitante ha excedido el límite de multas permitidas.',
+//             });
+//         }
+
+//         // Si existe en `multas_visitas`, no se agrega, solo devuelve mensaje
+//         // if (checkMulta.length > 0) {
+//         //     return res.status(400).json({
+//         //         success: false,
+//         //         message: 'El visitante/transportista ya tiene multas registradas.',
+//         //     });
+//         // }
+
+//         // Registrar nueva multa
+//         await pool.query(SQL_INSERT_MULTA, [id_vit, id_usu_mul, id_multa, fecha_multa]);
+
+//         return res.json({
+//             success: true,
+//             message: 'Multa registrada correctamente.',
+//         });
+//     } catch (error) {
+//         console.error('Error al realizar la multa:', error);
+//         return res.status(500).json({
+//             success: false,
+//             message: 'Error al aplicar multa',
+//             error: error.message,
+//         });
+//     }
+// };
 
 const multas = async (req, res) => {
     const SQL_SELECT_MULTAS_VISITAS = `
@@ -2096,8 +2335,8 @@ const getTransportistas = async (req, res) => {
 const createTransportista = async (req, res) => {
     console.log('Cuerpo de la solicitud:', req.body);
     const {
-        id_catv, nombre, apellidos, empresa, telefono, no_licencia,
-        no_ine} = req.body;
+        id_catv, nombre, apellidos, empresa, telefono, no_licencia, no_ine,
+    } = req.body;
 
     const foto = req.file ? req.file.filename : null;
     const registro = new Date();
@@ -2106,53 +2345,55 @@ const createTransportista = async (req, res) => {
     const fechaRegistro = new Date(registro);
     const dia = fechaRegistro.getDate().toString().padStart(2, '0');
 
+    const cleanString = (str) => str.trim().replace(/\s+/g, ' ');
+
+    const cleanNombre = cleanString(nombre);
+    const cleanApellidos = cleanString(apellidos);
+    const cleanEmpresa = cleanString(empresa);
+    const cleanTelefono = cleanString(telefono);
+    const cleanLicencia = cleanString(no_licencia);
+    const cleanINE = cleanString(no_ine);
+
     const SQL_INSERT_TRANSPORTISTA = `
         INSERT INTO transportista (id_catv, nombre, apellidos, empresa, telefono, foto, no_licencia, no_ine, registro, est)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const SQL_UPDATE_CLAVE = `UPDATE transportista SET clave = ? WHERE id_transp = ?`;
 
+    const deleteFile = (filePath) => {
+        fs.unlink(filePath, (err) => {
+            if (err) console.error("Error al eliminar el archivo:", err);
+        });
+    };
+
     try {
-        // Definir prefijo basado en id_catv
-        let prefijoClave;
-        if (id_catv === 6) {
-            prefijoClave = 'MN'; // Para id_catv = 6
-        } else if (id_catv === 5) {
-            prefijoClave = 'TR'; // Para id_catv = 5
-        } else {
-            throw new Error("id_catv no es válido. Debe ser 5 o 6.");
+        if (![5, 6].includes(Number(id_catv))) {
+            return res.status(400).json({ message: "id_catv debe ser 5 o 6." });
         }
 
-        // Insertar transportista
+        const prefijoClave = id_catv == 6 ? 'MN' : 'TR';
+
         const [insertResult] = await pool.query(SQL_INSERT_TRANSPORTISTA, [
-            id_catv, nombre, apellidos, empresa, telefono, foto, no_licencia, no_ine, registro, est
+            id_catv, cleanNombre, cleanApellidos, cleanEmpresa, cleanTelefono,
+            foto, cleanLicencia, cleanINE, registro, est,
         ]);
 
         const id_persona = insertResult.insertId;
-
-        // Crear clave personalizada
         const clavePersonalizada = `${prefijoClave}${dia}${id_persona}`;
 
-        // Actualizar clave en la base de datos
         await pool.query(SQL_UPDATE_CLAVE, [clavePersonalizada, id_persona]);
 
-        // Responder con el tipo y la clave generada
         res.json({
             tipo: prefijoClave,
-            message: `${clavePersonalizada}`
+            message: clavePersonalizada,
         });
     } catch (error) {
-        // Manejo de errores
-        if (foto) {
-            fs.unlink(path.join('C:/acc-ced', foto), (err) => {
-                if (err) console.error("Error al eliminar el archivo:", err);
-            });
-        }
-
+        if (foto) deleteFile(path.join('C:/acc-ced', foto));
         console.error('Error al registrar transportista:', error);
         res.status(500).json({ message: 'Error al registrar', error: error.message });
     }
 };
+
 
 const createTransportistaExcel = async (req, res) => {
     const transportistas = req.body;
@@ -2227,6 +2468,30 @@ const getAllVehiculos = async (req, res) => {
 
 const createVehiculo = async (req, res) => {
     const { empresa, marca, modelo, placa, anio, seguro } = req.body;
+
+    // Validación básica de los datos
+    if (!empresa || !marca || !modelo || !placa || !anio || !seguro) {
+        return res.status(400).json({
+            message: 'Todos los campos son obligatorios',
+        });
+    }
+
+    if (isNaN(anio) || anio < 1900 || anio > new Date().getFullYear()) {
+        return res.status(400).json({
+            message: 'El campo "anio" debe ser un número válido entre 1900 y el año actual',
+        });
+    }
+
+    // Función para limpiar espacios extra entre palabras
+    const cleanString = (str) => str.trim().replace(/\s+/g, ' ');
+
+    // Limpiar los datos
+    const empresav = cleanString(empresa);
+    const marcav = cleanString(marca);
+    const modelov = cleanString(modelo);
+    const placav = cleanString(placa);
+    const segurov = cleanString(seguro);
+    const aniov = parseInt(anio, 10); // Convertir "anio" a número entero
     const registro = new Date();
     const est = 'A';
 
@@ -2239,13 +2504,22 @@ const createVehiculo = async (req, res) => {
     try {
         // Inserción en la base de datos
         await pool.query(SQL_INSERT_VEHICULO, [
-            empresa, marca, modelo, placa, anio, seguro, registro, est,
+            empresav, marcav, modelov, placav, aniov, segurov, registro, est,
         ]);
 
         // Respuesta de éxito
         res.status(201).json({
             message: 'Vehículo registrado exitosamente',
-            vehiculo: { empresa, marca, modelo, placa, anio, seguro, registro, est },
+            vehiculo: {
+                empresa: empresav,
+                marca: marcav,
+                modelo: modelov,
+                placa: placav,
+                anio: aniov,
+                seguro: segurov,
+                registro,
+                est,
+            },
         });
     } catch (error) {
         // Manejo de errores
@@ -2256,6 +2530,7 @@ const createVehiculo = async (req, res) => {
         });
     }
 };
+
 
 const createVehiculosExcel = async (req, res) => {
     const vehiculos = req.body;
@@ -2283,7 +2558,7 @@ const createVehiculosExcel = async (req, res) => {
             const registro = new Date();
             const est = 'A';
 
-            await conexion.query(SQL_INSERT_VEHICULO, [
+            const [result] = await conexion.query(SQL_INSERT_VEHICULO, [
                 empresa, marca, modelo, placa, anio, seguro, registro, est,
             ]);
         }
@@ -2363,8 +2638,9 @@ const getActividadVigilancia = async (req, res) => {
     }
 }
 
-module.exports = { createVisita, pasarValidar, darAccesoVisitante, getVisitas, getVisitasAct, getVisitasReporte, getVisitantes,getVisitanteId, 
+
+module.exports = { createVisita, pasarValidar, pasarLlegada, darAccesoVisitante, getVisitas, getVisitasAct, getVisitasReporte, getVisitantes,getVisitanteId,
     createVisitante, getTransportistas, createTransportista, getCategorias, updateVisitante, createTransportistaExcel, darSalidaVisitante, 
     getAllPermisos, permisosAutos, createMulta, multas, getMultaDetails, getMultaDetail, visitantesAll, getCategoriasMT, getAllVehiculos, createVehiculosExcel, updateInfoVisitantes,
     updateClave, getConceptosMultas, getProveedores, createVisitaProveedor, actividadVigilancia, getActividadVigilancia, updateInfoVisitantesVehiculo,
-    validacionVehiculo, validacionProveedor, pagarMulta, createEmpleado, getAreas, getEmpleados,createEmpleadoExcel, createVehiculo, upload, uploadImgVehiculo,uploadImgPagos, }
+    validacionVehiculo, validacionProveedor, pagarMulta, createEmpleado, updateEmpleado, desactivarEmpleado, getAreas, getAreasTransp, getEmpleados,createEmpleadoExcel, createVehiculo, upload, uploadImgVehiculo,uploadImgPagos, }

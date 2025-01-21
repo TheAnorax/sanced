@@ -2,19 +2,18 @@ import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import {Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Box, Button, Tabs, Tab, IconButton, Tooltip, Dialog, DialogTitle, DialogContent, Typography, TextField, ButtonGroup, Avatar, DialogActions, FormControl, Divider, InputLabel, Select, MenuItem, Alert, Snackbar} from "@mui/material";
 import { format } from 'date-fns';
-import { de, es } from 'date-fns/locale';
+import { es } from 'date-fns/locale';
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import moment from "moment";
 import { useMediaQuery} from "@mui/material";
-import { CancelOutlined, CheckCircleOutline, CloudUpload, CloudDownload, PhotoCamera, ModeEditOutline, PaymentsOutlined,  HelpOutline, Visibility,  Circle, AccountCircle, UploadFile, UploadFileOutlined, Backup, MonetizationOn } from "@mui/icons-material";
+import { CancelOutlined, CheckCircleOutline, CloudUpload, CloudDownload, PhotoCamera, ModeEditOutline, PaymentsOutlined,  HelpOutline, Visibility,  Circle, AccountCircle, UploadFile, UploadFileOutlined, Backup, MonetizationOn, Block, Edit } from "@mui/icons-material";
 import Webcam from "react-webcam";
-import { Grid } from "react-virtualized";
 import ejemplo from './ej_empleados.png';
 
 function VisitasReporte (){
-  const api = "http://localhost:3007/api/visitas";
-  const foto = "http://localhost:3007/api/fotos";
+  const api = "http://192.168.3.27:3007/api/visitas";
+  const foto = "http://192.168.3.27:3007/api/fotos";
 
   const user = JSON.parse(localStorage.getItem("user"));
   //tab
@@ -22,6 +21,7 @@ function VisitasReporte (){
   const isSmallScreen = useMediaQuery("(max-width:600px)");
 
   const [empleados, setEmpleados] = useState([]);
+  const [selectedEmpleados, setSelectedEmpleados] = useState([]);
   const [reporte, setReporte] = useState([]);
   const [multas, setMultas] = useState([]);
   const [vehiculos, setVehiculos] = useState([]);
@@ -67,6 +67,7 @@ function VisitasReporte (){
   const [openUpdateClave, setOpenUpdateClave] = useState(false);
   const [openDetailInfo, setOpenDetailInfo] = useState(false);
   const [openCreateEmpleado, setOpenCreateEmpleado] = useState(false);
+  const [openUpdateEmpleado, setOpenUpdateEmpleado] = useState(false);
   const [openUpExcel, setOpenUpExcel] = useState(false);
 
   const [openAlert, setOpenAlert] = useState(false);
@@ -83,6 +84,7 @@ function VisitasReporte (){
 
   //alert
   const [showSuccessAlert, setShowSuccessAlert] = useState(false);
+  const [showAlertCancelEmploye, setShowAlertCancelEmploye] = useState(false);
 
 
   //data exito
@@ -539,10 +541,10 @@ const validateInfo = () => {
   const inputChangeUpdate = (event) => {
     const { name, value } = event.target;
   
-  setSelectedVisitante((prevState) => ({
-    ...prevState,
-    [name]: value, 
-  }));
+    setSelectedVisitante((prevState) => ({
+      ...prevState,
+      [name]: value, 
+    }));
   };
 
   const handleDropdownChange = (event) => {
@@ -581,6 +583,123 @@ const validateInfo = () => {
         setErrorEmpleado(error.response?.data || error.message);
     }
 };
+
+const validateEmpleadoUpdate = () => {
+  let validationErrors = {};
+    let isValid = true;
+
+    // Validación de los campos generales
+    if(!(selectedEmpleados?.nombre || '').trim()) {
+      validationErrors.nombre = "Este dato es obligatorio.";
+      isValid = false;
+    }
+    if (!(selectedEmpleados?.apellidos || '').trim()) {
+      validationErrors.apellidos = "Este dato es obligatorio.";
+      isValid = false;
+    } else if ((selectedEmpleados.apellidos.trim().split(/\s+/).length) < 2) {
+      validationErrors.apellidos = "Debe ingresar los dos apellidos.";
+      isValid = false;
+    }
+    if(!(selectedEmpleados?.no_empleado || '').trim()){
+      validationErrors.no_ine = "Este dato es obligatorio.";
+      isValid = false;
+    } else if(!/^\d{1,6}$/.test(selectedEmpleados.no_empleado)){
+      validationErrors.no_ine = "Se requieren al menos 1 números.";
+      isValid = false;
+    }
+    if(!(selectedEmpleados?.no_ine || '').trim()){
+      validationErrors.no_ine = "Este dato es obligatorio.";
+      isValid = false;
+    } else if(!/^\d{12,13}$/.test(selectedEmpleados.no_ine)){
+      validationErrors.no_ine = "Se requieren al menos 12 números.";
+      isValid = false;
+    }
+    if(!(selectedEmpleados?.telefono || '').trim()){
+      validationErrors.telefono = "Este dato es obligatorio.";
+      isValid = false;
+    } else if(!/^\d{10}$/.test(selectedEmpleados.telefono)){
+      validationErrors.telefono = "Se requieren al menos 10 números.";
+      isValid = false;
+    }
+    if(!(selectedEmpleados?.puesto || '').trim()) {
+      validationErrors.puesto = "Este dato es obligatorio.";
+      isValid = false;
+    }
+    setErrorEmpleado(validationErrors);
+    return isValid;
+}
+const updateEmpleado = async () => {
+  if (!validateEmpleadoUpdate()) {
+    console.error("Existen errores en el formulario.");
+    return;
+  }
+  const invitMayusculas = convertirATextoMayusculas(selectedEmpleados);
+
+  const formData = new FormData();
+  Object.entries(invitMayusculas).forEach(([key, value]) => {
+      formData.append(key, value);
+  });
+
+  let fotoToUpload = null;
+
+  if (imageEmpleado) {
+    formData.append('foto', imageEmpleado);
+  } else if (selectedEmpleados.foto) {
+    // Usar la imagen existente si no se seleccionó una nueva
+    if (Array.isArray(selectedEmpleados.foto)) {
+      // En caso de ser un arreglo, tomar la primera imagen válida
+      fotoToUpload = selectedEmpleados.foto[0];
+    } else {
+      fotoToUpload = selectedEmpleados.foto;
+    }
+  }
+
+  try {
+      const response = await axios.put(`${api}/update/empleado`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      console.log('Guardado exitoso', response.data);
+      window.location.reload();
+  } catch (error) {
+    console.error('Error al actualizar:', error.response?.data || error.message)
+  }
+};
+
+const cancelEmpleado = async ( idEmp, est) => {
+  try {
+    const response =await axios.put(`${api}/cancel/empleado/${idEmp}`,
+      {
+        est: est
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+    console.log('Actualización exitosa:', response.data);
+  } catch (error) {
+    console.error('Error al enviar los datos:', error);
+  }
+}
+const handleCancelarEmpleado = async (idEmp, est) => {
+  if (!idEmp.id_emp) {
+    console.error(' id_vehpr:', idEmp);
+    return;
+  }
+  setSelectedEmpleados(idEmp);
+
+  setShowAlertCancelEmploye(true);
+  window.location.reload();
+  setTimeout(() => setShowAlertCancelEmploye(false), 5000); 
+  try {
+    await cancelEmpleado(idEmp.id_emp, est);
+    console.log('Empleado desactivado');
+  } catch (error) {
+    console.error('Error al enviar el permiso:', error);
+  }
+
+}
 
 const [empleado, setEmpleado] = useState(
     {
@@ -655,6 +774,14 @@ const inputChange = (event) => {
       [name]: value,
   }));
 };
+
+const inputChangeUpdateEmpleado = (event) => {
+  const { name, value } = event.target;
+  setSelectedEmpleados((prevState) => ({
+      ...prevState,
+      [name]: value,
+  }));
+};
 const handleClickOpenCreateEmpleado = () => {
   setOpenCreateEmpleado(true);
 };
@@ -671,6 +798,31 @@ const handleCloseCreateEmpleado = () => {
     telefono: "",
   });
 }
+
+const handleCloseUpdateEmpleado = () => {
+  setOpenCreateEmpleado(false);
+  setSelectedArea(null);
+  setEmpleado({ 
+    id_catv: '', 
+    nombre: "",
+    apellidos:"",
+    foto: "",
+    no_empleado: "",
+    no_ine: "",
+    telefono: "",
+  });
+}
+
+const handleClickOpenEditEmpleado = (emp) => {
+  if (!emp.id_emp) {
+    console.error('El objeto emp no contiene el campo clave:', emp);
+    return;
+  } 
+  console.log('selectedMultaVisitante:', emp);
+  setSelectedEmpleados(emp);
+  setOpenUpdateEmpleado(true); 
+};
+
   const handleDownloadReport = () => {
     const ws = XLSX.utils.json_to_sheet(
         reporte.map((rep) => ({
@@ -1074,6 +1226,17 @@ const onTemplateSelectEmpleado = (e) => {
     } else {
         console.error("No se seleccionó ningún archivo.");
     }
+};
+
+const onTemplateSelectUpdateEmpleado = (event) => {
+  const file = event.target.files[0];
+  if (file) {
+    setSelectedEmpleados((prevState) => ({
+      ...prevState,
+      foto: URL.createObjectURL(file), 
+    }));
+    setImageEmpleado(file); 
+  }
 };
 
 const tomarFotoEmpleado = () => {
@@ -1937,6 +2100,11 @@ const tomarFotoEmpleado = () => {
               </Box>
             </Box>
             <TableContainer component={Paper}>
+            {showAlertCancelEmploye && (
+              <Alert icon={<CheckCircleOutline fontSize="inherit" />} severity="success">
+                ¡Empleado cancelado correctamente.!
+              </Alert>
+            )}
               <Table sx={{ minWidth: 700 }} aria-label="customized table">
                 <TableHead>
                   <TableRow>
@@ -1945,6 +2113,7 @@ const tomarFotoEmpleado = () => {
                     <TableCell align="center">PUESTO</TableCell>
                     <TableCell align="center">NO. EMPLEADO</TableCell>
                     <TableCell align="center">ESTADO</TableCell>
+                    <TableCell></TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -1963,6 +2132,15 @@ const tomarFotoEmpleado = () => {
                     <TableCell align="center">{emp.puesto}</TableCell>
                     <TableCell align="center">{emp.no_empleado}</TableCell>
                     <TableCell align="center">{emp.est}</TableCell>
+                    <TableCell align="center">
+                      <IconButton color="gray" onClick={() => handleCancelarEmpleado(emp, 'C')}>
+                        <Block />
+                      </IconButton>
+                      <IconButton color="success" onClick={ () => handleClickOpenEditEmpleado(emp)}>
+                        <Edit />
+                      </IconButton>
+
+                    </TableCell>
                   </TableRow>
                   ))
                 ) : (
@@ -2535,6 +2713,248 @@ const tomarFotoEmpleado = () => {
                   </div>
                 )}
             </DialogContent>
+          </Dialog>
+          <Dialog open={openUpdateEmpleado} onClose={handleCloseUpdateEmpleado} maxWidth="md" fullWidth>
+            <DialogTitle >ACTUALIZAR EMPLEADO</DialogTitle>
+            <DialogContent style={{ marginLeft: '5px', display: 'flex', flexDirection: 'column' }}>
+              {selectedEmpleados && (
+                <>
+              <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start', margin: '15px' }}>
+                
+                <div>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      border: "1px dashed #ccc",
+                      width: 210,
+                      height: 280,
+                      textAlign: "center",
+                      margin: "auto",
+                    }}
+                  >
+                    {selectedEmpleados.foto || imageEmpleado ? (
+                      <Box
+                        sx={{ textAlign: "center", width: "100%", height: "100%" }}
+                      >
+                        <img
+                          src={selectedEmpleados.foto && !selectedEmpleados.foto.startsWith("blob") 
+                            ? `${foto}/${selectedEmpleados.foto}` 
+                            : typeof imageEmpleado === "string" ? imageEmpleado : URL.createObjectURL(imageEmpleado)}
+                          alt={selectedEmpleados.nombre_completo || "Imagen del visitante"}
+                          style={{ width: "100%", maxHeight: 170, borderRadius: 8 }}
+                        />
+                        <Typography variant="body2" sx={{ color: "black" }}>
+                          {selectedEmpleados.nombre_completo || "Foto actual"}
+                        </Typography>
+                        <Button
+                          variant="contained"
+                          color="error"
+                          size="small"
+                          onClick={() => {
+                            setSelectedEmpleados((prev) => ({ ...prev, foto: null }));
+                            setImageEmpleado(null);
+                          }}
+                          sx={{ mt: 1 }}
+                        >
+                          Quitar Imagen
+                        </Button>
+                      </Box>
+                    ) : (
+                      <Box>
+                        <Button
+                          variant="outlined"
+                          startIcon={<CloudUpload />}
+                          sx={{ width: "95%", mb: 1 }}
+                          component="label"
+                        >
+                          Seleccionar Foto
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={onTemplateSelectUpdateEmpleado}
+                            hidden
+                          />
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          startIcon={<PhotoCamera />}
+                          sx={{ width: "95%", mb: 1 }}
+                          onClick={handleClickOpenCamEmpleado}
+                        >
+                          Tomar Foto
+                        </Button>
+                        <Dialog
+                          header="TOMAR FOTO"
+                          open={openCamEmpleado}
+                          onClose={handleCloseCamEmpleado}
+                        >
+                          <Box style={{ textAlign: "center", margin:'20px'  }}>
+                            <Webcam
+                              audio={false}
+                              ref={webcamRef}
+                              screenshotFormat="image/jpeg"
+                                    style={{ width: "100%"  }}
+                                    onUserMedia={() => setIsCameraReady(true)}
+                                  />
+                                  {!isCameraReady && webcamRef ? ( // Mostrar mensaje de carga mientras la cámara no esté lista
+                                    <p style={{ marginTop: "20px", fontSize: "16px", color: "#888", textAlign:'center' }}>
+                                      Cargando cámara...
+                                    </p>
+                                  ) : (
+                                    <Button
+                                      severity="danger"
+                                      variant="outlined"
+                                      startIcon={<PhotoCamera />}
+                                      style={{ width: "100%", marginTop: "20px" }}
+                                      onClick={tomarFotoEmpleado}
+                                    > 
+                                      Tomar Foto
+                                    </Button>
+                                  )}
+                                  
+                                </Box>
+                              </Dialog>
+                            </Box>
+                          )}
+                        </Box>
+                        <small style={{color:'gray'}}>
+                          * Opcional
+                        </small>
+                </div>
+
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "20px", marginTop:'10px' }} >
+                  <FormControl fullWidth>
+                    <TextField
+                      id="nombre"
+                      name="nombre"
+                      value={selectedEmpleados.nombre || ''}
+                      onChange={inputChangeUpdateEmpleado}
+                      variant="outlined"
+                      label="Nombre (s)"
+                      inputProps={{ style: { textTransform: "uppercase" } }}
+                    />
+                    <small>
+                      {errorEmpleado.nombre && (
+                        <span style={{color: 'red'}}>
+                          * {errorEmpleado.nombre}
+                        </span>
+                      )}
+                    </small>
+                  </FormControl>
+                  <FormControl fullWidth>
+                    <TextField
+                      id="telefono"
+                      name="telefono"
+                      label="Teléfono"
+                      value={selectedEmpleados.telefono || ''}
+                      onChange={inputChangeUpdateEmpleado}
+                    />
+                    <small>
+                      {errorEmpleado.telefono && (
+                        <span style={{color: 'red'}}>
+                          * {errorEmpleado.telefono}
+                        </span>
+                      )}
+                    </small>
+                  </FormControl>
+                  <FormControl fullWidth>
+                    <TextField
+                      id="no_ine"
+                      name="no_ine"
+                      label="No. INE"
+                      value={selectedEmpleados.no_ine || ''}
+                      onChange={inputChangeUpdateEmpleado}
+                    />
+                    <small>
+                    {errorEmpleado.no_ine && (
+                      <span style={{color: 'red'}}>
+                        * {errorEmpleado.no_ine}
+                      </span>
+                    )}
+                  </small>
+                  </FormControl>
+                </div>
+
+                {/* Más campos de texto */}
+                <div style={{  display: "flex", flexWrap: "wrap", gap: "20px", marginTop:'10px'  }}>
+                  <FormControl fullWidth >
+                    <TextField
+                      id="apellidos"
+                      name="apellidos"
+                      label="Apellidos"
+                      value={selectedEmpleados.apellidos || ''}
+                      onChange={inputChangeUpdateEmpleado}
+                      variant="outlined"
+                      inputProps={{ style: { textTransform: "uppercase" } }}
+                    />
+                    <small>
+                      {errorEmpleado.apellidos && (
+                        <span style={{color: 'red'}}>
+                          * {errorEmpleado.apellidos}
+                        </span>
+                      )}
+                    </small>
+                  </FormControl>
+                  <FormControl fullWidth >
+                    <TextField
+                      fullWidth
+                      id="no_empleado"
+                      name="no_empleado"
+                      label="No. empleado"
+                      value={selectedEmpleados.no_empleado || ''}
+                      onChange={inputChangeUpdateEmpleado}
+                      inputProps={{ style: { textTransform: "uppercase" } }}
+                    />
+                    <small>
+                      {errorEmpleado.no_empleado && (
+                        <span style={{color: 'red'}}>
+                          * {errorEmpleado.no_empleado}
+                        </span>
+                      )}
+                    </small>
+                  </FormControl>
+                  
+                  
+                  <FormControl fullWidth >
+                    <TextField
+                      id="puesto"
+                      name="puesto"
+                      label="Puesto"
+                      value={selectedEmpleados.puesto || ''}
+                      onChange={inputChangeUpdateEmpleado}
+                      variant="outlined"
+                      inputProps={{ style: { textTransform: "uppercase" } }}
+                    />
+                    <small>
+                      {errorEmpleado.puesto && (
+                        <span style={{color: 'red'}}>
+                          * {errorEmpleado.puesto}
+                        </span>
+                      )}
+                    </small>
+                  </FormControl>
+                </div>
+                
+              </div>
+              <Box sx={{ textAlign: "center", mt: 4 }}>
+                <Button variant="outlined" color="secondary" sx={{ mr: 2 }}>
+                  Cancelar
+                </Button>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={updateEmpleado}
+                >
+                  Finalizar
+                </Button>
+              </Box>
+              </>
+            )}
+            </DialogContent>
+          
           </Dialog>
 
       </div>

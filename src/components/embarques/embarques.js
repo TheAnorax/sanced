@@ -42,18 +42,20 @@ function Embarques() {
     const fetchUsuarios = async () => {
       try {
         const response = await axios.get('http://192.168.3.27:3007/api/pedidos/usuarios');
-
-        // Filtrar usuarios que incluyan "embarque" en el nombre y también a "Dany"
+    
+        // Filtrar usuarios con validación de que 'role' no sea null o undefined
         const paqueteriaUsuarios = response.data.filter(usuario => 
-          usuario.name && 
-          usuario.name.toLowerCase().includes('embarque') || usuario.name.toLowerCase() === 'Dany'
+          usuario.role && (usuario.role.toUpperCase().startsWith('EB') || usuario.name === 'Dany')
         );
-
+    
+        console.log('Usuarios filtrados:', paqueteriaUsuarios); // Inspeccionar los datos filtrados
         setUsuarios(paqueteriaUsuarios);
       } catch (error) {
         console.error('Error fetching usuarios:', error);
       }
     };
+    
+    
 
     fetchPedidos();
     fetchUsuarios();

@@ -20,6 +20,11 @@ import CircularProgress from "@mui/material/CircularProgress";
 import { FixedSizeList as List } from "react-window";
 import { utils, write } from "xlsx"; // Importar utils y write para manejo de Excel
 import { saveAs } from "file-saver"; // Importar saveAs para guardar archivos
+import { DataGrid } from "@mui/x-data-grid";
+import MenuItem from "@mui/material/MenuItem";
+import Select from "@mui/material/Select";
+import FormControl from "@mui/material/FormControl";
+import InputLabel from "@mui/material/InputLabel";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
@@ -33,6 +38,11 @@ function Inventory() {
     const [responsableProgress, setResponsableProgress] = useState([]);
     const [manualData, setManualData] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [inventoryReport, setInventoryReport] = useState([]); 
+    const [filteredData, setFilteredData] = useState([]); 
+    const [selectedPasillo, setSelectedPasillo] = useState(""); // Pasillo seleccionado
+   const [selectedTipo, setSelectedTipo] = useState(""); // Tipo PAR/IMPAR seleccionado
+    
 
     // Efecto para cargar datos
     useEffect(() => {
@@ -81,6 +91,58 @@ function Inventory() {
         };
     }, []);
 
+
+    useEffect(() => {
+        if (selectedTab === 4 && inventoryReport.length === 0) {
+          const fetchInventoryReport = async () => {
+            try {
+              setLoading(true);
+              const response = await axios.get(
+                "http://192.168.3.27:3007/api/inventory/getInventoryDet"
+              );
+              setInventoryReport(response.data.data || []);
+              setFilteredData(response.data.data || []); // Inicializa los datos filtrados
+            } catch (error) {
+              console.error("Error al cargar el reporte de inventario:", error);
+            } finally {
+              setLoading(false);
+            }
+          };
+    
+          fetchInventoryReport();
+        }
+      }, [selectedTab]);
+
+        // Manejar cambio en el filtro de pasillo
+  const handlePasilloChange = (event) => {
+    const pasillo = event.target.value;
+    setSelectedPasillo(pasillo);
+    applyFilters(pasillo, selectedTipo);
+  };
+
+  // Manejar cambio en el filtro de tipo
+  const handleTipoChange = (event) => {
+    const tipo = event.target.value;
+    setSelectedTipo(tipo);
+    applyFilters(selectedPasillo, tipo);
+  };
+
+  // Aplicar filtros combinados
+  const applyFilters = (pasillo, tipo) => {
+    let filtered = inventoryReport;
+
+    if (pasillo) {
+      filtered = filtered.filter((item) => item.pasillo === pasillo);
+    }
+
+    if (tipo) {
+        filtered = filtered.filter((item) => item.tipo === tipo);
+      }
+
+    setFilteredData(filtered);
+  };
+
+
     // Función para exportar a Excel
     const handleDownloadExcel = () => {
         if (!inventoryData || inventoryData.length === 0) {
@@ -111,6 +173,24 @@ function Inventory() {
     const handleTabChange = (event, newValue) => {
         setSelectedTab(newValue);
     };
+
+    const columns = [
+      
+        { field: "ubi", headerName: "Ubicación", width: 200 },
+        { field: "des", headerName: "Descripción", width: 150 },
+        { field: "codigo", headerName: "Código", width: 150 },
+        { field: "_pz", headerName: "PZ", width: 100, },
+        { field: "_inner", headerName: "Inner", width: 100, },
+        { field: "_master", headerName: "Master", width: 100, },
+        { field: "_pallet", headerName: "Pallet", width: 100,  },
+        { field: "cantidad", headerName: "Cantidad", width: 150,  },
+        { field: "manual", headerName: "Manual", width: 150,  },
+        { field: "pasillo", headerName: "Pasillo", width: 150 },
+        { field: "name", headerName: "name", width: 150 },
+        { field: "tipo", headerName: "Tipo", width: 150 },
+      ];
+
+
 
     const calculateStockPercentage = (cantidad, cant_stock, estado) => {
         if (estado === "F") return 100;
@@ -177,6 +257,7 @@ function Inventory() {
                 <Tab label="Progreso por Ubicaciones" />
                 <Tab label="Avance por Persona" />
                 <Tab label="Manual" />
+                <Tab label="Reporte de Inventario" />
             </Tabs>
 
             {/* Tab 0: Progreso General */}
@@ -379,9 +460,72 @@ function Inventory() {
                 </Box>
             )}
 
+            {/* Tab 4: Reporte de Inventario */}
+            {/* Tab 4: Reporte de Inventario */}
+      {selectedTab === 4 && (
+        <Box marginTop={4}>
+          <Typography variant="h5" gutterBottom>
+            Reporte de Inventario
+          </Typography>
 
+          {/* Filtros */}
+          <Box display="flex" justifyContent="center" gap={4} marginBottom={4}>
+            {/* Filtro de Pasillo */}
+            <FormControl sx={{ minWidth: 200 }}>
+              <InputLabel id="pasillo-select-label">Pasillo</InputLabel>
+              <Select
+                labelId="pasillo-select-label"
+                value={selectedPasillo}
+                onChange={handlePasilloChange}
+              >
+                <MenuItem value="">Todos</MenuItem>
+                {[...new Set(inventoryReport.map((item) => item.pasillo))].map(
+                  (pasillo, index) => (
+                    <MenuItem key={index} value={pasillo}>
+                      {pasillo}
+                    </MenuItem>
+                  )
+                )}
+              </Select>
+            </FormControl>
+
+            {/* Filtro de Tipo (PAR/IMPAR) */}
+            <FormControl sx={{ minWidth: 200 }}>
+              <InputLabel id="tipo-select-label">Tipo</InputLabel>
+              <Select
+                labelId="tipo-select-label"
+                value={selectedTipo}
+                onChange={handleTipoChange}
+              >
+                <MenuItem value="">Todos</MenuItem>
+                <MenuItem value="PAR">PAR</MenuItem>
+                <MenuItem value="IMPAR">IMPAR</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
+
+          {loading ? (
+            <CircularProgress />
+          ) : filteredData.length > 0 ? (
+            <Box sx={{ height: "60%", width: "100%", marginTop: 2 }}>
+              <DataGrid
+                rows={filteredData} // Datos filtrados
+                columns={columns} // Configuración de las columnas
+                getRowId={(row) => row.id_ubi} // Define el identificador único de las filas
+                pageSize={10} // Tamaño de la página
+                rowsPerPageOptions={[5, 10, 20]} // Opciones de paginación
+                disableSelectionOnClick // Deshabilita la selección al hacer clic en celdas
+              />
+            </Box>
+          ) : (
+            <Typography variant="body2" color="textSecondary">
+              No hay datos disponibles para el reporte de inventario.
+            </Typography>
+          )}
         </Box>
-    );
+      )}
+    </Box>
+  );
 }
 
 export default Inventory;

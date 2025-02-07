@@ -1,30 +1,33 @@
 const pool = require('../config/database');
 const bcrypt = require('bcrypt');
 
+
 const getUsuarios = async (req, res) => {
   try {
     const [rows] = await pool.query(`SELECT * FROM usuarios;`);
 
-    // Mapeo para cambiar roles de "P1" a "Pasillo 1", etc.
+    if (!rows.length) {
+      return res.status(404).json({ message: "No se encontraron usuarios" });
+    }
+
     const roleMapping = {
-      P1: 'Pasillo 1',
-      P2: 'Pasillo 2',
-      P3: 'Pasillo 3',
-      P4: 'Pasillo 4',
-      P5: 'Pasillo 5',
-      P6: 'Pasillo 6',
-      P7: 'Pasillo 7',
-      P8: 'Pasillo 8',
-      P9: 'Pasillo 9',
-      P10: 'Pasillo 10',
-      P11: 'Pasillo 11',
-      P12: 'Pasillo 12', 
-      P13: 'Pasillo 13',
+      P1: "Pasillo 1",
+      P2: "Pasillo 2",
+      P3: "Pasillo 3",
+      P4: "Pasillo 4",
+      P5: "Pasillo 5",
+      P6: "Pasillo 6",
+      P7: "Pasillo 7",
+      P8: "Pasillo 8",
+      P9: "Pasillo 9",
+      P10: "Pasillo 10",
+      P11: "Pasillo 11",
+      P12: "Pasillo 12",
+      P13: "Pasillo 13",
     };
 
-    // Filtrar y agrupar usuarios por turno
     const usuariosPorTurno = rows.reduce((acc, usuario) => {
-      const turno = usuario.turno || 'Sin turno';
+      const turno = usuario.turno || "Sin turno";
 
       if (!acc[turno]) {
         acc[turno] = {
@@ -33,14 +36,13 @@ const getUsuarios = async (req, res) => {
         };
       }
 
-      // Obtener el nombre del role basado en el mapeo
-      const role = roleMapping[usuario.role] || usuario.role;
+      const role = roleMapping[usuario.role] || usuario.role || "Sin rol";
 
       acc[turno].usuarios.push({
         id_usu: usuario.id_usu,
         name: usuario.name,
-        role: role, // Role mapeado
-        turno: usuario.turno, 
+        role: role,
+        turno: usuario.turno,
         email: usuario.email,
         password: usuario.password,
         unidad: usuario.unidad,
@@ -49,23 +51,33 @@ const getUsuarios = async (req, res) => {
       return acc;
     }, {});
 
-    // Convertir el resultado a un array para facilitar su manejo en el frontend
     const resultadoFormateado = Object.values(usuariosPorTurno);
 
-    // Ordenar los usuarios dentro de cada turno por el role (Pasillo 1, Pasillo 2, etc.)
     resultadoFormateado.forEach((grupo) => {
       grupo.usuarios.sort((a, b) => {
-        const numA = parseInt(a.role.replace('Pasillo ', ''), 10);
-        const numB = parseInt(b.role.replace('Pasillo ', ''), 10);
+        // Validar que role no sea null o undefined antes de usar replace()
+        const roleA = a.role || "";
+        const roleB = b.role || "";
+
+        const numA = parseInt(roleA.replace("Pasillo ", ""), 10) || 0;
+        const numB = parseInt(roleB.replace("Pasillo ", ""), 10) || 0;
+
         return numA - numB;
       });
     });
 
-    res.json(resultadoFormateado);
+    res.status(200).json(resultadoFormateado);
   } catch (error) {
-    res.status(500).json({ message: 'Error al obtener los usuarios', error: error.message });
+    console.error("Error al obtener los usuarios:", error); // Log para depuración
+    res.status(500).json({
+      message: "Error al obtener los usuarios",
+      error: error.message,
+    });
   }
 };
+
+
+
 
 const getAccesosUsuario = async (req, res) => {
   const { id } = req.params;
@@ -74,7 +86,7 @@ const getAccesosUsuario = async (req, res) => {
       SELECT a.id_acceso, a.id_seccion, a.id_permiso, s.name AS seccion, p.name AS permiso
       FROM accesos a
       JOIN secciones s ON a.id_seccion = s.id_seccion
-      JOIN permisos p ON a.id_permiso = p.id_permiso
+      JOIN permisos p ON a.id_permiso = p.id_permiso 
       WHERE a.id_usu = ?;
     `, [id]);
     res.json(rows);

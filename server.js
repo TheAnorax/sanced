@@ -20,7 +20,7 @@ const connectToDatabase = async () => {
     connectionLimit: 10,
     queueLimit: 0,
   });
-};
+}; 
 
 let db;
 const initDBConnection = async () => {
@@ -1319,7 +1319,7 @@ app.post("/movimientosUbicacion", async (req, res) => {
 // });
 
 
-app.get('/inventory', async (req, res) => {
+app.get('/inventory', async (req, res) => { 
   const query = `
     SELECT 
       id_ubi,
@@ -1412,7 +1412,7 @@ app.get('/getproductinventory', async (req, res) => {
       des,
       _pz,
       _inner,
-      _master,
+      _master, 
       _palet,
       code_pz,
       code_inner,

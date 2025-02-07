@@ -7,13 +7,13 @@ import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import moment from "moment";
 import { useMediaQuery} from "@mui/material";
-import { CancelOutlined, CheckCircleOutline, CloudUpload, CloudDownload, PhotoCamera, ModeEditOutline, PaymentsOutlined,  HelpOutline, Visibility,  Circle, AccountCircle, UploadFile, UploadFileOutlined, Backup, MonetizationOn, Block, Edit } from "@mui/icons-material";
+import { CancelOutlined, CheckCircleOutline, CloudUpload, CloudDownload, PhotoCamera, ModeEditOutline, PaymentsOutlined,  HelpOutline, Visibility,  Circle, AccountCircle, UploadFile, UploadFileOutlined, Backup, MonetizationOn, Block, Edit, ErrorOutline, PersonOffOutlined, PermIdentityOutlined } from "@mui/icons-material";
 import Webcam from "react-webcam";
 import ejemplo from './ej_empleados.png';
 
 function VisitasReporte (){
-  const api = "http://192.168.3.27:3007/api/visitas";
-  const foto = "http://192.168.3.27:3007/api/fotos";
+  const api = "http://localhost:3007/api/visitas";
+  const foto = "http://localhost:3007/api/fotos";
 
   const user = JSON.parse(localStorage.getItem("user"));
   //tab
@@ -54,6 +54,13 @@ function VisitasReporte (){
     "no_ine",
     "telefono",
     "puesto",
+    "tel_emergencia",
+    "nom_emergencia",
+    "parentesco_contacto",
+    "calle",
+    "colonia",
+    "delegacion",
+    "estado",
   ];
 
   //dialog
@@ -71,6 +78,9 @@ function VisitasReporte (){
   const [openUpExcel, setOpenUpExcel] = useState(false);
 
   const [openAlert, setOpenAlert] = useState(false);
+  const [isErrorDialogVisible, setIsErrorDialogVisible] = useState(false);
+  const [OpenBloquearEmpleado, setOpenBloquearEmpleado] = useState(false);
+  const [OpenDesbloquearEmpleado, setOpenDesbloquearEmpleado] = useState(false);
 
   //data error
   const [isCameraReady, setIsCameraReady] = useState(false);
@@ -79,6 +89,7 @@ function VisitasReporte (){
   const [errorInfoVitAuto, setErrorInfoVitAuto] = useState('');
   const [updateError, setUpdateError] = useState({ message: "", type: "" });
   const [errorEmpleado, setErrorEmpleado] = useState('');
+  const [errorEmpleadoUp, setErrorEmpleadoUp] = useState('');
   const [errorExcel, setErrorExcel] = useState([]);
   const [errorSave, setErrorSave] = useState([]);
 
@@ -116,14 +127,17 @@ function VisitasReporte (){
       return visit.tipo === "CANDIDATO (ENTREVISTA)";
     }
     if (filterVisitas === "INVITADO (EVENTOS)") {
-      return visit.tipo === "INVITADO (EVENTOS)";
+      return ["INVITADO (EVENTOS)", "ENTREGA DE EVIDENCIAS"].includes(visit.tipo);
     }
     if (filterVisitas === "PERSONAL CORPORATIVO") {
       return visit.tipo === "PERSONAL CORPORATIVO";
     }
+    if (filterVisitas === "PAQUETERIA") {
+      return visit.tipo === "PAQUETERIA";
+    }
   
     if (filterVisitas === "otros") {
-      return ["PERSONAL CORPORATIVO", "CANDIDATO (ENTREVISTA)", "INVITADO (EVENTOS)", "TRANSPORTISTA", "PROVEEDOR"].includes(visit.tipo);
+      return ["PERSONAL CORPORATIVO", "CANDIDATO (ENTREVISTA)", "INVITADO (EVENTOS)", "TRANSPORTISTA", "PROVEEDOR", "CLIENTE", "CLIENTE RECOGE", "DIRECCION GENERAL", "ENTREGA DE EVIDENCIAS", "PAQUETERIA"].includes(visit.tipo);
     }
   
     return true;
@@ -296,10 +310,24 @@ function VisitasReporte (){
         formData.append(key, value);
     });
 
+    let fotoToUpload = null;
     // Solo añadir la foto si fue seleccionada
     if (image) {
-        formData.append('foto', image);
+      // Si se seleccionó una nueva imagen, usarla
+      fotoToUpload = image;
+    } else if (selectedVisitante.foto) {
+      // Usar la imagen existente si no se seleccionó una nueva
+      if (Array.isArray(selectedVisitante.foto)) {
+        // En caso de ser un arreglo, tomar la primera imagen válida
+        fotoToUpload = selectedVisitante.foto[0];
+      } else {
+        fotoToUpload = selectedVisitante.foto;
+      }
     }
+    if (fotoToUpload) { 
+      formData.append('foto', imageEmpleado);
+    }
+  
     //update informacion de trnasportista
     try {
         const response = await axios.put(`${api}/up/informacion`, formData, {
@@ -351,19 +379,15 @@ const updateInfoVehiculo = async () => {
   let fotoToUpload = null;
 
   if (image) {
-    // Si se seleccionó una nueva imagen, usarla
     fotoToUpload = image;
   } else if (selectedVisitante.foto) {
-    // Usar la imagen existente si no se seleccionó una nueva
     if (Array.isArray(selectedVisitante.foto)) {
-      // En caso de ser un arreglo, tomar la primera imagen válida
       fotoToUpload = selectedVisitante.foto[0];
     } else {
       fotoToUpload = selectedVisitante.foto;
     }
   }
 
-  // Agregar la foto al FormData si existe
   if (fotoToUpload) {
     formData.append("foto", fotoToUpload);
   }
@@ -449,40 +473,41 @@ const validateInfo = () => {
     const errorsDatos = {};
     let isValid = true;
 
-  // Validar si el visitante no es TRANSPORTISTA ni MANIOBRISTA
-  if (!["TRANSPORTISTA", "MANIOBRISTA", "PERSONAL CORPORATIVO", "CANDIDATO (ENTREVISTA)"].includes(selectedVisitante?.tipo)) {
-    if (!selectedVisitante?.placa?.trim()) {
-      errors.placa = "La placa es obligatoria.";
-      isValid = false;
-    }else if (!/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{6}$/i.test(selectedVisitante.placa)) {
-      errors.placa = "Debe tener 6 caracteres, incluyendo letras y números.";
-      isValid = false;
+  //Validar todos los datos del carro si el visitante no es "TRANSPORTISTA", "MANIOBRISTA", "CANDIDATO (ENTREVISTA)"
+  if (!["TRANSPORTISTA", "MANIOBRISTA", "CANDIDATO (ENTREVISTA)"].includes(selectedVisitante?.tipo)) {
+    if (selectedVisitante?.no_licencia?.trim()) {
+      if (!selectedVisitante?.placa?.trim()) {
+        errors.placa = "La placa es obligatoria.";
+        isValid = false;
+      }else if (!/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{6}$/i.test(selectedVisitante.placa)) {
+        errors.placa = "Debe tener 6 caracteres, incluyendo letras y números.";
+        isValid = false;
+      }
+      if (!selectedVisitante?.no_licencia?.trim()) {
+        errors.no_licencia = "El número de licencia es obligatorio.";
+        isValid = false;
+      }else if(!/^\d{10,12}$/.test(selectedVisitante.no_licencia)){
+        errors.no_licencia = "Se requieren al menos 10 números.";
+        isValid = false;
+      }
+      if (!selectedVisitante?.modelo?.trim()) {
+        errors.modelo = "El modelo es obligatorio.";
+        isValid = false;
+      }
+      if (!selectedVisitante?.marca?.trim()) {
+        errors.marca = "La marca es obligatoria.";
+        isValid = false;
+      }
+      if (!selectedVisitante?.anio?.trim()) {
+        errors.anio = "El año es obligatorio.";
+        isValid = false;
+      }else if(!/^\d{4}$/.test(selectedVisitante.anio)){
+        errors.anio = "Se requieren al menos 4 números.";
+        isValid = false;
+      }
     }
-    if (!selectedVisitante?.no_licencia?.trim()) {
-      errors.no_licencia = "El número de licencia es obligatorio.";
-      isValid = false;
-    }else if(!/^\d{10,12}$/.test(selectedVisitante.no_licencia)){
-      errors.no_licencia = "Se requieren al menos 10 números.";
-      isValid = false;
-    }
-    if (!selectedVisitante?.modelo?.trim()) {
-      errors.modelo = "El modelo es obligatorio.";
-      isValid = false;
-    }
-    if (!selectedVisitante?.marca?.trim()) {
-      errors.marca = "La marca es obligatoria.";
-      isValid = false;
-    }
-    if (!selectedVisitante?.anio?.trim()) {
-      errors.anio = "El año es obligatorio.";
-      isValid = false;
-    }else if(!/^\d{4}$/.test(selectedVisitante.anio)){
-      errors.anio = "Se requieren al menos 4 números.";
-      isValid = false;
-    }
-  
   }
-  if (!["PERSONAL CORPORATIVO"].includes(selectedVisitante?.tipo)) {
+ // if (!["PERSONAL CORPORATIVO"].includes(selectedVisitante?.tipo)) {}
     if (!selectedVisitante?.nombre?.trim()) {
       errorsDatos.nombre = "Este dato es obligatorio.";
       isValid = false;
@@ -505,8 +530,7 @@ const validateInfo = () => {
         isValid = false;
     }
 
-  }
-
+  
     // Validar número de INE
     if (!selectedVisitante?.no_ine?.trim()) {
         errorsDatos.no_ine = "Este dato es obligatorio.";
@@ -557,7 +581,6 @@ const validateInfo = () => {
   };
 
   const createEmpleado = async () => {
-
     const invitMayusculas = convertirATextoMayusculas(empleado);
 
     const formData = new FormData();
@@ -566,21 +589,21 @@ const validateInfo = () => {
     });
 
     if (imageEmpleado) {
-      formData.append('foto', imageEmpleado);
-  } else {
-      console.error("No se ha seleccionado ninguna imagen.");
-      //return;
-  }
+        formData.append('foto', imageEmpleado);
+    } else {
+        console.error("No se ha seleccionado ninguna imagen.");
+    }
 
     try {
         const response = await axios.post(`${api}/create/empleado`, formData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
+            headers: { 'Content-Type': 'multipart/form-data' },
         });
         console.log('Guardado exitoso', response.data);
         window.location.reload();
     } catch (error) {
-        console.error('Error al registrar visita:', error.response?.data || error.message);
-        setErrorEmpleado(error.response?.data || error.message);
+        console.error('Error al registrar empleado:', error.response?.data || error.message);
+        setErrorEmpleado(error.response?.data?.message || 'Error desconocido');
+        setIsErrorDialogVisible(true); // Mostrar el diálogo de error
     }
 };
 
@@ -589,45 +612,72 @@ const validateEmpleadoUpdate = () => {
     let isValid = true;
 
     // Validación de los campos generales
-    if(!(selectedEmpleados?.nombre || '').trim()) {
+    if(!selectedEmpleados?.nombre?.trim()) {
       validationErrors.nombre = "Este dato es obligatorio.";
       isValid = false;
     }
-    if (!(selectedEmpleados?.apellidos || '').trim()) {
+    if (!selectedEmpleados?.apellidos?.trim()) {
       validationErrors.apellidos = "Este dato es obligatorio.";
       isValid = false;
     } else if ((selectedEmpleados.apellidos.trim().split(/\s+/).length) < 2) {
       validationErrors.apellidos = "Debe ingresar los dos apellidos.";
       isValid = false;
     }
-    if(!(selectedEmpleados?.no_empleado || '').trim()){
-      validationErrors.no_ine = "Este dato es obligatorio.";
-      isValid = false;
-    } else if(!/^\d{1,6}$/.test(selectedEmpleados.no_empleado)){
-      validationErrors.no_ine = "Se requieren al menos 1 números.";
+    if(!selectedEmpleados?.no_empleado?.trim()){
+      validationErrors.no_empleado = "Este dato es obligatorio.";
       isValid = false;
     }
-    if(!(selectedEmpleados?.no_ine || '').trim()){
+    
+    if(!selectedEmpleados?.no_ine?.trim()){
       validationErrors.no_ine = "Este dato es obligatorio.";
       isValid = false;
-    } else if(!/^\d{12,13}$/.test(selectedEmpleados.no_ine)){
-      validationErrors.no_ine = "Se requieren al menos 12 números.";
+    } else if(!/^\d{10,13}$/.test(selectedEmpleados.no_ine)){
+      validationErrors.no_ine = "Debe contener entre 10 y 13 números.";
       isValid = false;
     }
-    if(!(selectedEmpleados?.telefono || '').trim()){
+    if(!selectedEmpleados?.telefono?.trim()){
       validationErrors.telefono = "Este dato es obligatorio.";
       isValid = false;
     } else if(!/^\d{10}$/.test(selectedEmpleados.telefono)){
       validationErrors.telefono = "Se requieren al menos 10 números.";
       isValid = false;
     }
-    if(!(selectedEmpleados?.puesto || '').trim()) {
+    if(!selectedEmpleados?.puesto?.trim()) {
       validationErrors.puesto = "Este dato es obligatorio.";
       isValid = false;
     }
-    setErrorEmpleado(validationErrors);
+    if(!selectedEmpleados?.tel_emergencia?.trim()) {
+      validationErrors.tel_emergencia = "Este dato es obligatorio.";
+      isValid = false;
+    }
+    if(!selectedEmpleados?.nom_emergencia?.trim()) {
+      validationErrors.nom_emergencia = "Este dato es obligatorio.";
+      isValid = false;
+    }
+    if(!selectedEmpleados?.parentesco_contacto?.trim()) {
+      validationErrors.parentesco_contacto = "Este dato es obligatorio.";
+      isValid = false;
+    }
+    if(!selectedEmpleados?.calle?.trim()) {
+      validationErrors.calle = "Este dato es obligatorio.";
+      isValid = false;
+    }
+    if(!selectedEmpleados?.colonia?.trim()) {
+      validationErrors.colonia = "Este dato es obligatorio.";
+      isValid = false;
+    }
+    if(!selectedEmpleados?.delegacion?.trim()) {
+      validationErrors.delegacion = "Este dato es obligatorio.";
+      isValid = false;
+    }
+    if(!selectedEmpleados?.estado?.trim()) {
+      validationErrors.estado = "Este dato es obligatorio.";
+      isValid = false;
+    } 
+    setErrorEmpleadoUp(validationErrors);
     return isValid;
 }
+
 const updateEmpleado = async () => {
   if (!validateEmpleadoUpdate()) {
     console.error("Existen errores en el formulario.");
@@ -640,18 +690,20 @@ const updateEmpleado = async () => {
       formData.append(key, value);
   });
 
+
   let fotoToUpload = null;
 
   if (imageEmpleado) {
-    formData.append('foto', imageEmpleado);
+    fotoToUpload = imageEmpleado;
   } else if (selectedEmpleados.foto) {
-    // Usar la imagen existente si no se seleccionó una nueva
     if (Array.isArray(selectedEmpleados.foto)) {
-      // En caso de ser un arreglo, tomar la primera imagen válida
       fotoToUpload = selectedEmpleados.foto[0];
     } else {
       fotoToUpload = selectedEmpleados.foto;
     }
+  }
+  if (fotoToUpload) { 
+    formData.append('foto', imageEmpleado);
   }
 
   try {
@@ -665,6 +717,13 @@ const updateEmpleado = async () => {
   }
 };
 
+const savaUpdateEmpleado =() => {
+  if(validateEmpleadoUpdate()){
+    updateEmpleado();
+  }else{
+    console.log('error en la validacion')
+  }
+}
 const cancelEmpleado = async ( idEmp, est) => {
   try {
     const response =await axios.put(`${api}/cancel/empleado/${idEmp}`,
@@ -682,23 +741,14 @@ const cancelEmpleado = async ( idEmp, est) => {
     console.error('Error al enviar los datos:', error);
   }
 }
-const handleCancelarEmpleado = async (idEmp, est) => {
+const handleCancelarEmpleado = async (idEmp) => {
   if (!idEmp.id_emp) {
     console.error(' id_vehpr:', idEmp);
     return;
   }
   setSelectedEmpleados(idEmp);
 
-  setShowAlertCancelEmploye(true);
-  window.location.reload();
-  setTimeout(() => setShowAlertCancelEmploye(false), 5000); 
-  try {
-    await cancelEmpleado(idEmp.id_emp, est);
-    console.log('Empleado desactivado');
-  } catch (error) {
-    console.error('Error al enviar el permiso:', error);
-  }
-
+  setOpenBloquearEmpleado(true);
 }
 
 const [empleado, setEmpleado] = useState(
@@ -711,6 +761,13 @@ const [empleado, setEmpleado] = useState(
       no_ine: "",
       telefono: "",
       puesto:"", 
+      tel_emergencia: "",
+      nom_emergencia: "",
+      parentesco_contacto: "",
+      calle: "",
+      colonia: "",
+      delegacion: "",
+      estado: "",
     }
 );
 
@@ -731,16 +788,16 @@ const validateEmpleado= () => {
       isValid = false;
     }
     if(!(empleado.no_empleado || '').trim()){
-      validationErrors.no_ine = "Este dato es obligatorio.";
+      validationErrors.no_empleado = "Este dato es obligatorio.";
       isValid = false;
     } else if(!/^\d{1,6}$/.test(empleado.no_empleado)){
-      validationErrors.no_ine = "Se requieren al menos 1 números.";
+      validationErrors.no_empleado = "Se requieren al menos 1 números.";
       isValid = false;
     }
     if(!(empleado.no_ine || '').trim()){
       validationErrors.no_ine = "Este dato es obligatorio.";
       isValid = false;
-    } else if(!/^\d{12,13}$/.test(empleado.no_ine)){
+    } else if(!/^\d{10,13}$/.test(empleado.no_ine)){
       validationErrors.no_ine = "Se requieren al menos 12 números.";
       isValid = false;
     }
@@ -753,6 +810,38 @@ const validateEmpleado= () => {
     }
     if(!(empleado.puesto || '').trim()) {
       validationErrors.puesto = "Este dato es obligatorio.";
+      isValid = false;
+    }
+    if(!(empleado.tel_emergencia || '').trim()){
+      validationErrors.tel_emergencia = "Este dato es obligatorio.";
+      isValid = false;
+    } else if(!/^\d{10}$/.test(empleado.tel_emergencia)){
+      validationErrors.tel_emergencia = "Se requieren al menos 10 números.";
+      isValid = false;
+    }
+    if(!(empleado.nom_emergencia || '').trim()) { 
+      validationErrors.nom_emergencia = "Este dato es obligatorio.";
+      isValid = false;
+    }
+    if(!(empleado.parentesco_contacto || '').trim()) {
+      validationErrors.parentesco_contacto = "Este dato es obligatorio.";
+      isValid = false;
+    }
+
+    if(!(empleado.calle || '').trim()) {
+      validationErrors.calle = "Este dato es obligatorio.";
+      isValid = false;
+    }
+    if(!(empleado.colonia || '').trim()) {
+      validationErrors.colonia = "Este dato es obligatorio.";
+      isValid = false;
+    }
+    if(!(empleado.delegacion || '').trim()) {
+      validationErrors.delegacion = "Este dato es obligatorio.";
+      isValid = false;
+    }
+    if(!(empleado.estado || '').trim()) {
+      validationErrors.estado = "Este dato es obligatorio.";
       isValid = false;
     }
     setErrorEmpleado(validationErrors);
@@ -795,24 +884,23 @@ const handleCloseCreateEmpleado = () => {
     foto: "",
     no_empleado: "",
     no_ine: "",
-    telefono: "",
+    tel_emergencia: "",
+    nom_emergencia: "",
+    parentesco_contacto: "",
+    calle: "",
+    colonia: "",
+    delegacion: "",
+    estado: "",
   });
 }
 
 const handleCloseUpdateEmpleado = () => {
-  setOpenCreateEmpleado(false);
-  setSelectedArea(null);
-  setEmpleado({ 
-    id_catv: '', 
-    nombre: "",
-    apellidos:"",
-    foto: "",
-    no_empleado: "",
-    no_ine: "",
-    telefono: "",
-  });
+  setOpenUpdateEmpleado(false);
 }
-
+const closeErrorDialog = () => {
+  setIsErrorDialogVisible(false);
+  setErrorEmpleado('');
+};
 const handleClickOpenEditEmpleado = (emp) => {
   if (!emp.id_emp) {
     console.error('El objeto emp no contiene el campo clave:', emp);
@@ -821,6 +909,41 @@ const handleClickOpenEditEmpleado = (emp) => {
   console.log('selectedMultaVisitante:', emp);
   setSelectedEmpleados(emp);
   setOpenUpdateEmpleado(true); 
+};
+const closebloquearDialog = () => {
+  setOpenBloquearEmpleado(false);
+};
+
+const handleBloquearEmpleado = async () => {
+  setOpenBloquearEmpleado(false); 
+  setShowAlertCancelEmploye(true);
+
+  try {
+    await cancelEmpleado(selectedEmpleados.id_emp, "C");
+    console.log("Empleado desactivado");
+    setTimeout(() => {
+      setShowAlertCancelEmploye(false);
+    }, 5000);
+  } catch (error) {
+    console.error("Error al enviar el permiso:", error);
+    setShowAlertCancelEmploye(false);
+  }
+};
+
+const handleDesbloquearEmpleado = async () => {
+  setOpenBloquearEmpleado(false); 
+  setShowAlertCancelEmploye(true);
+
+  try {
+    await cancelEmpleado(selectedEmpleados.id_emp, "A");
+    console.log("Empleado desactivado");
+    setTimeout(() => {
+      setShowAlertCancelEmploye(false);
+    }, 5000);
+  } catch (error) {
+    console.error("Error al enviar el permiso:", error);
+    setShowAlertCancelEmploye(false);
+  }
 };
 
   const handleDownloadReport = () => {
@@ -971,13 +1094,12 @@ const handleSaveData = async () => {
     return;
   }
   try {
-      const response = await axios.post(`${api}/import/empleados`, dataExcel, {
+      await axios.post(`${api}/import/empleados`, dataExcel, {
           headers: { "Content-Type": "application/json" },
       });
       //alert(response.data.message);
       setOpenUpExcel(false);
-      //setOpenCreateTransp(false);
-      //window.location.reload();
+      window.location.reload();
   } catch (error) {
       console.error("Error al guardar los datos:", error);
       alert("Error al guardar los datos");
@@ -1072,21 +1194,29 @@ const handleCloseClaveUpdate = () => {
 const handleAcceptUpdate = async () => {
   const formData = new FormData();
 
+  let fotoToUpload = null;
+
   if (image) {
-    formData.append('foto', image); // Agregar la imagen al FormData
-  } else {
-    console.error("No se ha seleccionado ninguna imagen.");
-    return;
+    fotoToUpload = image;
+  } else if (selectedVisitante.foto) {
+    if (Array.isArray(selectedVisitante.foto)) {
+      fotoToUpload = selectedVisitante.foto[0];
+    } else {
+      fotoToUpload = selectedVisitante.foto;
+    }
   }
 
-  // Agregar los demás campos al FormData
+  if (fotoToUpload) {
+    formData.append("foto", fotoToUpload);
+  }
+
   formData.append('clave', selectedVisitante.clave);
   formData.append('placa', selectedVisitante.placa);
 
   try {
     const response = await axios.put(`${api}/up/clave`, formData, {
       headers: {
-        'Content-Type': 'multipart/form-data', // Asegúrate de configurar el encabezado correctamente
+        'Content-Type': 'multipart/form-data',
       },
     });
 
@@ -1255,17 +1385,71 @@ const tomarFotoEmpleado = () => {
   setImageEmpleado(imageFile); 
 };
 
+ const [videoConstraints, setVideoConstraints] = useState({
+    facingMode: "user", // Por defecto, cámara frontal
+  });
+ 
+
+  const seleccionarCamaraUSB = async () => {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = devices.filter((device) => device.kind === "videoinput");
+  
+      console.log("Cámaras disponibles:", videoDevices);
+  
+      // Seleccionar cámara USB por nombre (si sabes el nombre)
+      const usbCamera = videoDevices.find((device) =>
+        device.label.toLowerCase().includes("usb")
+      );
+  
+      // Si encuentras una cámara USB, configúrala
+      if (usbCamera) {
+        setVideoConstraints({ deviceId: { exact: usbCamera.deviceId } });
+        console.log("Cámara USB seleccionada:", usbCamera.label);
+      } else if (videoDevices.length > 0) {
+        // Si no encuentras una cámara USB, selecciona la primera disponible
+        setVideoConstraints({ deviceId: { exact: videoDevices[0].deviceId } });
+        console.log("Cámara predeterminada seleccionada:", videoDevices[0].label);
+      } else {
+        alert("No se encontraron cámaras disponibles.");
+      }
+    } catch (error) {
+      console.error("Error al enumerar dispositivos:", error);
+      alert("Error al acceder a las cámaras. Verifica los permisos.");
+    }
+  };
+
+  const handleUserMedia = () => {
+    setIsCameraReady(true);
+  };
+
+  const handleUserMediaError = (error) => {
+    console.error("Error al acceder a la cámara:", error);
+    alert("No se pudo acceder a la cámara. Verifica los permisos.");
+  };
+
+  useEffect(() => {
+    seleccionarCamaraUSB();
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (image && typeof image !== "string") {
+        URL.revokeObjectURL(image);
+      }
+    };
+  }, [image]);
+
     return (
       <div>
         <Paper elevation={3} sx={{ p: 3, overflow: "auto" }}>
-        {(user?.role === "CONTROL" || user?.role === "Admin") && (
           <>
           <Tabs value={tabIndex} onChange={handleTabChange} variant="scrollable" scrollButtons allowScrollButtonsMobile>
-          {(user?.role === "CONTROL" || user?.role === "Admin") &&(<Tab label="visitantes"/>)}
-          {(user?.role === "CONTROL" || user?.role === "Admin") &&(<Tab label="Visitantes multados"/>)}
-          {(user?.role === "Admin" ) && (<Tab label="reporte visitas"/>)}
-          {user?.role === 'Admin' &&(<Tab label="Permisos autos"/>)}
-          {user?.role === 'Admin' &&(<Tab label="EMPLEADOS CEDIS"/>)}
+          {(user?.role === "CONTROL" || user?.role === "Admin" || user?.role === "RH") &&(<Tab label="visitantes"/>)}
+          {(user?.role === "CONTROL" || user?.role === "Admin" || user?.role === "RH") &&(<Tab label="Visitantes multados"/>)}
+          {(user?.role === "Admin" || user?.role === "RH") && (<Tab label="reporte visitas"/>)}
+          {(user?.role === 'Admin' || user?.role === "RH") &&(<Tab label="Permisos autos"/>)}
+          {(user?.role === 'Admin'  || user?.role === "RH")&&(<Tab label="EMPLEADOS CEDIS"/>)}
         </Tabs>
           {tabIndex === 0  &&
             <div>
@@ -1285,6 +1469,7 @@ const tomarFotoEmpleado = () => {
                 <Button onClick={() => setFilterVisitas("CANDIDATO (ENTREVISTA)")}>ENTREVISTA</Button>
                 <Button onClick={() => setFilterVisitas("INVITADO (EVENTOS)")}>INVITADO</Button>
                 <Button onClick={() => setFilterVisitas("TRANSPORTISTA")}>TRANSPORTISTAS</Button>
+                <Button onClick={() => setFilterVisitas("PAQUETERIA")}>PAQUETERIAS</Button>
               </ButtonGroup>
                 
             </div>
@@ -1303,7 +1488,15 @@ const tomarFotoEmpleado = () => {
                 </TableHead>
                 <TableBody>
                   {filteredVisitantes.length > 0 ? (
-                    filteredVisitantes.map((visit, index) => (
+                    filteredVisitantes.filter((item) => {
+                      if (user?.role === "CONTROL") {
+                        return item.clave.startsWith("TR") || item.clave.startsWith("MN");
+                      }
+                      if (user?.role === "RH") {
+                        return item.clave.startsWith("VT");
+                      }
+                      return true; 
+                    }).map((visit, index) => (
                       <TableRow key={index}>
                         <TableCell>
                           <Avatar
@@ -1312,12 +1505,29 @@ const tomarFotoEmpleado = () => {
                             sx={{ width: 100, height: 100, marginRight: '15px', objectFit: 'cover' }}
                           />
                         </TableCell>
-                        <TableCell align="left">
-                          {visit.nombre_completo} <br />
-                          <small style={{ marginLeft: "10px" }}>{visit.tipo} {visit.id_catv === 1 &&(<small> | {visit.puesto}</small>)}</small>
+                        {visit.id_catv === 4 ? (
+                          <TableCell align="left">
+                          {visit.nombre_com_acomp} <br />
+                          <small style={{ marginLeft: "10px" }}>{visit.tipo} {visit.id_catv === 4 &&(<small> | CONDUCTOR </small>)}</small>
                         </TableCell>
+                        ): (
+                          <TableCell align="left">
+                            {visit.nombre_completo} <br />
+                            <small style={{ marginLeft: "10px" }}>{visit.tipo} {visit.id_catv === 1 &&(<small> | {visit.puesto}</small>)}</small>
+                          </TableCell>
+                        )}
                         <TableCell align="center">
-                          {visit.empresa}{visit.id_catv === 1 && (<span>COLABORADOR SANTUL</span>)}{visit.id_catv === 2 && (<span>NO APLICA</span>)}
+                          {visit.id_catv === 2 || visit.id_catv === 4 ? (
+                            <span>NO APLICA</span>
+                          ): visit.id_catv === 1 ? (
+                            <span>COLABORADOR SANTUL</span>
+                          ): visit.id_catv === 7 ?(
+                            <span>{visit.paqueteria}</span>
+                          ): visit.id_catv === 10 ?(
+                            <span>DIRECCION GENERAL</span>
+                          ):(
+                            <span>{visit.empresa}</span>
+                          )}
                         </TableCell>
                         <TableCell align="center" >
                           {visit.clave}
@@ -1327,13 +1537,20 @@ const tomarFotoEmpleado = () => {
                             "NO APLICA"
                           ) : visit.id_catv === 5 && visit.placa === '' ? (
                             "POR ASIGNAR"
-                          ) : (
+                          ) : visit.id_catv === 4 ? (
+                            <div>{visit.contenedor} <br/>{visit.id_catv === 4 &&(<small> CONTENEDOR </small>)}</div>
+                          ):(
                             visit.placa
                           )}
                         </TableCell>
                         <TableCell align="center" >
                           <Button size="small" variant="text" onClick={() => handleClickDeatailInfo(visit)} endIcon={<Visibility/>}></Button>
-                          <Button size="small" variant="text" onClick={() => handleClickOpenEdit(visit)} endIcon={<ModeEditOutline/>}></Button>
+                          {visit.id_catv === 4 || visit.id_catv === 7 ? (
+                            <div></div>
+                          ): (
+                            <Button size="small" variant="text" onClick={() => handleClickOpenEdit(visit)} endIcon={<ModeEditOutline/>}></Button>
+                          )}
+                          
                           
                         </TableCell>
                       </TableRow>
@@ -1349,7 +1566,7 @@ const tomarFotoEmpleado = () => {
               </Table>
             </TableContainer>
             </div>}
-        {tabIndex === 1  && 
+          {tabIndex === 1  && 
           <div>
           <Box
           display="flex"
@@ -1384,7 +1601,23 @@ const tomarFotoEmpleado = () => {
               </TableHead>
               <TableBody>
                 {filteredMultas.length > 0 ? (
-                  filteredMultas.map((multa, index) => (
+                  filteredMultas.filter((item) => {
+                    if (!item.clave) return false; // Verifica que item.clave exista antes de continuar
+                    switch (user?.role) {
+                      case "CONTROL":
+                        return (
+                          item.clave.startsWith("TR") ||
+                          item.clave.startsWith("MN") ||
+                          item.clave.startsWith("PR")
+                        );
+                      case "RH":
+                        return item.clave.startsWith("VT");
+                      case "Admin":
+                        return true; // Admin ve todas las multas
+                      default:
+                        return false; // Por defecto, no muestra nada para otros roles
+                    }
+                  }).map((multa, index) => (
                     <TableRow key={index} >
                       <TableCell component="th" scope="row">
                         {multa.nombre_completo} <br />
@@ -1543,13 +1776,14 @@ const tomarFotoEmpleado = () => {
                                   </Button>
                                   <Dialog header="TOMAR FOTO" open={openUpFotoPago} onClose={handleCloseCamPago}>
                                     <Box style={{ textAlign: 'center', margin: '20px' }}>
-                                      <Webcam
-                                        audio={false}
-                                        ref={webcamRef}
-                                        screenshotFormat="image/jpeg"
-                                        style={{ width: '100%' }}
-                                        onUserMedia={() => setIsCameraReady(true)}
-                                      />
+                                    <Webcam
+                                      audio={false}
+                                      ref={webcamRef}
+                                      screenshotFormat="image/jpeg"
+                                      style={{ width: "100%" }}
+                                      onUserMedia={handleUserMedia} // La cámara está lista
+                                      onUserMediaError={handleUserMediaError} // Manejo de errores de la cámara
+                                    />
                                       {!isCameraReady && webcamRef ? (
                                         <p
                                           style={{
@@ -1702,6 +1936,7 @@ const tomarFotoEmpleado = () => {
                       </TableCell>
                       <TableCell align="center">{veh.hora_entrada && formatTo12Hour(veh.hora_entrada)}</TableCell>
                       <TableCell align="center">{veh.motivo_acc}</TableCell>
+                      {user?.role === 'Admin' && (
                       <TableCell align="center">
                         <IconButton color="success" onClick={() => handlePermisoAcc(veh, 'S')}>
                           <CheckCircleOutline />
@@ -1709,7 +1944,7 @@ const tomarFotoEmpleado = () => {
                         <IconButton color="error" onClick={() => handlePermisoAcc(veh, 'N')}>
                           <CancelOutlined />
                         </IconButton>
-                      </TableCell>
+                      </TableCell>)}
                     </TableRow>
                   ))
                 ) : (
@@ -1933,13 +2168,14 @@ const tomarFotoEmpleado = () => {
                                 onClose={handleCloseCamEmpleado}
                               >
                                 <Box style={{ textAlign: "center", margin:'20px'  }}>
-                                  <Webcam
-                                    audio={false}
-                                    ref={webcamRef}
-                                    screenshotFormat="image/jpeg"
-                                    style={{ width: "100%"  }}
-                                    onUserMedia={() => setIsCameraReady(true)}
-                                  />
+                                <Webcam
+                                  audio={false}
+                                  ref={webcamRef}
+                                  screenshotFormat="image/jpeg"
+                                  style={{ width: "100%" }}
+                                  onUserMedia={handleUserMedia} // La cámara está lista
+                                  onUserMediaError={handleUserMediaError} // Manejo de errores de la cámara
+                                />
                                   {!isCameraReady && webcamRef ? ( // Mostrar mensaje de carga mientras la cámara no esté lista
                                     <p style={{ marginTop: "20px", fontSize: "16px", color: "#888", textAlign:'center' }}>
                                       Cargando cámara...
@@ -2017,6 +2253,42 @@ const tomarFotoEmpleado = () => {
                           )}
                         </small>
                         </FormControl>
+                        <FormControl fullWidth >
+                          <TextField
+                            id="tel_emergencia"
+                            name="tel_emergencia"
+                            label="Teléfono de emergencia"
+                            value={empleado.tel_emergencia}
+                            onChange={inputChange}
+                            variant="outlined"
+                            inputProps={{ style: { textTransform: "uppercase" } }}
+                          />
+                          <small>
+                            {errorEmpleado.tel_emergencia && (
+                              <span style={{color: 'red'}}>
+                                * {errorEmpleado.tel_emergencia}
+                              </span>
+                            )}
+                          </small>
+                        </FormControl>
+                        <FormControl fullWidth >
+                          <TextField
+                            id="parentesco_contacto"
+                            name="parentesco_contacto"
+                            label="Parentesco del contacto"
+                            value={empleado.parentesco_contacto}
+                            onChange={inputChange}
+                            variant="outlined"
+                            inputProps={{ style: { textTransform: "uppercase" } }}
+                          />
+                          <small>
+                            {errorEmpleado.parentesco_contacto && (
+                              <span style={{color: 'red'}}>
+                                * {errorEmpleado.parentesco_contacto}
+                              </span>
+                            )}
+                          </small>
+                        </FormControl>
                       </div>
 
                       {/* Más campos de texto */}
@@ -2077,9 +2349,96 @@ const tomarFotoEmpleado = () => {
                             )}
                           </small>
                         </FormControl>
+                        <FormControl fullWidth >
+                          <TextField
+                            id="nom_emergencia"
+                            name="nom_emergencia"
+                            label="Nombre del contacto"
+                            value={empleado.nom_emergencia}
+                            onChange={inputChange}
+                            variant="outlined"
+                            inputProps={{ style: { textTransform: "uppercase" } }}
+                          />
+                          <small>
+                            {errorEmpleado.nom_emergencia && (
+                              <span style={{color: 'red'}}>
+                                * {errorEmpleado.nom_emergencia}
+                              </span>
+                            )}
+                          </small>
+                        </FormControl>
                       </div>
                       
                     </div>
+                    <Divider/>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "20px", marginTop:'10px' }} >
+                        <FormControl fullWidth>
+                          <TextField
+                            id="calle"
+                            name="calle"
+                            value={empleado.calle}
+                            onChange={inputChange}
+                            variant="outlined"
+                            label="Calle"
+                            inputProps={{ style: { textTransform: "uppercase" } }}
+                          />
+                          <small>
+                            {errorEmpleado.calle && (
+                              <span style={{color: 'red'}}>
+                                * {errorEmpleado.calle}
+                              </span>
+                            )}
+                          </small>
+                        </FormControl>
+                        <FormControl fullWidth>
+                          <TextField
+                            id="colonia"
+                            name="colonia"
+                            label="Colonia"
+                            value={empleado.colonia}
+                            onChange={inputChange}
+                          />
+                          <small>
+                            {errorEmpleado.colonia && (
+                              <span style={{color: 'red'}}>
+                                * {errorEmpleado.colonia}
+                              </span>
+                            )}
+                          </small>
+                        </FormControl>
+                        <FormControl fullWidth>
+                          <TextField
+                            id="delegacion"
+                            name="delegacion"
+                            label="Delegación o municipio"
+                            value={empleado.delegacion}
+                            onChange={inputChange}
+                          />
+                          <small>
+                          {errorEmpleado.delegacion && (
+                            <span style={{color: 'red'}}>
+                              * {errorEmpleado.delegacion}
+                            </span>
+                          )}
+                        </small>
+                        </FormControl>
+                        <FormControl fullWidth>
+                          <TextField
+                            id="estado"
+                            name="estado"
+                            label="Estado"
+                            value={empleado.estado}
+                            onChange={inputChange}
+                          />
+                          <small>
+                          {errorEmpleado.estado && (
+                            <span style={{color: 'red'}}>
+                              * {errorEmpleado.estado}
+                            </span>
+                          )}
+                        </small>
+                        </FormControl>
+                      </div>
                   </DialogContent>
                   <DialogActions>
                     {/* Botones de acción */}
@@ -2119,29 +2478,46 @@ const tomarFotoEmpleado = () => {
                 <TableBody>
                 {empleados && empleados.length > 0 ? (
                   empleados.map((emp, index) => (
-
-                  <TableRow key={index}>
-                    <TableCell component="th" scope="row" align="center">
-                      <Avatar
-                        src={`${foto}/${emp.foto}`}
-                        alt={emp.nombre_completo}
-                        sx={{ width: 100, height: 100, marginRight: '15px', objectFit: 'cover' }}
-                      />
-                    </TableCell>
-                    <TableCell align="center">{emp.nombre_completo}</TableCell>
-                    <TableCell align="center">{emp.puesto}</TableCell>
-                    <TableCell align="center">{emp.no_empleado}</TableCell>
-                    <TableCell align="center">{emp.est}</TableCell>
-                    <TableCell align="center">
-                      <IconButton color="gray" onClick={() => handleCancelarEmpleado(emp, 'C')}>
-                        <Block />
-                      </IconButton>
-                      <IconButton color="success" onClick={ () => handleClickOpenEditEmpleado(emp)}>
-                        <Edit />
-                      </IconButton>
-
-                    </TableCell>
-                  </TableRow>
+                    <TableRow key={index}>
+                      <TableCell component="th" scope="row" align="center">
+                        <Avatar
+                          src={`${foto}/${emp.foto}`}
+                          alt={emp.nombre_completo}
+                          sx={{ width: 100, height: 100, marginRight: '15px' }}
+                          imgProps={{ style: { objectFit: 'cover' } }}
+                        />
+                      </TableCell>
+                      <TableCell align="center">{emp.nombre_completo}</TableCell>
+                      <TableCell align="center">{emp.puesto}</TableCell>
+                      <TableCell align="center">{emp.no_empleado}</TableCell>
+                      <TableCell align="center">{emp.est}</TableCell>
+                      <TableCell align="center">
+                        {emp.est === 'C' ? (
+                          <IconButton
+                            color="gray"
+                            onClick={() => handleCancelarEmpleado(emp)}
+                            aria-label="Cancelar empleado"
+                          >
+                            <PersonOffOutlined />
+                          </IconButton>
+                        ) : (
+                          <IconButton
+                            color="gray"
+                            onClick={() => handleCancelarEmpleado(emp)}
+                            aria-label="Habilitar empleado"
+                          >
+                            <PermIdentityOutlined />
+                          </IconButton>
+                        )}
+                        <IconButton
+                          color="success"
+                          onClick={() => handleClickOpenEditEmpleado(emp)}
+                          aria-label="Editar empleado"
+                        >
+                          <Edit />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
                   ))
                 ) : (
                   <TableRow>
@@ -2156,7 +2532,7 @@ const tomarFotoEmpleado = () => {
             </TableContainer>
           </div>}
           </>
-        )}
+        
         
        </Paper>
 
@@ -2191,18 +2567,22 @@ const tomarFotoEmpleado = () => {
                       {selectedVisitante.foto || image ? (
                         <Box sx={{ textAlign: "center", width: "100%" }}>
                           <img
-                            // src={selectedVisitante.foto.includes('blob') || selectedVisitante.foto.startsWith('data:image') 
-                            //   ? selectedVisitante.foto 
-                            //   : `${foto}/${selectedVisitante.foto}`}
-                            src={selectedVisitante.foto && !selectedVisitante.foto.startsWith("blob") 
-                              ? `${foto}/${selectedVisitante.foto}` 
-                              : typeof image === "string" ? image : URL.createObjectURL(image)}
-                            alt={selectedVisitante.nombre_completo || "Imagen del visitante"}
+                            // Determina la fuente de la imagen:
+                            src={
+                              selectedVisitante.foto && !selectedVisitante.foto.startsWith("blob")
+                                ? `${foto}/${selectedVisitante.foto}` // URL relativa a una base conocida
+                                : typeof image === "string"
+                                ? image // Fuente directa si es una cadena
+                                : image
+                                ? URL.createObjectURL(image) // Fuente temporal si es un archivo
+                                : "ruta/placeholder.png" // Imagen por defecto si no hay datos
+                            }
+                            alt={selectedVisitante.nombre_completo || "Imagen del visitante"} // Texto alternativo
                             style={{
-                              width: 150,
-                              height: 150,
-                              objectFit: "cover",
-                              borderRadius: "8px",
+                              width: 150, // Ancho fijo
+                              height: 150, // Alto fijo
+                              objectFit: "cover", // Ajusta el contenido
+                              borderRadius: "8px", // Bordes redondeados
                             }}
                           />
                           <Typography variant="body2" sx={{ color: "black", mt: 1 }}>
@@ -2254,13 +2634,14 @@ const tomarFotoEmpleado = () => {
                             onClose={handleCloseCam}
                           >
                             <Box style={{ textAlign: "center", margin: "20px" }}>
-                              <Webcam
-                                audio={false}
-                                ref={webcamRef}
-                                screenshotFormat="image/jpeg"
-                                style={{ width: "100%" }}
-                                onUserMedia={() => setIsCameraReady(true)}
-                              />
+                            <Webcam
+                              audio={false}
+                              ref={webcamRef}
+                              screenshotFormat="image/jpeg"
+                              style={{ width: "100%" }}
+                              onUserMedia={handleUserMedia} // La cámara está lista
+                              onUserMediaError={handleUserMediaError} // Manejo de errores de la cámara
+                            />
                               {!isCameraReady ? (
                                 <p
                                   style={{
@@ -2367,37 +2748,37 @@ const tomarFotoEmpleado = () => {
                         <small style={{ color: "red" }}>* {errorInfo.telefono}</small>
                       )}
                     </FormControl>
+                    <FormControl style={{ flex: "1 1 calc(50% - 10px)" }}>
+                      <TextField
+                        id="no_licencia"
+                        name="no_licencia"
+                        label="No. licencia"
+                        value={selectedVisitante.no_licencia || ''}
+                        onChange={inputChangeUpdate}
+                        variant="outlined"
+                        inputProps={{ style: { textTransform: "uppercase" } }}
+                      />
+                      {errorInfo.no_licencia &&  (
+                        <small style={{ color: "red" }}>* {errorInfo.no_licencia}</small>
+                      )}
+                    </FormControl>
                     {selectedVisitante?.id_catv === 1 ? (
                         <div></div>
                     ):(
                       <>
                         <FormControl style={{ flex: "1 1 calc(50% - 10px)" }}>
                           <TextField
-                            id="no_licencia"
-                            name="no_licencia"
-                            label="No. licencia"
-                            value={selectedVisitante.no_licencia || ''}
-                            onChange={inputChangeUpdate}
+                            id="empresa"
+                            name="empresa"
+                            value={selectedVisitante.empresa || ""}
                             variant="outlined"
+                            label="Empresa"
                             inputProps={{ style: { textTransform: "uppercase" } }}
                           />
-                          {errorInfo.no_licencia &&  (
-                            <small style={{ color: "red" }}>* {errorInfo.no_licencia}</small>
+                          {errorInfo.empresa && (
+                            <small style={{ color: "red" }}>* {errorInfo.empresa}</small>
                           )}
                         </FormControl>
-                        <FormControl style={{ flex: "1 1 calc(50% - 10px)" }}>
-                            <TextField
-                              id="empresa"
-                              name="empresa"
-                              value={selectedVisitante.empresa || ""}
-                              variant="outlined"
-                              label="Empresa"
-                              inputProps={{ style: { textTransform: "uppercase" } }}
-                            />
-                            {errorInfo.empresa && (
-                              <small style={{ color: "red" }}>* {errorInfo.empresa}</small>
-                            )}
-                          </FormControl>
                       </>
                     )}
                     
@@ -2445,22 +2826,7 @@ const tomarFotoEmpleado = () => {
                           </Box>
                         </div>
                       </>
-                    ) : selectedVisitante.id_catv === 1 ? (
-                      <div>
-                        <Box sx={{ textAlign: "center", mt: 4 }}>
-                            <Button variant="outlined" color="secondary" sx={{ mr: 2 }}onClick={handleCloseEdit}>
-                              Cancelar
-                            </Button>
-                            <Button
-                              variant="contained"
-                              color="primary"
-                              onClick={updateInfoVehiculo}
-                            >
-                              Finalizar
-                            </Button>
-                          </Box>
-                      </div>
-                    ): (
+                    ) : (
                       <div>
                         <div  style={{ display: "flex", flexWrap: "wrap", gap: "20px" }}>
                         <FormControl style={{ flex: "1 1 calc(50% - 10px)", width: '50%' }}>
@@ -2671,6 +3037,38 @@ const tomarFotoEmpleado = () => {
             </DialogTitle>
             <DialogContent>
                 {selectedVisitante && (
+                  selectedVisitante.id_catv === 4 ? (
+                    <div >
+                    <div style={{display:'flex', margin:'10px'}}>
+                      <div>
+                        <Avatar
+                          src={`${foto}/${selectedVisitante.foto}`}
+                          alt={selectedVisitante.nombre_completo}
+                          sx={{ width: 150, height: 150, marginRight: '15px', objectFit: 'cover' }}
+                        />
+
+                      </div>
+                      <div>
+                        <Typography variant="h5" sx={{ marginBottom: 1 }}><strong>{selectedVisitante.nombre_com_acomp}</strong></Typography>
+                        <Typography variant="body2" sx={{ marginBottom: 1 }}>NO. INE: {selectedVisitante.no_ine_acomp}</Typography>
+                        <Typography variant="body2" sx={{ marginBottom: 1 }}>RELACIÓN: {selectedVisitante.tipo}</Typography>
+                        <Typography variant="body2" sx={{ marginBottom: 1 }}>EMPRESA: NO APLICA</Typography>
+                      </div>
+                    </div>
+                    <Divider/>
+                    <div style={{display:'flex', marginTop:'15px'}}>
+                      <div style={{margin:'8px'}}>
+                        
+                        <Typography variant="body2" sx={{ marginBottom: 1 }}>ACCESO PERSONAL: {selectedVisitante.estado_acceso === 'CON ACCESO' ?(<span><Circle sx={{color:'green', fontSize:'12px'}}/> {selectedVisitante.estado_acceso}</span>):(<span><Circle sx={{color:'red', fontSize:'12px'}}/> SIN ACCESO</span>) || 'SIN INFORMACIÓN'}</Typography>
+                        <Typography variant="body2" sx={{ marginBottom: 1 }}>ACCESO DE VEHICULO: {selectedVisitante.acc_dir === 'S' ? (<span><Circle sx={{color:'green', fontSize:'12px'}}/> ACCESO DIRECTO</span>) : (<span><Circle sx={{color:'red', fontSize:'12px'}}/> SIN ACCESO DE VEHICULO</span>) }</Typography>
+                        </div>
+                        <div style={{margin:'8px', marginLeft:'13px'}}>
+                          <Typography variant="body2" sx={{ marginBottom: 1 }}>TOTAL - MULTAS: {selectedVisitante.total_multas || 'SIN MULTAS'}</Typography>
+                          <Typography variant="body2" sx={{ marginBottom: 1 }}>TOTAL - VISITAS: {selectedVisitante.total_visitas || 'SIN VISITAS'}</Typography>
+                        </div>
+                    </div>
+                  </div>
+                  ):(
                   <div >
                     <div style={{display:'flex', margin:'10px'}}>
                       <div>
@@ -2711,6 +3109,7 @@ const tomarFotoEmpleado = () => {
                       </div>
                     </div>
                   </div>
+                  )
                 )}
             </DialogContent>
           </Dialog>
@@ -2795,34 +3194,36 @@ const tomarFotoEmpleado = () => {
                             <Webcam
                               audio={false}
                               ref={webcamRef}
+                              style={{ width: '100%' }}
                               screenshotFormat="image/jpeg"
-                                    style={{ width: "100%"  }}
-                                    onUserMedia={() => setIsCameraReady(true)}
-                                  />
-                                  {!isCameraReady && webcamRef ? ( // Mostrar mensaje de carga mientras la cámara no esté lista
-                                    <p style={{ marginTop: "20px", fontSize: "16px", color: "#888", textAlign:'center' }}>
-                                      Cargando cámara...
-                                    </p>
-                                  ) : (
-                                    <Button
-                                      severity="danger"
-                                      variant="outlined"
-                                      startIcon={<PhotoCamera />}
-                                      style={{ width: "100%", marginTop: "20px" }}
-                                      onClick={tomarFotoEmpleado}
-                                    > 
-                                      Tomar Foto
-                                    </Button>
-                                  )}
-                                  
-                                </Box>
-                              </Dialog>
-                            </Box>
-                          )}
-                        </Box>
-                        <small style={{color:'gray'}}>
-                          * Opcional
-                        </small>
+                              videoConstraints={videoConstraints}
+                              onUserMedia={handleUserMedia}
+                              onUserMediaError={handleUserMediaError}
+                            />
+                            {!isCameraReady && webcamRef ? ( // Mostrar mensaje de carga mientras la cámara no esté lista
+                              <p style={{ marginTop: "20px", fontSize: "16px", color: "#888", textAlign:'center' }}>
+                                Cargando cámara...
+                              </p>
+                            ) : (
+                              <Button
+                                severity="danger"
+                                variant="outlined"
+                                startIcon={<PhotoCamera />}
+                                style={{ width: "100%", marginTop: "20px" }}
+                                onClick={tomarFotoEmpleado}
+                              > 
+                                Tomar Foto
+                              </Button>
+                            )}
+                            
+                          </Box>
+                        </Dialog>
+                      </Box>
+                    )}
+                  </Box>
+                  <small style={{color:'gray'}}>
+                    * Opcional
+                  </small>
                 </div>
 
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "20px", marginTop:'10px' }} >
@@ -2837,9 +3238,9 @@ const tomarFotoEmpleado = () => {
                       inputProps={{ style: { textTransform: "uppercase" } }}
                     />
                     <small>
-                      {errorEmpleado.nombre && (
+                      {errorEmpleadoUp.nombre && ( 
                         <span style={{color: 'red'}}>
-                          * {errorEmpleado.nombre}
+                          * {errorEmpleadoUp.nombre}
                         </span>
                       )}
                     </small>
@@ -2853,9 +3254,9 @@ const tomarFotoEmpleado = () => {
                       onChange={inputChangeUpdateEmpleado}
                     />
                     <small>
-                      {errorEmpleado.telefono && (
+                      {errorEmpleadoUp.telefono && (
                         <span style={{color: 'red'}}>
-                          * {errorEmpleado.telefono}
+                          * {errorEmpleadoUp.telefono}
                         </span>
                       )}
                     </small>
@@ -2869,9 +3270,41 @@ const tomarFotoEmpleado = () => {
                       onChange={inputChangeUpdateEmpleado}
                     />
                     <small>
-                    {errorEmpleado.no_ine && (
+                    {errorEmpleadoUp.no_ine && (
                       <span style={{color: 'red'}}>
-                        * {errorEmpleado.no_ine}
+                        * {errorEmpleadoUp.no_ine}
+                      </span>
+                    )}
+                  </small>
+                  </FormControl>
+                  <FormControl fullWidth>
+                    <TextField
+                      id="tel_emergencia"
+                      name="tel_emergencia"
+                      label="Telefono de emergencia"
+                      value={selectedEmpleados.tel_emergencia || ''}
+                      onChange={inputChangeUpdateEmpleado}
+                    />
+                    <small>
+                    {errorEmpleadoUp.tel_emergencia && (
+                      <span style={{color: 'red'}}>
+                        * {errorEmpleadoUp.tel_emergencia}
+                      </span>
+                    )}
+                  </small>
+                  </FormControl>
+                  <FormControl fullWidth>
+                    <TextField
+                      id="parentesco_contacto"
+                      name="parentesco_contacto"
+                      label="Parentesco del contacto"
+                      value={selectedEmpleados.parentesco_contacto || ''}
+                      onChange={inputChangeUpdateEmpleado}
+                    />
+                    <small>
+                    {errorEmpleadoUp.parentesco_contacto && (
+                      <span style={{color: 'red'}}>
+                        * {errorEmpleadoUp.parentesco_contacto}
                       </span>
                     )}
                   </small>
@@ -2891,9 +3324,9 @@ const tomarFotoEmpleado = () => {
                       inputProps={{ style: { textTransform: "uppercase" } }}
                     />
                     <small>
-                      {errorEmpleado.apellidos && (
+                      {errorEmpleadoUp.apellidos && (
                         <span style={{color: 'red'}}>
-                          * {errorEmpleado.apellidos}
+                          * {errorEmpleadoUp.apellidos}
                         </span>
                       )}
                     </small>
@@ -2909,15 +3342,13 @@ const tomarFotoEmpleado = () => {
                       inputProps={{ style: { textTransform: "uppercase" } }}
                     />
                     <small>
-                      {errorEmpleado.no_empleado && (
+                      {errorEmpleadoUp.no_empleado && (
                         <span style={{color: 'red'}}>
-                          * {errorEmpleado.no_empleado}
+                          * {errorEmpleadoUp.no_empleado}
                         </span>
                       )}
                     </small>
                   </FormControl>
-                  
-                  
                   <FormControl fullWidth >
                     <TextField
                       id="puesto"
@@ -2929,18 +3360,108 @@ const tomarFotoEmpleado = () => {
                       inputProps={{ style: { textTransform: "uppercase" } }}
                     />
                     <small>
-                      {errorEmpleado.puesto && (
+                      {errorEmpleadoUp.puesto && (
                         <span style={{color: 'red'}}>
-                          * {errorEmpleado.puesto}
+                          * {errorEmpleadoUp.puesto}
                         </span>
                       )}
                     </small>
                   </FormControl>
+                  <FormControl fullWidth>
+                    <TextField
+                      id="nom_emergencia"
+                      name="nom_emergencia"
+                      label="Nambre de contacto"
+                      value={selectedEmpleados.nom_emergencia || ''}
+                      onChange={inputChangeUpdateEmpleado}
+                    />
+                    <small>
+                    {errorEmpleadoUp.nom_emergencia && (
+                      <span style={{color: 'red'}}>
+                        * {errorEmpleadoUp.nom_emergencia}
+                      </span>
+                    )}
+                  </small>
+                  </FormControl>
                 </div>
                 
+                
               </div>
+              <Divider></Divider>
+                <div style={{  display: "flex", flexWrap: "wrap", gap: "20px", marginTop:'10px'  }}>
+                  <FormControl fullWidth >
+                    <TextField
+                      id="calle"
+                      name="calle"
+                      label="Calle"
+                      value={selectedEmpleados.calle || ''}
+                      onChange={inputChangeUpdateEmpleado}
+                      variant="outlined"
+                      inputProps={{ style: { textTransform: "uppercase" } }}
+                    />
+                    <small>
+                      {errorEmpleadoUp.calle && (
+                        <span style={{color: 'red'}}>
+                          * {errorEmpleadoUp.calle}
+                        </span>
+                      )}
+                    </small>
+                  </FormControl>
+                  <FormControl fullWidth >
+                    <TextField
+                      fullWidth
+                      id="colonia"
+                      name="colonia"
+                      label="Colonia"
+                      value={selectedEmpleados.colonia || ''}
+                      onChange={inputChangeUpdateEmpleado}
+                      inputProps={{ style: { textTransform: "uppercase" } }}
+                    />
+                    <small>
+                      {errorEmpleadoUp.colonia && (
+                        <span style={{color: 'red'}}>
+                          * {errorEmpleadoUp.colonia}
+                        </span>
+                      )}
+                    </small>
+                  </FormControl>
+                  <FormControl fullWidth >
+                    <TextField
+                      id="delegacion"
+                      name="delegacion"
+                      label="Delegación o Municipio"
+                      value={selectedEmpleados.delegacion || ''}
+                      onChange={inputChangeUpdateEmpleado}
+                      variant="outlined"
+                      inputProps={{ style: { textTransform: "uppercase" } }}
+                    />
+                    <small>
+                      {errorEmpleadoUp.delegacion && (
+                        <span style={{color: 'red'}}>
+                          * {errorEmpleadoUp.delegacion}
+                        </span>
+                      )}
+                    </small>
+                  </FormControl>
+                  <FormControl fullWidth>
+                    <TextField
+                      id="estado"
+                      name="estado"
+                      label="Estado"
+                      value={selectedEmpleados.estado || ''}
+                      onChange={inputChangeUpdateEmpleado}
+                    />
+                    <small>
+                    {errorEmpleadoUp.estado && (
+                      <span style={{color: 'red'}}>
+                        * {errorEmpleadoUp.estado}
+                      </span>
+                    )}
+                  </small>
+                  </FormControl>
+                </div>
               <Box sx={{ textAlign: "center", mt: 4 }}>
-                <Button variant="outlined" color="secondary" sx={{ mr: 2 }}>
+                <Button variant="outlined" color="secondary" sx={{ mr: 2 }} onClick={handleCloseUpdateEmpleado}>
                   Cancelar
                 </Button>
                 <Button
@@ -2956,7 +3477,61 @@ const tomarFotoEmpleado = () => {
             </DialogContent>
           
           </Dialog>
+          <Dialog
+            open={isErrorDialogVisible}
+            onClose={closeErrorDialog}
+          >
+            <DialogTitle style={{textAlign:'center'}}>
+              <ErrorOutline style={{color:'red', fontSize: 100, opacity:'0.5' }}/><p/>
+              Error al registar empleado</DialogTitle>
+            <DialogContent>{errorEmpleado}</DialogContent>
+            <DialogActions>
+              <Button onClick={closeErrorDialog}>
+                cancelar
+              </Button>
+            </DialogActions>
+          </Dialog>
 
+          <Dialog
+            open={OpenBloquearEmpleado}
+            onClose={closebloquearDialog}
+          >
+            <DialogTitle style={{textAlign:'center'}}>
+              {selectedEmpleados.est === 'C' ? (
+                <div>
+                  <ErrorOutline style={{color:'green', fontSize: 100, opacity:'0.5' }}/><p/>
+                  ¿ACTIVAR EMPLEADO?
+                </div>
+                
+              ):(
+                <div>
+                  <ErrorOutline style={{color:'red', fontSize: 100, opacity:'0.5' }}/><p/>
+                  ¿DESACTIVAR EMPLEADO?
+                </div>
+              )}
+            </DialogTitle>
+            <DialogContent style={{textAlign:'center'}}>
+              <small>
+                NOMBRE: <strong>{selectedEmpleados.nombre_completo}</strong><br/>
+                PUESTO: <strong>{selectedEmpleados.puesto}</strong>
+              </small>
+              <div style={{margin:'20px'}}>
+                {selectedEmpleados.est === 'C' ? (
+                  <Button onClick={handleDesbloquearEmpleado} variant="outlined" style={{margin:'4px'}}>
+                    ACEPTAR
+                  </Button>
+                ):(
+                  <Button onClick={handleBloquearEmpleado} variant="outlined" style={{margin:'4px'}}>
+                    ACEPTAR
+                  </Button>
+                )}
+                
+                <Button onClick={closebloquearDialog} variant="outlined"color="gray" style={{margin:'4px'}}>
+                  CANCELAR
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
       </div>
     )
 }

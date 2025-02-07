@@ -100,6 +100,19 @@ const updateRecibo = async (req, res) => {
       console.log('Fecha de arribo sincronizada en productos con el mismo contenedor');
     }
 
+    await pool.query(`
+      UPDATE recibo_cedis AS rc
+      INNER JOIN recibo_compras AS rco ON rc.id_recibo_compras = rco.id_recibo
+      SET 
+        rc.oc = rco.oc,
+        rc.referencia = rco.referencia,
+        rc.contenedor = rco.contenedor,
+        rc.naviera = rco.naviera,
+        rc.pedimento = rco.pedimento
+      WHERE rc.id_recibo_compras IS NOT NULL;
+    `);
+
+
     res.json({ message: 'Recibo actualizado exitosamente' });
   } catch (error) {
     console.error('Error al actualizar el recibo:', error);
@@ -241,15 +254,118 @@ const addRecibo = async (req, res) => {
 
 
 
+// const uploadExcel = async (req, res) => {
+//   const data = req.body;
+//   const estado = "C";
+
+//   try {
+//     const insertDataCompras = [];
+//     const insertDataCedis = [];
+//     const updatePromisesCompras = [];
+//     const updatePromisesCedis = [];
+//     console.log('Agregando recibo con datos:', req.body);
+
+//     for (const row of data) {
+//       const { codigo, oc, cant_recibir, tipoP, referencia, unidad_medida, contenedor, naviera, pedimento, arribo, usuario, sucursal, factura } = row;
+
+//       // Validación
+//       if (!codigo || !oc || !cant_recibir || !arribo) {
+//         return res.status(400).json({ message: 'Uno o más campos obligatorios están vacíos.' });
+//       }
+
+//       // Verifica si el recibo ya existe en recibo_compras
+//       const [existingRecibo] = await pool.query(
+//         'SELECT * FROM recibo_compras WHERE codigo = ? AND oc = ? AND cant_recibir = ?', 
+//         [codigo, oc, cant_recibir]
+//       );
+
+//       if (existingRecibo.length > 0) {
+//         console.log('Código ya existe con la misma cantidad, se actualizarán todos los campos si es necesario.');
+
+//         // Actualizar recibo_compras
+//         updatePromisesCompras.push(
+//           pool.query(
+//             `UPDATE recibo_compras 
+//              SET arribo = ?, tipo = ?, referencia = ?, unidad_medida = ?, contenedor = ?, naviera = ?, pedimento = ?, usuario = ?, estado = ?, sucursal = ?, factura = ?
+//              WHERE codigo = ? AND oc = ? AND cant_recibir = ?`,
+//             [arribo, tipoP, referencia, unidad_medida, contenedor, naviera, pedimento, usuario, estado, sucursal, factura, codigo, oc, cant_recibir]
+//           )
+//         );
+
+//         // Actualizar recibo_cedis
+//         updatePromisesCedis.push(
+//           pool.query(
+//             `UPDATE recibo_cedis 
+//              SET cantidad_total = ?, referencia = ?, contenedor = ?, naviera = ?, pedimento = ?, id_usuario = ?, est = ?, fecha_recibo = NOW()
+//              WHERE codigo = ? AND oc = ?`,
+//             [cant_recibir, referencia, contenedor, naviera, pedimento, usuario, estado, codigo, oc]
+//           )
+//         );
+
+//       } else {
+//         // Insertar en recibo_compras
+//         insertDataCompras.push([oc, cant_recibir, arribo, codigo, tipoP, referencia, unidad_medida, contenedor, naviera, pedimento, usuario, estado, sucursal, factura]);
+
+//         // Insertar en recibo_cedis
+//         insertDataCedis.push([codigo, cant_recibir, 0, arribo, oc, referencia, contenedor, naviera, pedimento, estado, usuario]);
+//       }
+//     }
+
+//     // Ejecutar actualizaciones
+//     await Promise.all([...updatePromisesCompras, ...updatePromisesCedis]);
+
+//     // Insertar en recibo_compras si hay nuevos registros
+//     if (insertDataCompras.length > 0) {
+//       const insertQueryCompras = `
+//         INSERT INTO recibo_compras (oc, cant_recibir, arribo, codigo, tipo, referencia, unidad_medida, contenedor, naviera, pedimento, usuario, estado, sucursal, factura)
+//         VALUES ?
+//       `;
+//       await pool.query(insertQueryCompras, [insertDataCompras]);
+//     }
+
+//     // Insertar en recibo_cedis si hay nuevos registros
+//     if (insertDataCedis.length > 0) {
+//       const insertQueryCedis = `
+//         INSERT INTO recibo_cedis (codigo, cantidad_total, cantidad_recibida, fecha_recibo, oc, referencia, contenedor, naviera, pedimento, est, id_usuario)
+//         VALUES ?
+//       `;
+//       await pool.query(insertQueryCedis, [insertDataCedis]);
+//     }
+
+//     res.json({ message: 'Datos del Excel cargados exitosamente' });
+//   } catch (error) {
+//     console.error('Error al cargar los datos del Excel:', error);
+//     res.status(500).json({ message: 'Error al cargar los datos del Excel', error: error.message });
+//   }
+// };
+
+
 const uploadExcel = async (req, res) => {
   const data = req.body;
   const estado = "C";
+
+  const id_catv = '4';
+  const est = 'A';
+  const acc_veh = 'S';
+  const area_per = 9;
+  const motivo = 'DESCARGA DE PRODUCTO';
+  const fecha = new Date();
+
+  const SQL_INSERT_CONTENEDORES_VISITAS = `INSERT INTO contenedores_visitas (id_catv, id_recibo_compras, contenedor, arribo) VALUES (?, ?, ?, ?)`;
+  const SQL_INSERT_VISITA = `INSERT INTO visitas (id_vit, reg_entrada, area_per, motivo, est, clave_visit, acc_veh) VALUES (?, ?, ?, ?, ?, ?, ?)`;
+  const SQL_UPDATE_CLAVE_VISITA = `UPDATE contenedores_visitas SET clave = ? WHERE id_recibo_compras = ?`;
+  const SQL_CHECK_DUPLICATE = `SELECT * FROM contenedores_visitas WHERE contenedor = ? AND arribo = ?`;
+
 
   try {
     const insertDataCompras = [];
     const insertDataCedis = [];
     const updatePromisesCompras = [];
     const updatePromisesCedis = [];
+
+    const contenedoresVisitasPromises = [];
+    const insertDataVisita = [];
+    const updatePromisesClave= [];
     console.log('Agregando recibo con datos:', req.body);
 
     for (const row of data) {
@@ -289,6 +405,27 @@ const uploadExcel = async (req, res) => {
           )
         );
 
+        const [duplicate] = await pool.query(SQL_CHECK_DUPLICATE, [contenedor, arribo]);
+        if (duplicate.length === 0) {
+          contenedoresVisitasPromises.push(pool.query(SQL_INSERT_CONTENEDORES_VISITAS, [id_catv, codigo, contenedor, arribo]));
+          const dia = fecha.getDate().toString().padStart(2, '0');
+          const random1 = Math.floor(Math.random() * 900) + 100;
+          const generarClave = (prefijo, id) => {
+            const dia = fecha.getDate().toString().padStart(2, '0');
+            const random = Math.floor(Math.random() * 90) + 10; // Dos dígitos aleatorios
+            return `${prefijo}${dia}${id || random}`;
+          };
+          
+          // Uso
+          const clave = generarClave('PR');
+          const clave_visit = generarClave('PR', random1);
+          insertDataVisita.push(pool.query(SQL_INSERT_VISITA, [clave, arribo, area_per, motivo, est, clave_visit, acc_veh]));
+
+          if(insertDataVisita) {
+            updatePromisesClave.push(pool.query(SQL_UPDATE_CLAVE_VISITA, [clave, codigo]))
+          }
+        }
+
       } else {
         // Insertar en recibo_compras
         insertDataCompras.push([oc, cant_recibir, arribo, codigo, tipoP, referencia, unidad_medida, contenedor, naviera, pedimento, usuario, estado, sucursal, factura]);
@@ -319,6 +456,47 @@ const uploadExcel = async (req, res) => {
       await pool.query(insertQueryCedis, [insertDataCedis]);
     }
 
+    for (const row of insertDataCompras) {
+      const contenedor = row[7];
+      const arribo = row[2]; 
+      const codigo = row[3];
+      const [duplicate] = await pool.query(SQL_CHECK_DUPLICATE, [contenedor, arribo]);
+      if (duplicate.length === 0) {
+        contenedoresVisitasPromises.push(pool.query(SQL_INSERT_CONTENEDORES_VISITAS, [id_catv, codigo, contenedor, arribo]));
+        const dia = fecha.getDate().toString().padStart(2, '0');
+        const random1 = Math.floor(Math.random() * 900) + 100;
+        const generarClave = (prefijo, id) => {
+          const dia = fecha.getDate().toString().padStart(2, '0');
+          const random = Math.floor(Math.random() * 90) + 10; 
+          return `${prefijo}${dia}${id || random}`;
+        };
+        
+        // Uso
+        const clave = generarClave('PR');
+        const clave_visit = generarClave('PR', random1);
+        insertDataVisita.push(pool.query(SQL_INSERT_VISITA, [clave, arribo, area_per, motivo, est, clave_visit, acc_veh]));
+        if(insertDataVisita) {
+          updatePromisesClave.push(pool.query(SQL_UPDATE_CLAVE_VISITA, [clave, codigo]))
+        }
+        
+      }
+    }
+    await Promise.all(contenedoresVisitasPromises);
+
+
+    await pool.query(`
+      UPDATE recibo_cedis AS rc
+      INNER JOIN recibo_compras AS rco ON rc.id_recibo_compras = rco.id_recibo
+      SET 
+        rc.oc = rco.oc,
+        rc.referencia = rco.referencia,
+        rc.contenedor = rco.contenedor,
+        rc.naviera = rco.naviera,
+        rc.pedimento = rco.pedimento
+      WHERE rc.id_recibo_compras IS NOT NULL;
+    `);
+
+
     res.json({ message: 'Datos del Excel cargados exitosamente' });
   } catch (error) {
     console.error('Error al cargar los datos del Excel:', error);
@@ -326,10 +504,9 @@ const uploadExcel = async (req, res) => {
   }
 };
 
-
 const fs = require('fs'); // Importar el sistema de archivos para eliminar archivos
 const dayjs = require('dayjs');
-const timezone = require('dayjs/plugin/timezone');
+const timezone = require('dayjs/plugin/timezone'); 
 const utc = require('dayjs/plugin/utc');
 
 // Extender dayjs con los plugins necesarios

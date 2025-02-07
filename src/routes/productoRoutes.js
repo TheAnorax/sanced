@@ -1,5 +1,5 @@
 const express = require('express');
-const { getAllProducts, createProduct, updateProduct, deleteProduct, getAllProductsUbi, getVoluProducts, updateVolumetria, upload } = require('../controller/productoController');
+const { getAllProducts, createProduct, updateProduct, deleteProduct, getAllProductsUbi, getVoluProducts, updateVolumetria, upload, getStockTotal } = require('../controller/productoController');
 const router = express.Router();
 
 router.get('/', getAllProducts);
@@ -9,6 +9,8 @@ router.put('/:id', upload.fields([{ name: 'img_pz', maxCount: 1 }, { name: 'img_
 router.delete('/:id', deleteProduct);
 router.get('/ubicaciones', getAllProductsUbi);
 router.put("/volumetria/:codigo", updateVolumetria);
+
+router.get('/stock', getStockTotal);
 
 module.exports = router;
 

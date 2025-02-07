@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useRef } from "react";
 import DeleteIcon from "@mui/icons-material/Delete";
 import CloseIcon from "@mui/icons-material/Close";
 import * as XLSX from "xlsx";
@@ -8,6 +8,11 @@ import BorderColorIcon from "@mui/icons-material/BorderColor";
 import AirportShuttleIcon from "@mui/icons-material/AirportShuttle";
 import { UserContext } from "../context/UserContext";
 import ArticleIcon from "@mui/icons-material/Article";
+import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
+import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
+import { LinearProgress } from "@mui/material";
+
+import axios from "axios";
 import {
   Typography,
   Paper,
@@ -32,6 +37,10 @@ import {
   Snackbar,
   Checkbox,
   Grid,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
 
 import { jsPDF } from "jspdf";
@@ -44,18 +53,22 @@ const hasExpired = (timestamp) => {
 };
 
 function Transporte() {
-  const allowedRoles = new Set(["Admin", "Master", "Trans"]);
-
   const [data, setData] = useState([]);
   const [groupedData, setGroupedData] = useState({});
   const [newRoute, setNewRoute] = useState("");
   const [selectedRoute, setSelectedRoute] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [selectedActionRoute, setSelectedActionRoute] = useState("");
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [observaciones, setObservaciones] = useState({});
-  const [observacionesPorRegistro, setObservacionesPorRegistro] = useState({});
+  const [observacionesPorRegistro, setObservacionesPorRegistro] = useState(
+    () => {
+      const storedObservaciones = localStorage.getItem(
+        "observacionesPorRegistro"
+      );
+      return storedObservaciones ? JSON.parse(storedObservaciones) : {};
+    }
+  );
   const [loadingObservacionId, setLoadingObservacionId] = useState(null);
   const [tabIndex, setTabIndex] = useState(0);
 
@@ -80,15 +93,101 @@ function Transporte() {
   const [subTabIndex, setSubTabIndex] = useState(0); // Inicia en 0 para Paquetería
 
   const [totalFacturaLT, setTotalFacturaLT] = useState("");
+  const [totalValue, setTotalValue] = useState(0);
+  const [paqueteria, setPaqueteria] = useState("");
+  const [fechaEntregaCliente, setFechaEntregaCliente] = useState("");
+  const [diasEntrega, setDiasEntrega] = useState("");
+  const [entregaSatisfactoria, setEntregaSatisfactoria] = useState("");
+  const [motivo, setMotivo] = useState("");
+  const [gastosExtras, setGastosExtras] = useState("");
+  const [porcentajeEnvio, setPorcentajeEnvio] = useState("");
+  const [porcentajePaqueteria, setPorcentajePaqueteria] = useState("");
+  const [sumaGastosExtras, setSumaGastosExtras] = useState("");
+  const [porcentajeGlobal, setPorcentajeGlobal] = useState("");
+  const [diferencia, setDiferencia] = useState("");
+  const [noFactura, setNoFactura] = useState("");
+  const [fechaFactura, setFechaFactura] = useState("");
+  const [tarimas, setTarimas] = useState("");
+  const [numeroFacturaLT, setNumeroFacturaLT] = useState("");
+  const [total, setTotal] = useState("");
 
-  // Modal para editar "TOTAL FACTURA LT"
-  const openTotalFacturaLTModal = (noOrden, currentValue) => {
-    setSelectedNoOrden(noOrden);
-    setTotalFacturaLT(currentValue); // Asigna el valor actual de TOTAL FACTURA LT
-    setGuiaModalOpen(true); // Abre el modal
+  const [prorateoFacturaLT, setProrateoFacturaLT] = useState(0);
+  const [prorateoFacturaPaqueteria, setProrateoFacturaPaqueteria] = useState(0);
+  const [sumaFlete, setSumaFlete] = useState(0);
+
+  const [directaModalOpen, setDirectaModalOpen] = useState(false);
+  const [selectedDirectaData, setSelectedDirectaData] = useState(null);
+
+  const [fecha, setFecha] = useState("");
+  const [numCliente, setNumCliente] = useState("");
+  const [nombreCliente, setNombreCliente] = useState("");
+  const [municipio, setMunicipio] = useState("");
+  const [estado, setEstado] = useState("");
+  const [partidas, setPartidas] = useState("");
+  const [piezas, setPiezas] = useState("");
+  const [zona, setZona] = useState("");
+  const [tipoZona, setTipoZona] = useState("");
+  const [fechaEmbarque, setFechaEmbarque] = useState("");
+  const [diaEnRuta, setDiaEnRuta] = useState("");
+  const [cajas, setCajas] = useState("");
+  const [transporte, setTransporte] = useState("");
+  const [error, setError] = useState(null);
+
+  const [transportistaData, setTransportistaData] = useState([]);
+  const [empresaData, setEmpresaData] = useState([]);
+
+  const [tipo, setTipo] = useState(""); // Agregar esto
+  const [loading, setLoading] = useState(false);
+  const [calculatedTotals, setCalculatedTotals] = useState(null);
+
+  const [totalsModalOpen, setTotalsModalOpen] = useState(false);
+
+  const [editingClientId, setEditingClientId] = useState(null);
+  const [currentObservation, setCurrentObservation] = useState("");
+
+  const [filterOrderValue, setFilterOrderValue] = useState("");
+  const [highlightedRow, setHighlightedRow] = useState(null); // Fila temporalmente resaltada
+
+  const [progress, setProgress] = useState(0);
+  const [statusText, setStatusText] = useState("Cargando...");
+
+  useEffect(() => {
+    const fetchStatuses = async (data, setData) => {
+        const updatedData = await Promise.all(data.map(async (route) => {
+            const orderNumber = route['NO ORDEN'];
+            console.log('Obteniendo estado del pedido:', orderNumber);
+
+            try {
+                const response = await axios.get(`http://192.168.3.27:3007/api/Trasporte/status/${orderNumber}`);
+                const { progress, statusText } = response.data;
+                return {
+                    ...route,
+                    progress,
+                    statusText,
+                };
+            } catch (error) {
+                console.error(`Error al obtener el estado para el pedido ${orderNumber}:`, error);
+                return {
+                    ...route,
+                    statusText: 'Error al cargar datos',
+                };
+            }
+        }));
+
+        setData(updatedData);
+    };
+
+    // Ejecutar para cada tipo de datos si no están vacíos
+    if (paqueteriaData.length > 0) fetchStatuses(paqueteriaData, setPaqueteriaData);
+    if (directaData.length > 0) fetchStatuses(directaData, setDirectaData);
+    if (ventaEmpleadoData.length > 0) fetchStatuses(ventaEmpleadoData, setVentaEmpleadoData);
+}, [paqueteriaData, directaData, ventaEmpleadoData]);
+
+  const handleRowClick = (routeData) => {
+    console.log("Route Data:", routeData); // Esto te ayudará a verificar qué datos están siendo pasados
+    setTotalValue(routeData.TOTAL);
   };
 
-  // Función para cambiar la subpestaña
   const handleChangeSubTab = (event, newValue) => {
     setSubTabIndex(newValue); // Cambia el índice de la subpestaña seleccionada
   };
@@ -126,15 +225,15 @@ function Transporte() {
       localStorage.setItem("sentRoutesData", JSON.stringify(sentRoutesData)); // Guardar los datos de la segunda tabla
       localStorage.setItem("transporteTimestamp", new Date().getTime());
     }
-  }, [data, groupedData, sentRoutesData]); // Actualizamos cuando cambia cualquier dato
+  }, [data, groupedData, sentRoutesData]);
 
   useEffect(() => {
     fetchPaqueteriaRoutes(); // Llama a la API para cargar las rutas de paquetería
-  }, []); // Se ejecuta una vez al montar el componente
+  }, []);
 
   useEffect(() => {
     console.log("Datos de la paquetería:", sentRoutesData); // Verifica el estado
-  }, [sentRoutesData]); // Esto se ejecuta cada vez que `sentRoutesData` cambia
+  }, [sentRoutesData]);
 
   useEffect(() => {
     // Recorre todos los clientes de la segunda tabla para obtener sus observaciones
@@ -145,28 +244,127 @@ function Transporte() {
         fetchObservacionPorRegistro(routeData["NUM. CLIENTE"]);
       }
     });
-  }, [sentRoutesData]); // Este efecto se ejecuta cuando los datos en la segunda tabla cambian
+  }, [sentRoutesData]);
 
   useEffect(() => {
-    // Filtrar datos según el tipo
     const paqueteria = sentRoutesData.filter(
-      (routeData) => routeData.TIPO === "paqueteria"
+      (routeData) => routeData.TIPO?.trim().toLowerCase() === "paqueteria"
     );
     const directa = sentRoutesData.filter(
-      (routeData) => routeData.TIPO === "Directa"
+      (routeData) => routeData.TIPO?.trim().toLowerCase() === "directa"
     );
     const ventaEmpleado = sentRoutesData.filter(
-      (routeData) => routeData.TIPO === "venta empleado"
+      (routeData) => routeData.TIPO?.trim().toLowerCase() === "venta empleado"
     );
 
-    // Actualizar el estado con los datos filtrados
     setPaqueteriaData(paqueteria);
     setDirectaData(directa);
     setVentaEmpleadoData(ventaEmpleado);
-  }, [sentRoutesData]); // Se ejecuta cada vez que cambian los datos
+  }, [sentRoutesData]);
+
+  useEffect(() => {
+    console.log("Estado del modal abierto:", guiaModalOpen);
+  }, [guiaModalOpen]);
+
+  useEffect(() => {
+    const suma = prorateoFacturaLT + prorateoFacturaPaqueteria;
+    setSumaFlete(
+      parseFloat(prorateoFacturaLT) + parseFloat(prorateoFacturaPaqueteria)
+    );
+    console.log("Suma Flete calculada:", suma);
+  }, [prorateoFacturaLT, prorateoFacturaPaqueteria]);
+
+  useEffect(() => {
+    if (total && prorateoFacturaLT) {
+      const porcentajeEnvio = (prorateoFacturaLT / total) * 100;
+      setPorcentajeEnvio(porcentajeEnvio.toFixed(2)); // Redondear a 2 decimales
+    } else {
+      setPorcentajeEnvio(""); // Limpiar si no hay valores válidos
+    }
+  }, [total, prorateoFacturaLT]);
+
+  useEffect(() => {
+    console.log("Total:", total);
+
+    if (total && prorateoFacturaPaqueteria) {
+      const porcentajePaqueteria = (prorateoFacturaPaqueteria / total) * 100;
+      setPorcentajePaqueteria(porcentajePaqueteria.toFixed(2)); // Redondear a 2 decimales
+    } else {
+      setPorcentajePaqueteria(""); // Limpiar si no hay valores válidos
+    }
+  }, [total, prorateoFacturaPaqueteria]);
+
+  useEffect(() => {
+    // Convertimos a número y verificamos si es NaN
+    const prorateoLTNum = parseFloat(prorateoFacturaLT) || 0;
+    const prorateoPaqueteriaNum = parseFloat(prorateoFacturaPaqueteria) || 0;
+    const gastosExtrasNum = parseFloat(gastosExtras) || 0;
+    // Realizamos la suma
+    const sumaTotal = prorateoLTNum + prorateoPaqueteriaNum + gastosExtrasNum;
+
+    setSumaGastosExtras(sumaTotal.toFixed(2)); // Redondear a 2 decimales
+  }, [prorateoFacturaLT, prorateoFacturaPaqueteria, gastosExtras]);
+
+  useEffect(() => {
+    if (total && sumaGastosExtras) {
+      const porcentaje =
+        (parseFloat(sumaGastosExtras) / parseFloat(total)) * 100;
+      console.log("Porcentaje Global calculado:", porcentaje);
+      setPorcentajeGlobal(porcentaje.toFixed(2)); // Redondear a 2 decimales
+    } else {
+      setPorcentajeGlobal("");
+    }
+  }, [total, sumaGastosExtras]);
+
+  useEffect(() => {
+    if (total && sumaGastosExtras) {
+      const porcentaje =
+        (parseFloat(sumaGastosExtras) / parseFloat(total)) * 100;
+      console.log("Porcentaje Global calculado:", porcentaje);
+      setPorcentajeGlobal(porcentaje.toFixed(2)); // Redondear a 2 decimales
+    } else {
+      setPorcentajeGlobal("");
+    }
+  }, [total, sumaGastosExtras]);
+
+  useEffect(() => {
+    fetchTransportistas();
+    fetchEmpresas();
+  }, []);
+
+  useEffect(() => {
+    fetchTransportistas();
+  }, []);
+
+  useEffect(() => {
+    console.log("Observaciones cargadas:", observacionesPorRegistro);
+  }, [observacionesPorRegistro]);
+
+  useEffect(() => {
+    sentRoutesData.forEach((routeData) => {
+      if (!observacionesPorRegistro[routeData["NUM. CLIENTE"]]) {
+        fetchObservacionPorRegistro(routeData["NUM. CLIENTE"]);
+      }
+    });
+  }, [sentRoutesData]);
+
+  useEffect(() => {
+    data.forEach((row) => {
+      const clienteKey = row["NUM. CLIENTE"].toString().trim();
+      if (!observacionesPorRegistro[clienteKey]) {
+        fetchObservacionPorRegistro(clienteKey);
+      }
+    });
+  }, [data]);
+
+  useEffect(() => {
+    localStorage.setItem(
+      "observacionesPorRegistro",
+      JSON.stringify(observacionesPorRegistro)
+    );
+  }, [observacionesPorRegistro]);
 
   const exportToImage = () => {
-    // Captura el contenedor con los datos
     const element = document.getElementById("data-to-capture");
 
     html2canvas(element).then((canvas) => {
@@ -181,11 +379,28 @@ function Transporte() {
     });
   };
 
+  useEffect(() => {
+    const savedDirectaData =
+      JSON.parse(localStorage.getItem("directaData")) || [];
+    const savedPaqueteriaData =
+      JSON.parse(localStorage.getItem("paqueteriaData")) || [];
+    setDirectaData(savedDirectaData);
+    setPaqueteriaData(savedPaqueteriaData);
+  }, []);
+
+  useEffect(() => {
+    const savedDirectaData =
+      JSON.parse(localStorage.getItem("directaData")) || [];
+    const savedPaqueteriaData =
+      JSON.parse(localStorage.getItem("paqueteriaData")) || [];
+    setDirectaData(savedDirectaData);
+    setPaqueteriaData(savedPaqueteriaData);
+  }, []);
+
   const handleChangeTab = (event, newValue) => {
     setTabIndex(newValue);
   };
 
-  // Formatear números como moneda
   const formatCurrency = (value) => {
     return new Intl.NumberFormat("es-MX", {
       style: "currency",
@@ -193,13 +408,13 @@ function Transporte() {
     }).format(value);
   };
 
-  // Mapear columnas del Excel
   const mapColumns = (row) => ({
     RUTA: "Sin Ruta",
     FECHA: row["Fecha Lista Surtido"],
     "NO ORDEN": row["No Orden"] || row["__EMPTY_1"] || "",
     "NO FACTURA": row["No Factura"] || row["__EMPTY_4"] || "",
-    "NUM. CLIENTE": row["Cliente"] || row["__EMPTY_8"] || "",
+    "NUM. CLIENTE":
+      row["No Dir Entrega"] || row["Cliente"] || row["__EMPTY_8"] || "",
     "NOMBRE DEL CLIENTE": row["Nombre Cliente"] || row["__EMPTY_11"] || "",
     Codigo_Postal: row["Codigo Postal"] || row["__EMPTY_14"] || "",
     ZONA: row["Zona"] || row["__EMPTY_10"] || "",
@@ -208,7 +423,7 @@ function Transporte() {
       row["Municipo"] ||
       row["__EMPTY_12"] ||
       row["__EMPTY_13"] ||
-      "", // Ajustado
+      "",
     ESTADO: row["Estado"] || row["__EMPTY_15"] || "",
     OBSERVACIONES: "",
     TOTAL:
@@ -217,7 +432,6 @@ function Transporte() {
       ) || 0,
     PARTIDAS: Number(row["Partidas"] || row["__EMPTY_22"] || 0),
     PIEZAS: Number(row["Cantidad"] || row["__EMPTY_23"] || 0),
-    // Guardar los datos de la dirección y contacto
     DIRECCION: `${row["Calle"] || ""} ${row["Colonia"] || ""} ${
       row["Municipio"] || ""
     } ${row["Codigo Postal"] || ""} ${row["Estado"] || ""}`,
@@ -225,20 +439,99 @@ function Transporte() {
     TELEFONO: row["No. Telefonico"] || "",
   });
 
-  // Cargar archivo Excel
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     const reader = new FileReader();
+
     reader.onload = (evt) => {
       const bstr = evt.target.result;
       const workbook = XLSX.read(bstr, { type: "binary" });
-      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-      const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+      console.log("✅ Workbook cargado:", workbook);
 
-      // Filtrar los datos para que solo se muestren los que tengan "Lista Surtido" en la columna "Estatus"
-      const filteredData = jsonData.filter(
-        (row) => row["Estatus"] === "Lista Surtido"
+      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, {
+        defval: "", // Evitar valores `undefined`
+        range: 6, // Omitir las primeras 6 filas
+      });
+
+      console.log("📊 Datos del Excel antes del filtrado:", jsonData);
+
+      // Obtener la fecha de ayer y anteayer en formato "DD/MM/YYYY"
+      const today = new Date();
+
+      // Ayer
+      const yesterday = new Date(today);
+      yesterday.setDate(today.getDate() - 1);
+      const yesterdayFormatted = yesterday.toLocaleDateString("es-MX", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      });
+
+      // Anteayer
+      const dayBeforeYesterday = new Date(today);
+      dayBeforeYesterday.setDate(today.getDate() - 2);
+      const dayBeforeYesterdayFormatted = dayBeforeYesterday.toLocaleDateString(
+        "es-MX",
+        { day: "2-digit", month: "2-digit", year: "numeric" }
       );
+
+      console.log("📅 Fecha de ayer:", yesterdayFormatted);
+      console.log("📅 Fecha de anteayer:", dayBeforeYesterdayFormatted);
+
+      // Filtrar datos por la fecha de ayer y anteayer y "Estatus" = "Lista Surtido"
+      const filteredData = jsonData.filter((row) => {
+        if (!row["Fecha Lista Surtido"]) {
+          console.warn("⚠️ Registro sin fecha:", row);
+          return false; // Ignorar filas sin fecha
+        }
+
+        let rowDate;
+        if (typeof row["Fecha Lista Surtido"] === "number") {
+          // 🔹 Convertir formato numérico de Excel a fecha
+          const excelDate = XLSX.SSF.parse_date_code(
+            row["Fecha Lista Surtido"]
+          );
+          rowDate = new Date(excelDate.y, excelDate.m - 1, excelDate.d);
+        } else {
+          // 🔹 Convertir string a Date (posibles formatos "DD/MM/YYYY" o "YYYY-MM-DD")
+          const dateParts = row["Fecha Lista Surtido"].split("/");
+          if (dateParts.length === 3) {
+            rowDate = new Date(dateParts[2], dateParts[1] - 1, dateParts[0]); // Convertir a YYYY-MM-DD
+          } else {
+            rowDate = new Date(row["Fecha Lista Surtido"]);
+          }
+        }
+
+        if (isNaN(rowDate.getTime())) {
+          console.warn(
+            "🚨 Fecha inválida detectada:",
+            row["Fecha Lista Surtido"]
+          );
+          return false; // Ignorar si la fecha es inválida
+        }
+
+        // Reformatear la fecha para compararla
+        const rowDateFormatted = rowDate.toLocaleDateString("es-MX", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        });
+
+        console.log(
+          `📆 Comparando: ${rowDateFormatted} == ${yesterdayFormatted} o ${dayBeforeYesterdayFormatted} ?`,
+          rowDateFormatted === yesterdayFormatted ||
+            rowDateFormatted === dayBeforeYesterdayFormatted
+        );
+
+        return (
+          (rowDateFormatted === yesterdayFormatted ||
+            rowDateFormatted === dayBeforeYesterdayFormatted) &&
+          row["Estatus"] === "Lista Surtido"
+        );
+      });
+
+      console.log("✅ Datos filtrados correctamente:", filteredData);
 
       // Mapea los datos filtrados
       const mappedData = filteredData
@@ -251,7 +544,6 @@ function Transporte() {
     reader.readAsBinaryString(file);
   };
 
-  // Función para limpiar la dirección
   const cleanAddress = (address) => {
     if (!address) return "No disponible"; // Si no hay dirección, devolvemos 'No disponible'
 
@@ -267,7 +559,6 @@ function Transporte() {
     return cleanedAddress;
   };
 
-  // Crear una nueva ruta
   const addRoute = () => {
     if (newRoute && !groupedData[newRoute]) {
       setGroupedData({
@@ -278,7 +569,6 @@ function Transporte() {
     }
   };
 
-  // Asignar un elemento a una ruta específica
   const assignToRoute = (item, route) => {
     setGroupedData((prev) => {
       const updatedRoute = prev[route] || {
@@ -288,7 +578,14 @@ function Transporte() {
         rows: [],
       };
 
-      updatedRoute.rows.push(item);
+      updatedRoute.rows.push({
+        ...item,
+        OBSERVACIONES:
+          observacionesPorRegistro[item["NUM. CLIENTE"]] ||
+          item.OBSERVACIONES ||
+          "Sin observaciones disponibles",
+      });
+
       updatedRoute.TOTAL += item.TOTAL;
       updatedRoute.PARTIDAS += item.PARTIDAS;
       updatedRoute.PIEZAS += item.PIEZAS;
@@ -299,7 +596,6 @@ function Transporte() {
     setData((prevData) => prevData.filter((row) => row !== item));
   };
 
-  // Mostrar modal con detalles de la ruta
   const openModal = (route) => {
     setSelectedRoute(route);
     setModalOpen(true);
@@ -316,7 +612,6 @@ function Transporte() {
     setObservaciones(""); // Limpiar observaciones
   };
 
-  // Calcular Totales
   const calculateTotals = (route) => {
     const routeData = groupedData[route] || { rows: [] };
     return routeData.rows.reduce(
@@ -346,7 +641,6 @@ function Transporte() {
   };
 
   const clearLocalStorage = () => {
-    localStorage.removeItem("transporteData");
     localStorage.removeItem("transporteTimestamp");
     setData([]);
     handleSnackbarOpen(
@@ -354,10 +648,11 @@ function Transporte() {
     );
   };
 
-  // Llamada para obtener las rutas de paquetería
   const fetchPaqueteriaRoutes = async () => {
     try {
-      const response = await fetch("http://192.168.3.27:3007/api/Trasporte/rutas");
+      const response = await fetch(
+        "http://192.168.3.27:3007/api/Trasporte/rutas"
+      );
       const data = await response.json();
 
       if (Array.isArray(data)) {
@@ -385,7 +680,6 @@ function Transporte() {
     }
   };
 
-  // Función en el frontend para obtener la fecha de embarque y el total de cajas
   const fetchAdditionalData = async (noOrden) => {
     try {
       const url = `http://192.168.3.27:3007/api/Trasporte/pedido/detalles/${noOrden}`; // Usamos el parámetro en la URL
@@ -413,37 +707,61 @@ function Transporte() {
 
   const fetchObservacionPorRegistro = async (venta) => {
     try {
-      setLoadingObservacionId(venta); // Mostrar loading en el registro actual
       const response = await fetch(
         `http://192.168.3.27:3007/api/Trasporte/clientes/observaciones/${venta}`
       );
       const data = await response.json();
+      console.log("Datos recibidos:", data, "Venta:", venta);
 
-      setObservacionesPorRegistro((prev) => ({
-        ...prev,
-        [venta]: data.observacion || "Sin observaciones disponibles",
-      }));
+      setObservacionesPorRegistro((prev) => {
+        const nuevoEstado = {
+          ...prev,
+          [venta]: data.observacion || "Sin observaciones disponibles",
+        };
+        console.log("Nuevo estado de observaciones:", nuevoEstado);
+        return nuevoEstado;
+      });
     } catch (error) {
       console.error("Error al obtener observaciones:", error.message);
-      setObservacionesPorRegistro((prev) => ({
-        ...prev,
-        [venta]: "Error al obtener observaciones",
-      }));
-    } finally {
-      setLoadingObservacionId(null); // Finalizar loading
     }
   };
 
   const handleSelectRoute = (route) => {
     console.log("Ruta seleccionada:", route);
-    console.log("Datos de la ruta:", groupedData[route]);
 
+    // Actualiza las rutas seleccionadas
     setSelectedRoutes((prevRoutes) => {
-      if (prevRoutes.includes(route)) {
-        return prevRoutes.filter((r) => r !== route); // Desmarcar ruta
-      } else {
-        return [...prevRoutes, route]; // Marcar ruta
-      }
+      const newSelectedRoutes = prevRoutes.includes(route)
+        ? prevRoutes.filter((r) => r !== route) // Desmarcar ruta
+        : [...prevRoutes, route]; // Marcar ruta
+
+      // Recalcular los totales incluyendo todas las rutas
+      let totalClientes = 0;
+      let totalPedidos = 0;
+      let totalGeneral = 0;
+
+      // Aquí recorremos todas las rutas, no solo las seleccionadas
+      Object.keys(groupedData).forEach((routeKey) => {
+        const routeData = groupedData[routeKey];
+        if (routeData) {
+          totalClientes += routeData.rows.length;
+          totalPedidos += routeData.rows.reduce(
+            (sum, row) => sum + (row.PARTIDAS || 0),
+            0
+          );
+          totalGeneral += routeData.rows.reduce(
+            (sum, row) => sum + (row.TOTAL || 0),
+            0
+          );
+        }
+      });
+
+      // Actualiza los totales basados en todas las rutas, no solo las seleccionadas
+      setTotalClientes(totalClientes);
+      setTotalPedidos(totalPedidos);
+      setTotalGeneral(totalGeneral);
+
+      return newSelectedRoutes;
     });
   };
 
@@ -456,22 +774,43 @@ function Transporte() {
 
         if (routeData && routeData.rows) {
           routeData.rows.forEach((row) => {
+            // Obtener el tipo de la fila, si no tiene, usar el tipoRuta actual seleccionado
+            let tipoRutaActual = row.TIPO
+              ? row.TIPO.toLowerCase()
+              : tipoRuta.toLowerCase();
+
+            // Definir la guía basada en el tipo de ruta
+            let guiaEnviar = row.GUIA || ""; // Mantener el valor original si existe
+
+            // ✅ Si es "Directa" o "Venta Empleado", insertar "NA" en GUIA automáticamente
+            if (
+              tipoRutaActual === "directa" ||
+              tipoRutaActual === "venta empleado"
+            ) {
+              guiaEnviar = "NA";
+            }
+
             newSentRoutesData.push({
               ...row, // Mantener todos los detalles de la fila
               routeName: route, // Mantener el nombre de la ruta
               OBSERVACIONES:
+                row.OBSERVACIONES ||
                 observacionesPorRegistro[row["NUM. CLIENTE"]] ||
                 "Sin observaciones disponibles",
-              TIPO: tipoRuta, // Aquí agregamos el tipo de ruta
+              TIPO: tipoRutaActual, // ✅ Asegurar que se inserta el tipo correcto
+              GUIA: guiaEnviar, // ✅ Asignar "NA" si es Directa o Venta Empleado
             });
+
+            console.log(
+              `📌 Insertando: NO ORDEN: ${row["NO ORDEN"]}, TIPO: ${tipoRutaActual}, GUIA: ${guiaEnviar}`
+            );
           });
         } else {
-          console.warn(`Ruta ${route} no tiene datos o filas definidas.`);
+          console.warn(`⚠ Ruta ${route} no tiene datos o filas definidas.`);
         }
       });
 
-      // Verifica que estás enviando todos los datos
-      console.log("Datos enviados a la base de datos:", newSentRoutesData);
+      console.log("📤 Datos enviados a la base de datos:", newSentRoutesData);
 
       try {
         const response = await fetch(
@@ -487,7 +826,7 @@ function Transporte() {
 
         if (response.ok) {
           const result = await response.json();
-          console.log("Rutas insertadas:", result);
+          console.log("✅ Rutas insertadas correctamente:", result);
           handleSnackbarOpen("Rutas enviadas con éxito y registradas.");
 
           // Agregar los datos a la segunda tabla
@@ -497,35 +836,36 @@ function Transporte() {
           setGroupedData((prevData) => {
             const newGroupedData = { ...prevData };
             selectedRoutes.forEach((route) => {
-              delete newGroupedData[route]; // Eliminar la ruta de groupedData
+              delete newGroupedData[route];
             });
             return newGroupedData;
           });
         } else {
-          handleSnackbarOpen("Hubo un error al registrar las rutas.");
+          handleSnackbarOpen("⚠ Hubo un error al registrar las rutas.");
         }
       } catch (error) {
-        console.error("Error al enviar las rutas:", error);
+        console.error("❌ Error al enviar las rutas:", error);
         handleSnackbarOpen("Error al enviar las rutas.");
       }
 
-      setConfirmSendModalOpen(false); // Cerrar el modal después de enviar
+      setConfirmSendModalOpen(false);
     } else {
-      handleSnackbarOpen("Por favor, selecciona al menos una ruta.");
+      handleSnackbarOpen("⚠ Por favor, selecciona al menos una ruta.");
     }
   };
 
-  // Function to format the date
   const formatDate = (dateString) => {
+    if (!dateString) return "Sin fecha"; // Si no hay fecha, muestra "Sin fecha"
+
     const date = new Date(dateString); // Convierte el string de fecha a un objeto Date
     if (isNaN(date)) {
       return "Fecha inválida"; // Si no se puede convertir a fecha, devuelve 'Fecha inválida'
     }
+
     const options = { year: "numeric", month: "numeric", day: "numeric" };
-    return date.toLocaleDateString(undefined, options); // Devuelve la fecha formateada
+    return date.toLocaleDateString("es-MX", options); // Devuelve la fecha formateada en formato local
   };
 
-  // Usar esta función cuando el usuario hace clic en "Mandar a Paquetería"
   const handleGenerateRoutes = () => {
     if (!tipoRuta) {
       handleSnackbarOpen(
@@ -576,7 +916,6 @@ function Transporte() {
     return clientes.size; // El tamaño del Set nos da el total de clientes únicos
   };
 
-  // Función para obtener el total de pedidos
   const calculateTotalPedidos = (rutasSeleccionadas) => {
     let totalPedidos = 0;
 
@@ -590,7 +929,6 @@ function Transporte() {
     return totalPedidos;
   };
 
-  // Función para obtener el total general
   const calculateTotalGeneral = (rutasSeleccionadas) => {
     let totalGeneral = 0;
 
@@ -606,70 +944,126 @@ function Transporte() {
     return totalGeneral;
   };
 
-  // Función para actualizar la guía
-  const actualizarGuia = async () => {
-    console.log(
-      "Actualizando guía para el NO ORDEN:",
-      selectedNoOrden,
-      "Guía:",
-      guia
-    );
+  const openGuiaModal = (routeData) => {
+    console.log("Abriendo modal con datos:", routeData);
 
+    console.log("Tipo:", routeData.TIPO);
+
+    setGuia(routeData.guia);
+    setSelectedNoOrden(routeData.noOrden);
+    setPaqueteria(routeData.paqueteria);
+    setFechaEntregaCliente(routeData.fechaEntregaCliente);
+    setDiasEntrega(routeData.diasEntrega);
+    setEntregaSatisfactoria(routeData.entregaSatisfactoria);
+    setMotivo(routeData.motivo);
+    setTotalFacturaLT(routeData.totalFacturaLT);
+    setProrateoFacturaLT(routeData.prorateoFacturaLT);
+    setProrateoFacturaPaqueteria(routeData.prorateoFacturaPaqueteria);
+    setGastosExtras(routeData.gastosExtras);
+    setSumaFlete(routeData.sumaFlete);
+    setPorcentajeEnvio(routeData.porcentajeEnvio);
+    setPorcentajePaqueteria(routeData.porcentajePaqueteria);
+    setSumaGastosExtras(routeData.sumaGastosExtras);
+    setPorcentajeGlobal(routeData.porcentajeGlobal);
+    setDiferencia(routeData.diferencia);
+    setNoFactura(routeData.no_Factura);
+    setFechaFactura(routeData.fechaFactura);
+    setTarimas(routeData.tarimas);
+    setNumeroFacturaLT(routeData.numeroFacturaLT);
+    setTotal(routeData.total);
+    setTipo(routeData.TIPO || "");
+
+    setGuiaModalOpen(true);
+  };
+
+  const handleProrateoFacturaLTChange = (e) => {
+    const value = parseFloat(e.target.value) || 0; // Convertir a número
+    setProrateoFacturaLT(value); // Actualiza el valor en el estado
+  };
+
+  const closeGuiaModal = () => {
+    setGuiaModalOpen(false);
+  };
+
+  const actualizarGuia = async () => {
     if (!selectedNoOrden || !guia) {
-      alert("Error: No se proporcionó el noOrden o la guía");
+      console.error(
+        "❌ Error: No se puede actualizar porque noOrden o guia son indefinidos."
+      );
+      alert(
+        "Error: No se puede actualizar porque falta la guía o el número de orden."
+      );
       return;
     }
 
     try {
-      const response = await fetch(
-        "http://192.168.3.27:3007/api/Trasporte/paqueteria/actualizar-guia",
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            noOrden: selectedNoOrden, // Pasamos el noOrden
-            guia: guia, // Pasamos la nueva guía
-          }),
-        }
-      );
+      const url = `http://192.168.3.27:3007/api/Trasporte/paqueteria/actualizar-guia/${selectedNoOrden}/${guia}`;
+      console.log("📤 Enviando actualización:", {
+        noOrden: selectedNoOrden,
+        guia,
+        paqueteria,
+        fechaEntregaCliente,
+        diasEntrega,
+        entregaSatisfactoria,
+        motivo,
+        totalFacturaLT,
+        prorateoFacturaLT,
+        prorateoFacturaPaqueteria,
+        gastosExtras,
+        sumaFlete,
+        porcentajeEnvio,
+        porcentajePaqueteria,
+        sumaGastosExtras,
+        porcentajeGlobal,
+        diferencia,
+        noFactura,
+        fechaFactura,
+        tarimas,
+        numeroFacturaLT,
+        total,
+        tipo,
+      });
 
-      const data = await response.json();
+      const response = await fetch(url, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          paqueteria,
+          fechaEntregaCliente,
+          diasEntrega,
+          entregaSatisfactoria,
+          motivo,
+          totalFacturaLT,
+          prorateoFacturaLT,
+          prorateoFacturaPaqueteria,
+          gastosExtras,
+          sumaFlete,
+          porcentajeEnvio,
+          porcentajePaqueteria,
+          sumaGastosExtras,
+          porcentajeGlobal,
+          diferencia,
+          noFactura,
+          fechaFactura,
+          tarimas,
+          numeroFacturaLT,
+          total,
+          tipo,
+        }),
+      });
+
       if (response.ok) {
-        handleSnackbarOpen("Guía actualizada correctamente.");
-        setGuia(""); // Limpiar el campo de la guía
-        setSelectedNoOrden(null); // Limpiar el noOrden
-        closeGuiaModal(); // Cerramos el modal
-
-        const updatedRoutesData = [...sentRoutesData];
-        const updatedRouteIndex = updatedRoutesData.findIndex(
-          (route) => route["NO ORDEN"] === selectedNoOrden
-        );
-        if (updatedRouteIndex !== -1) {
-          updatedRoutesData[updatedRouteIndex].GUIA = guia;
-        }
-
-        setSentRoutesData(updatedRoutesData); // Actualizamos el estado de las rutas
+        console.log("✅ Guía actualizada correctamente.");
+        closeDirectaModal();
       } else {
-        alert("Error al actualizar la guía");
+        const errorData = await response.json();
+        console.error("Error al actualizar:", errorData);
+        alert("❌ Error al actualizar la guía: " + errorData.message);
       }
     } catch (error) {
-      console.error("Error al actualizar la guía:", error);
-      alert("Hubo un error al actualizar la guía");
+      console.error("❌ Error en la actualización:", error);
+      alert("Error en la actualización de la guía.");
     }
-  };
-
-  const openGuiaModal = (noOrden, guia) => {
-    setSelectedNoOrden(noOrden); // Asignamos el noOrden
-    setGuia(guia); // Asignamos la guía actual
-    setGuiaModalOpen(true); // Abrimos el modal de actualización de la guía
-  };
-
-  // Función para cerrar el modal de actualización de guía
-  const closeGuiaModal = () => {
-    setGuiaModalOpen(false);
-    setGuia(""); // Limpiar el campo de la guía
   };
 
   const getVisibleColumns = (role) => {
@@ -677,20 +1071,66 @@ function Transporte() {
     const allColumns = [
       {
         name: "NO ORDEN",
-        role: ["Admin", "Master", "Trans", "PQ1", "Control", "EB1"],
+        role: [
+          "Admin",
+          "Master",
+          "Trans",
+          "PQ1",
+          "EB1",
+          "Paquet",
+          "Embar",
+          "Control",
+        ],
       },
-      { name: "FECHA", role: ["Admin", "Master", "Trans", "PQ1", "EB1"] },
-      { name: "NUM CLIENTE", role: ["Admin", "Master", "Trans", "PQ1", "EB1"] },
+      {
+        name: "ESTADO",
+        role: [
+          "Admin",
+          "Master",
+          "Trans",
+          "PQ1",
+          "EB1",
+          "Paquet",
+          "Embar",
+          "Control",
+        ],
+      },
+      {
+        name: "FECHA",
+        role: ["Admin", "Master", "Trans", "PQ1", "EB1", "Paquet", "Embar"],
+      },
+      {
+        name: "NUM CLIENTE",
+        role: ["Admin", "Master", "Trans", "PQ1", "EB1", "Paquet", "Embar"],
+      },
       {
         name: "NOMBRE DEL CLIENTE",
-        role: ["Admin", "Master", "Trans", "PQ1", "EB1"],
+        role: [
+          "Admin",
+          "Master",
+          "Trans",
+          "PQ1",
+          "EB1",
+          "Control",
+          "Paquet",
+          "Embar",
+        ],
       },
-      { name: "MUNICIPIO", role: ["Admin", "Master", "Trans", "PQ1", "EB1"] },
-      { name: "ESTADO", role: ["Admin", "Master", "Trans", "PQ1", "EB1"] },
-      { name: "OBSERVACIONES", role: ["Admin", "Master", "Trans", "PQ1"] },
-      { name: "TOTAL", role: ["Admin", "Master", "Trans", "PQ1"] },
-      { name: "PARTIDAS", role: ["Admin", "Master", "Trans"] },
-      { name: "PIEZAS", role: ["Admin", "Master", "Trans"] },
+      {
+        name: "MUNICIPIO",
+        role: ["Admin", "Master", "Trans", "PQ1", "EB1", "Paquet", "Embar"],
+      },
+      {
+        name: "ESTADO",
+        role: ["Admin", "Master", "Trans", "PQ1", "EB1", "Paquet", "Embar"],
+      },
+      {
+        name: "OBSERVACIONES",
+        role: ["Admin", "Master", "Trans", "PQ1", "Paquet", "Embar"],
+      },
+      { name: "TOTAL", role: ["Admin", "Master", "Trans", "PQ1", "Paquet"] },
+      { name: "PARTIDAS", role: ["Admin", "Master", "Trans", "Control"] },
+      { name: "PIEZAS", role: ["Admin", "Master", "Trans", "Control"] },
       { name: "ZONA", role: ["Admin", "Master", "Trans"] },
       { name: "TIPO DE ZONA", role: ["Admin", "Master", "Trans"] },
       {
@@ -704,22 +1144,31 @@ function Transporte() {
       { name: "FECHA DE EMBARQUE", role: ["Admin", "Master", "Trans"] },
       {
         name: "DIA EN QUE ESTA EN RUTA",
-        role: ["Admin", "Master", "Trans", "EB1"],
+        role: ["Admin", "Master", "Trans", "EB1", "Embar"],
       },
-      { name: "HORA DE SALIDA", role: ["Admin", "Master", "Trans", "EB1"] },
-      { name: "CAJAS", role: ["Admin", "Master", "Trans", "PQ1", "PQ1"] },
-      { name: "TARIMAS", role: ["Admin", "Master", "Trans", "PQ1"] },
-      { name: "TRANSPORTE", role: ["Admin", "Master", "Trans", "PQ1"] },
-      { name: "PAQUETERIA", role: ["Admin", "Master", "Trans", "PQ1"] },
-      { name: "GUIA", role: ["Admin", "Master", "Trans", "PQ1"] },
+      {
+        name: "HORA DE SALIDA",
+        role: ["Admin", "Master", "Trans", "EB1", "Embar"],
+      },
+      { name: "CAJAS", role: ["Admin", "Master", "Trans", "PQ1", "Paquet"] },
+      { name: "TARIMAS", role: ["Admin", "Master", "Trans", "Paquet"] },
+      {
+        name: "TRANSPORTE",
+        role: ["Admin", "Master", "Trans", "PQ1", "Paquet", "Control"],
+      },
+      {
+        name: "PAQUETERIA",
+        role: ["Admin", "Master", "Trans", "PQ1", "Paquet", "Control"],
+      },
+      { name: "GUIA", role: ["Admin", "Master", "Trans", "PQ1", "Paquet"] },
       {
         name: "FECHA DE ENTREGA (CLIENTE)",
-        role: ["Admin", "Master", "Trans"],
+        role: ["Admin", "Master", "Trans", "PQ1"],
       },
-      { name: "DIAS DE ENTREGA", role: ["Admin", "Master", "Trans"] },
+      { name: "DIAS DE ENTREGA", role: ["Admin", "Master", "Trans", "PQ1"] },
       {
         name: "ENTREGA SATISFACTORIA O NO SATISFACTORIA",
-        role: ["Admin", "Master", "Trans"],
+        role: ["Admin", "Master", "Trans", "PQ1", "Paquet"],
       },
       { name: "MOTIVO", role: ["Admin", "Master", "Trans"] },
       { name: "NUMERO DE FACTURA LT", role: ["Admin", "Master", "Trans"] },
@@ -738,8 +1187,16 @@ function Transporte() {
       { name: "DIFERENCIA", role: ["Admin", "Master", "Trans"] },
       {
         name: "Acciones",
-        role: ["Admin", "Master", "Trans", "PQ1", "Control"],
+        role: ["Admin", "Master", "Trans", "Control", "PQ1", "Paquet", "Embar"],
       },
+      {
+        name: "TRANSPORTISTA",
+        role: ["Admin", "Master", "Trans", "Control", "Embar"],
+      },
+      { name: "EMPRESA", role: ["Admin", "Master", "Trans", "Control"] },
+      { name: "CLAVE", role: ["Admin", "Master", "Trans", "Control"] },
+      { name: "ACCIONES", role: ["Admin", "Master", "Trans", "Control"] },
+      { name: "REG_ENTRADA", role: ["Admin", "Master", "Trans", "Control"] },
     ];
 
     return allColumns
@@ -829,17 +1286,42 @@ function Transporte() {
 
   const generatePDF = async (pedido) => {
     try {
-      // Obtener los datos del pedido usando el número de orden
-      const response = await fetch(
+      // Paso 1: Obtener datos de la API de rutas
+      const responseRoutes = await fetch(
+        "http://192.168.3.27:3007/api/Trasporte/rutas"
+      );
+      const routesData = await responseRoutes.json();
+
+      if (!Array.isArray(routesData) || routesData.length === 0) {
+        alert("No se encontraron rutas de paquetería");
+        return;
+      }
+
+      // Paso 2: Buscar la ruta que corresponde al pedido
+      const route = routesData.find((route) => route["NO ORDEN"] === pedido);
+      if (!route) {
+        alert("No se encontró la ruta para este pedido.");
+        return;
+      }
+
+      // Obtener los datos de la ruta (Cliente, Dirección, Factura)
+      const nombreCliente = route["NOMBRE DEL CLIENTE"] || "No disponible";
+      const numeroFactura = route["NO FACTURA"] || "No disponible";
+      const direccion = cleanAddress(route["DIRECCION"]) || "No disponible";
+      const numero = route["TELEFONO"] || "No disponible";
+
+      // Define el teléfono
+      const telefono = route["TELÉFONO"] || "123-456-7890";
+
+      // Paso 3: Obtener los productos del pedido usando la API de embarque
+      const responseEmbarque = await fetch(
         `http://192.168.3.27:3007/api/Trasporte/embarque/${pedido}`
       );
-      if (!response.ok) throw new Error("Error al obtener datos del pedido");
-      const data = await response.json();
-      console.log("Datos recibidos del pedido:", data); // Verifica los datos
+      const data = await responseEmbarque.json();
 
       if (!Array.isArray(data) || data.length === 0) {
-        alert("No hay datos disponibles para este pedido.");
-        return; // Salir si no hay datos
+        alert("No hay productos disponibles para este pedido.");
+        return;
       }
 
       // Dividir los productos en dos categorías: con caja (Caja > 0) y sin caja (Caja === 0)
@@ -849,15 +1331,54 @@ function Transporte() {
       // Crear instancia de jsPDF
       const doc = new jsPDF();
 
-      // Insertar el logo
-      doc.addImage(logo, "JPEG", 10, 10, 80, 20);
+      // Ajustar logo para que quede a la izquierda, sin sobrepasar el texto
+      doc.addImage(logo, "JPEG", 140, 10, 60, 20);
 
-      // Encabezado del pedido
-      doc.setFontSize(12);
-      doc.text(`VT.${pedido}`, 150, 15);
-      doc.text(`Fecha: ${new Date().toLocaleDateString()}`, 150, 25);
+      // Definir márgenes y tamaños de fuente
+      const marginLeft = 15;
+      const marginTop = 20;
+      let currentY = marginTop;
 
-      // Agrupar los productos con cajas según el número de caja
+      // Encabezado con formato formal
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.text("Packing List", 105, currentY, { align: "center" });
+      currentY += 7;
+      doc.setFontSize(10);
+      doc.text(`VT: ${pedido}`, marginLeft, currentY);
+      currentY += 7;
+      doc.text(
+        `Fecha: ${new Date().toLocaleDateString()}`,
+        marginLeft,
+        currentY
+      );
+      currentY += 7;
+      doc.text(`Cliente: ${nombreCliente}`, marginLeft, currentY);
+      currentY += 7;
+      doc.text(`Numero del Cliente: ${numero}`, marginLeft, currentY);
+      currentY += 7;
+      doc.text(`No Factura: #${numeroFactura}`, marginLeft, currentY);
+      currentY += 7;
+      doc.text(`Dirección: ${direccion}`, marginLeft, currentY);
+      currentY += 12;
+
+      // Texto con formato formal
+      const phoneText2 =
+        "En caso de detectar cualquier irregularidad (daños, faltantes, o manipulaciones), favor de comunicarse";
+      const phoneText3 = `de inmediato al departamento de atención al cliente al número: ${telefono}.`;
+      const phoneText4 = "Agradecemos su confianza y preferencia.";
+
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      currentY += 6;
+      doc.text(phoneText2, marginLeft, currentY);
+      currentY += 6;
+      doc.text(phoneText3, marginLeft, currentY);
+      currentY += 6;
+      doc.text(phoneText4, marginLeft, currentY);
+      currentY += 10;
+
+      // Agrupación de productos y tablas sigue igual
       const cajasAgrupadas = productosConCaja.reduce((groups, item) => {
         if (!groups[item.caja]) {
           groups[item.caja] = [];
@@ -866,158 +1387,79 @@ function Transporte() {
         return groups;
       }, {});
 
-      // Mostrar la tabla de totales (PZ, INNER, MASTER, Total Productos)
       let totalPZ = 0;
-      let totalINNER = 0;
-      let totalMASTER = 0;
+      let totalINNER_MASTER = 0;
       let totalProductos = 0;
+      let totalTarimas = 0;
+      let totalAtados = 0;
 
-      // Calcular los totales por producto
       productosConCaja.forEach((item) => {
         totalPZ += item._pz || 0;
-        totalINNER += item._inner || 0;
-        totalMASTER += item._master || 0;
+        totalINNER_MASTER += (item._inner || 0) + (item._master || 0);
         totalProductos += item.cantidad || 0;
+        totalTarimas += item.tarimas || 0;
+        totalAtados += item.atados || 0;
       });
 
-      // Calcular los totales para productos sin caja
       productosSinCaja.forEach((item) => {
         totalPZ += item._pz || 0;
-        totalINNER += item._inner || 0;
-        totalMASTER += item._master || 0;
+        totalINNER_MASTER += (item._inner || 0) + (item._master || 0);
         totalProductos += item.cantidad || 0;
+        totalTarimas += item.tarimas || 0;
+        totalAtados += item.atados || 0;
       });
 
-      // Crear la tabla para mostrar los totales
+      const ultimasCajas = Object.keys(cajasAgrupadas).sort((a, b) => a - b);
+      const totalCajasArmadas =
+        parseInt(ultimasCajas[ultimasCajas.length - 1]) || 0;
+      const totalCajas = totalINNER_MASTER + totalCajasArmadas;
+
+      // Insertar los totales en una tabla
       doc.autoTable({
-        startY: 40,
+        startY: currentY,
         head: [
-          [
-            "PZ",
-            "INNER",
-            "MASTER",
-            "Total Productos",
-            "Caja 1",
-            "Caja 2",
-            "Caja 3",
-          ],
+          ["INNER/MASTER", "Tarimas", "Atados", "Cajas Armadas", "Total Cajas"],
         ],
         body: [
           [
-            totalPZ,
-            totalINNER,
-            totalMASTER,
-            totalProductos,
-            cajasAgrupadas[1]?.length || 0, // Productos en Caja 1
-            cajasAgrupadas[2]?.length || 0, // Productos en Caja 2
-            cajasAgrupadas[3]?.length || 0,
+            totalINNER_MASTER,
+            totalTarimas,
+            totalAtados,
+            totalCajasArmadas,
+            totalCajas,
           ],
-        ], // Productos en Caja 3
+        ],
         theme: "grid",
-        styles: {
-          halign: "center",
-          fontSize: 10,
-          cellPadding: 1,
-          fillColor: [255, 255, 255], // Color blanco
-          textColor: [0, 0, 0], // Color negro
-        },
+        styles: { halign: "center", fontSize: 10, cellPadding: 3 },
         headStyles: {
           fontStyle: "bold",
           textColor: 0,
+          fillColor: [255, 255, 255],
         },
-        tableWidth: "auto", // Ajuste automático al contenido
-        margin: { left: 10 }, // Alinear a la izquierda
+        margin: { left: 10 },
       });
+      currentY = doc.lastAutoTable.finalY + 10;
 
-      // Mostrar productos sin caja
-      if (productosSinCaja.length > 0) {
-        doc.autoTable({
-          startY: doc.lastAutoTable.finalY + 10,
-          head: [["Productos sin caja"]],
-          body: [],
-          theme: "grid",
-          styles: {
-            halign: "center",
-            fontSize: 10,
-            cellPadding: 1,
-            fillColor: [255, 255, 255],
-            textColor: [0, 0, 0],
-          },
-          headStyles: {
-            fontStyle: "bold",
-            textColor: 0,
-            fillColor: [255, 255, 255],
-          },
-        });
-
-        doc.autoTable({
-          startY: doc.lastAutoTable.finalY + 10,
-          head: [
-            [
-              "Sku",
-              "Descripción",
-              "Cantidad",
-              "UM",
-              "PZ",
-              "PQ",
-              "INNER",
-              "MASTER",
-              "Validar",
-            ],
-          ],
-          body: productosSinCaja.map((item) => [
-            item.codigo_ped || "",
-            item.des || "",
-            item.cantidad || "",
-            item.um || "",
-            item._pz || 0, // PZ
-            item._pq || 0, // PQ
-            item._inner || 0, // INNER
-            item._master || 0, // MASTER
-          ]),
-          theme: "grid",
-          styles: { fontSize: 8, halign: "center", cellPadding: 1.5 },
-          headStyles: {
-            fontStyle: "bold",
-            textColor: 0, // Texto negro
-            fillColor: [255, 255, 255],
-          },
-          bodyStyles: { halign: "center" },
-        });
-      } else {
-        doc.text(
-          "No hay productos sin cajas.",
-          10,
-          doc.lastAutoTable.finalY + 10
-        );
-      }
-
-      // Mostrar los productos agrupados por caja
+      // Mostrar las cajas agrupadas
       Object.keys(cajasAgrupadas).forEach((caja) => {
         const productosDeCaja = cajasAgrupadas[caja];
 
-        // Título de la caja (Contiene Caja 1, Contiene Caja 2, etc.)
         doc.autoTable({
-          startY: doc.lastAutoTable.finalY + 10,
-          head: [[`Caja ${caja}`]],
+          startY: currentY,
+          head: [[`Productos en la Caja ${caja}`]],
           body: [],
           theme: "grid",
-          styles: {
-            halign: "center",
-            fontSize: 10,
-            cellPadding: 1,
-            fillColor: [255, 255, 255], // Fondo blanco
-            textColor: [0, 0, 0], // Texto negro
-          },
+          styles: { halign: "center", fontSize: 10, cellPadding: 3 },
           headStyles: {
             fontStyle: "bold",
             textColor: 0,
             fillColor: [255, 255, 255],
           },
         });
+        currentY = doc.lastAutoTable.finalY + 10;
 
         doc.autoTable({
-          startY: doc.lastAutoTable.finalY + 10,
+          startY: currentY,
           head: [
             [
               "Sku",
@@ -1028,6 +1470,8 @@ function Transporte() {
               "PQ",
               "INNER",
               "MASTER",
+              "Tarimas",
+              "Atados",
               "Validar",
             ],
           ],
@@ -1036,30 +1480,538 @@ function Transporte() {
             item.des || "",
             item.cantidad || "",
             item.um || "",
-            item._pz || 0, // PZ
-            item._pq || 0, // PQ
-            item._inner || 0, // INNER
-            item._master || 0, // MASTER
+            item._pz || 0,
+            item._pq || 0,
+            item._inner || 0,
+            item._master || 0,
+            item.tarimas || 0,
+            item.atados || 0,
+          ]),
+          theme: "grid",
+          styles: { fontSize: 8, halign: "center", cellPadding: 2 },
+          headStyles: {
+            fontStyle: "bold",
+            textColor: 0,
+            fillColor: [255, 255, 255],
+          },
+          bodyStyles: { halign: "center" },
+        });
+        currentY = doc.lastAutoTable.finalY + 10;
+      });
+
+      // Mostrar productos sin caja (igual)
+      if (productosSinCaja.length > 0) {
+        doc.autoTable({
+          startY: currentY,
+          head: [["Productos sin caja"]],
+          body: [],
+          theme: "grid",
+          styles: { halign: "center", fontSize: 10, cellPadding: 1 },
+          headStyles: {
+            fontStyle: "bold",
+            textColor: 0,
+            fillColor: [255, 255, 255],
+          },
+        });
+
+        doc.autoTable({
+          startY: doc.lastAutoTable.finalY + 10,
+          head: [
+            [
+              "Sku",
+              "Descripción",
+              "Cantidad",
+              "UM",
+              "Piezas",
+              "INNER",
+              "MASTER",
+              "Tarimas",
+              "Atados",
+              "Validar",
+            ],
+          ],
+          body: productosSinCaja.map((item) => [
+            item.codigo_ped || "",
+            item.des || "",
+            item.cantidad || "",
+            item.um || "",
+            item._pz || 0,
+            item._inner || 0,
+            item._master || 0,
+            item.tarimas || 0,
+            item.atados || 0,
           ]),
           theme: "grid",
           styles: { fontSize: 8, halign: "center", cellPadding: 1.5 },
           headStyles: {
             fontStyle: "bold",
-            textColor: 0, // Texto negro
+            textColor: 0,
             fillColor: [255, 255, 255],
           },
           bodyStyles: { halign: "center" },
         });
+        currentY = doc.lastAutoTable.finalY + 10;
+      } else {
+        doc.text("No hay productos sin cajas.", marginLeft, currentY);
+        currentY += 10;
+      }
+
+      // Firmas permanecen igual
+      const firmaY = currentY + 30;
+      const linea1InicioX = 20;
+      const linea1FinalX = 80;
+      doc.line(linea1InicioX, firmaY - 5, linea1FinalX, firmaY - 5);
+      const textoFirmaCliente = "Firma del Cliente";
+      const textoFirmaClienteX =
+        (linea1InicioX + linea1FinalX) / 2 -
+        doc.getTextWidth(textoFirmaCliente) / 2;
+      doc.text(textoFirmaCliente, textoFirmaClienteX, firmaY);
+
+      const linea2InicioX = 120;
+      const linea2FinalX = 180;
+      doc.line(linea2InicioX, firmaY - 5, linea2FinalX, firmaY - 5);
+      const textoFirmaTransportista = "Firma del Transportista";
+      const textoFirmaTransportistaX =
+        (linea2InicioX + linea2FinalX) / 2 -
+        doc.getTextWidth(textoFirmaTransportista) / 2;
+      doc.text(textoFirmaTransportista, textoFirmaTransportistaX, firmaY);
+
+      // Información de referencia bancaria
+      const infoBancaria = [
+        {
+          banco: "BANAMEX",
+          cuenta: "Número de cuenta: 6860432",
+          sucursal: "Sucursal: 7006",
+          clabe: "Clabe Interbancaria: 00218070068604325",
+        },
+        {
+          banco: "BANORTE",
+          cuenta: "Número de cuenta: 0890771176",
+          sucursal: "Sucursal: 04",
+          clabe: "Clabe Interbancaria: 072180008907711766",
+        },
+        {
+          banco: "BANCOMER",
+          cuenta: "Número de cuenta: 0194242696",
+          sucursal: "Sucursal: 1838",
+          clabe: "Clabe Interbancaria: 012580001942426961",
+        },
+      ];
+
+      // Posicionar cerca del final de la hoja
+      const pageHeight = doc.internal.pageSize.height; // Altura total de la página
+      const marginBottom = 30; // Margen inferior deseado
+      currentY = pageHeight - marginBottom - 25; // Ajustar espacio para el texto
+
+      // Encabezado de referencias bancarias
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.text("REFERENCIA BANCARIA:", marginLeft, currentY);
+
+      // Ajustar posición para los datos
+      currentY += 6;
+      const columnWidth = 65; // Ancho de cada columna
+      const columnStartX = [
+        marginLeft,
+        marginLeft + columnWidth,
+        marginLeft + columnWidth * 2,
+      ]; // Posición inicial de cada columna
+
+      // Configurar estilo de texto
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8); // Tamaño de letra más pequeño
+
+      // Dibujar cada bloque de información bancaria en columnas
+      infoBancaria.forEach((banco, index) => {
+        const startX = columnStartX[index];
+        doc.text(banco.banco, startX, currentY);
+        doc.text(banco.cuenta, startX, currentY + 6);
+        doc.text(banco.sucursal, startX, currentY + 12);
+        doc.text(banco.clabe, startX, currentY + 18);
       });
 
       // Guardar el PDF
-      doc.save(`progreso_${pedido}.pdf`);
+      doc.save(`PackingList_de_${pedido}.pdf`);
       alert(`PDF generado con éxito para el pedido ${pedido}`);
     } catch (error) {
       console.error("Error al generar el PDF:", error);
       alert("Hubo un error al generar el PDF.");
     }
   };
+
+  const MAX_VISIBLE_ROUTES = 25;
+
+  const removeRoute = (route) => {
+    setGroupedData((prevData) => {
+      const updatedRoutes = { ...prevData };
+      delete updatedRoutes[route]; // Eliminar la ruta del objeto
+      return updatedRoutes;
+    });
+
+    // También remover la ruta de las seleccionadas si estaba marcada
+    setSelectedRoutes((prevSelected) =>
+      prevSelected.filter((r) => r !== route)
+    );
+  };
+
+  const [filter, setFilter] = useState({
+    noOrden: "",
+    numCliente: "",
+    estado: "",
+  });
+
+  const handleFilterChange = (e) => {
+    const { name, value } = e.target;
+    setFilter((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const handleOrderFilterChange = (e) => {
+    const value = e.target.value;
+    setFilterOrderValue(value);
+
+    // Resaltar solo si hay un valor en el filtro
+    if (value) {
+      const rowIndex = groupedData[selectedRoute]?.rows.findIndex(
+        (row) => row["NO ORDEN"].toString() === value
+      );
+
+      // Si se encuentra la fila, resaltar temporalmente
+      if (rowIndex !== -1) {
+        setHighlightedRow(rowIndex);
+      } else {
+        setHighlightedRow(null); // Quitar el resaltado si no se encuentra
+      }
+    } else {
+      setHighlightedRow(null); // Quitar el resaltado si el filtro está vacío
+    }
+  };
+
+  const filteredData = data.filter((row) => {
+    return (
+      (filter.noOrden === "" ||
+        row["NO ORDEN"].toString().includes(filter.noOrden)) &&
+      (filter.numCliente === "" ||
+        row["NUM. CLIENTE"].toString().includes(filter.numCliente)) &&
+      (filter.estado === "" ||
+        row.ESTADO.toLowerCase().includes(filter.estado.toLowerCase()))
+    );
+  });
+
+  const openDirectaModal = (data) => {
+    console.log("Datos en openDirectaModal:", data); // Verifica que el valor correcto se muestre aquí
+
+    setSelectedDirectaData(data);
+
+    setGuia(data.GUIA || "NA"); // Asegurar que no esté vacío
+    setSelectedNoOrden(data["NO ORDEN"] || "");
+    setFecha(data.FECHA || "");
+    setNumCliente(data["NUM CLIENTE"] || "");
+    setNombreCliente(data["NOMBRE DEL CLIENTE"] || "");
+    setMunicipio(data.MUNICIPIO || "");
+    setEstado(data.ESTADO || "");
+    setObservaciones(data.OBSERVACIONES || "");
+    setTotal(data.TOTAL || "");
+    setPartidas(data.PARTIDAS || "");
+    setPiezas(data.PIEZAS || "");
+    setZona(data.ZONA || "");
+    setTipoZona(data["TIPO DE ZONA"] || "");
+    setNoFactura(data.noFactura);
+    setDiaEnRuta(data["DIA EN QUE ESTA EN RUTA"] || "");
+    setCajas(data.CAJAS || "");
+    setTransporte(data.TRANSPORTE || "");
+    setPaqueteria(data.PAQUETERIA || "");
+    setDiasEntrega(data["DIAS_DE_ENTREGA"] || "");
+    setEntregaSatisfactoria(
+      data["ENTREGA_SATISFACTORIA_O_NO_SATISFACTORIA"] || ""
+    );
+    setMotivo(data.MOTIVO || "");
+    setDiferencia(data.DIFERENCIA || "");
+
+    setNoFactura(data["NO_FACTURA"] || "");
+    setFechaEmbarque(
+      data["FECHA_DE_EMBARQUE"]
+        ? new Date(data["FECHA_DE_EMBARQUE"]).toISOString().split("T")[0]
+        : ""
+    );
+    setFechaEntregaCliente(
+      data["FECHA_DE_ENTREGA (CLIENTE)"]
+        ? new Date(data["FECHA_DE_ENTREGA (CLIENTE)"])
+            .toISOString()
+            .split("T")[0]
+        : ""
+    );
+    setTipo(data.TIPO || "");
+
+    setDirectaModalOpen(true);
+  };
+
+  const closeDirectaModal = () => {
+    setDirectaModalOpen(false);
+    setSelectedDirectaData(null);
+  };
+
+  const fetchTransportistas = async () => {
+    try {
+      const response = await axios.get(
+        "http://192.168.3.27:3007/api/Trasporte/transportistas"
+      );
+      console.log("Datos de transportistas:", response.data); // Verifica que contenga datos
+      setTransportistaData(response.data);
+    } catch (error) {
+      console.error("Error al obtener transportistas:", error);
+    }
+  };
+
+  const fetchEmpresas = async () => {
+    try {
+      const response = await axios.get(
+        "http://192.168.3.27:3007/api/Trasporte/transportistas/empresas"
+      );
+
+      console.log("Datos de empresa:", response.data); // Verifica que contenga datos
+      setEmpresaData(response.data);
+    } catch (error) {
+      console.error("Error al obtener empresas:", error);
+      setError("Error al obtener empresas");
+    }
+  };
+
+  const handleRowChange = (index, field, value) => {
+    console.log(`🛠️ handleRowChange - Campo: ${field}, Valor: ${value}`);
+
+    // Clonar los datos sin referencias
+    let updatedData = [...directaData, ...paqueteriaData].map((item) => ({
+      ...item,
+    }));
+
+    if (field === "transportista") {
+      const selectedTransportista = transportistaData.find(
+        (item) => `${item.nombre} ${item.apellidos}` === value
+      );
+
+      updatedData[index] = {
+        ...updatedData[index],
+        transportista: selectedTransportista
+          ? `${selectedTransportista.nombre} ${selectedTransportista.apellidos}`
+          : "",
+        clave: selectedTransportista?.clave || "", // Mantener clave actualizada
+      };
+    } else if (field === "id_veh") {
+      if (value) {
+        const empresaSeleccionada = empresaData.find(
+          (item) => item.id_veh === Number(value)
+        );
+
+        if (empresaSeleccionada) {
+          console.log(
+            "🏢 Empresa seleccionada correctamente:",
+            empresaSeleccionada
+          );
+          updatedData[index] = {
+            ...updatedData[index],
+            empresa: empresaSeleccionada.empresa, // Mantener el nombre de la empresa
+            id_veh: Number(value), // Actualizar id_veh
+          };
+        } else {
+          console.warn(
+            "⚠️ No se encontró la empresa seleccionada en los datos."
+          );
+        }
+      } else {
+        // Si no hay valor seleccionado, limpiar los campos
+        updatedData[index] = {
+          ...updatedData[index],
+          empresa: "",
+          id_veh: "",
+        };
+      }
+    } else {
+      updatedData[index] = {
+        ...updatedData[index],
+        [field]: value, // Actualizar cualquier otro campo
+      };
+    }
+
+    // Actualiza los datos en los estados separados
+    setDirectaData(updatedData.filter((item) => item.TIPO === "directa"));
+    setPaqueteriaData(updatedData.filter((item) => item.TIPO === "paqueteria"));
+
+    console.log("📊 Datos después de actualizar:", updatedData[index]);
+  };
+
+  const handleInsertarVisita = async (routeData, index) => {
+    try {
+      if (!routeData.id_veh) {
+        alert("No se ha seleccionado un vehículo válido.");
+        return;
+      }
+
+      // Datos a enviar al backend
+      const dataToSend = {
+        id_vit: routeData.clave,
+        clave_visit: `${routeData.clave}1`,
+        motivo: "Transporte",
+        personal: "Administracion de Transporte",
+        reg_entrada:
+          routeData.reg_entrada || new Date().toISOString().split("T")[0],
+        id_veh: routeData.id_veh,
+      };
+
+      // Mostrar datos en consola antes de enviar
+      console.log(
+        "📤 Datos preparados para envío:",
+        JSON.stringify(dataToSend, null, 2)
+      );
+
+      // Enviar la solicitud al backend
+      const response = await axios.post(
+        "http://192.168.3.27:3007/api/Trasporte/insertar-visita",
+        dataToSend
+      );
+
+      alert(`✅ Visita insertada correctamente: ${response.data.message}`);
+
+      // Actualizar el estado local para marcar como insertado
+      const updatedData = [...directaData, ...paqueteriaData];
+      updatedData[index] = {
+        ...routeData,
+        insertado: true,
+      };
+
+      setDirectaData(updatedData.filter((item) => item.TIPO === "directa"));
+      setPaqueteriaData(
+        updatedData.filter((item) => item.TIPO === "paqueteria")
+      );
+    } catch (error) {
+      console.error("❌ Error al insertar la visita:", error);
+      alert("Error al insertar la visita.");
+    }
+  };
+
+  const eliminarRuta = async (noOrden) => {
+    try {
+      setLoading(true); // Muestra el loading
+      const response = await axios.delete(
+        `http://192.168.3.27:3007/api/Trasporte/ruta/eliminar/${noOrden}`
+      );
+      alert(response.data.message); // Muestra el mensaje de éxito
+      // Aquí puedes también actualizar el estado para eliminar la ruta de la vista sin necesidad de recargar
+    } catch (error) {
+      console.error(
+        "Error al eliminar la ruta:",
+        error.response ? error.response.data.message : error.message
+      );
+      alert("Error al eliminar la ruta");
+    } finally {
+      setLoading(false); // Oculta el loading
+    }
+  };
+
+  const calculateTotalRoutes = () => {
+    let totalClientes = 0;
+    let totalPedidos = 0;
+    let totalGeneral = 0;
+
+    // Iterar sobre todas las rutas en groupedData
+    Object.keys(groupedData).forEach((routeKey) => {
+      const routeData = groupedData[routeKey];
+
+      // Contar el número de registros/órdenes (clientes) en cada ruta
+      totalClientes += routeData.rows.length; // Número de órdenes = número de registros en la ruta
+      totalPedidos += routeData.rows.length; // Contar el número de órdenes (no sumar partidas)
+      totalGeneral += routeData.rows.reduce(
+        (sum, row) => sum + (row.TOTAL || 0),
+        0
+      ); // Sumar los totales de cada ruta
+    });
+
+    // Guardar los totales calculados en el estado
+    const totals = { totalClientes, totalPedidos, totalGeneral };
+    setCalculatedTotals(totals);
+    setTotalClientes(totalClientes);
+    setTotalPedidos(totalPedidos);
+    setTotalGeneral(totalGeneral);
+  };
+
+  const handleShowTotal = () => {
+    if (!calculatedTotals) {
+      // Si no se han calculado previamente, se calcula por primera vez
+      calculateTotalRoutes();
+    } else {
+      setTotalClientes(calculatedTotals.totalClientes);
+      setTotalPedidos(calculatedTotals.totalPedidos);
+      setTotalGeneral(calculatedTotals.totalGeneral);
+    }
+    setTotalsModalOpen(true); // Abrir el modal
+  };
+
+  const handleEditObservation = (clientId) => {
+    setEditingClientId(clientId);
+    setCurrentObservation(observacionesPorRegistro[clientId] || "");
+  };
+
+  const handleSaveObservation = (clientId, newObservation) => {
+    setObservacionesPorRegistro((prev) => ({
+      ...prev,
+      [clientId]: newObservation,
+    }));
+  };
+
+  useEffect(() => {
+    console.log("Observaciones actuales:", observacionesPorRegistro);
+  }, [observacionesPorRegistro, groupedData]);
+
+  const moveRowUp = (route, index) => {
+    setGroupedData((prevData) => {
+      const updatedRoute = { ...prevData[route] };
+      if (index > 0) {
+        const temp = updatedRoute.rows[index - 1];
+        updatedRoute.rows[index - 1] = updatedRoute.rows[index];
+        updatedRoute.rows[index] = temp;
+      }
+      return { ...prevData, [route]: updatedRoute };
+    });
+  };
+
+  const moveRowDown = (route, index) => {
+    setGroupedData((prevData) => {
+      const updatedRoute = { ...prevData[route] };
+      if (index < updatedRoute.rows.length - 1) {
+        const temp = updatedRoute.rows[index + 1];
+        updatedRoute.rows[index + 1] = updatedRoute.rows[index];
+        updatedRoute.rows[index] = temp;
+      }
+      return { ...prevData, [route]: updatedRoute };
+    });
+  };
+
+  const getTransportUrl = (transport) => {
+    const cleanedTransport = transport
+      ?.trim()
+      .replace(/\s+/g, " ")
+      .toUpperCase();
+
+    switch (cleanedTransport) {
+      case "PAQUETE EXPRES":
+        return "https://www.paquetexpress.com.mx/";
+      case "TRES GUERRAS":
+        return "https://www.tresguerras.com.mx/3G/tracking.php";
+      case "FLECHISA":
+        return "https://fch.envionet.mx/CFDI-FC?P=1";
+      case "FEDEX":
+        return "https://www.fedex.com/es-mx/home.html";
+      case "PITIC":
+        return "https://transportespitic.com/soluciones-tecnologia.html";
+      default:
+        console.log("Transporte no encontrado. Usando enlace por defecto.");
+        return "https://app2.simpliroute.com/#/planner/vehicles";
+    }
+  };
+
+  const transportUrl = getTransportUrl(transporte);
 
   return (
     <Paper elevation={3} style={{ padding: "20px" }}>
@@ -1076,7 +2028,7 @@ function Transporte() {
           centered
         >
           <Tab label="OVR y Rutas" />
-          <Tab label="Paqueteria" />
+          <Tab label="Embarques" />
         </Tabs>
       </AppBar>
 
@@ -1194,6 +2146,64 @@ function Transporte() {
                 Venta Empleado
               </Button>
 
+              <Button
+                onClick={handleShowTotal}
+                variant="contained"
+                color="primary"
+              >
+                Ver Suma Total de Rutas
+              </Button>
+
+              {/* Totals Modal */}
+              <Dialog
+                open={totalsModalOpen}
+                onClose={() => setTotalsModalOpen(false)}
+              >
+                <DialogTitle>Resumen de Rutas Cargadas</DialogTitle>
+                <DialogContent>
+                  <div
+                    style={{
+                      backgroundColor: "yellow",
+                      padding: "10px",
+                      marginBottom: "10px",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <span style={{ fontWeight: "bold", width: "30%" }}>
+                      CLIENTES
+                    </span>
+                    <span style={{ fontWeight: "bold", width: "30%" }}>
+                      PEDIDOS
+                    </span>
+                    <span style={{ fontWeight: "bold", width: "30%" }}>
+                      TOTAL
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      fontSize: "16px",
+                    }}
+                  >
+                    <span>{totalClientes}</span>
+                    <span>{totalPedidos}</span>
+                    <span>{formatCurrency(totalGeneral)}</span>
+                  </div>
+                </DialogContent>
+                <DialogActions>
+                  <Button
+                    onClick={() => setTotalsModalOpen(false)}
+                    color="primary"
+                  >
+                    Cerrar
+                  </Button>
+                </DialogActions>
+              </Dialog>
+
               <Snackbar
                 open={snackbarOpen}
                 autoHideDuration={6000}
@@ -1211,24 +2221,51 @@ function Transporte() {
               />
             </Box>
 
-            {Object.keys(groupedData).length <= 5 ? (
-              <Box display="flex" gap={2} flexWrap="wrap" marginTop={2}>
+            {Object.keys(groupedData).length <= MAX_VISIBLE_ROUTES ? (
+              <Box
+                sx={{
+                  display: "flex",
+                  overflowX: "auto", // Habilita el desplazamiento horizontal
+                  whiteSpace: "nowrap", // Evita que los elementos salten de línea
+                  padding: "10px",
+                  gap: "10px", // Espaciado entre tarjetas
+                  maxWidth: "100%", // Ocupa el ancho de la pantalla
+                }}
+              >
                 {Object.keys(groupedData).map((route) => {
-                  const totals = calculateTotals(route); // Calcular totales para esta ruta
+                  const totals = calculateTotals(route);
                   return (
                     <Box
                       key={route}
-                      style={{
+                      sx={{
+                        minWidth: "200px",
+                        maxWidth: "200px",
                         textAlign: "center",
                         padding: "10px",
                         border: "1px solid #ddd",
                         borderRadius: "5px",
-                        minWidth: "200px",
+                        backgroundColor: "#fff",
+                        boxShadow: "2px 2px 5px rgba(0,0,0,0.1)",
+                        position: "relative", // Necesario para la posición del botón de cerrar
                       }}
                     >
+                      {/* Botón para eliminar ruta */}
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={() => removeRoute(route)}
+                        sx={{
+                          position: "absolute",
+                          top: "5px",
+                          right: "5px",
+                        }}
+                      >
+                        <CloseIcon />
+                      </IconButton>
+
                       <Checkbox
                         checked={selectedRoutes.includes(route)}
-                        onChange={() => handleSelectRoute(route)} // Llama la función de selección
+                        onChange={() => handleSelectRoute(route)}
                       />
                       <Typography variant="h6" fontWeight="bold">
                         Ruta: {route}
@@ -1257,11 +2294,15 @@ function Transporte() {
               <FormControl fullWidth style={{ marginTop: "20px" }}>
                 <InputLabel>Seleccionar Ruta</InputLabel>
                 <Select
-                  value={selectedActionRoute}
-                  onChange={(e) => openModal(e.target.value)}
+                  multiple // ✅ Permite seleccionar varias rutas
+                  value={selectedRoutes} // ✅ Vinculado al estado
+                  onChange={(e) => setSelectedRoutes(e.target.value)} // ✅ Actualiza rutas seleccionadas
+                  renderValue={(selected) => selected.join(", ")} // ✅ Muestra rutas seleccionadas
                 >
                   {Object.keys(groupedData).map((route) => (
                     <MenuItem key={route} value={route}>
+                      <Checkbox checked={selectedRoutes.includes(route)} />{" "}
+                      {/* ✅ Permite checkboxes dentro del Select */}
                       {route}
                     </MenuItem>
                   ))}
@@ -1383,7 +2424,7 @@ function Transporte() {
                   <Button
                     variant="outlined"
                     color="secondary"
-                    onClick={() => setConfirmSendModalOpen(false)} // Cerrar modal sin hacer cambios
+                    onClick={() => setConfirmSendModalOpen(false)}
                     style={{ marginLeft: 10 }}
                   >
                     No
@@ -1395,13 +2436,14 @@ function Transporte() {
             {/* Modal para mostrar detalles de la ruta */}
             <Modal open={modalOpen} onClose={closeModal}>
               <Box
-                padding="20px"
+                padding="30px"
                 backgroundColor="white"
-                margin="50px auto"
-                maxWidth="80%"
-                maxHeight="80%"
+                margin="20px auto"
+                maxWidth="90%"
+                maxHeight="90%"
                 overflow="auto"
-                borderRadius="8px"
+                borderRadius="12px"
+                boxShadow="0 4px 20px rgba(0, 0, 0, 0.1)"
               >
                 <Typography variant="h6">
                   Detalles de la Ruta: {selectedRoute || "Ruta no seleccionada"}
@@ -1412,9 +2454,27 @@ function Transporte() {
                 groupedData[selectedRoute]?.rows?.length > 0 ? (
                   <>
                     <TableContainer>
+                      <Grid
+                        item
+                        xs={12}
+                        sm={4}
+                        style={{ marginBottom: "20px" }}
+                      >
+                        <TextField
+                          label="Buscar por No Orden"
+                          variant="outlined"
+                          value={filterOrderValue}
+                          onChange={handleOrderFilterChange}
+                          fullWidth
+                          size="small"
+                          style={{ maxWidth: "300px" }}
+                        />
+                      </Grid>
+
                       <Table>
                         <TableHead>
                           <TableRow>
+                            <TableCell>Movimientos</TableCell>
                             <TableCell>FECHA</TableCell>
                             <TableCell>NO ORDEN</TableCell>
                             <TableCell>NO FACTURA</TableCell>
@@ -1430,9 +2490,55 @@ function Transporte() {
                             <TableCell>ACCIONES</TableCell>
                           </TableRow>
                         </TableHead>
+
                         <TableBody>
                           {groupedData[selectedRoute].rows.map((row, index) => (
-                            <TableRow key={index}>
+                            <TableRow
+                              key={index}
+                              style={{
+                                backgroundColor:
+                                  highlightedRow === index
+                                    ? "#FFD700"
+                                    : "inherit",
+                                transition: "background-color 0.3s ease",
+                              }}
+                            >
+                              <TableCell align="center">
+                                <IconButton
+                                  onClick={() =>
+                                    moveRowUp(selectedRoute, index)
+                                  }
+                                  disabled={index === 0}
+                                >
+                                  <ArrowUpwardIcon
+                                    fontSize="large"
+                                    style={{
+                                      color: index === 0 ? "#ccc" : "red",
+                                    }}
+                                  />
+                                </IconButton>
+                                <IconButton
+                                  onClick={() =>
+                                    moveRowDown(selectedRoute, index)
+                                  }
+                                  disabled={
+                                    index ===
+                                    groupedData[selectedRoute].rows.length - 1
+                                  }
+                                >
+                                  <ArrowDownwardIcon
+                                    fontSize="large"
+                                    style={{
+                                      color:
+                                        index ===
+                                        groupedData[selectedRoute].rows.length -
+                                          1
+                                          ? "#ccc"
+                                          : "red",
+                                    }}
+                                  />
+                                </IconButton>
+                              </TableCell>
                               <TableCell>{row.FECHA}</TableCell>
                               <TableCell>{row["NO ORDEN"]}</TableCell>
                               <TableCell>{row["NO FACTURA"]}</TableCell>
@@ -1446,6 +2552,7 @@ function Transporte() {
                                   row["NUM. CLIENTE"]
                                 ] || "Sin observaciones"}
                               </TableCell>
+
                               <TableCell>{formatCurrency(row.TOTAL)}</TableCell>
                               <TableCell>{row.PARTIDAS}</TableCell>
                               <TableCell>{row.PIEZAS}</TableCell>
@@ -1507,17 +2614,65 @@ function Transporte() {
 
             {/* Tabla de datos cargados */}
             <TableContainer component={Paper} style={{ marginTop: "20px" }}>
+              {/* Filtros */}
+              <Grid
+                container
+                spacing={1}
+                marginBottom={2}
+                style={{ marginTop: "20px" }}
+              >
+                <Grid item xs={12} sm={4}>
+                  <TextField
+                    label="Buscar por No Orden"
+                    variant="outlined"
+                    name="noOrden"
+                    value={filter.noOrden}
+                    onChange={handleFilterChange}
+                    fullWidth
+                    size="small" // Ajuste del tamaño
+                    style={{ maxWidth: "200px" }} // Limitar la longitud
+                  />
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <TextField
+                    label="Buscar por Num Cliente"
+                    variant="outlined"
+                    name="numCliente"
+                    value={filter.numCliente}
+                    onChange={handleFilterChange}
+                    fullWidth
+                    size="small" // Ajuste del tamaño
+                    style={{ maxWidth: "200px" }} // Limitar la longitud
+                  />
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <TextField
+                    label="Buscar por Estado"
+                    variant="outlined"
+                    name="estado"
+                    value={filter.estado}
+                    onChange={handleFilterChange}
+                    fullWidth
+                    size="small" // Ajuste del tamaño
+                    style={{ maxWidth: "200px" }} // Limitar la longitud
+                  />
+                </Grid>
+              </Grid>
+
+              {/* Tabla */}
               <Table>
                 <TableHead>
                   <TableRow>
                     <TableCell>FECHA</TableCell>
                     <TableCell>NO ORDEN</TableCell>
+                    <TableCell>TIPO</TableCell>
                     <TableCell>NO FACTURA</TableCell>
                     <TableCell>NUM. CLIENTE</TableCell>
                     <TableCell>NOMBRE DEL CLIENTE</TableCell>
                     <TableCell>Codigo Postal</TableCell>
                     <TableCell>MUNICIPIO</TableCell>
                     <TableCell>ESTADO</TableCell>
+                    <TableCell>OBSERVACIONES</TableCell>
                     <TableCell>TOTAL</TableCell>
                     <TableCell>PARTIDAS</TableCell>
                     <TableCell>PIEZAS</TableCell>
@@ -1525,40 +2680,82 @@ function Transporte() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {data.map((row, index) => (
-                    <TableRow key={index}>
-                      <TableCell>{row.FECHA}</TableCell>
-                      <TableCell>{row["NO ORDEN"]}</TableCell>
-                      <TableCell>{row["NO FACTURA"]}</TableCell>
-                      <TableCell>{row["NUM. CLIENTE"]}</TableCell>
-                      <TableCell>{row["NOMBRE DEL CLIENTE"]}</TableCell>
-                      <TableCell>{row["Codigo_Postal"]}</TableCell>
-                      <TableCell>{row.MUNICIPIO || "Sin Municipio"}</TableCell>
-                      <TableCell>{row.ESTADO}</TableCell>
-                      <TableCell>{formatCurrency(row.TOTAL)}</TableCell>
-                      <TableCell>{row.PARTIDAS}</TableCell>
-                      <TableCell>{row.PIEZAS}</TableCell>
-                      <TableCell>
-                        <FormControl fullWidth>
-                          <InputLabel>Seleccionar Ruta</InputLabel>
-                          <Select
-                            value=""
-                            onChange={(e) => assignToRoute(row, e.target.value)}
-                            displayEmpty
-                          >
-                            <MenuItem disabled value="">
-                              Seleccionar Ruta
-                            </MenuItem>
-                            {Object.keys(groupedData).map((route) => (
-                              <MenuItem key={route} value={route}>
-                                {route}
-                              </MenuItem>
-                            ))}
-                          </Select>
-                        </FormControl>
+                  {filteredData.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={12} style={{ textAlign: "center" }}>
+                        No hay datos disponibles.
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : (
+                    filteredData.map((row, index) => (
+                      <TableRow key={index}>
+                        <TableCell>{row.FECHA}</TableCell>
+                        <TableCell>{row["NO ORDEN"]}</TableCell>
+                        <TableCell>{row.TIPO}</TableCell>
+                        <TableCell>{row["NO FACTURA"]}</TableCell>
+                        <TableCell>{row["NUM. CLIENTE"]}</TableCell>
+                        <TableCell>{row["NOMBRE DEL CLIENTE"]}</TableCell>
+                        <TableCell>{row["Codigo_Postal"]}</TableCell>
+                        <TableCell>
+                          {row.MUNICIPIO || "Sin Municipio"}
+                        </TableCell>
+                        <TableCell>{row.ESTADO}</TableCell>
+
+                        <TableCell>
+                          {editingClientId === row["NUM. CLIENTE"] ? (
+                            <TextField
+                              value={
+                                observacionesPorRegistro[row["NUM. CLIENTE"]] ||
+                                "Sin observaciones disponibles"
+                              }
+                              onChange={(e) =>
+                                handleSaveObservation(
+                                  row["NUM. CLIENTE"],
+                                  e.target.value
+                                )
+                              }
+                              variant="outlined"
+                              size="small"
+                            />
+                          ) : (
+                            <span
+                              onClick={() =>
+                                handleEditObservation(row["NUM. CLIENTE"])
+                              }
+                            >
+                              {observacionesPorRegistro[row["NUM. CLIENTE"]] ||
+                                "Sin observaciones"}
+                            </span>
+                          )}
+                        </TableCell>
+
+                        <TableCell>{formatCurrency(row.TOTAL)}</TableCell>
+                        <TableCell>{row.PARTIDAS}</TableCell>
+                        <TableCell>{row.PIEZAS}</TableCell>
+                        <TableCell>
+                          <FormControl fullWidth>
+                            <InputLabel>Seleccionar Ruta</InputLabel>
+                            <Select
+                              value=""
+                              onChange={(e) =>
+                                assignToRoute(row, e.target.value)
+                              }
+                              displayEmpty
+                            >
+                              <MenuItem disabled value="">
+                                Seleccionar Ruta
+                              </MenuItem>
+                              {Object.keys(groupedData).map((route) => (
+                                <MenuItem key={route} value={route}>
+                                  {route}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </TableContainer>
@@ -1572,21 +2769,25 @@ function Transporte() {
           user?.role === "Trans" ||
           user?.role === "PQ1" ||
           user?.role === "Control" ||
-          user?.role === "EB1") && (
+          user?.role === "EB1" ||
+          user?.role === "Paquet" ||
+          user?.role === "Embar") && (
           <Box marginTop={2}>
             <Typography variant="h5" style={{ textAlign: "center" }}>
               Tipos de rutas
             </Typography>
-            <br></br>
+
+            <br />
 
             {/* Pestañas internas para Paquetería, Directa, Venta Empleado */}
             <Tabs value={subTabIndex} onChange={handleChangeSubTab} centered>
               <Tab label="Paquetería" />
               <Tab label="Directa" />
-              <Tab label="Venta Empleado" />
+              <Tab label="Recoge" />
+              <Tab label="Asignacion" />
             </Tabs>
 
-            {/* Sub-tab de Paquetería */}
+            {/* Sub-tab de PAQUETERIA */}
             {subTabIndex === 0 && (
               <TableContainer component={Paper} style={{ marginTop: "20px" }}>
                 <Typography variant="h6">Paquetería</Typography>
@@ -1604,10 +2805,13 @@ function Transporte() {
                 )}
 
                 <Table>
-                  <TableHead>
+                  <TableBody>
                     <TableRow>
                       {visibleColumns.includes("NO ORDEN") && (
                         <TableCell>NO ORDEN</TableCell>
+                      )}
+                      {visibleColumns.includes("NO ORDEN") && (
+                        <TableCell>Estado del Pedido</TableCell>
                       )}
                       {visibleColumns.includes("FECHA") && (
                         <TableCell>FECHA</TableCell>
@@ -1727,10 +2931,7 @@ function Transporte() {
                         <TableCell>Acciones</TableCell>
                       )}
                     </TableRow>
-                  </TableHead>
-
-                  <TableBody>
-                    {sentRoutesData.length === 0 ? (
+                    {paqueteriaData.length === 0 ? (
                       <TableRow>
                         <TableCell
                           colSpan={visibleColumns.length}
@@ -1740,11 +2941,36 @@ function Transporte() {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      sentRoutesData.map((routeData, index) => (
-                        <TableRow key={index}>
+                      paqueteriaData.map((routeData, index) => (
+                        <TableRow
+                          key={index}
+                          onClick={() => handleRowClick(routeData)}
+                        >
                           {visibleColumns.includes("NO ORDEN") && (
                             <TableCell>{routeData["NO ORDEN"]}</TableCell>
                           )}
+                          <TableCell>
+                            <Typography variant="body1" gutterBottom>
+                              Progreso: {routeData.progress || 0}%
+                            </Typography>
+                            <LinearProgress
+                              variant="determinate"
+                              value={routeData.progress || 0} // Valor de progreso
+                              style={{
+                                height: "10px",
+                                borderRadius: "5px",
+                                width: "100%",
+                                marginTop: "5px",
+                              }} // Estilos opcionales
+                            />
+                            <Typography
+                              variant="body2"
+                              color="textSecondary"
+                              style={{ marginTop: "8px" }}
+                            >
+                              Estado: {routeData.statusText || "Cargando..."}
+                            </Typography>
+                          </TableCell>
                           {visibleColumns.includes("FECHA") && (
                             <TableCell>{formatDate(routeData.FECHA)}</TableCell>
                           )}
@@ -1783,7 +3009,7 @@ function Transporte() {
                             <TableCell>{routeData["TIPO DE ZONA"]}</TableCell>
                           )}
                           {visibleColumns.includes("NUMERO DE FACTURA") && (
-                            <TableCell>{routeData["NO FACTURA"]}</TableCell>
+                            <TableCell>{routeData["NO_FACTURA"]}</TableCell>
                           )}
                           {visibleColumns.includes("FECHA DE FACTURA") && (
                             <TableCell>
@@ -1889,58 +3115,69 @@ function Transporte() {
                           {visibleColumns.includes("DIFERENCIA") && (
                             <TableCell>{routeData.DIFERENCIA}</TableCell>
                           )}
-                          {visibleColumns.includes("Acciones") && (
-                            <TableCell>
-                              <Grid
-                                container
-                                spacing={1}
-                                justifyContent="flex-start"
-                                alignItems="center"
-                              >
-                                <Grid item>
-                                  <IconButton
-                                    onClick={() =>
-                                      openGuiaModal(
-                                        routeData["NO ORDEN"],
-                                        routeData["GUIA"]
-                                      )
-                                    }
-                                    size="small"
-                                    style={{ color: "#1976D2" }} // Azul
-                                  >
-                                    <BorderColorIcon />
-                                  </IconButton>
-                                </Grid>
+                          <TableCell>
+                            <Grid
+                              container
+                              spacing={1}
+                              justifyContent="flex-start"
+                              alignItems="center"
+                            >
+                              <Grid item>
+                                <IconButton
+                                  style={{ color: "#1976D2" }} // Azul
+                                  onClick={() => openDirectaModal(routeData)}
+                                >
+                                  <BorderColorIcon />
+                                </IconButton>
+                              </Grid>
 
-                                <Grid item>
+                              <Grid item>
+                                {(user?.role === "Admin" ||
+                                  user?.role === "Master") && (
                                   <IconButton
-                                    onClick={() =>
-                                      window.open(
-                                        "https://app2.simpliroute.com/#/planner/vehicles",
-                                        "_blank"
-                                      )
-                                    }
+                                    onClick={() => {
+                                      const url = getTransportUrl(
+                                        routeData.TRANSPORTE
+                                      );
+                                      console.log("Abriendo enlace:", url);
+                                      window.open(url, "_blank");
+                                    }}
                                     size="small"
-                                    style={{ color: "#616161" }} // Gris
+                                    style={{ color: "#616161" }}
                                   >
                                     <AirportShuttleIcon />
                                   </IconButton>
-                                </Grid>
-
-                                <Grid item>
-                                  <IconButton
-                                    variant="contained"
-                                    style={{ color: "black" }} // Negro con texto blanco
-                                    onClick={() =>
-                                      generatePDF(routeData["NO ORDEN"])
-                                    }
-                                  >
-                                    <ArticleIcon />
-                                  </IconButton>
-                                </Grid>
+                                )}
                               </Grid>
-                            </TableCell>
-                          )}
+
+                              <Grid item>
+                                <IconButton
+                                  variant="contained"
+                                  style={{ color: "black" }} // Negro con texto blanco
+                                  onClick={() =>
+                                    generatePDF(routeData["NO ORDEN"])
+                                  }
+                                >
+                                  <ArticleIcon />
+                                </IconButton>
+                              </Grid>
+
+                              <Grid item>
+                                {(user?.role === "Admin" ||
+                                  user?.role === "Trans") && (
+                                  <IconButton
+                                    color="error"
+                                    onClick={() =>
+                                      eliminarRuta(routeData["NO ORDEN"])
+                                    } // Cambiar 'row' a 'routeData'
+                                    disabled={loading}
+                                  >
+                                    <DeleteIcon />
+                                  </IconButton>
+                                )}
+                              </Grid>
+                            </Grid>
+                          </TableCell>
                         </TableRow>
                       ))
                     )}
@@ -1959,13 +3196,85 @@ function Transporte() {
                       {visibleColumns.includes("NO ORDEN") && (
                         <TableCell>NO ORDEN</TableCell>
                       )}
+                      {visibleColumns.includes("ESTADO") && (
+                        <TableCell>Estado del Pedido</TableCell>
+                      )}
                       {visibleColumns.includes("FECHA") && (
                         <TableCell>FECHA</TableCell>
+                      )}
+                      {visibleColumns.includes("NUM CLIENTE") && (
+                        <TableCell>NUM CLIENTE</TableCell>
                       )}
                       {visibleColumns.includes("NOMBRE DEL CLIENTE") && (
                         <TableCell>NOMBRE DEL CLIENTE</TableCell>
                       )}
-                      {/* Otras columnas */}
+                      {visibleColumns.includes("MUNICIPIO") && (
+                        <TableCell>MUNICIPIO</TableCell>
+                      )}
+                      {visibleColumns.includes("ESTADO") && (
+                        <TableCell>ESTADO</TableCell>
+                      )}
+                      {visibleColumns.includes("OBSERVACIONES") && (
+                        <TableCell>OBSERVACIONES</TableCell>
+                      )}
+                      {visibleColumns.includes("TOTAL") && (
+                        <TableCell>TOTAL</TableCell>
+                      )}
+                      {visibleColumns.includes("PARTIDAS") && (
+                        <TableCell>PARTIDAS</TableCell>
+                      )}
+                      {visibleColumns.includes("PIEZAS") && (
+                        <TableCell>PIEZAS</TableCell>
+                      )}
+                      {visibleColumns.includes("ZONA") && (
+                        <TableCell>ZONA</TableCell>
+                      )}
+                      {visibleColumns.includes("TIPO DE ZONA") && (
+                        <TableCell>TIPO DE ZONA</TableCell>
+                      )}
+                      {visibleColumns.includes("NUMERO DE FACTURA") && (
+                        <TableCell>NUMERO DE FACTURA</TableCell>
+                      )}
+                      {visibleColumns.includes("FECHA DE FACTURA") && (
+                        <TableCell>FECHA DE FACTURA</TableCell>
+                      )}
+                      {visibleColumns.includes("FECHA DE EMBARQUE") && (
+                        <TableCell>FECHA DE EMBARQUE</TableCell>
+                      )}
+                      {visibleColumns.includes("DIA EN QUE ESTA EN RUTA") && (
+                        <TableCell>DIA EN QUE ESTA EN RUTA</TableCell>
+                      )}
+                      {visibleColumns.includes("CAJAS") && (
+                        <TableCell>CAJAS</TableCell>
+                      )}
+                      {visibleColumns.includes("TRANSPORTE") && (
+                        <TableCell>TRANSPORTE</TableCell>
+                      )}
+                      {visibleColumns.includes("PAQUETERIA") && (
+                        <TableCell>PAQUETERIA</TableCell>
+                      )}
+                      {visibleColumns.includes(
+                        "FECHA DE ENTREGA (CLIENTE)"
+                      ) && <TableCell>FECHA DE ENTREGA (CLIENTE)</TableCell>}
+                      {visibleColumns.includes("DIAS DE ENTREGA") && (
+                        <TableCell>DIAS DE ENTREGA</TableCell>
+                      )}
+                      {visibleColumns.includes(
+                        "ENTREGA SATISFACTORIA O NO SATISFACTORIA"
+                      ) && (
+                        <TableCell>
+                          ENTREGA SATISFACTORIA O NO SATISFACTORIA
+                        </TableCell>
+                      )}
+                      {visibleColumns.includes("MOTIVO") && (
+                        <TableCell>MOTIVO</TableCell>
+                      )}
+                      {visibleColumns.includes("DIFERENCIA") && (
+                        <TableCell>DIFERENCIA</TableCell>
+                      )}
+                      {visibleColumns.includes("Acciones") && (
+                        <TableCell>Acciones</TableCell>
+                      )}
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -1984,12 +3293,182 @@ function Transporte() {
                           {visibleColumns.includes("NO ORDEN") && (
                             <TableCell>{routeData["NO ORDEN"]}</TableCell>
                           )}
+                          <TableCell>
+                            <Typography variant="body1" gutterBottom>
+                              Progreso: {routeData.progress || 0}%
+                            </Typography>
+                            <LinearProgress
+                              variant="determinate"
+                              value={routeData.progress || 0} // Valor de progreso
+                              style={{
+                                height: "10px",
+                                borderRadius: "5px",
+                                width: "100%",
+                                marginTop: "5px",
+                              }} // Estilos opcionales
+                            />
+                            <Typography
+                              variant="body2"
+                              color="textSecondary"
+                              style={{ marginTop: "8px" }}
+                            >
+                              Estado: {routeData.statusText || "Cargando..."}
+                            </Typography>
+                          </TableCell>
                           {visibleColumns.includes("FECHA") && (
                             <TableCell>{formatDate(routeData.FECHA)}</TableCell>
+                          )}
+                          {visibleColumns.includes("NUM CLIENTE") && (
+                            <TableCell>{routeData["NUM. CLIENTE"]}</TableCell>
                           )}
                           {visibleColumns.includes("NOMBRE DEL CLIENTE") && (
                             <TableCell>
                               {routeData["NOMBRE DEL CLIENTE"]}
+                            </TableCell>
+                          )}
+                          {visibleColumns.includes("MUNICIPIO") && (
+                            <TableCell>{routeData.MUNICIPIO}</TableCell>
+                          )}
+                          {visibleColumns.includes("ESTADO") && (
+                            <TableCell>{routeData.ESTADO}</TableCell>
+                          )}
+                          {visibleColumns.includes("OBSERVACIONES") && (
+                            <TableCell>{routeData.OBSERVACIONES}</TableCell>
+                          )}
+                          {visibleColumns.includes("TOTAL") && (
+                            <TableCell>
+                              {formatCurrency(routeData.TOTAL)}
+                            </TableCell>
+                          )}
+                          {visibleColumns.includes("PARTIDAS") && (
+                            <TableCell>{routeData.PARTIDAS}</TableCell>
+                          )}
+                          {visibleColumns.includes("PIEZAS") && (
+                            <TableCell>{routeData.PIEZAS}</TableCell>
+                          )}
+                          {visibleColumns.includes("ZONA") && (
+                            <TableCell>{routeData.ZONA}</TableCell>
+                          )}
+                          {visibleColumns.includes("TIPO DE ZONA") && (
+                            <TableCell>{routeData["TIPO DE ZONA"]}</TableCell>
+                          )}
+                          {visibleColumns.includes("NUMERO DE FACTURA") && (
+                            <TableCell>{routeData["NO_FACTURA"]}</TableCell>
+                          )}
+                          {visibleColumns.includes("FECHA DE FACTURA") && (
+                            <TableCell>
+                              {formatDate(routeData["FECHA_DE_FACTURA"])}
+                            </TableCell>
+                          )}
+                          {visibleColumns.includes("FECHA DE EMBARQUE") && (
+                            <TableCell>
+                              {formatDate(routeData.ultimaFechaEmbarque)}
+                            </TableCell>
+                          )}
+                          {visibleColumns.includes(
+                            "DIA EN QUE ESTA EN RUTA"
+                          ) && (
+                            <TableCell>
+                              {formatDate(routeData.ultimaFechaEmbarque)}
+                            </TableCell>
+                          )}
+                          {visibleColumns.includes("CAJAS") && (
+                            <TableCell>{routeData.totalCajas}</TableCell>
+                          )}
+                          {visibleColumns.includes("TRANSPORTE") && (
+                            <TableCell>{routeData.TRANSPORTE}</TableCell>
+                          )}
+                          {visibleColumns.includes("PAQUETERIA") && (
+                            <TableCell>{routeData.PAQUETERIA}</TableCell>
+                          )}
+                          {visibleColumns.includes(
+                            "FECHA DE ENTREGA (CLIENTE)"
+                          ) && (
+                            <TableCell>
+                              {formatDate(routeData.FECHA_DE_ENTREGA_CLIENTE)}
+                            </TableCell>
+                          )}
+                          {visibleColumns.includes("DIAS DE ENTREGA") && (
+                            <TableCell>{routeData.DIAS_DE_ENTREGA}</TableCell>
+                          )}
+                          {visibleColumns.includes(
+                            "ENTREGA SATISFACTORIA O NO SATISFACTORIA"
+                          ) && (
+                            <TableCell>
+                              {
+                                routeData.ENTREGA_SATISFACTORIA_O_NO_SATISFACTORIA
+                              }
+                            </TableCell>
+                          )}
+                          {visibleColumns.includes("MOTIVO") && (
+                            <TableCell>{routeData.MOTIVO}</TableCell>
+                          )}
+                          {visibleColumns.includes("DIFERENCIA") && (
+                            <TableCell>{routeData.DIFERENCIA}</TableCell>
+                          )}
+                          {visibleColumns.includes("Acciones") && (
+                            <TableCell>
+                              <Grid
+                                container
+                                spacing={1}
+                                justifyContent="flex-start"
+                                alignItems="center"
+                              >
+                                <Grid item>
+                                  <Grid item>
+                                    {(user?.role === "Admin" ||
+                                      user?.role === "Master") && (
+                                      <IconButton
+                                        onClick={() => {
+                                          const url = getTransportUrl(
+                                            routeData.TRANSPORTE
+                                          );
+                                          console.log("Abriendo enlace:", url);
+                                          window.open(url, "_blank");
+                                        }}
+                                        size="small"
+                                        style={{ color: "#616161" }}
+                                      >
+                                        <AirportShuttleIcon />
+                                      </IconButton>
+                                    )}
+                                  </Grid>
+
+                                  <IconButton
+                                    style={{ color: "#1976D2" }} // Azul
+                                    onClick={() => openDirectaModal(routeData)}
+                                  >
+                                    <BorderColorIcon />
+                                  </IconButton>
+                                </Grid>
+
+                                <Grid item>
+                                  <IconButton
+                                    variant="contained"
+                                    style={{ color: "black" }} // Negro con texto blanco
+                                    onClick={() =>
+                                      generatePDF(routeData["NO ORDEN"])
+                                    }
+                                  >
+                                    <ArticleIcon />
+                                  </IconButton>
+                                </Grid>
+
+                                <Grid item>
+                                  {(user?.role === "Admin" ||
+                                    user?.role === "Trans") && (
+                                    <IconButton
+                                      color="error"
+                                      onClick={() =>
+                                        eliminarRuta(routeData["NO ORDEN"])
+                                      } // Cambiar 'row' a 'routeData'
+                                      disabled={loading}
+                                    >
+                                      <DeleteIcon />
+                                    </IconButton>
+                                  )}
+                                </Grid>
+                              </Grid>
                             </TableCell>
                           )}
                         </TableRow>
@@ -2010,13 +3489,24 @@ function Transporte() {
                       {visibleColumns.includes("NO ORDEN") && (
                         <TableCell>NO ORDEN</TableCell>
                       )}
+                      {visibleColumns.includes("ESTADO") && (
+                        <TableCell>Estado del Pedido</TableCell>
+                      )}
                       {visibleColumns.includes("FECHA") && (
                         <TableCell>FECHA</TableCell>
                       )}
-                      {visibleColumns.includes("NOMBRE DEL CLIENTE") && (
-                        <TableCell>NOMBRE DEL CLIENTE</TableCell>
+                      {visibleColumns.includes("PARTIDAS") && (
+                        <TableCell>PARTIDAS</TableCell>
                       )}
-                      {/* Otras columnas */}
+                      {visibleColumns.includes("PIEZAS") && (
+                        <TableCell>PIEZAS</TableCell>
+                      )}
+                      {visibleColumns.includes(
+                        "FECHA DE ENTREGA (CLIENTE)"
+                      ) && <TableCell>FECHA DE ENTREGA (CLIENTE)</TableCell>}
+                      {visibleColumns.includes("Acciones") && (
+                        <TableCell>Acciones</TableCell>
+                      )}
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -2035,12 +3525,93 @@ function Transporte() {
                           {visibleColumns.includes("NO ORDEN") && (
                             <TableCell>{routeData["NO ORDEN"]}</TableCell>
                           )}
+                          <TableCell>
+                            <Typography variant="body1" gutterBottom>
+                              Progreso: {routeData.progress || 0}%
+                            </Typography>
+                            <LinearProgress
+                              variant="determinate"
+                              value={routeData.progress || 0} // Valor de progreso
+                              style={{
+                                height: "10px",
+                                borderRadius: "5px",
+                                width: "100%",
+                                marginTop: "5px",
+                              }} // Estilos opcionales
+                            />
+                            <Typography
+                              variant="body2"
+                              color="textSecondary"
+                              style={{ marginTop: "8px" }}
+                            >
+                              Estado: {routeData.statusText || "Cargando..."}
+                            </Typography>
+                          </TableCell>
                           {visibleColumns.includes("FECHA") && (
                             <TableCell>{formatDate(routeData.FECHA)}</TableCell>
                           )}
-                          {visibleColumns.includes("NOMBRE DEL CLIENTE") && (
+                          {visibleColumns.includes("PARTIDAS") && (
+                            <TableCell>{routeData.PARTIDAS}</TableCell>
+                          )}
+                          {visibleColumns.includes("PIEZAS") && (
+                            <TableCell>{routeData.PIEZAS}</TableCell>
+                          )}
+                          {visibleColumns.includes(
+                            "FECHA DE ENTREGA (CLIENTE)"
+                          ) && (
                             <TableCell>
-                              {routeData["NOMBRE DEL CLIENTE"]}
+                              {formatDate(routeData.FECHA_DE_ENTREGA_CLIENTE)}
+                            </TableCell>
+                          )}
+                          {visibleColumns.includes("Acciones") && (
+                            <TableCell>
+                              <Grid
+                                container
+                                spacing={1}
+                                justifyContent="flex-start"
+                                alignItems="center"
+                              >
+                                <Grid item>
+                                  <IconButton
+                                    variant="contained"
+                                    style={{ color: "black" }} // Negro con texto blanco
+                                    onClick={() =>
+                                      generatePDF(routeData["NO ORDEN"])
+                                    }
+                                  >
+                                    <ArticleIcon />
+                                  </IconButton>
+                                </Grid>
+
+                                <Grid item>
+                                  {(user?.role === "Admin" ||
+                                    user?.role === "Trans") && (
+                                    <IconButton
+                                      color="error"
+                                      onClick={() =>
+                                        eliminarRuta(routeData["NO ORDEN"])
+                                      } // Cambiar 'row' a 'routeData'
+                                      disabled={loading}
+                                    >
+                                      <DeleteIcon />
+                                    </IconButton>
+                                  )}
+
+                                  <Grid item>
+                                    {(user?.role === "Admin" ||
+                                      user?.role === "Trans") && (
+                                      <IconButton
+                                        style={{ color: "#1976D2" }} // Azul
+                                        onClick={() =>
+                                          openDirectaModal(routeData)
+                                        }
+                                      >
+                                        <BorderColorIcon />
+                                      </IconButton>
+                                    )}
+                                  </Grid>
+                                </Grid>
+                              </Grid>
                             </TableCell>
                           )}
                         </TableRow>
@@ -2050,6 +3621,209 @@ function Transporte() {
                 </Table>
               </TableContainer>
             )}
+
+            {/* Sub-tab de Asignación */}
+            {tabIndex === 1 &&
+              (user?.role === "Admin" ||
+                user?.role === "Master" ||
+                user?.role === "Trans") &&
+              subTabIndex === 3 && (
+                <TableContainer
+                  component={Paper}
+                  style={{ marginTop: "20px", padding: "20px" }}
+                >
+                  <Typography variant="h6">Asignación de transporte</Typography>
+
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        {visibleColumns.includes("NO ORDEN") && (
+                          <TableCell>NO ORDEN</TableCell>
+                        )}
+                        {visibleColumns.includes("NOMBRE DEL CLIENTE") && (
+                          <TableCell>NOMBRE DEL CLIENTE</TableCell>
+                        )}
+                        {visibleColumns.includes("TRANSPORTE") && (
+                          <TableCell>TRANSPORTE</TableCell>
+                        )}
+                        {visibleColumns.includes("TRANSPORTISTA") && (
+                          <TableCell>TRANSPORTISTA</TableCell>
+                        )}
+                        {visibleColumns.includes("CLAVE") && (
+                          <TableCell>CLAVE</TableCell>
+                        )}
+                        {visibleColumns.includes("EMPRESA") && (
+                          <TableCell>EMPRESA</TableCell>
+                        )}
+                        {visibleColumns.includes("REG_ENTRADA") && (
+                          <TableCell>FECHA DE ENTRADA</TableCell>
+                        )}
+                        {visibleColumns.includes("ACCIONES") && (
+                          <TableCell>ACCIONES</TableCell>
+                        )}
+                      </TableRow>
+                    </TableHead>
+
+                    <TableBody>
+                      {directaData.length === 0 &&
+                      paqueteriaData.length === 0 ? (
+                        <TableRow>
+                          <TableCell
+                            colSpan={visibleColumns.length}
+                            style={{ textAlign: "center" }}
+                          >
+                            No hay datos disponibles.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        [...directaData, ...paqueteriaData].map(
+                          (routeData, index) => (
+                            <TableRow key={index}>
+                              {visibleColumns.includes("NO ORDEN") && (
+                                <TableCell>{routeData["NO ORDEN"]}</TableCell>
+                              )}
+                              {visibleColumns.includes("NUM CLIENTE") && (
+                                <TableCell>
+                                  {routeData["NUM. CLIENTE"]}
+                                </TableCell>
+                              )}
+                              {visibleColumns.includes(
+                                "NOMBRE DEL CLIENTE"
+                              ) && (
+                                <TableCell>
+                                  {routeData["NOMBRE DEL CLIENTE"]}
+                                </TableCell>
+                              )}
+                              {visibleColumns.includes("TRANSPORTE") && (
+                                <TableCell>{routeData.TRANSPORTE}</TableCell>
+                              )}
+
+                              {visibleColumns.includes("TRANSPORTISTA") && (
+                                <TableCell>
+                                  <TextField
+                                    select
+                                    value={routeData.transportista || ""}
+                                    onChange={(e) =>
+                                      handleRowChange(
+                                        index,
+                                        "transportista",
+                                        e.target.value
+                                      )
+                                    }
+                                    variant="outlined"
+                                    fullWidth
+                                    label="Transportista"
+                                    disabled={routeData.insertado}
+                                  >
+                                    {transportistaData.map((item, tIndex) => (
+                                      <MenuItem
+                                        key={tIndex}
+                                        value={`${item.nombre} ${item.apellidos}`}
+                                      >
+                                        {item.nombre} {item.apellidos}
+                                      </MenuItem>
+                                    ))}
+                                  </TextField>
+                                </TableCell>
+                              )}
+
+                              {visibleColumns.includes("CLAVE") && (
+                                <TableCell>
+                                  {routeData.clave || "Sin clave asignada"}
+                                </TableCell>
+                              )}
+
+                              {visibleColumns.includes("EMPRESA") && (
+                                <TableCell>
+                                  <TextField
+                                    select
+                                    value={
+                                      routeData.id_veh
+                                        ? String(routeData.id_veh)
+                                        : ""
+                                    }
+                                    onChange={(e) => {
+                                      console.log(
+                                        "🏢 Empresa seleccionada en el select:",
+                                        e.target.value
+                                      );
+                                      handleRowChange(
+                                        index,
+                                        "id_veh",
+                                        e.target.value
+                                      );
+                                    }}
+                                    variant="outlined"
+                                    fullWidth
+                                    label="Empresa"
+                                    MenuProps={{
+                                      PaperProps: {
+                                        style: {
+                                          maxHeight: 48 * 5 + 8,
+                                          width: 300,
+                                        },
+                                      },
+                                    }}
+                                  >
+                                    <MenuItem value="">
+                                      Seleccionar empresa
+                                    </MenuItem>
+                                    {empresaData.map((item, eIndex) => (
+                                      <MenuItem
+                                        key={eIndex}
+                                        value={String(item.id_veh)}
+                                      >
+                                        {`${item.empresa} - ${item.marca} (${item.placa})`}
+                                      </MenuItem>
+                                    ))}
+                                  </TextField>
+                                </TableCell>
+                              )}
+
+                              {visibleColumns.includes("REG_ENTRADA") && (
+                                <TableCell>
+                                  <TextField
+                                    type="date"
+                                    value={routeData.reg_entrada || ""}
+                                    onChange={(e) =>
+                                      handleRowChange(
+                                        index,
+                                        "reg_entrada",
+                                        e.target.value
+                                      )
+                                    }
+                                    fullWidth
+                                    disabled={routeData.insertado}
+                                  />
+                                </TableCell>
+                              )}
+
+                              {visibleColumns.includes("ACCIONES") && (
+                                <TableCell>
+                                  <Button
+                                    variant="contained"
+                                    color="secondary"
+                                    onClick={() => {
+                                      console.log(
+                                        "🟡 Insertar visita clickeado",
+                                        routeData
+                                      );
+                                      handleInsertarVisita(routeData, index);
+                                    }}
+                                    disabled={routeData.insertado}
+                                  >
+                                    Insertar
+                                  </Button>
+                                </TableCell>
+                              )}
+                            </TableRow>
+                          )
+                        )
+                      )}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
           </Box>
         )}
 
@@ -2059,34 +3833,569 @@ function Transporte() {
           padding="20px"
           backgroundColor="white"
           margin="50px auto"
-          maxWidth="400px"
+          maxWidth="600px"
           textAlign="center"
           borderRadius="8px"
         >
           <Typography variant="h6">Actualizar Guía</Typography>
 
-          <TextField
-            label="Nueva Guía"
-            value={guia}
-            onChange={(e) => setGuia(e.target.value)}
-            variant="outlined"
-            fullWidth
-            style={{ marginTop: "20px" }}
-          />
+          <Grid container spacing={2}>
+            {/* Fila 1 */}
+            {visibleColumns.includes("NO ORDEN") && (
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Nueva Guía"
+                  value={guia}
+                  onChange={(e) => setGuia(e.target.value)}
+                  variant="outlined"
+                  fullWidth
+                />
+              </Grid>
+            )}
 
-          <Button
-            onClick={actualizarGuia}
-            variant="contained"
-            color="primary"
-            style={{ marginTop: "20px" }}
-          >
-            Actualizar
-          </Button>
+            {visibleColumns.includes("TOTAL") && (
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Total"
+                  value={total} // Asegúrate de que el valor de total esté correctamente vinculado aquí
+                  onChange={(e) => setTotal(e.target.value)} // Si deseas cambiar el valor
+                  variant="outlined"
+                  fullWidth
+                />
+              </Grid>
+            )}
 
+            {/* Fila 6 - Agregar los nuevos campos */}
+            {visibleColumns.includes("NUMERO DE FACTURA") && (
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="No Factura"
+                  value={noFactura}
+                  onChange={(e) => setNoFactura(e.target.value)}
+                  variant="outlined"
+                  fullWidth
+                />
+              </Grid>
+            )}
+
+            {visibleColumns.includes("FECHA DE FACTURA") && (
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Fecha de Factura"
+                  value={fechaFactura ? formatDate(fechaFactura) : ""}
+                  onChange={(e) => setFechaFactura(e.target.value)}
+                  variant="outlined"
+                  fullWidth
+                  type="date"
+                />
+              </Grid>
+            )}
+
+            {visibleColumns.includes("TARIMAS") && (
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Tarimas"
+                  value={tarimas}
+                  onChange={(e) => setTarimas(e.target.value)}
+                  variant="outlined"
+                  fullWidth
+                />
+              </Grid>
+            )}
+
+            {visibleColumns.includes("PAQUETERIA") && (
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Paquetería"
+                  value={paqueteria}
+                  onChange={(e) => setPaqueteria(e.target.value)}
+                  variant="outlined"
+                  fullWidth
+                />
+              </Grid>
+            )}
+
+            {/* Fila 2 */}
+            {visibleColumns.includes("FECHA DE ENTREGA (CLIENTE)") && (
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Fecha de Entrega Cliente"
+                  value={fechaEntregaCliente}
+                  onChange={(e) => setFechaEntregaCliente(e.target.value)}
+                  variant="outlined"
+                  fullWidth
+                  type="date"
+                />
+              </Grid>
+            )}
+
+            {visibleColumns.includes("DIAS DE ENTREGA") && (
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Días de Entrega"
+                  value={diasEntrega}
+                  onChange={(e) => setDiasEntrega(e.target.value)}
+                  variant="outlined"
+                  fullWidth
+                />
+              </Grid>
+            )}
+
+            {/* Fila 3 */}
+            {visibleColumns.includes(
+              "ENTREGA SATISFACTORIA O NO SATISFACTORIA"
+            ) && (
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Entrega Satisfactoria"
+                  value={entregaSatisfactoria}
+                  onChange={(e) => setEntregaSatisfactoria(e.target.value)}
+                  variant="outlined"
+                  fullWidth
+                />
+              </Grid>
+            )}
+
+            {visibleColumns.includes("MOTIVO") && (
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Motivo"
+                  value={motivo}
+                  onChange={(e) => setMotivo(e.target.value)}
+                  variant="outlined"
+                  fullWidth
+                />
+              </Grid>
+            )}
+
+            {visibleColumns.includes("NUMERO DE FACTURA LT") && (
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Número de Factura LT"
+                  value={numeroFacturaLT}
+                  onChange={(e) => setNumeroFacturaLT(e.target.value)}
+                  variant="outlined"
+                  fullWidth
+                />
+              </Grid>
+            )}
+
+            {/* Fila 4 */}
+            {visibleColumns.includes("TOTAL FACTURA LT") && (
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Total Factura LT"
+                  value={totalFacturaLT}
+                  onChange={(e) => setTotalFacturaLT(e.target.value)}
+                  variant="outlined"
+                  fullWidth
+                />
+              </Grid>
+            )}
+
+            {visibleColumns.includes("PRORRATEO $ FACTURA LT") && (
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Prorateo Factura LT"
+                  value={prorateoFacturaLT} // Este es el valor que proviene del estado
+                  onChange={handleProrateoFacturaLTChange}
+                  variant="outlined"
+                  fullWidth
+                />
+              </Grid>
+            )}
+
+            {/* Fila 5 */}
+            {visibleColumns.includes("PRORRATEO $ FACTURA PAQUETERIA") && (
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Prorateo Factura Paquetería"
+                  value={prorateoFacturaPaqueteria || ""} // Evita valores nulos
+                  onChange={(e) => {
+                    const value = e.target.value.replace(",", "."); // Reemplaza comas por puntos
+                    const parsedValue = parseFloat(value);
+                    setProrateoFacturaPaqueteria(
+                      isNaN(parsedValue) ? 0 : parsedValue
+                    ); // Si es NaN, guarda 0
+                  }}
+                  variant="outlined"
+                  fullWidth
+                  type="text"
+                />
+              </Grid>
+            )}
+
+            {visibleColumns.includes("GASTOS EXTRAS") && (
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Gastos Extras"
+                  value={gastosExtras}
+                  onChange={(e) => setGastosExtras(e.target.value)}
+                  variant="outlined"
+                  fullWidth
+                />
+              </Grid>
+            )}
+
+            {/* Fila 6 */}
+            {visibleColumns.includes("SUMA FLETE") && (
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Suma Flete"
+                  value={sumaFlete} // Aquí se debe mostrar el valor de la suma
+                  variant="outlined"
+                  fullWidth
+                  disabled
+                />
+              </Grid>
+            )}
+
+            {visibleColumns.includes("% ENVIO") && (
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="% Envio"
+                  value={porcentajeEnvio}
+                  onChange={(e) => setPorcentajeEnvio(e.target.value)} // Puedes dejar el onChange, pero no deberías modificar manualmente este campo
+                  variant="outlined"
+                  fullWidth
+                  InputProps={{
+                    readOnly: true, // Hacer que el campo sea solo lectura
+                  }}
+                />
+              </Grid>
+            )}
+
+            {/* Fila 7 */}
+            {visibleColumns.includes("% PAQUETERIA") && (
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="% Paquetería"
+                  value={porcentajePaqueteria || ""} // Asegúrate de que si el valor es nulo o indefinido, se maneje correctamente
+                  onChange={(e) => setPorcentajePaqueteria(e.target.value)} // Este onChange es opcional si deseas modificar el campo manualmente
+                  variant="outlined"
+                  fullWidth
+                  InputProps={{
+                    readOnly: true, // Hacer el campo solo lectura para evitar que el usuario modifique el valor manualmente
+                  }}
+                />
+              </Grid>
+            )}
+
+            {visibleColumns.includes("SUMA GASTOS EXTRAS") && (
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Suma Gastos Extras"
+                  value={sumaGastosExtras} // Aquí se mostrará la suma calculada
+                  variant="outlined"
+                  fullWidth
+                  InputProps={{
+                    readOnly: true, // Hace que el campo sea de solo lectura
+                  }}
+                />
+              </Grid>
+            )}
+
+            {/* Fila 8 */}
+            {visibleColumns.includes("% GLOBAL") && (
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Porcentaje Global"
+                  value={porcentajeGlobal} // ✅ Aquí se refleja el resultado
+                  variant="outlined"
+                  fullWidth
+                  InputProps={{
+                    readOnly: true, // Para que no se edite manualmente
+                  }}
+                />
+              </Grid>
+            )}
+
+            {visibleColumns.includes("DIFERENCIA") && (
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Diferencia"
+                  value={diferencia}
+                  onChange={(e) => setDiferencia(e.target.value)}
+                  variant="outlined"
+                  fullWidth
+                />
+              </Grid>
+            )}
+
+            {/* Botón para actualizar */}
+            <Grid item xs={12}>
+              <Button
+                onClick={actualizarGuia}
+                variant="contained"
+                color="primary"
+                fullWidth
+                style={{ marginTop: "20px" }}
+              >
+                Actualizar
+              </Button>
+            </Grid>
+
+            {/* Botón para cerrar */}
+            <Grid item xs={12}>
+              <Button
+                onClick={closeGuiaModal}
+                variant="outlined"
+                color="secondary"
+                fullWidth
+                style={{ marginTop: "10px" }}
+              >
+                Cancelar
+              </Button>
+            </Grid>
+          </Grid>
+        </Box>
+      </Modal>
+
+      {/* Modal para "Directa" */}
+      <Modal open={directaModalOpen} onClose={closeDirectaModal}>
+        <Box
+          padding="20px"
+          backgroundColor="white"
+          margin="50px auto"
+          maxWidth="800px"
+          textAlign="center"
+          borderRadius="8px"
+        >
+          <Typography variant="h6">Actualizar Datos de Directa</Typography>
+          <Grid container spacing={2}>
+            {(user?.role === "Admin" || user?.role === "Trans") && (
+              <TextField
+                label="Tipo de ruta"
+                value={tipo} // Mostrar el valor actual de tipo
+                onChange={(e) => setTipo(e.target.value)} // Actualizar tipo cuando cambia
+                fullWidth
+                variant="outlined"
+                margin="normal"
+              />
+            )}
+
+            {/* Primera fila */}
+            <Grid item xs={12} sm={6}>
+              {(user?.role === "Admin" || user?.role === "Master") && (
+                <TextField
+                  label="No Orden"
+                  value={selectedNoOrden}
+                  onChange={(e) => setSelectedNoOrden(e.target.value)}
+                  variant="outlined"
+                  fullWidth
+                />
+              )}
+            </Grid>
+
+            <Grid item xs={12} sm={6}>
+              {(user?.role === "Admin" || user?.role === "Master") && (
+                <TextField
+                  label="Fecha"
+                  value={fecha}
+                  onChange={(e) => setFecha(e.target.value)}
+                  variant="outlined"
+                  fullWidth
+                />
+              )}
+            </Grid>
+
+            <Grid item xs={12} sm={6}>
+              {(user?.role === "Admin" || user?.role === "Master") && (
+                <TextField
+                  label="Nombre Cliente"
+                  value={nombreCliente}
+                  onChange={(e) => setNombreCliente(e.target.value)}
+                  variant="outlined"
+                  fullWidth
+                />
+              )}
+            </Grid>
+
+            {/* Cuarta fila */}
+            <Grid item xs={12} sm={6}>
+              {(user?.role === "Admin" || user?.role === "Master") && (
+                <TextField
+                  label="Observaciones"
+                  value={observaciones}
+                  onChange={(e) => setObservaciones(e.target.value)}
+                  variant="outlined"
+                  fullWidth
+                />
+              )}
+            </Grid>
+
+            <Grid item xs={12} sm={6}>
+              {(user?.role === "Admin" || user?.role === "Master") && (
+                <TextField
+                  label="Total"
+                  value={total}
+                  onChange={(e) => setTotal(e.target.value)}
+                  variant="outlined"
+                  fullWidth
+                />
+              )}
+            </Grid>
+
+            {/* Séptima fila */}
+            <Grid item xs={12} sm={6}>
+              {(user?.role === "Admin" ||
+                user?.role === "Master" ||
+                user?.role === "Control") && (
+                <TextField
+                  label="Número de Factura"
+                  value={noFactura}
+                  onChange={(e) => setNoFactura(e.target.value)}
+                  variant="outlined"
+                  fullWidth
+                />
+              )}
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              {(user?.role === "Admin" || user?.role === "Master") && (
+                <TextField
+                  label="Fecha de Factura"
+                  value={fechaFactura}
+                  onChange={(e) => setFechaFactura(e.target.value)}
+                  variant="outlined"
+                  fullWidth
+                  type="date"
+                />
+              )}
+            </Grid>
+
+            {/* Octava fila */}
+            <Grid item xs={12} sm={6}>
+              {(user?.role === "Admin" || user?.role === "Master") && (
+                <TextField
+                  label="Fecha de Embarque"
+                  value={fechaEmbarque}
+                  onChange={(e) => setFechaEmbarque(e.target.value)}
+                  variant="outlined"
+                  fullWidth
+                  type="date"
+                />
+              )}
+            </Grid>
+
+            <Grid item xs={12} sm={6}>
+              {(user?.role === "Admin" ||
+                user?.role === "Master" ||
+                user?.role === "Trans") && (
+                <TextField
+                  label="Día en que está en Ruta"
+                  value={diaEnRuta}
+                  onChange={(e) => setDiaEnRuta(e.target.value)}
+                  variant="outlined"
+                  fullWidth
+                />
+              )}
+            </Grid>
+
+            {/* Décima fila */}
+            <Grid item xs={12} sm={6}>
+              {(user?.role === "Admin" ||
+                user?.role === "Master" ||
+                user?.role === "PQ1" ||
+                user?.role === "Paquet") && (
+                <TextField
+                  label="Paquetería"
+                  value={paqueteria}
+                  onChange={(e) => setPaqueteria(e.target.value)}
+                  variant="outlined"
+                  fullWidth
+                />
+              )}
+            </Grid>
+
+            <Grid item xs={12} sm={6}>
+              {(user?.role === "Admin" ||
+                user?.role === "Master" ||
+                user?.role === "PQ1") && (
+                <TextField
+                  label="Fecha de Entrega Cliente"
+                  value={fechaEntregaCliente}
+                  onChange={(e) => setFechaEntregaCliente(e.target.value)}
+                  variant="outlined"
+                  fullWidth
+                  type="date"
+                />
+              )}
+            </Grid>
+
+            {/* Onceava fila */}
+            <Grid item xs={12} sm={6}>
+              {(user?.role === "Admin" ||
+                user?.role === "Master" ||
+                user?.role === "PQ1") && (
+                <TextField
+                  label="Días de Entrega"
+                  value={diasEntrega}
+                  onChange={(e) => setDiasEntrega(e.target.value)}
+                  variant="outlined"
+                  fullWidth
+                />
+              )}
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              {(user?.role === "Admin" ||
+                user?.role === "Master" ||
+                user?.role === "PQ1") && (
+                <TextField
+                  label="Entrega Satisfactoria"
+                  value={entregaSatisfactoria}
+                  onChange={(e) => setEntregaSatisfactoria(e.target.value)}
+                  variant="outlined"
+                  fullWidth
+                />
+              )}
+            </Grid>
+
+            {/* Doceava fila */}
+            <Grid item xs={12} sm={6}>
+              {(user?.role === "Admin" || user?.role === "Master") && (
+                <TextField
+                  label="Motivo"
+                  value={motivo}
+                  onChange={(e) => setMotivo(e.target.value)}
+                  variant="outlined"
+                  fullWidth
+                />
+              )}
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              {(user?.role === "Admin" || user?.role === "Master") && (
+                <TextField
+                  label="Diferencia"
+                  value={diferencia}
+                  onChange={(e) => setDiferencia(e.target.value)}
+                  variant="outlined"
+                  fullWidth
+                />
+              )}
+            </Grid>
+          </Grid>
+
+          {/* Botones de acción */}
+          {(user?.role === "Admin" ||
+            user?.role === "Master" ||
+            user?.role === "Control" ||
+            user?.role === "PQ1" ||
+            user?.role === "Paquet") && (
+            <Button
+              onClick={actualizarGuia}
+              variant="contained"
+              color="primary"
+              fullWidth
+              style={{ marginTop: "20px" }}
+            >
+              Actualizar
+            </Button>
+          )}
           <Button
-            onClick={closeGuiaModal}
+            onClick={closeDirectaModal}
             variant="outlined"
             color="secondary"
+            fullWidth
             style={{ marginTop: "10px" }}
           >
             Cancelar
@@ -2105,7 +4414,7 @@ function Transporte() {
             color="inherit"
             onClick={handleSnackbarClose}
           >
-            <CloseIcon fontSize="small" />
+            <CloseIcon fontSize="small" />{" "}
           </IconButton>
         }
       />

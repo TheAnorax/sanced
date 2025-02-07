@@ -1004,7 +1004,6 @@ function InventarioAdmin() {
       Swal.fire("Error", "Hubo un problema al insertar la ubicación", "error");
     }
   };
-
   const handleGuardarNuevaUbipICK = async () => {
     if (
       !newData.ubi ||
@@ -1014,7 +1013,14 @@ function InventarioAdmin() {
       !newData.lote ||
       !newData.almacen
     ) {
-      Swal.fire("Error", "Por favor complete todos los campos", "error");
+      closeInsertModal(); // Cierra el modal antes de mostrar la alerta
+      Swal.fire({
+        title: "Error",
+        text: "Por favor complete todos los campos",
+        icon: "error",
+      }).then(() => {
+        openInsertModal(); // Vuelve a abrir el modal después de cerrar la alerta
+      });
       return;
     }
   
@@ -1032,8 +1038,12 @@ function InventarioAdmin() {
       );
   
       if (response.data.success) {
-        Swal.fire("Éxito", "La nueva ubicación se ha guardado correctamente", "success");
-        closeInsertModal(); // Cerrar el modal
+        Swal.fire({
+          title: "Éxito",
+          text: "La nueva ubicación se ha guardado correctamente",
+          icon: "success",
+        });
+        closeInsertModal(); // Cierra el modal en caso de éxito
         setNewData({
           ubi: "",
           code_prod: "",
@@ -1042,15 +1052,39 @@ function InventarioAdmin() {
           lote: "",
           almacen: "",
         });
-        // Aquí puedes recargar los datos si es necesario
       } else {
-        Swal.fire("Error", "No se pudo guardar la nueva ubicación", "error");
+        closeInsertModal(); // Cierra el modal antes de mostrar la alerta
+        Swal.fire({
+          title: "Error",
+          text: response.data.message,
+          icon: "error",
+        }).then(() => {
+          openInsertModal(); // Vuelve a abrir el modal después de cerrar la alerta
+        });
       }
     } catch (error) {
       console.error("Error al guardar la nueva ubicación:", error);
-      Swal.fire("Error", "Hubo un problema al guardar la nueva ubicación", "error");
+      closeInsertModal(); // Cierra el modal antes de mostrar la alerta
+      if (error.response && error.response.data && error.response.data.message) {
+        Swal.fire({
+          title: "Error",
+          text: error.response.data.message,
+          icon: "error",
+        }).then(() => {
+          openInsertModal(); // Vuelve a abrir el modal después de cerrar la alerta
+        });
+      } else {
+        Swal.fire({
+          title: "Error",
+          text: "Hubo un problema al guardar la nueva ubicación",
+          icon: "error",
+        }).then(() => {
+          openInsertModal(); // Vuelve a abrir el modal después de cerrar la alerta
+        });
+      }
     }
   };
+  
    
 
   const handleEditChange = (field, value) => {
@@ -1090,7 +1124,7 @@ function InventarioAdmin() {
 
       // Realiza la solicitud PUT para actualizar los datos
       await axios.put(
-        `http://192.168.3.27:3007/api/inventarios/inventarios/updatePeacking`,
+        `http://192.168.3.27:3007/api/inventarios/inventarios/updatePeacking`, 
         {
           id_ubi: selectedDato.id_ubi,
           ...editedData,
@@ -1410,24 +1444,27 @@ function InventarioAdmin() {
         return params.value === 0 ? "" : params.value;
       },
     },
-    { field: "lote", headerName: "Lote", width: 100 },
-    { field: "almacen", headerName: "Almacén", width: 120 },
-    { field: "pasillo", headerName: "Pasillo", width: 100 },
+    // { field: "lote", headerName: "Lote", width: 100 },
+    // { field: "almacen", headerName: "Almacén", width: 120 },
+    // { field: "pasillo", headerName: "Pasillo", width: 100 },
     { field: "ingreso", headerName: "Ingreso", width: 160 },
-    { field: "area", headerName: "Área", width: 120 },
-    { field: "Estado", headerName: "Estados", width: 120 },
+    // { field: "area", headerName: "Área", width: 120 },
+    // { field: "Estado", headerName: "Estados", width: 120 },
+    
     {
       field: "movimiento",
       headerName: "Movimiento",
       width: 150,
       renderCell: (params) => (
         <Box sx={{ display: "flex", justifyContent: "center" }}>
+           {["Admin", "INV"].includes(user?.role) && (
           <IconButton
             onClick={() => handleOpenUpdateModal(params.row)}
             color="primary"
           >
             <EditIcon />
           </IconButton>
+          )}
         </Box>
       ),
     },
@@ -1437,6 +1474,8 @@ function InventarioAdmin() {
       width: 200,
       renderCell: (params) => (
         <Box display="flex" gap={1}>
+          <div>
+          {["Admin", "INV"].includes(user?.role) && (
           <Button
             color="primary"
             onClick={() => handleView(params.row, params.row)}
@@ -1453,7 +1492,8 @@ function InventarioAdmin() {
           >
             Traspaso
           </Button>
-
+)}
+{["Admin", "INV"].includes(user?.role) && (
           <Button
             color="primary"
             onClick={() => {
@@ -1476,6 +1516,8 @@ function InventarioAdmin() {
           >
             Borrar
           </Button>
+        )}
+        </div>
         </Box>
       ),
     },
@@ -1817,10 +1859,11 @@ function InventarioAdmin() {
       <Box sx={{ padding: 2 }}>
         <Typography variant="h4">{titulo}</Typography>
         <TableContainer component={Paper} sx={{ marginTop: 2 }}>
+        {["Admin", "INV"].includes(user?.role) && (
           <Button onClick={openInsertModal} variant="contained" color="primary">
             Insertar Producto
           </Button>
-
+    )}
           <Button onClick={exportToExcel} variant="contained" color="secondary">
   Exportar Todo a Excel
 </Button>
@@ -1829,15 +1872,15 @@ function InventarioAdmin() {
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell sx={{ width: "8%" }}>Imagen </TableCell>
-                <TableCell sx={{ width: "9%" }}>Ubicación</TableCell>
-
-                <TableCell sx={{ width: "15%" }}>Descripcón </TableCell>
-                <TableCell sx={{ width: "10%" }}>Código Producto</TableCell>
-                <TableCell sx={{ width: "5%" }}>Cantidad Stock</TableCell>
-                <TableCell sx={{ width: "5%" }}>Pasillo</TableCell>
+                <TableCell >Imagen </TableCell>
+                <TableCell >Ubicación</TableCell>
+                <TableCell >Descripcón </TableCell>
+                <TableCell >Código Producto</TableCell>
+                <TableCell >Cantidad Stock</TableCell>
+                {/* <TableCell sx={{ width: "5%" }}>Pasillo</TableCell>
                 <TableCell sx={{ width: "5%" }}>Lote</TableCell>
-                <TableCell sx={{ width: "5%" }}>Almacén</TableCell>
+                <TableCell sx={{ width: "5%" }}>Almacén</TableCell> */}
+                 <TableCell>Editar</TableCell>
               </TableRow>
               <TableRow>
                 <TableCell> </TableCell>
@@ -1848,7 +1891,7 @@ function InventarioAdmin() {
                     placeholder="Ubicación"
                     value={ubicacionFilter}
                     onChange={(e) => setUbicacionFilter(e.target.value)}
-                    sx={{ width: "100%" }}
+                    // sx={{ width: "100%" }}
                   />
                 </TableCell>
                 <TableCell>
@@ -1858,7 +1901,7 @@ function InventarioAdmin() {
                     placeholder="Descripción"
                     value={descripcionFilter}
                     onChange={(e) => setDecripcionFilter(e.target.value)}
-                    sx={{ width: "100%" }}
+                    // sx={{ width: "100%" }}
                   />
                 </TableCell>
 
@@ -1869,14 +1912,11 @@ function InventarioAdmin() {
                     placeholder="Código"
                     value={codigoFilter}
                     onChange={(e) => setCodigoFilter(e.target.value)}
-                    sx={{ width: "100%" }}
+                    // sx={{ width: "100%" }}
                   />
                 </TableCell>
-                <TableCell> </TableCell>
-                <TableCell></TableCell>
-                <TableCell></TableCell>
-                <TableCell></TableCell>
               </TableRow>
+              
             </TableHead>
             <TableBody>
               {paginatedData.map((dato) => (
@@ -1900,13 +1940,15 @@ function InventarioAdmin() {
                   <TableCell>{dato.des}</TableCell>
                   <TableCell>{dato.code_prod}</TableCell>
                   <TableCell>{dato.cant_stock}</TableCell>
-                  <TableCell>{dato.pasillo}</TableCell>
+                  {/* <TableCell>{dato.pasillo}</TableCell>
                   <TableCell>{dato.lote || "N/A"}</TableCell>
-                  <TableCell>{dato.almacen || "N/A"}</TableCell>
+                  <TableCell>{dato.almacen || "N/A"}</TableCell> */}
                   <TableCell>
+                  {["Admin", "INV"].includes(user?.role) && (
                     <IconButton onClick={() => handleOpenEditModal(dato)}>
                       <EditIcon color="primary" />
                     </IconButton>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
@@ -2095,6 +2137,8 @@ function InventarioAdmin() {
         </Button>
 
         {/* Botón para abrir el modal */}
+        <div>
+        {["Admin", "INV"].includes(user?.role) && (
         <Button
           variant="contained"
           onClick={handleOpenModalInsertUbi}
@@ -2102,7 +2146,8 @@ function InventarioAdmin() {
         >
           Insertar Nueva Ubicación
         </Button>
-
+   )}
+   </div>
         <Box sx={{ mb: 2 }}>
           {/* Botones para filtrar */}
           <Button variant="contained" color="primary" onClick={fetchImpares}>
@@ -2272,7 +2317,9 @@ function InventarioAdmin() {
                   </Box>
                 )}
                 {/* Botón para insertar los productos al backend */}
+                
                 {updateData.estado === "Compartido" && (
+              
                   <Button onClick={handleInsert} color="primary" sx={{ mt: 2 }}>
                     Insertar Productos
                   </Button>

@@ -406,6 +406,8 @@ function ProyectoQueretaro() {
                         <Tabs value={tabIndex} onChange={handleTabChange} aria-label="Información del Proyecto">
                             <Tab label="Información General" />
                             <Tab label="Datos de Compra" />
+                            <Tab label="Marketing" />
+                            <Tab label="Promaciones" />
                         </Tabs>
 
                         {tabIndex === 0 && (
@@ -570,49 +572,56 @@ function ProyectoQueretaro() {
 
                         {tabIndex === 1 && (
                             <Box sx={{ paddingTop: 2 }}>
+
                                 {tabData.length > 0 ? (
-                                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                    <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '10px 8px', marginTop: '16px' }}>
                                         <thead>
-                                            <tr>
+                                            <tr style={{ backgroundColor: '#f5f5f5', borderBottom: '2px solid #ddd' }}>
                                                 <th style={{ padding: '8px', textAlign: 'left' }}>Código</th>
                                                 <th style={{ padding: '8px', textAlign: 'left' }}>Descripción</th>
-                                                <th style={{ padding: '8px', textAlign: 'left' }}>Categoria</th>
-                                                {/* Mostrar solo la columna correspondiente según el segmento */}
-                                                {selectedProject.segmento === 'ORO' && <th style={{ padding: '8px', textAlign: 'left' }}>ORO</th>}
-                                                {selectedProject.segmento === 'PLATA' && <th style={{ padding: '8px', textAlign: 'left' }}>PLATA</th>}
-                                                {selectedProject.segmento === 'BRONCE' && <th style={{ padding: '8px', textAlign: 'left' }}>BRONCE</th>}
+                                                <th style={{ padding: '8px', textAlign: 'left' }}>Precio</th>
+                                                <th style={{ padding: '8px', textAlign: 'left' }}>Inner</th>
+                                                <th style={{ padding: '8px', textAlign: 'left' }}>Master</th>
+                                                <th style={{ padding: '8px', textAlign: 'left' }}>TP</th>
+                                                <th style={{ padding: '8px', textAlign: 'left' }}>Precio TP</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {tabData
-                                                .sort((a, b) => a.Codigo - b.Codigo)
-                                                .map((item, index) => {
-                                                    if (
-                                                        (selectedProject.segmento === 'ORO' && item.ORO === "Aplica") ||
-                                                        (selectedProject.segmento === 'PLATA' && item.PLATA === "Aplica") ||
-                                                        (selectedProject.segmento === 'BRONCE' && item.BRONCE === "Aplica")
-                                                    ) {
-                                                        return (
-                                                            <tr key={index}>
-                                                                <td style={{ padding: '8px', textAlign: 'left' }}>{item.Codigo}</td>
-                                                                <td style={{ padding: '8px', textAlign: 'left' }}>{item.Descripcion}</td>
-                                                                <td style={{ padding: '8px', textAlign: 'left' }}>{item.Categoria}</td>
-                                                                {/* Mostrar la columna correspondiente al segmento */}
-                                                                {selectedProject.segmento === 'ORO' && item.ORO === "Aplica" && <td style={{ padding: '8px', textAlign: 'left' }}>{item.ORO}</td>}
-                                                                {selectedProject.segmento === 'PLATA' && item.PLATA === "Aplica" && <td style={{ padding: '8px', textAlign: 'left' }}>{item.PLATA}</td>}
-                                                                {selectedProject.segmento === 'BRONCE' && item.BRONCE === "Aplica" && <td style={{ padding: '8px', textAlign: 'left' }}>{item.BRONCE}</td>}
-                                                            </tr>
-                                                        );
-                                                    }
-                                                    return null;
-                                                })}
+                                            {tabData.map((item, index) => (
+                                                <tr key={index} style={{ borderBottom: '1px solid #ddd' }}>
+                                                    <td style={{ padding: '8px', textAlign: 'left' }}>{item.Codigo}</td>
+                                                    <td style={{ padding: '8px', textAlign: 'left' }}>{item.Descripcion}</td>
+                                                    <td style={{ padding: '8px', textAlign: 'left' }}>{item.Precio}</td>
+                                                    <td style={{ padding: '8px', textAlign: 'left' }}>{item.Inner}</td>
+                                                    <td style={{ padding: '8px', textAlign: 'left' }}>{item.Master}</td>
+                                                    <td style={{ padding: '8px', textAlign: 'left' }}>{item.TP}</td>
+                                                    <td style={{ padding: '8px', textAlign: 'left' }}>{item.Precio_T}</td>
+                                                </tr>
+                                            ))}
                                         </tbody>
                                     </table>
                                 ) : (
                                     <Typography variant="body1">No hay datos disponibles</Typography>
                                 )}
+
+
                             </Box>
                         )}
+
+                        {tabIndex === 2 && (
+                            <Box sx={{ paddingTop: 2 }}>
+                                <p>Marketing</p>
+                            </Box>
+                        )}
+
+
+                        {tabIndex === 3 && (
+                            <Box sx={{ paddingTop: 2 }}>
+                                <p>Prodcutos nuevos</p>
+                            </Box>
+                        )}
+
+
 
                     </DialogContent >
                     <DialogActions>
@@ -623,7 +632,7 @@ function ProyectoQueretaro() {
                 </Dialog >
             )}
         </>
-        
+
     );
 
     /*

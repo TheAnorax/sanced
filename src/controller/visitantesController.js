@@ -61,7 +61,7 @@ const getVisitanteId = async (req, res) => {
 }
 
 const createVisitante = async (req, res) => {
-    console.log('Cuerpo de la solicitud:', req.body);
+    //console.log('Cuerpo de la solicitud:', req.body);
     const { id_catv, nombre, empresa, registro, telefono, est, no_licencia, no_ine, marca, modelo, placa, anio, seguro } = req.body;
     const foto = req.file ? req.file.filename : null;
 

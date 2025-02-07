@@ -80,10 +80,10 @@ export const mainListItems = (user) => {
       text: "Productos",
     },
     {
-      role: ["Admin", "Master", "Master2"],
+      role: ["Admin", "Master", "Trans", "PQ1", "Control", "EB1", "Paquet", "Embar"],
       path: "/dashboard/Trasporte",
       icon: <ManageSearchIcon />,
-      text: "Trasporte",
+      text: "Transporte",
     },
     {
       role: ["Control", "Admin"],
@@ -170,7 +170,7 @@ export const mainListItems = (user) => {
       text: "Compras",
     },
     {
-      role: ["Admin", "Master", "Recibo", "INV"],
+      role: ["Admin", "Master", "Recibo", "INV", "VENT"],
       path: "/dashboard/recibo",
       icon: <ReceiptLongIcon />,
       text: "Producto a Recibir ",
@@ -209,12 +209,12 @@ export const mainListItems = (user) => {
       icon: <AssessmentIcon />,
       text: "Insumos ",
     },
-    // {
-    //   role: ["Admin", "Master", "Master2"],
-    //   path: "/dashboard/inventario",
-    //   icon: <AssessmentIcon />,
-    //   text: "Inventario dia 0",
-    // },
+    {
+      role: ["Admin", "Master", "Master2"],
+      path: "/dashboard/inventario",
+      icon: <AssessmentIcon />,
+      text: "Inventario dia 0",
+    },
     {
       role: ["Admin", "Master", "Master2"],
       path: "/dashboard/muestras",
@@ -252,7 +252,7 @@ export const mainListItems = (user) => {
       text: "Visitas",
     },
     {
-      role: ["Admin", 'CONTROL'],
+      role: ["Admin", 'CONTROL', 'RH'],
       path: "/dashboard/visitas-reporte",
       icon: <AdminPanelSettings/>,
       text: "Visitas Reporte",

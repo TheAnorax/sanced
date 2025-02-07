@@ -172,4 +172,52 @@ const manual = async (req, res) => {
   }
 };
 
-module.exports = { porcentaje, obtenerInventario, ubicaciones, persona, manual };
+
+// Obtener detalles del inventario
+const getInventoryDet = async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT 
+        i.id_ubi,
+        i.ubi,
+        prod.des,
+        i.codigo, 
+        i._pz,
+        i._inner,
+        i._master,
+        i._pallet,
+        i.cantidad,
+        i.manual,
+        i.id_usu,
+        us.name,
+        i.pasillo,
+        i.tipo
+      FROM inventory i
+       LEFT JOIN productos prod ON i.codigo = prod.codigo_pro
+       LEFT JOIN usuarios us ON i.id_usu = us.id_usu
+    `);
+
+    // Reemplazar valores nulos con 0
+    const formattedRows = rows.map((row) => {
+      return Object.fromEntries(
+        Object.entries(row).map(([key, value]) => [key, value === null ? 0 : value])
+      );
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Datos obtenidos correctamente",
+      data: formattedRows,
+    });
+  } catch (error) {
+    console.error("Error al obtener los detalles del inventario:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error al obtener los detalles del inventario.",
+      error: error.message,
+    });
+  }
+};
+
+
+module.exports = { porcentaje, obtenerInventario, ubicaciones, persona, manual, getInventoryDet };

@@ -845,8 +845,7 @@ function Insumos() {
           )}
 
           {(user?.role === "Admin" ||
-            user?.role === "Master" ||
-            user?.role === "INV") && (
+            user?.role === "Master" || user?.role === "INV" || user?.role === "Recibo" || user?.role === "Eti") && (
             <IconButton
               sx={{ color: "black" }}
               onClick={() => handleConsumeFormOpen(params.row)}
@@ -1465,6 +1464,7 @@ function Insumos() {
                       <MenuItem value={"ECOMMERCE"}>ECOMMERCE</MenuItem>
                       <MenuItem value={"MAQUILA"}>MAQUILA</MenuItem>
                       <MenuItem value={"MANTACARGAS"}>MONTACARGAS</MenuItem>
+                      <MenuItem value={"DESARROLLO"}>DESARROLLO</MenuItem>
                     </Select>
                   </FormControl>
                 </Box>

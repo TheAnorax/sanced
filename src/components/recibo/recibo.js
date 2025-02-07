@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useContext } from "react";
 import axios from "axios";
 import Swal from "sweetalert2"; // Importamos SweetAlert
 import {
@@ -31,6 +31,7 @@ import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import PapeletaTarima from "./papeleta";
 import PapeletaTarimaRestante from "./PapeletaTarimaRestante";
+import { UserContext } from "../context/UserContext";
 
 import ReactDOM from "react-dom";
 
@@ -53,6 +54,7 @@ function Recibo() {
   const [checked, setChecked] = useState(false); // Estado del Switch
   const [filterOC, setFilterOC] = useState("");
   const [filterCodigo, setFilterCodigo] = useState("");
+  const { user } = useContext(UserContext);
 
   const handlePrint = async () => {
     setLoadingDialogOpen(true); // Mostrar el diálogo de carga
@@ -610,6 +612,7 @@ function Recibo() {
                       {recibo.estado ?? "Pendiente"}
                     </Typography>
                   </TableCell>
+                  {["Admin", "Recibo"].includes(user?.role) && (
                   <TableCell>
                     {isToday(new Date(`${recibo.arribo}T00:00:00`)) ? (
                       <Button
@@ -627,6 +630,7 @@ function Recibo() {
                       </Typography>
                     )}
                   </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>

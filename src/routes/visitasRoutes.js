@@ -5,13 +5,19 @@ const { createVisita, darAccesoVisitante, getVisitas, getVisitasAct, getVisitant
     permisosAutos, createMulta, multas, visitantesAll, getCategoriasMT, getAllVehiculos, createVehiculosExcel, updateInfoVisitantes, updateClave, 
     getConceptosMultas, getProveedores, createVisitaProveedor,actividadVigilancia,getActividadVigilancia, updateInfoVisitantesVehiculo,
     validacionVehiculo, uploadImgVehiculo, pagarMulta, getMultaDetails, getMultaDetail, pasarValidar, createEmpleado, 
-    getAreas, getEmpleados, createEmpleadoExcel,
+    getAreas, getEmpleados, createEmpleadoExcel, uploadImgPagos,
     validacionProveedor,
     createVehiculo,
     getAreasTransp,
     desactivarEmpleado,
     updateEmpleado,
     pasarLlegada,
+    getCategoriasPP,
+    getPaqueterias,
+    getCortinas,
+    createVisitaPaqueteria,
+    getVisitasVehiculoValidado,
+    registrarAcompañantes,
 } = require('../controller/visitasController');
 
 
@@ -30,10 +36,12 @@ router.post('/create/visita/proveedor', createVisitaProveedor);
 router.post('/up/imgs', uploadImgVehiculo.fields([{ name: 'img1', maxCount: 1 }, { name: 'img2', maxCount: 1 }, { name: 'img3', maxCount: 1 }, { name: 'img4', maxCount: 1 }]), validacionVehiculo);
 router.put('/up/foto/proveedor', upload.single('foto'), validacionProveedor);
 router.put('/up/acceso/:id_visit', darAccesoVisitante);
+router.post('/create/acomp', registrarAcompañantes);
 router.put('/llegada/:id_visit', pasarLlegada);
 router.put('/validar/:id_visit', pasarValidar);
 router.put('/up/salida/:id_visit', darSalidaVisitante);
 router.get('/agenda/activas', getVisitasAct);
+router.get('/agenda/hoy/valid', getVisitasVehiculoValidado);
 router.get('/reporte', getVisitasReporte);
 router.get('/visitantes/all', visitantesAll);
 
@@ -41,8 +49,10 @@ router.get('/transportistas', getTransportistas);
 router.post('/create/transportista', upload.single('foto'), createTransportista);
 router.post('/upload/transportistas', createTransportistaExcel);
 
+router.get('/cortinas', getCortinas);
 router.get('/categorias', getCategorias);
 router.get('/categorias/mt', getCategoriasMT);
+router.get('/categorias/pp', getCategoriasPP);
 
 router.post('/create/vehiculo', createVehiculo);
 router.get('/vh/per', getAllPermisos);
@@ -68,6 +78,7 @@ router.put('/update/empleado', upload.single('foto'),  updateEmpleado);
 router.put('/cancel/empleado/:id_emp', desactivarEmpleado);
 router.get('/list/empleados', getEmpleados);
 router.post('/import/empleados', createEmpleadoExcel);
-
+router.get('/paqueterias', getPaqueterias);
+router.post('/create/visita/pq', createVisitaPaqueteria);
 
 module.exports = router;

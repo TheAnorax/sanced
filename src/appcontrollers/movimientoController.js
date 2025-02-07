@@ -168,33 +168,87 @@ const realizarMovimiento = async (req, res) => {
       return res.status(200).json({ message: "División de tarima realizada correctamente en almacén 7050." });
     }
 
-
     if (codigo_almacen === '7050') {
-      // Caso para el almacén 7050: Actualizar o insertar en la tabla ubicaciones
-      const [ubicacionExistente] = await connection.query(
-        "SELECT id_ubi, cant_stock_real FROM ubicaciones WHERE ubi = ?",
-        [ubicacion_final]
+      console.log("Iniciando operación para almacén 7050...");
+    
+      // Buscar la ubicación en la tabla ubicaciones
+      console.log("Buscando ubicación final:", ubicacion_final);
+      let [ubicacionExistente] = await connection.query(
+        "SELECT id_ubi, cant_stock_real FROM ubicaciones WHERE TRIM(ubi) = ?",
+        [ubicacion_final.trim()]
       );
-
+      console.log("Resultado de búsqueda:", ubicacionExistente);
+    
       if (ubicacionExistente.length > 0) {
-        // Si la ubicación ya existe, incrementar el `cant_stock_real`
         const { id_ubi: idUbiExistente, cant_stock_real: cantStockActual } = ubicacionExistente[0];
-        await connection.query(
-          "UPDATE ubicaciones SET cant_stock_real = ?, code_prod = ?, lote = ?, almacen = ? WHERE id_ubi = ?",
-          [cantStockActual + cant_stock, code_prod, lote, codigo_almacen, idUbiExistente]
+    
+        // Validar que cantidad_stock es válida
+        if (cantidad_stock == null || isNaN(Number(cantidad_stock))) {
+          console.error("Error: cantidad_stock no es válido:", cantidad_stock);
+          return res.status(400).json({ error: "La cantidad de stock no es válida" });
+        }
+    
+        console.log("Preparando actualización con los siguientes datos:", {
+          idUbiExistente,
+          cantStockActual,
+          cantidad_stock,
+          nuevaCantidad: cantStockActual ? cantStockActual + cantidad_stock : cantidad_stock,
+          codigo_producto,
+          lote,
+          codigo_almacen,
+        });
+    
+        // Actualizar la cantidad en la tabla ubicaciones, manejando NULL correctamente
+        const [updateResult] = await connection.query(
+          "UPDATE ubicaciones SET cant_stock_real = IFNULL(cant_stock_real, 0) + ?, code_prod = ?, lote = ?, almacen = ? WHERE id_ubi = ?",
+          [cantidad_stock, codigo_producto, lote, codigo_almacen, idUbiExistente]
         );
+        console.log("Resultado de actualización (affectedRows):", updateResult.affectedRows);
+    
+        if (updateResult.affectedRows === 0) {
+          console.warn("Advertencia: No se actualizó ninguna fila. Verifica los datos enviados.");
+        }
       } else {
-        // Si la ubicación no existe, insertar un nuevo registro
-        await connection.query(
-          "INSERT INTO ubicaciones (ubi, code_prod, cant_stock_real, pasillo, lote, almacen) VALUES (?, ?, ?, ?, ?, ?)",
-          [ubicacion_final, code_prod, cant_stock, pasillo, lote, codigo_almacen]
+        console.log("Ubicación no encontrada, buscando por código de producto:", codigo_producto);
+        const [codigoUbicacion] = await connection.query(
+          "SELECT id_ubi FROM ubicaciones WHERE code_prod = ?",
+          [codigo_producto]
         );
+        console.log("Resultado de búsqueda por código de producto:", codigoUbicacion);
+    
+        if (codigoUbicacion.length > 0) {
+          const { id_ubi: idUbiEncontrado } = codigoUbicacion[0];
+    
+          console.log("Actualizando ubicación por código de producto:", {
+            idUbiEncontrado,
+            cantidad_stock,
+            codigo_producto,
+            lote,
+            codigo_almacen,
+          });
+    
+          const [updateResult] = await connection.query(
+            "UPDATE ubicaciones SET cant_stock_real = IFNULL(cant_stock_real, 0) + ?, code_prod = ?, lote = ?, almacen = ? WHERE id_ubi = ?",
+            [cantidad_stock, codigo_producto, lote, codigo_almacen, idUbiEncontrado]
+          );
+          console.log("Resultado de actualización por código (affectedRows):", updateResult.affectedRows);
+        } else {
+          console.log("No se encontró la ubicación ni el código. Insertando nueva ubicación...");
+    
+          const [insertResult] = await connection.query(
+            "INSERT INTO ubicaciones (ubi, code_prod, cant_stock_real, pasillo, lote, almacen) VALUES (?, ?, ?, ?, ?, ?)",
+            [ubicacion_final, codigo_producto, cantidad_stock, pasillo, lote, codigo_almacen]
+          );
+          console.log("Resultado de inserción (insertId):", insertResult.insertId);
+        }
       }
-    } else if (codigo_almacen === '7238') {
+    }
+    
+     else if (codigo_almacen === '7238') {
       // Caso para el almacén 7238: Insertar en la tabla maquila_interna
       await connection.query(
         "INSERT INTO maquila_interna (ubi, code_prod, cant_stock, pasillo, almacen_entrada) VALUES (?, ?, ?, ?, ?)",
-        [ubicacion_final, code_prod, cant_stock, pasillo, codigo_almacen]
+        [ubicacion_final, code_prod, cantidad_stock, pasillo, codigo_almacen]
       );
     } else if (codigo_almacen === '7066') {
       // Caso para el almacén 7066: Insertar en la tabla departamental
@@ -202,7 +256,7 @@ const realizarMovimiento = async (req, res) => {
         `INSERT INTO departamental 
           (ubi, code_prod, cant_stock, pasillo, lote, almacen_entrada) 
          VALUES (?, ?, ?, ?, ?, ?)`,
-        [ubicacion_final, code_prod, cant_stock, pasillo, lote, codigo_almacen]
+        [ubicacion_final, code_prod, cantidad_stock, pasillo, lote, codigo_almacen]
       );
     } else if (codigo_almacen === '7150') {
       // Caso para el almacén 7150: Movimiento dentro de ubi_alma
@@ -218,7 +272,7 @@ const realizarMovimiento = async (req, res) => {
       // Otros casos: Movimiento genérico en ubi_alma
       const [updateResult] = await connection.query(
         "UPDATE ubi_alma SET code_prod = ?, cant_stock = ?, lote = ?, almacen = ? WHERE ubi = ?",
-        [code_prod, cant_stock, lote, codigo_almacen, ubicacion_final]
+        [code_prod, cantidad_stock, lote, codigo_almacen, ubicacion_final]
       );
 
       if (updateResult.affectedRows === 0) {

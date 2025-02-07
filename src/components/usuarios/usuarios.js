@@ -87,10 +87,10 @@ function Usuarios() {
   });
 
   useEffect(() => {
-    const fetchUsuarios = async () => {
+    const fetchUsuarios = async () => { 
       try {
         const response = await axios.get(
-          "http://192.168.3.27:3007/api/usuarios/usuarios"
+          "http://192.168.3.27:3007/api/usuarios/usuarios" 
         );
         let usuariosFiltrados = response.data;
 

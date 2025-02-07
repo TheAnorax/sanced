@@ -18,11 +18,12 @@ const actualizarCantidadSurtida = async (req, res) => {
   // Define las consultas SQL para actualizar cada tipo de unidad de medida
   const updateQueries = {
     PZ: "UPDATE pedido_surtido SET _pz = _pz + ? WHERE pedido = ? AND id_pedi = ?;",
-    BL: "UPDATE pedido_surtido SET _pz = _pz + ? WHERE pedido = ? AND id_pedi = ?;",
     ATADO: "UPDATE pedido_surtido SET _pz = _pz + ? WHERE pedido = ? AND id_pedi = ?;",
-    JG: "UPDATE pedido_surtido SET _pz = _pz + ? WHERE pedido = ? AND id_pedi = ?;",
+    BL: "UPDATE pedido_surtido SET _pz = _pz + ? WHERE pedido = ? AND id_pedi = ?;",
     CJ: "UPDATE pedido_surtido SET _pz = _pz + ? WHERE pedido = ? AND id_pedi = ?;",
-    PQ: "UPDATE pedido_surtido SET _pq = _pq + ? WHERE pedido = ? AND id_pedi = ?;",
+    EM: "UPDATE pedido_surtido SET _pz = _pz + ? WHERE pedido = ? AND id_pedi = ?;",
+    JG: "UPDATE pedido_surtido SET _pz = _pz + ? WHERE pedido = ? AND id_pedi = ?;",
+    PQ:  "UPDATE pedido_surtido SET _pz = _pz + ? WHERE pedido = ? AND id_pedi = ?;",
     INNER: "UPDATE pedido_surtido SET _inner = _inner + ? WHERE pedido = ? AND id_pedi = ?;",
     MASTER: "UPDATE pedido_surtido SET _master = _master + ? WHERE pedido = ? AND id_pedi = ?;",
     PQTE: "UPDATE pedido_surtido SET _pz = _pz + ? WHERE pedido = ? AND id_pedi = ?;"

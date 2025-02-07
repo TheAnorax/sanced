@@ -142,7 +142,7 @@ function ProductoCRUD() {
 
   const [enteredQuantities, setEnteredQuantities] = useState({
     pieces: 0,
-    inners: 0,
+    inners: 0, 
     masters: 0,
   });
 
@@ -377,6 +377,7 @@ function ProductoCRUD() {
       }
     }
   };
+  
 
   const handleVolumetriaSubmit = async () => {
     try {
@@ -499,6 +500,11 @@ function ProductoCRUD() {
     saveAs(blob, `Productos-Santul-${fecha}.xlsx`);
   };
 
+
+  const formatNumber = (number) => {
+    if (number === null || number === undefined) return "0";
+    return new Intl.NumberFormat("es-MX").format(number);
+  };
   const columns = isSmallScreen
     ? [
         { field: "codigo_pro", headerName: "Código", width: 150 },
@@ -577,6 +583,24 @@ function ProductoCRUD() {
         { field: "_pq", headerName: "PQ", width: 150 },
         { field: "_inner", headerName: "Inner", width: 150 },
         { field: "_master", headerName: "Master", width: 150 },
+        {
+          field: "stock_total",
+          headerName: "Total",
+          width: 150,
+          renderCell: (params) => <span>{formatNumber(params.value)}</span>,
+        },
+        {
+          field: "stock_almacen" ,
+          headerName: "Almacenamiento",
+          width: 150,
+          renderCell: (params) => <span>{formatNumber(params.value)}</span>,
+        },
+        {
+          field: "stock_picking",
+          headerName: "Picking",
+          width: 150,
+          renderCell: (params) => <span>{formatNumber(params.value)}</span>,
+        },
         {
           field: "actions",
           headerName: "Actions",
@@ -1565,3 +1589,4 @@ function ProductoCRUD() {
 }
 
 export default ProductoCRUD;
+ 

@@ -136,6 +136,33 @@ const insertNuevaUbicacion = async (req, res) => {
   }
 
   try {
+    // Verificar si ya existe una fila con la misma 'ubi' y 'code_prod'
+    const [existingEntries] = await pool.query(
+      "SELECT * FROM ubicaciones WHERE ubi = ? AND code_prod = ?",
+      [ubi, code_prod]
+    );
+
+    if (existingEntries.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "El código y la ubicación ya existen en la base de datos.",
+      });
+    }
+
+    // Verificar si ya existe 'code_prod' independientemente de la ubicación
+    const [existingCodeProd] = await pool.query(
+      "SELECT * FROM ubicaciones WHERE code_prod = ?",
+      [code_prod]
+    );
+
+    if (existingCodeProd.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "El código de producto ya existe en la base de datos.",
+      });
+    }
+
+    // Insertar nueva ubicación si no hay conflictos
     const [result] = await pool.query(
       `INSERT INTO ubicaciones (ubi, code_prod, cant_stock, pasillo, lote, almacen) 
        VALUES (?, ?, ?, ?, ?, ?)`,
@@ -156,6 +183,7 @@ const insertNuevaUbicacion = async (req, res) => {
     });
   }
 };
+
 
 
 const insertarNuevoProducto = async (req, res) => {

@@ -17,7 +17,91 @@ const upload = multer({ storage });
 
 const getAllProducts = async (req, res) => {
   try {
-    const [rows] = await pool.query('SELECT * FROM productos');
+    const [rows] = await pool.query(`SELECT 
+  p.id_prod,              
+  p.codigo_pro,                 
+  p.des,                      
+  p.code_pz,               
+  p.code_pq,               
+  p.code_master,           
+  p.code_inner,             
+  p.code_palet,            
+  p._pz,                     
+  p._pq,                     
+  p._inner,                  
+  p._master,                 
+  p._palet,                  
+  p.um,                       
+  p.largo_pz,              
+  p.largo_inner,           
+  p.largo_master,          
+  p.ancho_pz,              
+  p.ancho_inner,           
+  p.ancho_master,          
+  p.alto_pz,               
+  p.alto_inner,            
+  p.alto_master,           
+  p.peso_pz,               
+  p.peso_inner,            
+  p.peso_master,
+
+  -- Sumar correctamente el stock en almacenamiento
+  COALESCE(ua.cant_stock, 0) AS stock_almacen,
+
+  -- Sumar correctamente el stock en picking
+  COALESCE(u.cant_stock_real, 0) AS stock_picking,
+
+  -- Calcular el total como la suma de ambos
+  COALESCE(ua.cant_stock, 0) + COALESCE(u.cant_stock_real, 0) AS stock_total
+FROM productos p
+
+-- Unión con almacenamiento
+LEFT JOIN (
+  SELECT 
+    code_prod, 
+    SUM(CAST(cant_stock AS SIGNED)) AS cant_stock
+  FROM ubi_alma
+  GROUP BY code_prod
+) ua ON p.codigo_pro = ua.code_prod
+
+-- Unión con picking
+LEFT JOIN (
+  SELECT 
+    code_prod, 
+    SUM(cant_stock_real) AS cant_stock_real
+  FROM ubicaciones
+  GROUP BY code_prod
+) u ON p.codigo_pro = u.code_prod
+
+-- Agrupar por producto
+GROUP BY 
+  p.id_prod,              
+  p.codigo_pro,                 
+  p.des,                      
+  p.code_pz,               
+  p.code_pq,               
+  p.code_master,           
+  p.code_inner,            
+  p.code_palet,            
+  p._pz,                     
+  p._pq,                     
+  p._inner,                  
+  p._master,                 
+  p._palet,                  
+  p.um,                       
+  p.largo_pz,              
+  p.largo_inner,           
+  p.largo_master,          
+  p.ancho_pz,              
+  p.ancho_inner,           
+  p.ancho_master,          
+  p.alto_pz,               
+  p.alto_inner,            
+  p.alto_master,           
+  p.peso_pz,               
+  p.peso_inner,            
+  p.peso_master;
+`);
     res.json(rows);
   } catch (error) {
     res.status(500).json({ message: 'Error al obtener los productos', error: error.message });
@@ -283,6 +367,27 @@ const updateVolumetria = async (req, res) => {
 };
 
 
+const getStockTotal = async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT 
+        p.id_prod, 
+        p.codigo_pro, 
+        p.des, 
+        COALESCE(SUM(ua.cant_stock), 0) AS stock_almacen,
+        COALESCE(SUM(u.cant_stock_real), 0) AS stock_picking,
+        COALESCE(SUM(ua.cant_stock), 0) + COALESCE(SUM(u.cant_stock_real), 0) AS stock_total
+      FROM productos p
+      LEFT JOIN ubi_alma ua ON p.codigo_pro = ua.code_prod
+      LEFT JOIN ubicaciones u ON p.codigo_pro = u.code_prod
+      GROUP BY p.id_prod, p.codigo_pro, p.des
+    `);
+    res.json(rows);
+  } catch (error) {
+    console.error("Error al obtener el stock total:", error);
+    res.status(500).json({ message: "Error al calcular el stock total", error: error.message });
+  }
+};
 
 
-module.exports = { getAllProducts, createProduct, updateProduct, deleteProduct, getAllProductsUbi, getVoluProducts, updateVolumetria, upload };
+module.exports = { getAllProducts, createProduct, updateProduct, deleteProduct, getAllProductsUbi, getVoluProducts, updateVolumetria, upload , getStockTotal};

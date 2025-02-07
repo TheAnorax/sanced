@@ -806,7 +806,7 @@ function EnSurtido() {
       width: 170,
       renderCell: renderActions,
     },
-    { field: 'fecha_surtido', headerName: 'Fecha Surtido', width: 150 },
+    // { field: 'fecha_surtido', headerName: 'Fecha Surtido', width: 150 },
     { field: 'inicio_surtido_non_av', headerName: 'Inicio Surtido', width: 150 },
     { field: 'fin_surtido_non_av', headerName: 'Fin Surtido ', width: 150 },
     {

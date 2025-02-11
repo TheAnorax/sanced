@@ -169,6 +169,39 @@ const authorizePedido = async (req, res) => {
 
     await connection.commit();
     await updateUMLogic();
+
+    await connection.query(`DELETE FROM pedido_embarque
+WHERE id_pedi IN (
+    SELECT id_pedi
+    FROM (
+        SELECT 
+            pedido, 
+            codigo_ped,
+            id_pedi,
+            v_pz,
+            v_pq,
+            v_inner,
+            v_master,
+            ROW_NUMBER() OVER (PARTITION BY pedido, codigo_ped ORDER BY 
+                CASE WHEN (v_pz > 0 OR v_pq > 0 OR v_inner > 0 OR v_master > 0) THEN 1 ELSE 2 END,
+                id_pedi
+            ) AS rn
+        FROM 
+            pedido_embarque
+        WHERE (pedido, codigo_ped) IN (
+            SELECT 
+                pedido, 
+                codigo_ped
+            FROM 
+                pedido_embarque
+            GROUP BY 
+                pedido, codigo_ped
+            HAVING 
+                COUNT(*) > 1
+        )
+    ) AS Repeated
+    WHERE rn > 1
+);`)
     
     res.status(200).json({ message: 'Pedido autorizado y transferido a embarque correctamente' });
   } catch (error) {
@@ -254,6 +287,7 @@ const cancelPedido = async (req, res) => {
     res.status(500).json({ message: 'Error al cancelar el pedido', error: error.message });
   }
 };
+
 const getPedidosDelDia = async (req, res) => {
   try {
     const today = moment().format('YYYY-MM-DD');

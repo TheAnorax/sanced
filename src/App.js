@@ -34,6 +34,7 @@ import Queretaro from './components/Proyecto/ProyectoQueretaro';
 import Visitantes from './components/visitas/visitantes';
 import VisitasReporte from './components/visitas/visitasReporte';
 import Trasporte from './components/Transporte/Transporte';
+import KPi from './components/reporte/kpi'
 
 function App() {
   return (        
@@ -71,6 +72,7 @@ function App() {
             <Route path="visitas" element={<ProtectedRoute><Visitantes  /></ProtectedRoute>} />
             <Route path="visitas-reporte" element={<ProtectedRoute><VisitasReporte  /></ProtectedRoute>} />
             <Route path="Trasporte" element={<ProtectedRoute><Trasporte  /></ProtectedRoute>} />
+            <Route path="kpi" element={<ProtectedRoute><KPi  /></ProtectedRoute>} />
           </Route>
         </Routes>
       </Router>

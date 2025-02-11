@@ -160,6 +160,8 @@ const getTitle = (pathname) => {
       return "Visitas Reporte";
     case "/dashboard/Trasporte":
       return "Trasporte";
+      case "/dashboard/kpi":
+        return "kpi";
     default:
       return "Dashboard";
   }

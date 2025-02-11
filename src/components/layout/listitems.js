@@ -98,6 +98,12 @@ export const mainListItems = (user) => {
       text: "Surtiendo",
     },
     {
+      role: ["Master", "Control", "Admin", "Master2"],
+      path: "/dashboard/kpi",
+      icon: <AodIcon />,
+      text: "kpi",
+    },
+    {
       role: ["Control", "Admin", "Master", "Master2", "VENT", "INV"],
       path: "/dashboard/pedidos-surtido",
       icon: <ContentPasteIcon />,

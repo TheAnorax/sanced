@@ -42,6 +42,7 @@ function Inventory() {
     const [filteredData, setFilteredData] = useState([]); 
     const [selectedPasillo, setSelectedPasillo] = useState(""); // Pasillo seleccionado
    const [selectedTipo, setSelectedTipo] = useState(""); // Tipo PAR/IMPAR seleccionado
+   const [excelData, setExcelData] = useState([]);
     
 
     // Efecto para cargar datos
@@ -248,6 +249,71 @@ function Inventory() {
             },
         },
     };
+
+    const handleGenerateExcelReports = async () => {
+        try {
+            setLoading(true);
+    
+            // Solicita los datos de las tres APIs
+            const [pickResponse, almacenajeResponse, consolidatedResponse] = await Promise.all([
+                axios.get("http://192.168.3.27:3007/api/inventory/reportFinishInventory"),
+                axios.get("http://192.168.3.27:3007/api/inventory/reportFinishInventoryAlma"),
+                axios.get("http://192.168.3.27:3007/api/inventory/reportConsolidatedInventory"),
+            ]);
+    
+            // Extrae los datos y totales de las respuestas
+            const pickData = pickResponse.data.data || [];
+            const pickTotal = pickResponse.data.totalGeneral || 0;
+    
+            const almacenajeData = almacenajeResponse.data.data || [];
+            const almacenajeTotal = almacenajeResponse.data.totalGeneral || 0;
+    
+            const consolidatedData = consolidatedResponse.data.data || [];
+            const consolidatedTotal = consolidatedResponse.data.totalGeneral || 0;
+    
+            // Crear un libro de trabajo
+            const workbook = utils.book_new();
+    
+            // Hoja 1: Reporte de Conciliación (Pick)
+            const pickSheet = utils.json_to_sheet([
+                ...pickData,
+                { ubi: "", clave: "", codigo: "TOTAL GENERAL", cantidad: pickTotal },
+            ]);
+            utils.sheet_add_aoa(pickSheet, [["Ubicación", "Clave", "Código", "Cantidad"]], { origin: "A1" });
+            pickSheet["!cols"] = [{ wch: 20 }, { wch: 20 }, { wch: 15 }, { wch: 15 }];
+            utils.book_append_sheet(workbook, pickSheet, "Pick");
+    
+            // Hoja 2: Reporte de Almacenaje
+            const almacenajeSheet = utils.json_to_sheet([
+                ...almacenajeData,
+                { ubi: "", clave: "", codigo: "TOTAL GENERAL", cantidad: almacenajeTotal },
+            ]);
+            utils.sheet_add_aoa(almacenajeSheet, [["Ubicación", "Clave", "Código", "Cantidad"]], { origin: "A1" });
+            almacenajeSheet["!cols"] = [{ wch: 20 }, { wch: 20 }, { wch: 15 }, { wch: 15 }];
+            utils.book_append_sheet(workbook, almacenajeSheet, "Almacenaje");
+    
+            // Hoja 3: Reporte de Conciliación Consolidada
+            const consolidatedSheet = utils.json_to_sheet([
+                ...consolidatedData,
+                { codigo: "TOTAL GENERAL", clave: "", cantidad: consolidatedTotal },
+            ]);
+            utils.sheet_add_aoa(consolidatedSheet, [["Código", "Clave", "Cantidad"]], { origin: "A1" });
+            consolidatedSheet["!cols"] = [{ wch: 20 }, { wch: 20 }, { wch: 15 }];
+            utils.book_append_sheet(workbook, consolidatedSheet, "Conciliación");
+    
+            // Generar y descargar el archivo Excel con las tres hojas
+            const excelBuffer = write(workbook, { bookType: "xlsx", type: "array" });
+            const blob = new Blob([excelBuffer], { type: "application/octet-stream" });
+            saveAs(blob, "reportes.xlsx");
+    
+        } catch (error) {
+            console.error("Error al generar los reportes de conciliación, almacenaje o consolidación:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+    
+    
 
 
     return (
@@ -503,6 +569,15 @@ function Inventory() {
               </Select>
             </FormControl>
           </Box>
+          <Button
+                        variant="contained"
+                        color="primary"
+                        onClick={handleGenerateExcelReports}
+                        disabled={loading}
+                        sx={{ marginBottom: 4 }}
+                    >
+                        {loading ? "Generando reporte..." : "Generar Reporte de Conciliación"}
+                    </Button>
 
           {loading ? (
             <CircularProgress />

@@ -219,5 +219,101 @@ const getInventoryDet = async (req, res) => {
   }
 };
 
+const reportFinishInventory = async (req, res) => {
+  const query = `
+    SELECT 
+      inv.ubi,
+      pr.clave,
+      inv.codigo,
+      inv.cantidad
+    FROM inventory inv
+    LEFT JOIN productos pr ON inv.codigo = pr.codigo_pro
+  `;
 
-module.exports = { porcentaje, obtenerInventario, ubicaciones, persona, manual, getInventoryDet };
+  try {
+    const [rows] = await pool.query(query);
+
+    // Calcular el total de la cantidad
+    const totalGeneral = rows.reduce((sum, row) => sum + (row.cantidad || 0), 0);
+
+    // Enviar el total dentro del cuerpo de la respuesta JSON
+    res.json({ data: rows, totalGeneral });
+  } catch (error) {
+    res.status(500).json({ message: 'Error al obtener los productos', error: error.message });
+  }
+};
+
+
+const reportFinishInventoryAlma = async (req, res) => {
+  const query = `
+    SELECT 
+      inv.ubi,
+      pr.clave,
+      inv.codigo,
+      inv.cantidad
+    FROM inventoryalma inv
+    LEFT JOIN productos pr ON inv.codigo = pr.codigo_pro
+  `;
+
+  try {
+    const [rows] = await pool.query(query);
+
+    // Calcular el total de la cantidad
+    const totalGeneral = rows.reduce((sum, row) => sum + (row.cantidad || 0), 0);
+
+    // Enviar el total dentro del cuerpo de la respuesta JSON
+    res.json({ data: rows, totalGeneral });
+  } catch (error) {
+    res.status(500).json({ message: 'Error al obtener los productos', error: error.message });
+  }
+};
+
+const reportConsolidatedInventory = async (req, res) => {
+  try {
+    // Consultas a ambas tablas
+    const queryPick = `
+      SELECT inv.codigo, pr.clave, inv.ubi, inv.cantidad
+      FROM inventory inv
+      LEFT JOIN productos pr ON inv.codigo = pr.codigo_pro
+    `;
+
+    const queryAlmacenaje = `
+      SELECT inv.codigo, pr.clave, inv.ubi, inv.cantidad
+      FROM inventoryalma inv
+      LEFT JOIN productos pr ON inv.codigo = pr.codigo_pro
+    `;
+
+    // Ejecutar ambas consultas
+    const [pickRows] = await pool.query(queryPick);
+    const [almacenajeRows] = await pool.query(queryAlmacenaje);
+
+    // Combina los resultados de ambas tablas
+    const combinedRows = [...pickRows, ...almacenajeRows];
+
+    // Agrupar por código y sumar cantidades
+    const groupedData = combinedRows.reduce((acc, row) => {
+      const { codigo, clave, ubi, cantidad } = row;
+      if (!acc[codigo]) {
+        acc[codigo] = { codigo, clave,  cantidad: cantidad || 0 };
+      } else {
+        acc[codigo].cantidad += cantidad || 0;
+      }
+      return acc;
+    }, {});
+
+    // Convertir el objeto agrupado a un array
+    const finalData = Object.values(groupedData);
+
+    // Calcular el total general
+    const totalGeneral = finalData.reduce((sum, item) => sum + item.cantidad, 0);
+
+    // Enviar la respuesta con los datos agrupados y el total general
+    res.json({ data: finalData, totalGeneral });
+  } catch (error) {
+    res.status(500).json({ message: 'Error al obtener el inventario consolidado', error: error.message });
+  }
+};
+
+
+
+module.exports = { porcentaje, obtenerInventario, ubicaciones, persona, manual, getInventoryDet, reportFinishInventory, reportFinishInventoryAlma, reportConsolidatedInventory };

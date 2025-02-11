@@ -241,7 +241,7 @@ function EnSurtido() {
   
   const fetchTurnoPedidos = async (turno) => {
     try {
-      const response = await axios.get('http://192.168.3.27:3007/api/pedidos-surtidos/pedidos-dia');
+      const response = await axios.get('http://192.168.3.27:3007/api/pedidos-surtidos/pedidos-dia'); 
       const data = response.data[turno] || [];
       
       // Calcular tiempos y otros datos

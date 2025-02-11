@@ -152,36 +152,68 @@ function Transporte() {
   const [statusText, setStatusText] = useState("Cargando...");
 
   useEffect(() => {
+    let isCancelled = false;
+
     const fetchStatuses = async (data, setData) => {
-        const updatedData = await Promise.all(data.map(async (route) => {
-            const orderNumber = route['NO ORDEN'];
-            console.log('Obteniendo estado del pedido:', orderNumber);
+      const updatedData = await Promise.all(
+        data.map(async (route) => {
+          const orderNumber = route["NO ORDEN"];
+          console.log("Obteniendo estado del pedido:", orderNumber);
 
-            try {
-                const response = await axios.get(`http://192.168.3.27:3007/api/Trasporte/status/${orderNumber}`);
-                const { progress, statusText } = response.data;
-                return {
-                    ...route,
-                    progress,
-                    statusText,
-                };
-            } catch (error) {
-                console.error(`Error al obtener el estado para el pedido ${orderNumber}:`, error);
-                return {
-                    ...route,
-                    statusText: 'Error al cargar datos',
-                };
-            }
-        }));
+          try {
+            // Realizar la solicitud al backend
+            const response = await axios.get(
+              `http://192.168.3.27:3007/api/Trasporte/status/${orderNumber}`
+            );
+            const { progress, statusText } = response.data;
 
+            return {
+              ...route,
+              progress,
+              statusText,
+            };
+          } catch (error) {
+            console.error(
+              `Error al obtener el estado para el pedido ${orderNumber}:`,
+              error
+            );
+            return {
+              ...route,
+              statusText: "Error al cargar datos",
+            };
+          }
+        })
+      );
+
+      // Actualizar el estado solo si el componente sigue montado
+      if (!isCancelled) {
         setData(updatedData);
+      }
     };
 
-    // Ejecutar para cada tipo de datos si no están vacíos
-    if (paqueteriaData.length > 0) fetchStatuses(paqueteriaData, setPaqueteriaData);
-    if (directaData.length > 0) fetchStatuses(directaData, setDirectaData);
-    if (ventaEmpleadoData.length > 0) fetchStatuses(ventaEmpleadoData, setVentaEmpleadoData);
-}, [paqueteriaData, directaData, ventaEmpleadoData]);
+    const fetchInitialStatuses = () => {
+      // Ejecutar la carga inicial para mostrar los avances
+      if (paqueteriaData.length > 0)
+        fetchStatuses(paqueteriaData, setPaqueteriaData);
+      if (directaData.length > 0) fetchStatuses(directaData, setDirectaData);
+      if (ventaEmpleadoData.length > 0)
+        fetchStatuses(ventaEmpleadoData, setVentaEmpleadoData);
+    };
+
+    // Cargar el estado inicial al montar el componente
+    fetchInitialStatuses();
+
+    // Programar la actualización cada 20 minutos (1200000 ms)
+    const intervalId = setInterval(() => {
+      console.log("Ejecutando actualización periódica de estados...");
+      fetchInitialStatuses();
+    }, 1200000);
+
+    return () => {
+      clearInterval(intervalId);
+      isCancelled = true; // Evitar actualizaciones si el componente se desmonta
+    };
+  }, [paqueteriaData, directaData, ventaEmpleadoData]);
 
   const handleRowClick = (routeData) => {
     console.log("Route Data:", routeData); // Esto te ayudará a verificar qué datos están siendo pasados

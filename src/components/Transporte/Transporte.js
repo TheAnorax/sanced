@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useRef } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import DeleteIcon from "@mui/icons-material/Delete";
 import CloseIcon from "@mui/icons-material/Close";
 import * as XLSX from "xlsx";
@@ -148,9 +148,6 @@ function Transporte() {
   const [filterOrderValue, setFilterOrderValue] = useState("");
   const [highlightedRow, setHighlightedRow] = useState(null); // Fila temporalmente resaltada
 
-  const [progress, setProgress] = useState(0);
-  const [statusText, setStatusText] = useState("Cargando...");
-
   useEffect(() => {
     let isCancelled = false;
 
@@ -158,7 +155,7 @@ function Transporte() {
       const updatedData = await Promise.all(
         data.map(async (route) => {
           const orderNumber = route["NO ORDEN"];
-          console.log("Obteniendo estado del pedido:", orderNumber);
+          // console.log("Obteniendo estado del pedido:", orderNumber);
 
           try {
             // Realizar la solicitud al backend
@@ -205,7 +202,7 @@ function Transporte() {
 
     // Programar la actualización cada 20 minutos (1200000 ms)
     const intervalId = setInterval(() => {
-      console.log("Ejecutando actualización periódica de estados...");
+      // console.log("Ejecutando actualización periódica de estados...");
       fetchInitialStatuses();
     }, 1200000);
 
@@ -216,7 +213,7 @@ function Transporte() {
   }, [paqueteriaData, directaData, ventaEmpleadoData]);
 
   const handleRowClick = (routeData) => {
-    console.log("Route Data:", routeData); // Esto te ayudará a verificar qué datos están siendo pasados
+    // console.log("Route Data:", routeData); // Esto te ayudará a verificar qué datos están siendo pasados
     setTotalValue(routeData.TOTAL);
   };
 
@@ -264,7 +261,7 @@ function Transporte() {
   }, []);
 
   useEffect(() => {
-    console.log("Datos de la paquetería:", sentRoutesData); // Verifica el estado
+    // console.log("Datos de la paquetería:", sentRoutesData); // Verifica el estado
   }, [sentRoutesData]);
 
   useEffect(() => {
@@ -295,18 +292,6 @@ function Transporte() {
   }, [sentRoutesData]);
 
   useEffect(() => {
-    console.log("Estado del modal abierto:", guiaModalOpen);
-  }, [guiaModalOpen]);
-
-  useEffect(() => {
-    const suma = prorateoFacturaLT + prorateoFacturaPaqueteria;
-    setSumaFlete(
-      parseFloat(prorateoFacturaLT) + parseFloat(prorateoFacturaPaqueteria)
-    );
-    console.log("Suma Flete calculada:", suma);
-  }, [prorateoFacturaLT, prorateoFacturaPaqueteria]);
-
-  useEffect(() => {
     if (total && prorateoFacturaLT) {
       const porcentajeEnvio = (prorateoFacturaLT / total) * 100;
       setPorcentajeEnvio(porcentajeEnvio.toFixed(2)); // Redondear a 2 decimales
@@ -316,8 +301,6 @@ function Transporte() {
   }, [total, prorateoFacturaLT]);
 
   useEffect(() => {
-    console.log("Total:", total);
-
     if (total && prorateoFacturaPaqueteria) {
       const porcentajePaqueteria = (prorateoFacturaPaqueteria / total) * 100;
       setPorcentajePaqueteria(porcentajePaqueteria.toFixed(2)); // Redondear a 2 decimales
@@ -341,7 +324,7 @@ function Transporte() {
     if (total && sumaGastosExtras) {
       const porcentaje =
         (parseFloat(sumaGastosExtras) / parseFloat(total)) * 100;
-      console.log("Porcentaje Global calculado:", porcentaje);
+      // console.log("Porcentaje Global calculado:", porcentaje);
       setPorcentajeGlobal(porcentaje.toFixed(2)); // Redondear a 2 decimales
     } else {
       setPorcentajeGlobal("");
@@ -352,7 +335,7 @@ function Transporte() {
     if (total && sumaGastosExtras) {
       const porcentaje =
         (parseFloat(sumaGastosExtras) / parseFloat(total)) * 100;
-      console.log("Porcentaje Global calculado:", porcentaje);
+      // console.log("Porcentaje Global calculado:", porcentaje);
       setPorcentajeGlobal(porcentaje.toFixed(2)); // Redondear a 2 decimales
     } else {
       setPorcentajeGlobal("");
@@ -363,14 +346,6 @@ function Transporte() {
     fetchTransportistas();
     fetchEmpresas();
   }, []);
-
-  useEffect(() => {
-    fetchTransportistas();
-  }, []);
-
-  useEffect(() => {
-    console.log("Observaciones cargadas:", observacionesPorRegistro);
-  }, [observacionesPorRegistro]);
 
   useEffect(() => {
     sentRoutesData.forEach((routeData) => {
@@ -389,13 +364,6 @@ function Transporte() {
     });
   }, [data]);
 
-  useEffect(() => {
-    localStorage.setItem(
-      "observacionesPorRegistro",
-      JSON.stringify(observacionesPorRegistro)
-    );
-  }, [observacionesPorRegistro]);
-
   const exportToImage = () => {
     const element = document.getElementById("data-to-capture");
 
@@ -410,24 +378,6 @@ function Transporte() {
       link.click();
     });
   };
-
-  useEffect(() => {
-    const savedDirectaData =
-      JSON.parse(localStorage.getItem("directaData")) || [];
-    const savedPaqueteriaData =
-      JSON.parse(localStorage.getItem("paqueteriaData")) || [];
-    setDirectaData(savedDirectaData);
-    setPaqueteriaData(savedPaqueteriaData);
-  }, []);
-
-  useEffect(() => {
-    const savedDirectaData =
-      JSON.parse(localStorage.getItem("directaData")) || [];
-    const savedPaqueteriaData =
-      JSON.parse(localStorage.getItem("paqueteriaData")) || [];
-    setDirectaData(savedDirectaData);
-    setPaqueteriaData(savedPaqueteriaData);
-  }, []);
 
   const handleChangeTab = (event, newValue) => {
     setTabIndex(newValue);
@@ -478,7 +428,7 @@ function Transporte() {
     reader.onload = (evt) => {
       const bstr = evt.target.result;
       const workbook = XLSX.read(bstr, { type: "binary" });
-      console.log("✅ Workbook cargado:", workbook);
+      // console.log("✅ Workbook cargado:", workbook);
 
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
       const jsonData = XLSX.utils.sheet_to_json(worksheet, {
@@ -486,7 +436,7 @@ function Transporte() {
         range: 6, // Omitir las primeras 6 filas
       });
 
-      console.log("📊 Datos del Excel antes del filtrado:", jsonData);
+      // console.log("📊 Datos del Excel antes del filtrado:", jsonData);
 
       // Obtener la fecha de ayer y anteayer en formato "DD/MM/YYYY"
       const today = new Date();
@@ -508,8 +458,8 @@ function Transporte() {
         { day: "2-digit", month: "2-digit", year: "numeric" }
       );
 
-      console.log("📅 Fecha de ayer:", yesterdayFormatted);
-      console.log("📅 Fecha de anteayer:", dayBeforeYesterdayFormatted);
+      // console.log("📅 Fecha de ayer:", yesterdayFormatted);
+      // console.log("📅 Fecha de anteayer:", dayBeforeYesterdayFormatted);
 
       // Filtrar datos por la fecha de ayer y anteayer y "Estatus" = "Lista Surtido"
       const filteredData = jsonData.filter((row) => {
@@ -550,11 +500,11 @@ function Transporte() {
           year: "numeric",
         });
 
-        console.log(
-          `📆 Comparando: ${rowDateFormatted} == ${yesterdayFormatted} o ${dayBeforeYesterdayFormatted} ?`,
-          rowDateFormatted === yesterdayFormatted ||
-            rowDateFormatted === dayBeforeYesterdayFormatted
-        );
+        // console.log(
+        //   `📆 Comparando: ${rowDateFormatted} == ${yesterdayFormatted} o ${dayBeforeYesterdayFormatted} ?`,
+        //   rowDateFormatted === yesterdayFormatted ||
+        //     rowDateFormatted === dayBeforeYesterdayFormatted
+        // );
 
         return (
           (rowDateFormatted === yesterdayFormatted ||
@@ -563,7 +513,7 @@ function Transporte() {
         );
       });
 
-      console.log("✅ Datos filtrados correctamente:", filteredData);
+      // console.log("✅ Datos filtrados correctamente:", filteredData);
 
       // Mapea los datos filtrados
       const mappedData = filteredData
@@ -738,28 +688,24 @@ function Transporte() {
   };
 
   const fetchObservacionPorRegistro = async (venta) => {
-    try {
-      const response = await fetch(
-        `http://192.168.3.27:3007/api/Trasporte/clientes/observaciones/${venta}`
-      );
-      const data = await response.json();
-      console.log("Datos recibidos:", data, "Venta:", venta);
+    const clientesUnicos = [
+      ...new Set(sentRoutesData.map((route) => route["NUM. CLIENTE"])),
+    ];
 
-      setObservacionesPorRegistro((prev) => {
-        const nuevoEstado = {
-          ...prev,
-          [venta]: data.observacion || "Sin observaciones disponibles",
-        };
-        console.log("Nuevo estado de observaciones:", nuevoEstado);
-        return nuevoEstado;
-      });
+    try {
+      const response = await axios.post(
+        `http://192.168.3.27:3007/api/Trasporte/clientes/observaciones`,
+        { clientes: clientesUnicos }
+      );
+
+      setObservacionesPorRegistro(response.data);
     } catch (error) {
-      console.error("Error al obtener observaciones:", error.message);
+      console.error("Error al obtener observaciones:", error);
     }
   };
 
   const handleSelectRoute = (route) => {
-    console.log("Ruta seleccionada:", route);
+    // console.log("Ruta seleccionada:", route);
 
     // Actualiza las rutas seleccionadas
     setSelectedRoutes((prevRoutes) => {
@@ -833,16 +779,14 @@ function Transporte() {
               GUIA: guiaEnviar, // ✅ Asignar "NA" si es Directa o Venta Empleado
             });
 
-            console.log(
-              `📌 Insertando: NO ORDEN: ${row["NO ORDEN"]}, TIPO: ${tipoRutaActual}, GUIA: ${guiaEnviar}`
-            );
+            // console.log( `📌 Insertando: NO ORDEN: ${row["NO ORDEN"]}, TIPO: ${tipoRutaActual}, GUIA: ${guiaEnviar}` );
           });
         } else {
           console.warn(`⚠ Ruta ${route} no tiene datos o filas definidas.`);
         }
       });
 
-      console.log("📤 Datos enviados a la base de datos:", newSentRoutesData);
+      // console.log("📤 Datos enviados a la base de datos:", newSentRoutesData);
 
       try {
         const response = await fetch(
@@ -858,7 +802,7 @@ function Transporte() {
 
         if (response.ok) {
           const result = await response.json();
-          console.log("✅ Rutas insertadas correctamente:", result);
+          // console.log("✅ Rutas insertadas correctamente:", result);
           handleSnackbarOpen("Rutas enviadas con éxito y registradas.");
 
           // Agregar los datos a la segunda tabla
@@ -976,38 +920,6 @@ function Transporte() {
     return totalGeneral;
   };
 
-  const openGuiaModal = (routeData) => {
-    console.log("Abriendo modal con datos:", routeData);
-
-    console.log("Tipo:", routeData.TIPO);
-
-    setGuia(routeData.guia);
-    setSelectedNoOrden(routeData.noOrden);
-    setPaqueteria(routeData.paqueteria);
-    setFechaEntregaCliente(routeData.fechaEntregaCliente);
-    setDiasEntrega(routeData.diasEntrega);
-    setEntregaSatisfactoria(routeData.entregaSatisfactoria);
-    setMotivo(routeData.motivo);
-    setTotalFacturaLT(routeData.totalFacturaLT);
-    setProrateoFacturaLT(routeData.prorateoFacturaLT);
-    setProrateoFacturaPaqueteria(routeData.prorateoFacturaPaqueteria);
-    setGastosExtras(routeData.gastosExtras);
-    setSumaFlete(routeData.sumaFlete);
-    setPorcentajeEnvio(routeData.porcentajeEnvio);
-    setPorcentajePaqueteria(routeData.porcentajePaqueteria);
-    setSumaGastosExtras(routeData.sumaGastosExtras);
-    setPorcentajeGlobal(routeData.porcentajeGlobal);
-    setDiferencia(routeData.diferencia);
-    setNoFactura(routeData.no_Factura);
-    setFechaFactura(routeData.fechaFactura);
-    setTarimas(routeData.tarimas);
-    setNumeroFacturaLT(routeData.numeroFacturaLT);
-    setTotal(routeData.total);
-    setTipo(routeData.TIPO || "");
-
-    setGuiaModalOpen(true);
-  };
-
   const handleProrateoFacturaLTChange = (e) => {
     const value = parseFloat(e.target.value) || 0; // Convertir a número
     setProrateoFacturaLT(value); // Actualiza el valor en el estado
@@ -1030,31 +942,31 @@ function Transporte() {
 
     try {
       const url = `http://192.168.3.27:3007/api/Trasporte/paqueteria/actualizar-guia/${selectedNoOrden}/${guia}`;
-      console.log("📤 Enviando actualización:", {
-        noOrden: selectedNoOrden,
-        guia,
-        paqueteria,
-        fechaEntregaCliente,
-        diasEntrega,
-        entregaSatisfactoria,
-        motivo,
-        totalFacturaLT,
-        prorateoFacturaLT,
-        prorateoFacturaPaqueteria,
-        gastosExtras,
-        sumaFlete,
-        porcentajeEnvio,
-        porcentajePaqueteria,
-        sumaGastosExtras,
-        porcentajeGlobal,
-        diferencia,
-        noFactura,
-        fechaFactura,
-        tarimas,
-        numeroFacturaLT,
-        total,
-        tipo,
-      });
+      // console.log("📤 Enviando actualización:", {
+      //   noOrden: selectedNoOrden,
+      //   guia,
+      //   paqueteria,
+      //   fechaEntregaCliente,
+      //   diasEntrega,
+      //   entregaSatisfactoria,
+      //   motivo,
+      //   totalFacturaLT,
+      //   prorateoFacturaLT,
+      //   prorateoFacturaPaqueteria,
+      //   gastosExtras,
+      //   sumaFlete,
+      //   porcentajeEnvio,
+      //   porcentajePaqueteria,
+      //   sumaGastosExtras,
+      //   porcentajeGlobal,
+      //   diferencia,
+      //   noFactura,
+      //   fechaFactura,
+      //   tarimas,
+      //   numeroFacturaLT,
+      //   total,
+      //   tipo,
+      // });
 
       const response = await fetch(url, {
         method: "PUT",
@@ -1085,7 +997,7 @@ function Transporte() {
       });
 
       if (response.ok) {
-        console.log("✅ Guía actualizada correctamente.");
+        // console.log("✅ Guía actualizada correctamente.");
         closeDirectaModal();
       } else {
         const errorData = await response.json();
@@ -1733,7 +1645,7 @@ function Transporte() {
   });
 
   const openDirectaModal = (data) => {
-    console.log("Datos en openDirectaModal:", data); // Verifica que el valor correcto se muestre aquí
+    // console.log("Datos en openDirectaModal:", data); // Verifica que el valor correcto se muestre aquí
 
     setSelectedDirectaData(data);
 
@@ -1790,7 +1702,7 @@ function Transporte() {
       const response = await axios.get(
         "http://192.168.3.27:3007/api/Trasporte/transportistas"
       );
-      console.log("Datos de transportistas:", response.data); // Verifica que contenga datos
+      // console.log("Datos de transportistas:", response.data); // Verifica que contenga datos
       setTransportistaData(response.data);
     } catch (error) {
       console.error("Error al obtener transportistas:", error);
@@ -1803,7 +1715,7 @@ function Transporte() {
         "http://192.168.3.27:3007/api/Trasporte/transportistas/empresas"
       );
 
-      console.log("Datos de empresa:", response.data); // Verifica que contenga datos
+      // console.log("Datos de empresa:", response.data); // Verifica que contenga datos
       setEmpresaData(response.data);
     } catch (error) {
       console.error("Error al obtener empresas:", error);
@@ -1812,7 +1724,7 @@ function Transporte() {
   };
 
   const handleRowChange = (index, field, value) => {
-    console.log(`🛠️ handleRowChange - Campo: ${field}, Valor: ${value}`);
+    // console.log(`🛠️ handleRowChange - Campo: ${field}, Valor: ${value}`);
 
     // Clonar los datos sin referencias
     let updatedData = [...directaData, ...paqueteriaData].map((item) => ({
@@ -1838,10 +1750,10 @@ function Transporte() {
         );
 
         if (empresaSeleccionada) {
-          console.log(
-            "🏢 Empresa seleccionada correctamente:",
-            empresaSeleccionada
-          );
+          // console.log(
+          //   "🏢 Empresa seleccionada correctamente:",
+          //   empresaSeleccionada
+          // );
           updatedData[index] = {
             ...updatedData[index],
             empresa: empresaSeleccionada.empresa, // Mantener el nombre de la empresa
@@ -1871,7 +1783,7 @@ function Transporte() {
     setDirectaData(updatedData.filter((item) => item.TIPO === "directa"));
     setPaqueteriaData(updatedData.filter((item) => item.TIPO === "paqueteria"));
 
-    console.log("📊 Datos después de actualizar:", updatedData[index]);
+    // console.log("📊 Datos después de actualizar:", updatedData[index]);
   };
 
   const handleInsertarVisita = async (routeData, index) => {
@@ -1892,11 +1804,11 @@ function Transporte() {
         id_veh: routeData.id_veh,
       };
 
-      // Mostrar datos en consola antes de enviar
-      console.log(
-        "📤 Datos preparados para envío:",
-        JSON.stringify(dataToSend, null, 2)
-      );
+      // // Mostrar datos en consola antes de enviar
+      // console.log(
+      //   "📤 Datos preparados para envío:",
+      //   JSON.stringify(dataToSend, null, 2)
+      // );
 
       // Enviar la solicitud al backend
       const response = await axios.post(
@@ -1993,7 +1905,7 @@ function Transporte() {
   };
 
   useEffect(() => {
-    console.log("Observaciones actuales:", observacionesPorRegistro);
+    // console.log("Observaciones actuales:", observacionesPorRegistro);
   }, [observacionesPorRegistro, groupedData]);
 
   const moveRowUp = (route, index) => {
@@ -2038,7 +1950,7 @@ function Transporte() {
       case "PITIC":
         return "https://transportespitic.com/soluciones-tecnologia.html";
       default:
-        console.log("Transporte no encontrado. Usando enlace por defecto.");
+        // console.log("Transporte no encontrado. Usando enlace por defecto.");
         return "https://app2.simpliroute.com/#/planner/vehicles";
     }
   };
@@ -3171,7 +3083,7 @@ function Transporte() {
                                       const url = getTransportUrl(
                                         routeData.TRANSPORTE
                                       );
-                                      console.log("Abriendo enlace:", url);
+                                      // console.log("Abriendo enlace:", url);
                                       window.open(url, "_blank");
                                     }}
                                     size="small"
@@ -3455,7 +3367,7 @@ function Transporte() {
                                           const url = getTransportUrl(
                                             routeData.TRANSPORTE
                                           );
-                                          console.log("Abriendo enlace:", url);
+                                          // console.log("Abriendo enlace:", url);
                                           window.open(url, "_blank");
                                         }}
                                         size="small"
@@ -3775,10 +3687,7 @@ function Transporte() {
                                         : ""
                                     }
                                     onChange={(e) => {
-                                      console.log(
-                                        "🏢 Empresa seleccionada en el select:",
-                                        e.target.value
-                                      );
+                                      // console.log( "🏢 Empresa seleccionada en el select:", e.target.value);
                                       handleRowChange(
                                         index,
                                         "id_veh",
@@ -3836,10 +3745,7 @@ function Transporte() {
                                     variant="contained"
                                     color="secondary"
                                     onClick={() => {
-                                      console.log(
-                                        "🟡 Insertar visita clickeado",
-                                        routeData
-                                      );
+                                      // console.log("🟡 Insertar visita clickeado",routeData);
                                       handleInsertarVisita(routeData, index);
                                     }}
                                     disabled={routeData.insertado}

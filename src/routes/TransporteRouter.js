@@ -31,6 +31,6 @@ router.get('/obtener-datos', obtenerDatos);
 
 router.delete('/ruta/eliminar/:noOrden', eliminarRuta);  // Esta ruta eliminará la ruta por el parámetro noOrden
 
-router.get('/status/:orderNumber', getOrderStatus);
+// router.get('/status/:orderNumber', getOrderStatus);
 
 module.exports = router;

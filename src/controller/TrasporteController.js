@@ -53,7 +53,7 @@ const getUltimaFechaEmbarque = async (req, res) => {
 
 const insertarRutas = async (req, res) => {
   const { rutas } = req.body;
-  console.log("📥 Datos recibidos del frontend:", rutas);
+  // console.log("📥 Datos recibidos del frontend:", rutas);
 
   try {
     for (let ruta of rutas) {
@@ -124,18 +124,21 @@ const insertarRutas = async (req, res) => {
 
 const obtenerRutasDePaqueteria = async (req, res) => {
   try {
-    const query = "SELECT * FROM paqueteria"; // Consulta SQL para obtener todas las rutas
-    const [rows] = await pool.query(query);
+    const { page = 1, limit = 50 } = req.query; // Paginación
+    const offset = (page - 1) * limit;
+
+    const query = "SELECT * FROM paqueteria LIMIT ? OFFSET ?";
+    const [rows] = await pool.query(query, [parseInt(limit), parseInt(offset)]);
 
     if (rows.length > 0) {
-      res.json(rows); // Devolver todas las rutas de paquetería
+      res.json(rows);
     } else {
       res
         .status(404)
         .json({ message: "No hay rutas de paquetería disponibles." });
     }
   } catch (error) {
-    console.error("Error al obtener las rutas de paquetería:", error.message);
+    console.error("Error al obtener rutas de paquetería:", error.message);
     res
       .status(500)
       .json({ message: "Error al obtener las rutas de paquetería" });
@@ -291,47 +294,26 @@ const actualizarGuia = async (req, res) => {
 
 const getPedidosEmbarque = async (req, res) => {
   try {
-    const codigoPedido = req.params.codigo_ped;
+    const { codigo_ped } = req.params;
 
-    const [rows] = await pool.query(
-      `
-            SELECT 
-                pe.pedido,
-                pe.codigo_ped,
-                p.des,
-                pe.cantidad, 
-                pe.um,
-                pe._pz, 
-                pe._inner, 
-                pe._master,
-                pe.cantidad,
-                pe.caja,
-                pe.estado
-            FROM 
-                pedido_finalizado pe
-            JOIN 
-                productos p ON pe.codigo_ped = p.codigo_pro
-            WHERE 
-                pe.pedido = ?;  -- Filtrar por número de pedido
-      `,
-      [codigoPedido]
-    );
+    const query = `
+      SELECT pe.pedido, pe.codigo_ped, p.des, pe.cantidad, pe.um, pe._pz, 
+             pe._inner, pe._master, pe.cantidad, pe.caja, pe.estado
+      FROM pedido_finalizado pe
+      LEFT JOIN productos p ON pe.codigo_ped = p.codigo_pro
+      WHERE pe.pedido = ? LIMIT 50;
+    `;
 
-    console.log("Resultados de la consulta para el PDF:", rows);
+    const [rows] = await pool.query(query, [codigo_ped]);
 
     if (rows.length === 0) {
-      return res
-        .status(404)
-        .json({ message: "No se encontraron registros para este pedido." });
+      return res.status(404).json({ message: "No se encontraron registros." });
     }
 
     res.json(rows);
   } catch (error) {
-    console.error("Error al obtener los pedidos de embarque:", error);
-    res.status(500).json({
-      message: "Error al obtener los pedidos de embarque",
-      error: error.message,
-    });
+    console.error("Error al obtener pedidos de embarque:", error);
+    res.status(500).json({ message: "Error al obtener pedidos de embarque" });
   }
 };
 
@@ -382,7 +364,7 @@ const getEmpresasTransportistas = async (req, res) => {
 const insertarVisita = async (req, res) => {
   const { id_vit, clave_visit, motivo, personal, reg_entrada, id_veh } =
     req.body;
-  console.log("📥 Datos recibidos en la solicitud:", req.body);
+  // console.log("📥 Datos recibidos en la solicitud:", req.body);
 
   if (!id_veh) {
     return res
@@ -404,7 +386,7 @@ const insertarVisita = async (req, res) => {
         .json({ message: `No se encontró el vehículo con ID: ${id_veh}` });
     }
 
-    console.log("🔍 Vehículo encontrado:", vehiculoRows[0]);
+    // console.log("🔍 Vehículo encontrado:", vehiculoRows[0]);
 
     // Insertar la nueva visita
     const [insertVisitaResult] = await pool.query(
@@ -419,10 +401,10 @@ const insertarVisita = async (req, res) => {
       throw new Error("❌ Error al insertar la visita.");
     }
 
-    console.log(
-      "✅ Visita insertada con éxito. Resultado:",
-      insertVisitaResult
-    );
+    // console.log(
+    //   "✅ Visita insertada con éxito. Resultado:",
+    //   insertVisitaResult
+    // );
 
     // Actualizar el vehículo después de insertar la visita
     const [updateVehiculoResult] = await pool.query(
@@ -438,7 +420,7 @@ const insertarVisita = async (req, res) => {
       throw new Error("❌ No se pudo actualizar el vehículo.");
     }
 
-    console.log("✅ Vehículo actualizado correctamente.");
+    // console.log("✅ Vehículo actualizado correctamente.");
 
     res.status(200).json({
       message: "Visita insertada y vehículo actualizado correctamente.",
@@ -512,56 +494,56 @@ const eliminarRuta = async (req, res) => {
   }
 };
 
-const getOrderStatus = async (req, res) => {
-  const { orderNumber } = req.params;
+// const getOrderStatus = async (req, res) => {
+//   const { orderNumber } = req.params;
 
-  try {
-    const tables = [
-      "pedi",
-      "pedido_surtido",
-      "pedido_embarque",
-      "pedido_finalizado",
-    ];
-    const statusInfo = {
-      pedi: { progress: 25, statusText: "En pedido" },
-      pedido_surtido: { progress: 50, statusText: "Surtiendo" },
-      pedido_embarque: { progress: 75, statusText: "Embarcando" },
-      pedido_finalizado: { progress: 100, statusText: "Finalizado" },
-    };
+//   try {
+//     const tables = [
+//       "pedi",
+//       "pedido_surtido",
+//       "pedido_embarque",
+//       "pedido_finalizado",
+//     ];
+//     const statusInfo = {
+//       pedi: { progress: 25, statusText: "En pedido" },
+//       pedido_surtido: { progress: 50, statusText: "Surtiendo" },
+//       pedido_embarque: { progress: 75, statusText: "Embarcando" },
+//       pedido_finalizado: { progress: 100, statusText: "Finalizado" },
+//     };
 
-    let bestStatus = { progress: 0, statusText: "No encontrado", table: null };
+//     let bestStatus = { progress: 0, statusText: "No encontrado", table: null };
 
-    for (const table of tables) {
-      const [result] = await pool.query(
-        `SELECT * FROM ${table} WHERE pedido = ?`,
-        [orderNumber]
-      );
+//     for (const table of tables) {
+//       const [result] = await pool.query(
+//         `SELECT * FROM ${table} WHERE pedido = ?`,
+//         [orderNumber]
+//       );
 
-      if (result.length > 0) {
-        const currentStatus = statusInfo[table];
-        // Actualizar solo si el progreso es mayor al actual
-        if (currentStatus.progress > bestStatus.progress) {
-          bestStatus = { ...currentStatus, table };
-        }
-      }
-    }
+//       if (result.length > 0) {
+//         const currentStatus = statusInfo[table];
+//         // Actualizar solo si el progreso es mayor al actual
+//         if (currentStatus.progress > bestStatus.progress) {
+//           bestStatus = { ...currentStatus, table };
+//         }
+//       }
+//     }
 
-    if (bestStatus.table) {
-      return res.status(200).json(bestStatus);
-    } else {
-      return res
-        .status(404)
-        .json({
-          message: "Pedido no encontrado",
-          progress: 0,
-          statusText: "No encontrado",
-        });
-    }
-  } catch (error) {
-    console.error("Error al buscar el pedido:", error);
-    res.status(500).json({ message: "Error interno del servidor" });
-  }
-};
+//     if (bestStatus.table) {
+//       return res.status(200).json(bestStatus);
+//     } else {
+//       return res
+//         .status(404)
+//         .json({
+//           message: "Pedido no encontrado",
+//           progress: 0,
+//           statusText: "No encontrado",
+//         });
+//     }
+//   } catch (error) {
+//     console.error("Error al buscar el pedido:", error);
+//     res.status(500).json({ message: "Error interno del servidor" });
+//   }
+// };
 
 module.exports = {
   getObservacionesPorCliente,
@@ -577,5 +559,5 @@ module.exports = {
   guardarDatos,
   obtenerDatos,
   eliminarRuta,
-  getOrderStatus,
+  // getOrderStatus,
 };

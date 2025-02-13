@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useRef } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import DeleteIcon from "@mui/icons-material/Delete";
 import CloseIcon from "@mui/icons-material/Close";
 import * as XLSX from "xlsx";
@@ -69,7 +69,6 @@ function Transporte() {
       return storedObservaciones ? JSON.parse(storedObservaciones) : {};
     }
   );
-  const [loadingObservacionId, setLoadingObservacionId] = useState(null);
   const [tabIndex, setTabIndex] = useState(0);
 
   const [selectedRoutes, setSelectedRoutes] = useState([]);
@@ -148,75 +147,83 @@ function Transporte() {
   const [filterOrderValue, setFilterOrderValue] = useState("");
   const [highlightedRow, setHighlightedRow] = useState(null); // Fila temporalmente resaltada
 
-  const [progress, setProgress] = useState(0);
-  const [statusText, setStatusText] = useState("Cargando...");
+  const [historicoData, setHistoricoData] = useState([]);
+  const [selectedColumns, setSelectedColumns] = useState([]);
+  const [selectedCliente, setSelectedCliente] = useState(""); // Cliente seleccionado
+  const [clienteFilteredData, setClienteFilteredData] = useState([]); // 🔹 Cambio de nombre para evitar conflicto
+  const [clientes, setClientes] = useState([]);
 
-  useEffect(() => {
-    let isCancelled = false;
+  const [historicoModalOpen, setHistoricoModalOpen] = useState(false);
+  const [columnasDisponibles, setColumnasDisponibles] = useState([]);
 
-    const fetchStatuses = async (data, setData) => {
-      const updatedData = await Promise.all(
-        data.map(async (route) => {
-          const orderNumber = route["NO ORDEN"];
-          console.log("Obteniendo estado del pedido:", orderNumber);
 
-          try {
-            // Realizar la solicitud al backend
-            const response = await axios.get(
-              `http://192.168.3.27:3007/api/Trasporte/status/${orderNumber}`
-            );
-            const { progress, statusText } = response.data;
 
-            return {
-              ...route,
-              progress,
-              statusText,
-            };
-          } catch (error) {
-            console.error(
-              `Error al obtener el estado para el pedido ${orderNumber}:`,
-              error
-            );
-            return {
-              ...route,
-              statusText: "Error al cargar datos",
-            };
-          }
-        })
-      );
+  // useEffect(() => {
+  //   let isCancelled = false;
 
-      // Actualizar el estado solo si el componente sigue montado
-      if (!isCancelled) {
-        setData(updatedData);
-      }
-    };
+  //   const fetchStatuses = async (data, setData) => {
+  //     const updatedData = await Promise.all(
+  //       data.map(async (route) => {
+  //         const orderNumber = route["NO ORDEN"];
+  //         // console.log("Obteniendo estado del pedido:", orderNumber);
 
-    const fetchInitialStatuses = () => {
-      // Ejecutar la carga inicial para mostrar los avances
-      if (paqueteriaData.length > 0)
-        fetchStatuses(paqueteriaData, setPaqueteriaData);
-      if (directaData.length > 0) fetchStatuses(directaData, setDirectaData);
-      if (ventaEmpleadoData.length > 0)
-        fetchStatuses(ventaEmpleadoData, setVentaEmpleadoData);
-    };
+  //         try {
+  //           // Realizar la solicitud al backend
+  //           const response = await axios.get(
+  //             `http://192.168.3.27:3007/api/Trasporte/status/${orderNumber}`
+  //           );
+  //           const { progress, statusText } = response.data;
 
-    // Cargar el estado inicial al montar el componente
-    fetchInitialStatuses();
+  //           return {
+  //             ...route,
+  //             progress,
+  //             statusText,
+  //           };
+  //         } catch (error) {
+  //           console.error(
+  //             `Error al obtener el estado para el pedido ${orderNumber}:`,
+  //             error
+  //           );
+  //           return {
+  //             ...route,
+  //             statusText: "Error al cargar datos",
+  //           };
+  //         }
+  //       })
+  //     );
 
-    // Programar la actualización cada 20 minutos (1200000 ms)
-    const intervalId = setInterval(() => {
-      console.log("Ejecutando actualización periódica de estados...");
-      fetchInitialStatuses();
-    }, 1200000);
+  //     // Actualizar el estado solo si el componente sigue montado
+  //     if (!isCancelled) {
+  //       setData(updatedData);
+  //     }
+  //   };
 
-    return () => {
-      clearInterval(intervalId);
-      isCancelled = true; // Evitar actualizaciones si el componente se desmonta
-    };
-  }, [paqueteriaData, directaData, ventaEmpleadoData]);
+  //   const fetchInitialStatuses = () => {
+  //     // Ejecutar la carga inicial para mostrar los avances
+  //     if (paqueteriaData.length > 0)
+  //       fetchStatuses(paqueteriaData, setPaqueteriaData);
+  //     if (directaData.length > 0) fetchStatuses(directaData, setDirectaData);
+  //     if (ventaEmpleadoData.length > 0)
+  //       fetchStatuses(ventaEmpleadoData, setVentaEmpleadoData);
+  //   };
+
+  //   // Cargar el estado inicial al montar el componente
+  //   fetchInitialStatuses();
+
+  //   // Programar la actualización cada 20 minutos (1200000 ms)
+  //   const intervalId = setInterval(() => {
+  //     // console.log("Ejecutando actualización periódica de estados...");
+  //     fetchInitialStatuses();
+  //   }, 1200000);
+
+  //   return () => {
+  //     clearInterval(intervalId);
+  //     isCancelled = true; // Evitar actualizaciones si el componente se desmonta
+  //   };
+  // }, [paqueteriaData, directaData, ventaEmpleadoData]);
 
   const handleRowClick = (routeData) => {
-    console.log("Route Data:", routeData); // Esto te ayudará a verificar qué datos están siendo pasados
+    // console.log("Route Data:", routeData); // Esto te ayudará a verificar qué datos están siendo pasados
     setTotalValue(routeData.TOTAL);
   };
 
@@ -264,7 +271,7 @@ function Transporte() {
   }, []);
 
   useEffect(() => {
-    console.log("Datos de la paquetería:", sentRoutesData); // Verifica el estado
+    // console.log("Datos de la paquetería:", sentRoutesData); // Verifica el estado
   }, [sentRoutesData]);
 
   useEffect(() => {
@@ -295,18 +302,6 @@ function Transporte() {
   }, [sentRoutesData]);
 
   useEffect(() => {
-    console.log("Estado del modal abierto:", guiaModalOpen);
-  }, [guiaModalOpen]);
-
-  useEffect(() => {
-    const suma = prorateoFacturaLT + prorateoFacturaPaqueteria;
-    setSumaFlete(
-      parseFloat(prorateoFacturaLT) + parseFloat(prorateoFacturaPaqueteria)
-    );
-    console.log("Suma Flete calculada:", suma);
-  }, [prorateoFacturaLT, prorateoFacturaPaqueteria]);
-
-  useEffect(() => {
     if (total && prorateoFacturaLT) {
       const porcentajeEnvio = (prorateoFacturaLT / total) * 100;
       setPorcentajeEnvio(porcentajeEnvio.toFixed(2)); // Redondear a 2 decimales
@@ -316,8 +311,6 @@ function Transporte() {
   }, [total, prorateoFacturaLT]);
 
   useEffect(() => {
-    console.log("Total:", total);
-
     if (total && prorateoFacturaPaqueteria) {
       const porcentajePaqueteria = (prorateoFacturaPaqueteria / total) * 100;
       setPorcentajePaqueteria(porcentajePaqueteria.toFixed(2)); // Redondear a 2 decimales
@@ -341,7 +334,7 @@ function Transporte() {
     if (total && sumaGastosExtras) {
       const porcentaje =
         (parseFloat(sumaGastosExtras) / parseFloat(total)) * 100;
-      console.log("Porcentaje Global calculado:", porcentaje);
+      // console.log("Porcentaje Global calculado:", porcentaje);
       setPorcentajeGlobal(porcentaje.toFixed(2)); // Redondear a 2 decimales
     } else {
       setPorcentajeGlobal("");
@@ -352,7 +345,7 @@ function Transporte() {
     if (total && sumaGastosExtras) {
       const porcentaje =
         (parseFloat(sumaGastosExtras) / parseFloat(total)) * 100;
-      console.log("Porcentaje Global calculado:", porcentaje);
+      // console.log("Porcentaje Global calculado:", porcentaje);
       setPorcentajeGlobal(porcentaje.toFixed(2)); // Redondear a 2 decimales
     } else {
       setPorcentajeGlobal("");
@@ -363,14 +356,6 @@ function Transporte() {
     fetchTransportistas();
     fetchEmpresas();
   }, []);
-
-  useEffect(() => {
-    fetchTransportistas();
-  }, []);
-
-  useEffect(() => {
-    console.log("Observaciones cargadas:", observacionesPorRegistro);
-  }, [observacionesPorRegistro]);
 
   useEffect(() => {
     sentRoutesData.forEach((routeData) => {
@@ -389,13 +374,6 @@ function Transporte() {
     });
   }, [data]);
 
-  useEffect(() => {
-    localStorage.setItem(
-      "observacionesPorRegistro",
-      JSON.stringify(observacionesPorRegistro)
-    );
-  }, [observacionesPorRegistro]);
-
   const exportToImage = () => {
     const element = document.getElementById("data-to-capture");
 
@@ -410,24 +388,6 @@ function Transporte() {
       link.click();
     });
   };
-
-  useEffect(() => {
-    const savedDirectaData =
-      JSON.parse(localStorage.getItem("directaData")) || [];
-    const savedPaqueteriaData =
-      JSON.parse(localStorage.getItem("paqueteriaData")) || [];
-    setDirectaData(savedDirectaData);
-    setPaqueteriaData(savedPaqueteriaData);
-  }, []);
-
-  useEffect(() => {
-    const savedDirectaData =
-      JSON.parse(localStorage.getItem("directaData")) || [];
-    const savedPaqueteriaData =
-      JSON.parse(localStorage.getItem("paqueteriaData")) || [];
-    setDirectaData(savedDirectaData);
-    setPaqueteriaData(savedPaqueteriaData);
-  }, []);
 
   const handleChangeTab = (event, newValue) => {
     setTabIndex(newValue);
@@ -464,9 +424,8 @@ function Transporte() {
       ) || 0,
     PARTIDAS: Number(row["Partidas"] || row["__EMPTY_22"] || 0),
     PIEZAS: Number(row["Cantidad"] || row["__EMPTY_23"] || 0),
-    DIRECCION: `${row["Calle"] || ""} ${row["Colonia"] || ""} ${
-      row["Municipio"] || ""
-    } ${row["Codigo Postal"] || ""} ${row["Estado"] || ""}`,
+    DIRECCION: `${row["Calle"] || ""} ${row["Colonia"] || ""} ${row["Municipio"] || ""
+      } ${row["Codigo Postal"] || ""} ${row["Estado"] || ""}`,
     CORREO: row["E-mail"] || "",
     TELEFONO: row["No. Telefonico"] || "",
   });
@@ -478,101 +437,78 @@ function Transporte() {
     reader.onload = (evt) => {
       const bstr = evt.target.result;
       const workbook = XLSX.read(bstr, { type: "binary" });
-      console.log("✅ Workbook cargado:", workbook);
 
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
       const jsonData = XLSX.utils.sheet_to_json(worksheet, {
-        defval: "", // Evitar valores `undefined`
+        defval: "",
         range: 6, // Omitir las primeras 6 filas
       });
 
-      console.log("📊 Datos del Excel antes del filtrado:", jsonData);
-
-      // Obtener la fecha de ayer y anteayer en formato "DD/MM/YYYY"
+      // 🔹 Definir las fechas de hoy, ayer y anteayer (ajustando el tiempo a medianoche)
       const today = new Date();
+      today.setHours(0, 0, 0, 0);
 
-      // Ayer
       const yesterday = new Date(today);
       yesterday.setDate(today.getDate() - 1);
-      const yesterdayFormatted = yesterday.toLocaleDateString("es-MX", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-      });
 
-      // Anteayer
       const dayBeforeYesterday = new Date(today);
       dayBeforeYesterday.setDate(today.getDate() - 2);
-      const dayBeforeYesterdayFormatted = dayBeforeYesterday.toLocaleDateString(
-        "es-MX",
-        { day: "2-digit", month: "2-digit", year: "numeric" }
+
+      // 🔹 Filtrar datos por la fecha de hoy, ayer y anteayer y "Estatus" = "Lista Surtido"
+      const filteredData = jsonData
+        .map((row) => {
+          if (!row["Fecha Lista Surtido"]) {
+            console.warn("⚠️ Registro sin fecha:", row);
+            return null; // Ignorar filas sin fecha
+          }
+
+          let rowDate;
+          if (typeof row["Fecha Lista Surtido"] === "number") {
+            // 🔹 Convertir formato numérico de Excel a fecha en JS
+            rowDate = new Date(Date.UTC(0, 0, row["Fecha Lista Surtido"] - 1));
+          } else {
+            // 🔹 Convertir string a Date (posibles formatos "DD/MM/YYYY" o "YYYY-MM-DD")
+            const dateParts = row["Fecha Lista Surtido"].split("/");
+            if (dateParts.length === 3) {
+              rowDate = new Date(dateParts[2], dateParts[1] - 1, dateParts[0]);
+            } else {
+              rowDate = new Date(row["Fecha Lista Surtido"]);
+            }
+          }
+
+          if (isNaN(rowDate.getTime())) {
+            console.warn("🚨 Fecha inválida detectada:", row["Fecha Lista Surtido"]);
+            return null;
+          }
+
+          // 🔹 Ajustar rowDate a medianoche para comparación precisa
+          rowDate.setHours(0, 0, 0, 0);
+          row.rowDateObject = rowDate; // Guardar el objeto Date para ordenarlo después
+
+          return (
+            (rowDate.getTime() === today.getTime() ||
+              rowDate.getTime() === yesterday.getTime() ||
+              rowDate.getTime() === dayBeforeYesterday.getTime()) &&
+            row["Estatus"] === "Lista Surtido"
+          )
+            ? row
+            : null;
+        })
+        .filter(Boolean); // Filtrar valores null
+
+      // 🔹 Ordenar por fecha de manera descendente
+      const sortedData = filteredData.sort(
+        (a, b) => b.rowDateObject - a.rowDateObject
       );
 
-      console.log("📅 Fecha de ayer:", yesterdayFormatted);
-      console.log("📅 Fecha de anteayer:", dayBeforeYesterdayFormatted);
-
-      // Filtrar datos por la fecha de ayer y anteayer y "Estatus" = "Lista Surtido"
-      const filteredData = jsonData.filter((row) => {
-        if (!row["Fecha Lista Surtido"]) {
-          console.warn("⚠️ Registro sin fecha:", row);
-          return false; // Ignorar filas sin fecha
-        }
-
-        let rowDate;
-        if (typeof row["Fecha Lista Surtido"] === "number") {
-          // 🔹 Convertir formato numérico de Excel a fecha
-          const excelDate = XLSX.SSF.parse_date_code(
-            row["Fecha Lista Surtido"]
-          );
-          rowDate = new Date(excelDate.y, excelDate.m - 1, excelDate.d);
-        } else {
-          // 🔹 Convertir string a Date (posibles formatos "DD/MM/YYYY" o "YYYY-MM-DD")
-          const dateParts = row["Fecha Lista Surtido"].split("/");
-          if (dateParts.length === 3) {
-            rowDate = new Date(dateParts[2], dateParts[1] - 1, dateParts[0]); // Convertir a YYYY-MM-DD
-          } else {
-            rowDate = new Date(row["Fecha Lista Surtido"]);
-          }
-        }
-
-        if (isNaN(rowDate.getTime())) {
-          console.warn(
-            "🚨 Fecha inválida detectada:",
-            row["Fecha Lista Surtido"]
-          );
-          return false; // Ignorar si la fecha es inválida
-        }
-
-        // Reformatear la fecha para compararla
-        const rowDateFormatted = rowDate.toLocaleDateString("es-MX", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-        });
-
-        console.log(
-          `📆 Comparando: ${rowDateFormatted} == ${yesterdayFormatted} o ${dayBeforeYesterdayFormatted} ?`,
-          rowDateFormatted === yesterdayFormatted ||
-            rowDateFormatted === dayBeforeYesterdayFormatted
-        );
-
-        return (
-          (rowDateFormatted === yesterdayFormatted ||
-            rowDateFormatted === dayBeforeYesterdayFormatted) &&
-          row["Estatus"] === "Lista Surtido"
-        );
-      });
-
-      console.log("✅ Datos filtrados correctamente:", filteredData);
-
-      // Mapea los datos filtrados
-      const mappedData = filteredData
+      // 🔹 Mapea los datos filtrados
+      const mappedData = sortedData
         .map(mapColumns)
         .filter((row) => row["NO ORDEN"]);
 
-      // Establece los datos filtrados y mapeados en el estado
       setData(mappedData);
     };
+
     reader.readAsBinaryString(file);
   };
 
@@ -738,28 +674,24 @@ function Transporte() {
   };
 
   const fetchObservacionPorRegistro = async (venta) => {
-    try {
-      const response = await fetch(
-        `http://192.168.3.27:3007/api/Trasporte/clientes/observaciones/${venta}`
-      );
-      const data = await response.json();
-      console.log("Datos recibidos:", data, "Venta:", venta);
+    const clientesUnicos = [
+      ...new Set(sentRoutesData.map((route) => route["NUM. CLIENTE"])),
+    ];
 
-      setObservacionesPorRegistro((prev) => {
-        const nuevoEstado = {
-          ...prev,
-          [venta]: data.observacion || "Sin observaciones disponibles",
-        };
-        console.log("Nuevo estado de observaciones:", nuevoEstado);
-        return nuevoEstado;
-      });
+    try {
+      const response = await axios.post(
+        `http://192.168.3.27:3007/api/Trasporte/clientes/observaciones`,
+        { clientes: clientesUnicos }
+      );
+
+      setObservacionesPorRegistro(response.data);
     } catch (error) {
-      console.error("Error al obtener observaciones:", error.message);
+      console.error("Error al obtener observaciones:", error);
     }
   };
 
   const handleSelectRoute = (route) => {
-    console.log("Ruta seleccionada:", route);
+    // console.log("Ruta seleccionada:", route);
 
     // Actualiza las rutas seleccionadas
     setSelectedRoutes((prevRoutes) => {
@@ -806,15 +738,12 @@ function Transporte() {
 
         if (routeData && routeData.rows) {
           routeData.rows.forEach((row) => {
-            // Obtener el tipo de la fila, si no tiene, usar el tipoRuta actual seleccionado
             let tipoRutaActual = row.TIPO
               ? row.TIPO.toLowerCase()
               : tipoRuta.toLowerCase();
 
-            // Definir la guía basada en el tipo de ruta
-            let guiaEnviar = row.GUIA || ""; // Mantener el valor original si existe
+            let guiaEnviar = row.GUIA || "";
 
-            // ✅ Si es "Directa" o "Venta Empleado", insertar "NA" en GUIA automáticamente
             if (
               tipoRutaActual === "directa" ||
               tipoRutaActual === "venta empleado"
@@ -832,17 +761,11 @@ function Transporte() {
               TIPO: tipoRutaActual, // ✅ Asegurar que se inserta el tipo correcto
               GUIA: guiaEnviar, // ✅ Asignar "NA" si es Directa o Venta Empleado
             });
-
-            console.log(
-              `📌 Insertando: NO ORDEN: ${row["NO ORDEN"]}, TIPO: ${tipoRutaActual}, GUIA: ${guiaEnviar}`
-            );
           });
         } else {
           console.warn(`⚠ Ruta ${route} no tiene datos o filas definidas.`);
         }
       });
-
-      console.log("📤 Datos enviados a la base de datos:", newSentRoutesData);
 
       try {
         const response = await fetch(
@@ -858,13 +781,10 @@ function Transporte() {
 
         if (response.ok) {
           const result = await response.json();
-          console.log("✅ Rutas insertadas correctamente:", result);
           handleSnackbarOpen("Rutas enviadas con éxito y registradas.");
 
-          // Agregar los datos a la segunda tabla
           setSentRoutesData((prevData) => [...prevData, ...newSentRoutesData]);
 
-          // Eliminar las rutas de groupedData después de enviarlas
           setGroupedData((prevData) => {
             const newGroupedData = { ...prevData };
             selectedRoutes.forEach((route) => {
@@ -872,9 +792,15 @@ function Transporte() {
             });
             return newGroupedData;
           });
+
+          setTotalClientes((prev) => - selectedRoutes.length);
+          setTotalPedidos((prev) => - selectedRoutes.length);
+          setTotalGeneral((prev) => - selectedRoutes.length);
+
         } else {
           handleSnackbarOpen("⚠ Hubo un error al registrar las rutas.");
         }
+
       } catch (error) {
         console.error("❌ Error al enviar las rutas:", error);
         handleSnackbarOpen("Error al enviar las rutas.");
@@ -932,15 +858,13 @@ function Transporte() {
   };
 
   const calculateTotalClientes = (rutasSeleccionadas) => {
-    const clientes = new Set(); // Usamos un Set para asegurar que los clientes sean únicos
+    const clientes = new Set(); // Utilizar un Set para asegurarnos de que los clientes sean únicos
 
     rutasSeleccionadas.forEach((route) => {
       const routeData = groupedData[route];
       if (routeData && routeData.rows) {
-        // Verificamos si hay datos de esa ruta
         routeData.rows.forEach((row) => {
-          // Aseguramos que estamos agregando correctamente al Set
-          clientes.add(row["NUM. CLIENTE"]);
+          clientes.add(row["NUM. CLIENTE"]); // Agregar solo clientes únicos
         });
       }
     });
@@ -976,45 +900,9 @@ function Transporte() {
     return totalGeneral;
   };
 
-  const openGuiaModal = (routeData) => {
-    console.log("Abriendo modal con datos:", routeData);
-
-    console.log("Tipo:", routeData.TIPO);
-
-    setGuia(routeData.guia);
-    setSelectedNoOrden(routeData.noOrden);
-    setPaqueteria(routeData.paqueteria);
-    setFechaEntregaCliente(routeData.fechaEntregaCliente);
-    setDiasEntrega(routeData.diasEntrega);
-    setEntregaSatisfactoria(routeData.entregaSatisfactoria);
-    setMotivo(routeData.motivo);
-    setTotalFacturaLT(routeData.totalFacturaLT);
-    setProrateoFacturaLT(routeData.prorateoFacturaLT);
-    setProrateoFacturaPaqueteria(routeData.prorateoFacturaPaqueteria);
-    setGastosExtras(routeData.gastosExtras);
-    setSumaFlete(routeData.sumaFlete);
-    setPorcentajeEnvio(routeData.porcentajeEnvio);
-    setPorcentajePaqueteria(routeData.porcentajePaqueteria);
-    setSumaGastosExtras(routeData.sumaGastosExtras);
-    setPorcentajeGlobal(routeData.porcentajeGlobal);
-    setDiferencia(routeData.diferencia);
-    setNoFactura(routeData.no_Factura);
-    setFechaFactura(routeData.fechaFactura);
-    setTarimas(routeData.tarimas);
-    setNumeroFacturaLT(routeData.numeroFacturaLT);
-    setTotal(routeData.total);
-    setTipo(routeData.TIPO || "");
-
-    setGuiaModalOpen(true);
-  };
-
   const handleProrateoFacturaLTChange = (e) => {
     const value = parseFloat(e.target.value) || 0; // Convertir a número
     setProrateoFacturaLT(value); // Actualiza el valor en el estado
-  };
-
-  const closeGuiaModal = () => {
-    setGuiaModalOpen(false);
   };
 
   const actualizarGuia = async () => {
@@ -1030,31 +918,31 @@ function Transporte() {
 
     try {
       const url = `http://192.168.3.27:3007/api/Trasporte/paqueteria/actualizar-guia/${selectedNoOrden}/${guia}`;
-      console.log("📤 Enviando actualización:", {
-        noOrden: selectedNoOrden,
-        guia,
-        paqueteria,
-        fechaEntregaCliente,
-        diasEntrega,
-        entregaSatisfactoria,
-        motivo,
-        totalFacturaLT,
-        prorateoFacturaLT,
-        prorateoFacturaPaqueteria,
-        gastosExtras,
-        sumaFlete,
-        porcentajeEnvio,
-        porcentajePaqueteria,
-        sumaGastosExtras,
-        porcentajeGlobal,
-        diferencia,
-        noFactura,
-        fechaFactura,
-        tarimas,
-        numeroFacturaLT,
-        total,
-        tipo,
-      });
+      // console.log("📤 Enviando actualización:", {
+      //   noOrden: selectedNoOrden,
+      //   guia,
+      //   paqueteria,
+      //   fechaEntregaCliente,
+      //   diasEntrega,
+      //   entregaSatisfactoria,
+      //   motivo,
+      //   totalFacturaLT,
+      //   prorateoFacturaLT,
+      //   prorateoFacturaPaqueteria,
+      //   gastosExtras,
+      //   sumaFlete,
+      //   porcentajeEnvio,
+      //   porcentajePaqueteria,
+      //   sumaGastosExtras,
+      //   porcentajeGlobal,
+      //   diferencia,
+      //   noFactura,
+      //   fechaFactura,
+      //   tarimas,
+      //   numeroFacturaLT,
+      //   total,
+      //   tipo,
+      // });
 
       const response = await fetch(url, {
         method: "PUT",
@@ -1085,7 +973,7 @@ function Transporte() {
       });
 
       if (response.ok) {
-        console.log("✅ Guía actualizada correctamente.");
+        // console.log("✅ Guía actualizada correctamente.");
         closeDirectaModal();
       } else {
         const errorData = await response.json();
@@ -1733,7 +1621,7 @@ function Transporte() {
   });
 
   const openDirectaModal = (data) => {
-    console.log("Datos en openDirectaModal:", data); // Verifica que el valor correcto se muestre aquí
+    // console.log("Datos en openDirectaModal:", data); // Verifica que el valor correcto se muestre aquí
 
     setSelectedDirectaData(data);
 
@@ -1771,8 +1659,8 @@ function Transporte() {
     setFechaEntregaCliente(
       data["FECHA_DE_ENTREGA (CLIENTE)"]
         ? new Date(data["FECHA_DE_ENTREGA (CLIENTE)"])
-            .toISOString()
-            .split("T")[0]
+          .toISOString()
+          .split("T")[0]
         : ""
     );
     setTipo(data.TIPO || "");
@@ -1790,7 +1678,7 @@ function Transporte() {
       const response = await axios.get(
         "http://192.168.3.27:3007/api/Trasporte/transportistas"
       );
-      console.log("Datos de transportistas:", response.data); // Verifica que contenga datos
+      // console.log("Datos de transportistas:", response.data); // Verifica que contenga datos
       setTransportistaData(response.data);
     } catch (error) {
       console.error("Error al obtener transportistas:", error);
@@ -1803,7 +1691,7 @@ function Transporte() {
         "http://192.168.3.27:3007/api/Trasporte/transportistas/empresas"
       );
 
-      console.log("Datos de empresa:", response.data); // Verifica que contenga datos
+      // console.log("Datos de empresa:", response.data); // Verifica que contenga datos
       setEmpresaData(response.data);
     } catch (error) {
       console.error("Error al obtener empresas:", error);
@@ -1812,7 +1700,7 @@ function Transporte() {
   };
 
   const handleRowChange = (index, field, value) => {
-    console.log(`🛠️ handleRowChange - Campo: ${field}, Valor: ${value}`);
+    // console.log(`🛠️ handleRowChange - Campo: ${field}, Valor: ${value}`);
 
     // Clonar los datos sin referencias
     let updatedData = [...directaData, ...paqueteriaData].map((item) => ({
@@ -1838,10 +1726,10 @@ function Transporte() {
         );
 
         if (empresaSeleccionada) {
-          console.log(
-            "🏢 Empresa seleccionada correctamente:",
-            empresaSeleccionada
-          );
+          // console.log(
+          //   "🏢 Empresa seleccionada correctamente:",
+          //   empresaSeleccionada
+          // );
           updatedData[index] = {
             ...updatedData[index],
             empresa: empresaSeleccionada.empresa, // Mantener el nombre de la empresa
@@ -1871,7 +1759,7 @@ function Transporte() {
     setDirectaData(updatedData.filter((item) => item.TIPO === "directa"));
     setPaqueteriaData(updatedData.filter((item) => item.TIPO === "paqueteria"));
 
-    console.log("📊 Datos después de actualizar:", updatedData[index]);
+    // console.log("📊 Datos después de actualizar:", updatedData[index]);
   };
 
   const handleInsertarVisita = async (routeData, index) => {
@@ -1892,11 +1780,11 @@ function Transporte() {
         id_veh: routeData.id_veh,
       };
 
-      // Mostrar datos en consola antes de enviar
-      console.log(
-        "📤 Datos preparados para envío:",
-        JSON.stringify(dataToSend, null, 2)
-      );
+      // // Mostrar datos en consola antes de enviar
+      // console.log(
+      //   "📤 Datos preparados para envío:",
+      //   JSON.stringify(dataToSend, null, 2)
+      // );
 
       // Enviar la solicitud al backend
       const response = await axios.post(
@@ -1969,16 +1857,15 @@ function Transporte() {
   };
 
   const handleShowTotal = () => {
-    if (!calculatedTotals) {
-      // Si no se han calculado previamente, se calcula por primera vez
-      calculateTotalRoutes();
-    } else {
-      setTotalClientes(calculatedTotals.totalClientes);
-      setTotalPedidos(calculatedTotals.totalPedidos);
-      setTotalGeneral(calculatedTotals.totalGeneral);
-    }
-    setTotalsModalOpen(true); // Abrir el modal
+    const rutasSeleccionadas = Object.keys(groupedData);
+
+    setTotalClientes(prev => prev + calculateTotalClientes(rutasSeleccionadas));
+    setTotalPedidos(prev => prev + calculateTotalPedidos(rutasSeleccionadas));
+    setTotalGeneral(prev => prev + calculateTotalGeneral(rutasSeleccionadas));
+
+    setTotalsModalOpen(true);
   };
+
 
   const handleEditObservation = (clientId) => {
     setEditingClientId(clientId);
@@ -1993,7 +1880,7 @@ function Transporte() {
   };
 
   useEffect(() => {
-    console.log("Observaciones actuales:", observacionesPorRegistro);
+    // console.log("Observaciones actuales:", observacionesPorRegistro);
   }, [observacionesPorRegistro, groupedData]);
 
   const moveRowUp = (route, index) => {
@@ -2038,12 +1925,95 @@ function Transporte() {
       case "PITIC":
         return "https://transportespitic.com/soluciones-tecnologia.html";
       default:
-        console.log("Transporte no encontrado. Usando enlace por defecto.");
+        // console.log("Transporte no encontrado. Usando enlace por defecto.");
         return "https://app2.simpliroute.com/#/planner/vehicles";
     }
   };
 
   const transportUrl = getTransportUrl(transporte);
+
+  const handleOpenHistoricoModal = async () => {
+    if (user?.role !== "Admin" && user?.role !== "Master") {
+      alert("No tienes permisos para ver este módulo.");
+      return;
+    }
+    try {
+      const response = await axios.get("http://192.168.3.27:3007/api/Trasporte/historico");
+      setHistoricoData(response.data);
+    } catch (error) {
+      console.error("Error al obtener los datos históricos:", error);
+    }
+    setHistoricoModalOpen(true);
+  };
+
+  const handleFetchHistoricoData = async () => {
+    if (selectedColumns.length === 0) {
+      alert("Selecciona al menos una columna.");
+      return;
+    }
+
+    try {
+      const response = await axios.get("http://192.168.3.27:3007/api/Trasporte/historico", {
+        params: {
+          cliente: selectedCliente || "", // Si no hay cliente, se envía vacío
+          columnas: selectedColumns.join(" , "),
+        },
+      });
+
+      setHistoricoData(response.data);
+    } catch (error) {
+      console.error("Error al obtener datos históricos:", error);
+      alert("Error al obtener datos históricos.");
+    }
+  };
+
+  const fetchClientesRegistrados = async () => {
+    try {
+      const response = await axios.get("http://192.168.3.27:3007/api/Trasporte/historico_clientes");
+
+      // Limpiar comillas innecesarias en nombres de clientes
+      const clientesLimpios = response.data.map(cliente => ({
+        noCliente: cliente.NO_DE_CLIENTE,
+        nombreCliente: cliente.CLIENTE.replace(/^"|"$/g, '') // Elimina comillas extras
+      }));
+
+      setClientes(clientesLimpios);
+    } catch (error) {
+      console.error("Error al obtener los clientes:", error);
+    }
+  };
+
+  const handleCloseHistoricoModal = () => {
+    setHistoricoModalOpen(false);
+  };
+
+  useEffect(() => {
+    fetchClientesRegistrados();  // Se ejecuta solo una vez al cargar la página
+  }, []); // Dependencias vacías significa que solo se ejecuta al montar el componente
+
+  const fetchColumnasDisponibles = async () => {
+    try {
+      const response = await axios.get("http://192.168.3.27:3007/api/Trasporte/historico_columnas");
+      setColumnasDisponibles(response.data);
+    } catch (error) {
+      console.error("Error al obtener las columnas:", error);
+    }
+  };
+
+  // Ejecutar la función cuando se abra el modal
+  useEffect(() => {
+    if (historicoModalOpen) {
+      fetchColumnasDisponibles();
+    }
+  }, [historicoModalOpen]);
+
+  const resetFilters = () => {
+    setSelectedCliente("");  // Reinicia el cliente
+    setSelectedColumns([]);  // Reinicia las columnas seleccionadas
+    setHistoricoData([]);    // Borra los datos mostrados en la tabla
+  };
+
+
 
   return (
     <Paper elevation={3} style={{ padding: "20px" }}>
@@ -2081,6 +2051,7 @@ function Transporte() {
                   onChange={handleFileUpload}
                   style={{ display: "none" }}
                 />
+
                 <Button
                   variant="contained"
                   component="span"
@@ -2095,6 +2066,7 @@ function Transporte() {
                 >
                   📂 Subir Archivo
                 </Button>
+
               </label>
 
               <Button
@@ -2185,6 +2157,88 @@ function Transporte() {
               >
                 Ver Suma Total de Rutas
               </Button>
+
+              {/* Botón para abrir el modal */}
+              {user?.role === "Admin" || user?.role === "Master" ? (
+                <Button variant="contained" color="primary" onClick={handleOpenHistoricoModal}>
+                  Histórico 2024
+                </Button>
+              ) : null}
+
+              <Dialog open={historicoModalOpen} onClose={handleCloseHistoricoModal} maxWidth="md" fullWidth>
+                <DialogTitle>Histórico 2024</DialogTitle>
+                <DialogContent>
+                  {/* Selección de Cliente */}
+                  <FormControl fullWidth>
+                    <InputLabel>Selecciona Cliente</InputLabel>
+                    <Select value={selectedCliente} onChange={(event) => setSelectedCliente(event.target.value)}>
+                      {clientes.map((cliente) => (
+                        <MenuItem key={cliente.noCliente} value={cliente.noCliente}>
+                          {cliente.noCliente} - {cliente.nombreCliente}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+
+
+                  {/* Selección de Columnas */}
+                  <FormControl fullWidth margin="dense">
+                    <InputLabel>Selecciona Columnas</InputLabel>
+                    <Select
+                      multiple
+                      value={selectedColumns}
+                      onChange={(event) => setSelectedColumns(event.target.value)}
+                      onClose={() => console.log("Selector cerrado")} // Evento al cerrar el selector
+                      renderValue={(selected) => selected.join(", ")}
+                    >
+                      {columnasDisponibles.map((col) => (
+                        <MenuItem key={col} value={col}>
+                          {col}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+
+
+
+                  {/* Botón para buscar datos */}
+                  <Button variant="contained" color="primary" onClick={handleFetchHistoricoData} style={{ marginTop: "10px" }}>
+                    Buscar
+                  </Button>
+
+                  <Button variant="outlined" color="secondary" onClick={resetFilters} style={{ marginTop: "10px" }}>
+                    Reiniciar
+                  </Button>
+
+                  {/* Tabla de Datos */}
+                  <TableContainer component={Paper} style={{ marginTop: "20px" }}>
+                    <Table>
+                      <TableHead>
+                        <TableRow>
+                          {selectedColumns.map((col) => (
+                            <TableCell key={col}>{col}</TableCell>
+                          ))}
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {historicoData.map((row, index) => (
+                          <TableRow key={index}>
+                            {selectedColumns.map((col) => (
+                              <TableCell key={col}>{row[col]}</TableCell>
+                            ))}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </DialogContent>
+                <DialogActions>
+                  <Button onClick={handleCloseHistoricoModal} color="secondary">
+                    Cerrar
+                  </Button>
+                </DialogActions>
+              </Dialog>
+
 
               {/* Totals Modal */}
               <Dialog
@@ -2483,7 +2537,7 @@ function Transporte() {
 
                 {/* Validación de Datos */}
                 {selectedRoute &&
-                groupedData[selectedRoute]?.rows?.length > 0 ? (
+                  groupedData[selectedRoute]?.rows?.length > 0 ? (
                   <>
                     <TableContainer>
                       <Grid
@@ -2563,7 +2617,7 @@ function Transporte() {
                                     style={{
                                       color:
                                         index ===
-                                        groupedData[selectedRoute].rows.length -
+                                          groupedData[selectedRoute].rows.length -
                                           1
                                           ? "#ccc"
                                           : "red",
@@ -2827,14 +2881,14 @@ function Transporte() {
                 {(user?.role === "Admin" ||
                   user?.role === "Master" ||
                   user?.role === "Trans") && (
-                  <Button
-                    onClick={handleGenerateExcel}
-                    variant="contained"
-                    color="primary"
-                  >
-                    Generar Excel
-                  </Button>
-                )}
+                    <Button
+                      onClick={handleGenerateExcel}
+                      variant="contained"
+                      color="primary"
+                    >
+                      Generar Excel
+                    </Button>
+                  )}
 
                 <Table>
                   <TableBody>
@@ -2917,10 +2971,10 @@ function Transporte() {
                       {visibleColumns.includes(
                         "ENTREGA SATISFACTORIA O NO SATISFACTORIA"
                       ) && (
-                        <TableCell>
-                          ENTREGA SATISFACTORIA O NO SATISFACTORIA
-                        </TableCell>
-                      )}
+                          <TableCell>
+                            ENTREGA SATISFACTORIA O NO SATISFACTORIA
+                          </TableCell>
+                        )}
                       {visibleColumns.includes("MOTIVO") && (
                         <TableCell>MOTIVO</TableCell>
                       )}
@@ -2936,8 +2990,8 @@ function Transporte() {
                       {visibleColumns.includes(
                         "PRORRATEO $ FACTURA PAQUETERIA"
                       ) && (
-                        <TableCell>PRORRATEO $ FACTURA PAQUETERIA</TableCell>
-                      )}
+                          <TableCell>PRORRATEO $ FACTURA PAQUETERIA</TableCell>
+                        )}
                       {visibleColumns.includes("GASTOS EXTRAS") && (
                         <TableCell>GASTOS EXTRAS</TableCell>
                       )}
@@ -3056,10 +3110,10 @@ function Transporte() {
                           {visibleColumns.includes(
                             "DIA EN QUE ESTA EN RUTA"
                           ) && (
-                            <TableCell>
-                              {routeData["DIA EN QUE ESTA EN RUTA"]}
-                            </TableCell>
-                          )}
+                              <TableCell>
+                                {routeData["DIA EN QUE ESTA EN RUTA"]}
+                              </TableCell>
+                            )}
                           {visibleColumns.includes("HORA DE SALIDA") && (
                             <TableCell>{routeData["HORA DE SALIDA"]}</TableCell>
                           )}
@@ -3081,22 +3135,22 @@ function Transporte() {
                           {visibleColumns.includes(
                             "FECHA DE ENTREGA (CLIENTE)"
                           ) && (
-                            <TableCell>
-                              {formatDate(routeData.FECHA_DE_ENTREGA_CLIENTE)}
-                            </TableCell>
-                          )}
+                              <TableCell>
+                                {formatDate(routeData.FECHA_DE_ENTREGA_CLIENTE)}
+                              </TableCell>
+                            )}
                           {visibleColumns.includes("DIAS DE ENTREGA") && (
                             <TableCell>{routeData.DIAS_DE_ENTREGA}</TableCell>
                           )}
                           {visibleColumns.includes(
                             "ENTREGA SATISFACTORIA O NO SATISFACTORIA"
                           ) && (
-                            <TableCell>
-                              {
-                                routeData.ENTREGA_SATISFACTORIA_O_NO_SATISFACTORIA
-                              }
-                            </TableCell>
-                          )}
+                              <TableCell>
+                                {
+                                  routeData.ENTREGA_SATISFACTORIA_O_NO_SATISFACTORIA
+                                }
+                              </TableCell>
+                            )}
                           {visibleColumns.includes("MOTIVO") && (
                             <TableCell>{routeData.MOTIVO}</TableCell>
                           )}
@@ -3111,17 +3165,17 @@ function Transporte() {
                           {visibleColumns.includes(
                             "PRORRATEO $ FACTURA LT"
                           ) && (
-                            <TableCell>
-                              {routeData.PRORRATEO_FACTURA_LT}
-                            </TableCell>
-                          )}
+                              <TableCell>
+                                {routeData.PRORRATEO_FACTURA_LT}
+                              </TableCell>
+                            )}
                           {visibleColumns.includes(
                             "PRORRATEO $ FACTURA PAQUETERIA"
                           ) && (
-                            <TableCell>
-                              {routeData.PRORRATEO_FACTURA_PAQUETERIA}
-                            </TableCell>
-                          )}
+                              <TableCell>
+                                {routeData.PRORRATEO_FACTURA_PAQUETERIA}
+                              </TableCell>
+                            )}
                           {visibleColumns.includes("GASTOS EXTRAS") && (
                             <TableCell>{routeData.GASTOS_EXTRAS}</TableCell>
                           )}
@@ -3166,20 +3220,20 @@ function Transporte() {
                               <Grid item>
                                 {(user?.role === "Admin" ||
                                   user?.role === "Master") && (
-                                  <IconButton
-                                    onClick={() => {
-                                      const url = getTransportUrl(
-                                        routeData.TRANSPORTE
-                                      );
-                                      console.log("Abriendo enlace:", url);
-                                      window.open(url, "_blank");
-                                    }}
-                                    size="small"
-                                    style={{ color: "#616161" }}
-                                  >
-                                    <AirportShuttleIcon />
-                                  </IconButton>
-                                )}
+                                    <IconButton
+                                      onClick={() => {
+                                        const url = getTransportUrl(
+                                          routeData.TRANSPORTE
+                                        );
+                                        // console.log("Abriendo enlace:", url);
+                                        window.open(url, "_blank");
+                                      }}
+                                      size="small"
+                                      style={{ color: "#616161" }}
+                                    >
+                                      <AirportShuttleIcon />
+                                    </IconButton>
+                                  )}
                               </Grid>
 
                               <Grid item>
@@ -3197,16 +3251,16 @@ function Transporte() {
                               <Grid item>
                                 {(user?.role === "Admin" ||
                                   user?.role === "Trans") && (
-                                  <IconButton
-                                    color="error"
-                                    onClick={() =>
-                                      eliminarRuta(routeData["NO ORDEN"])
-                                    } // Cambiar 'row' a 'routeData'
-                                    disabled={loading}
-                                  >
-                                    <DeleteIcon />
-                                  </IconButton>
-                                )}
+                                    <IconButton
+                                      color="error"
+                                      onClick={() =>
+                                        eliminarRuta(routeData["NO ORDEN"])
+                                      } // Cambiar 'row' a 'routeData'
+                                      disabled={loading}
+                                    >
+                                      <DeleteIcon />
+                                    </IconButton>
+                                  )}
                               </Grid>
                             </Grid>
                           </TableCell>
@@ -3294,10 +3348,10 @@ function Transporte() {
                       {visibleColumns.includes(
                         "ENTREGA SATISFACTORIA O NO SATISFACTORIA"
                       ) && (
-                        <TableCell>
-                          ENTREGA SATISFACTORIA O NO SATISFACTORIA
-                        </TableCell>
-                      )}
+                          <TableCell>
+                            ENTREGA SATISFACTORIA O NO SATISFACTORIA
+                          </TableCell>
+                        )}
                       {visibleColumns.includes("MOTIVO") && (
                         <TableCell>MOTIVO</TableCell>
                       )}
@@ -3400,10 +3454,10 @@ function Transporte() {
                           {visibleColumns.includes(
                             "DIA EN QUE ESTA EN RUTA"
                           ) && (
-                            <TableCell>
-                              {formatDate(routeData.ultimaFechaEmbarque)}
-                            </TableCell>
-                          )}
+                              <TableCell>
+                                {formatDate(routeData.ultimaFechaEmbarque)}
+                              </TableCell>
+                            )}
                           {visibleColumns.includes("CAJAS") && (
                             <TableCell>{routeData.totalCajas}</TableCell>
                           )}
@@ -3416,22 +3470,22 @@ function Transporte() {
                           {visibleColumns.includes(
                             "FECHA DE ENTREGA (CLIENTE)"
                           ) && (
-                            <TableCell>
-                              {formatDate(routeData.FECHA_DE_ENTREGA_CLIENTE)}
-                            </TableCell>
-                          )}
+                              <TableCell>
+                                {formatDate(routeData.FECHA_DE_ENTREGA_CLIENTE)}
+                              </TableCell>
+                            )}
                           {visibleColumns.includes("DIAS DE ENTREGA") && (
                             <TableCell>{routeData.DIAS_DE_ENTREGA}</TableCell>
                           )}
                           {visibleColumns.includes(
                             "ENTREGA SATISFACTORIA O NO SATISFACTORIA"
                           ) && (
-                            <TableCell>
-                              {
-                                routeData.ENTREGA_SATISFACTORIA_O_NO_SATISFACTORIA
-                              }
-                            </TableCell>
-                          )}
+                              <TableCell>
+                                {
+                                  routeData.ENTREGA_SATISFACTORIA_O_NO_SATISFACTORIA
+                                }
+                              </TableCell>
+                            )}
                           {visibleColumns.includes("MOTIVO") && (
                             <TableCell>{routeData.MOTIVO}</TableCell>
                           )}
@@ -3450,20 +3504,20 @@ function Transporte() {
                                   <Grid item>
                                     {(user?.role === "Admin" ||
                                       user?.role === "Master") && (
-                                      <IconButton
-                                        onClick={() => {
-                                          const url = getTransportUrl(
-                                            routeData.TRANSPORTE
-                                          );
-                                          console.log("Abriendo enlace:", url);
-                                          window.open(url, "_blank");
-                                        }}
-                                        size="small"
-                                        style={{ color: "#616161" }}
-                                      >
-                                        <AirportShuttleIcon />
-                                      </IconButton>
-                                    )}
+                                        <IconButton
+                                          onClick={() => {
+                                            const url = getTransportUrl(
+                                              routeData.TRANSPORTE
+                                            );
+                                            // console.log("Abriendo enlace:", url);
+                                            window.open(url, "_blank");
+                                          }}
+                                          size="small"
+                                          style={{ color: "#616161" }}
+                                        >
+                                          <AirportShuttleIcon />
+                                        </IconButton>
+                                      )}
                                   </Grid>
 
                                   <IconButton
@@ -3489,16 +3543,16 @@ function Transporte() {
                                 <Grid item>
                                   {(user?.role === "Admin" ||
                                     user?.role === "Trans") && (
-                                    <IconButton
-                                      color="error"
-                                      onClick={() =>
-                                        eliminarRuta(routeData["NO ORDEN"])
-                                      } // Cambiar 'row' a 'routeData'
-                                      disabled={loading}
-                                    >
-                                      <DeleteIcon />
-                                    </IconButton>
-                                  )}
+                                      <IconButton
+                                        color="error"
+                                        onClick={() =>
+                                          eliminarRuta(routeData["NO ORDEN"])
+                                        } // Cambiar 'row' a 'routeData'
+                                        disabled={loading}
+                                      >
+                                        <DeleteIcon />
+                                      </IconButton>
+                                    )}
                                 </Grid>
                               </Grid>
                             </TableCell>
@@ -3591,10 +3645,10 @@ function Transporte() {
                           {visibleColumns.includes(
                             "FECHA DE ENTREGA (CLIENTE)"
                           ) && (
-                            <TableCell>
-                              {formatDate(routeData.FECHA_DE_ENTREGA_CLIENTE)}
-                            </TableCell>
-                          )}
+                              <TableCell>
+                                {formatDate(routeData.FECHA_DE_ENTREGA_CLIENTE)}
+                              </TableCell>
+                            )}
                           {visibleColumns.includes("Acciones") && (
                             <TableCell>
                               <Grid
@@ -3618,29 +3672,29 @@ function Transporte() {
                                 <Grid item>
                                   {(user?.role === "Admin" ||
                                     user?.role === "Trans") && (
-                                    <IconButton
-                                      color="error"
-                                      onClick={() =>
-                                        eliminarRuta(routeData["NO ORDEN"])
-                                      } // Cambiar 'row' a 'routeData'
-                                      disabled={loading}
-                                    >
-                                      <DeleteIcon />
-                                    </IconButton>
-                                  )}
+                                      <IconButton
+                                        color="error"
+                                        onClick={() =>
+                                          eliminarRuta(routeData["NO ORDEN"])
+                                        } // Cambiar 'row' a 'routeData'
+                                        disabled={loading}
+                                      >
+                                        <DeleteIcon />
+                                      </IconButton>
+                                    )}
 
                                   <Grid item>
                                     {(user?.role === "Admin" ||
                                       user?.role === "Trans") && (
-                                      <IconButton
-                                        style={{ color: "#1976D2" }} // Azul
-                                        onClick={() =>
-                                          openDirectaModal(routeData)
-                                        }
-                                      >
-                                        <BorderColorIcon />
-                                      </IconButton>
-                                    )}
+                                        <IconButton
+                                          style={{ color: "#1976D2" }} // Azul
+                                          onClick={() =>
+                                            openDirectaModal(routeData)
+                                          }
+                                        >
+                                          <BorderColorIcon />
+                                        </IconButton>
+                                      )}
                                   </Grid>
                                 </Grid>
                               </Grid>
@@ -3698,7 +3752,7 @@ function Transporte() {
 
                     <TableBody>
                       {directaData.length === 0 &&
-                      paqueteriaData.length === 0 ? (
+                        paqueteriaData.length === 0 ? (
                         <TableRow>
                           <TableCell
                             colSpan={visibleColumns.length}
@@ -3722,10 +3776,10 @@ function Transporte() {
                               {visibleColumns.includes(
                                 "NOMBRE DEL CLIENTE"
                               ) && (
-                                <TableCell>
-                                  {routeData["NOMBRE DEL CLIENTE"]}
-                                </TableCell>
-                              )}
+                                  <TableCell>
+                                    {routeData["NOMBRE DEL CLIENTE"]}
+                                  </TableCell>
+                                )}
                               {visibleColumns.includes("TRANSPORTE") && (
                                 <TableCell>{routeData.TRANSPORTE}</TableCell>
                               )}
@@ -3775,10 +3829,7 @@ function Transporte() {
                                         : ""
                                     }
                                     onChange={(e) => {
-                                      console.log(
-                                        "🏢 Empresa seleccionada en el select:",
-                                        e.target.value
-                                      );
+                                      // console.log( "🏢 Empresa seleccionada en el select:", e.target.value);
                                       handleRowChange(
                                         index,
                                         "id_veh",
@@ -3836,10 +3887,7 @@ function Transporte() {
                                     variant="contained"
                                     color="secondary"
                                     onClick={() => {
-                                      console.log(
-                                        "🟡 Insertar visita clickeado",
-                                        routeData
-                                      );
+                                      // console.log("🟡 Insertar visita clickeado",routeData);
                                       handleInsertarVisita(routeData, index);
                                     }}
                                     disabled={routeData.insertado}
@@ -3860,7 +3908,7 @@ function Transporte() {
         )}
 
       {/* El Modal para actualizar la guía */}
-      <Modal open={guiaModalOpen} onClose={closeGuiaModal}>
+      <Modal open={directaModalOpen} onClose={closeDirectaModal}>
         <Box
           padding="20px"
           backgroundColor="white"
@@ -3977,16 +4025,16 @@ function Transporte() {
             {visibleColumns.includes(
               "ENTREGA SATISFACTORIA O NO SATISFACTORIA"
             ) && (
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  label="Entrega Satisfactoria"
-                  value={entregaSatisfactoria}
-                  onChange={(e) => setEntregaSatisfactoria(e.target.value)}
-                  variant="outlined"
-                  fullWidth
-                />
-              </Grid>
-            )}
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="Entrega Satisfactoria"
+                    value={entregaSatisfactoria}
+                    onChange={(e) => setEntregaSatisfactoria(e.target.value)}
+                    variant="outlined"
+                    fullWidth
+                  />
+                </Grid>
+              )}
 
             {visibleColumns.includes("MOTIVO") && (
               <Grid item xs={12} sm={6}>
@@ -4170,7 +4218,7 @@ function Transporte() {
             {/* Botón para cerrar */}
             <Grid item xs={12}>
               <Button
-                onClick={closeGuiaModal}
+                onClick={closeDirectaModal}
                 variant="outlined"
                 color="secondary"
                 fullWidth
@@ -4180,258 +4228,6 @@ function Transporte() {
               </Button>
             </Grid>
           </Grid>
-        </Box>
-      </Modal>
-
-      {/* Modal para "Directa" */}
-      <Modal open={directaModalOpen} onClose={closeDirectaModal}>
-        <Box
-          padding="20px"
-          backgroundColor="white"
-          margin="50px auto"
-          maxWidth="800px"
-          textAlign="center"
-          borderRadius="8px"
-        >
-          <Typography variant="h6">Actualizar Datos de Directa</Typography>
-          <Grid container spacing={2}>
-            {(user?.role === "Admin" || user?.role === "Trans") && (
-              <TextField
-                label="Tipo de ruta"
-                value={tipo} // Mostrar el valor actual de tipo
-                onChange={(e) => setTipo(e.target.value)} // Actualizar tipo cuando cambia
-                fullWidth
-                variant="outlined"
-                margin="normal"
-              />
-            )}
-
-            {/* Primera fila */}
-            <Grid item xs={12} sm={6}>
-              {(user?.role === "Admin" || user?.role === "Master") && (
-                <TextField
-                  label="No Orden"
-                  value={selectedNoOrden}
-                  onChange={(e) => setSelectedNoOrden(e.target.value)}
-                  variant="outlined"
-                  fullWidth
-                />
-              )}
-            </Grid>
-
-            <Grid item xs={12} sm={6}>
-              {(user?.role === "Admin" || user?.role === "Master") && (
-                <TextField
-                  label="Fecha"
-                  value={fecha}
-                  onChange={(e) => setFecha(e.target.value)}
-                  variant="outlined"
-                  fullWidth
-                />
-              )}
-            </Grid>
-
-            <Grid item xs={12} sm={6}>
-              {(user?.role === "Admin" || user?.role === "Master") && (
-                <TextField
-                  label="Nombre Cliente"
-                  value={nombreCliente}
-                  onChange={(e) => setNombreCliente(e.target.value)}
-                  variant="outlined"
-                  fullWidth
-                />
-              )}
-            </Grid>
-
-            {/* Cuarta fila */}
-            <Grid item xs={12} sm={6}>
-              {(user?.role === "Admin" || user?.role === "Master") && (
-                <TextField
-                  label="Observaciones"
-                  value={observaciones}
-                  onChange={(e) => setObservaciones(e.target.value)}
-                  variant="outlined"
-                  fullWidth
-                />
-              )}
-            </Grid>
-
-            <Grid item xs={12} sm={6}>
-              {(user?.role === "Admin" || user?.role === "Master") && (
-                <TextField
-                  label="Total"
-                  value={total}
-                  onChange={(e) => setTotal(e.target.value)}
-                  variant="outlined"
-                  fullWidth
-                />
-              )}
-            </Grid>
-
-            {/* Séptima fila */}
-            <Grid item xs={12} sm={6}>
-              {(user?.role === "Admin" ||
-                user?.role === "Master" ||
-                user?.role === "Control") && (
-                <TextField
-                  label="Número de Factura"
-                  value={noFactura}
-                  onChange={(e) => setNoFactura(e.target.value)}
-                  variant="outlined"
-                  fullWidth
-                />
-              )}
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              {(user?.role === "Admin" || user?.role === "Master") && (
-                <TextField
-                  label="Fecha de Factura"
-                  value={fechaFactura}
-                  onChange={(e) => setFechaFactura(e.target.value)}
-                  variant="outlined"
-                  fullWidth
-                  type="date"
-                />
-              )}
-            </Grid>
-
-            {/* Octava fila */}
-            <Grid item xs={12} sm={6}>
-              {(user?.role === "Admin" || user?.role === "Master") && (
-                <TextField
-                  label="Fecha de Embarque"
-                  value={fechaEmbarque}
-                  onChange={(e) => setFechaEmbarque(e.target.value)}
-                  variant="outlined"
-                  fullWidth
-                  type="date"
-                />
-              )}
-            </Grid>
-
-            <Grid item xs={12} sm={6}>
-              {(user?.role === "Admin" ||
-                user?.role === "Master" ||
-                user?.role === "Trans") && (
-                <TextField
-                  label="Día en que está en Ruta"
-                  value={diaEnRuta}
-                  onChange={(e) => setDiaEnRuta(e.target.value)}
-                  variant="outlined"
-                  fullWidth
-                />
-              )}
-            </Grid>
-
-            {/* Décima fila */}
-            <Grid item xs={12} sm={6}>
-              {(user?.role === "Admin" ||
-                user?.role === "Master" ||
-                user?.role === "PQ1" ||
-                user?.role === "Paquet") && (
-                <TextField
-                  label="Paquetería"
-                  value={paqueteria}
-                  onChange={(e) => setPaqueteria(e.target.value)}
-                  variant="outlined"
-                  fullWidth
-                />
-              )}
-            </Grid>
-
-            <Grid item xs={12} sm={6}>
-              {(user?.role === "Admin" ||
-                user?.role === "Master" ||
-                user?.role === "PQ1") && (
-                <TextField
-                  label="Fecha de Entrega Cliente"
-                  value={fechaEntregaCliente}
-                  onChange={(e) => setFechaEntregaCliente(e.target.value)}
-                  variant="outlined"
-                  fullWidth
-                  type="date"
-                />
-              )}
-            </Grid>
-
-            {/* Onceava fila */}
-            <Grid item xs={12} sm={6}>
-              {(user?.role === "Admin" ||
-                user?.role === "Master" ||
-                user?.role === "PQ1") && (
-                <TextField
-                  label="Días de Entrega"
-                  value={diasEntrega}
-                  onChange={(e) => setDiasEntrega(e.target.value)}
-                  variant="outlined"
-                  fullWidth
-                />
-              )}
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              {(user?.role === "Admin" ||
-                user?.role === "Master" ||
-                user?.role === "PQ1") && (
-                <TextField
-                  label="Entrega Satisfactoria"
-                  value={entregaSatisfactoria}
-                  onChange={(e) => setEntregaSatisfactoria(e.target.value)}
-                  variant="outlined"
-                  fullWidth
-                />
-              )}
-            </Grid>
-
-            {/* Doceava fila */}
-            <Grid item xs={12} sm={6}>
-              {(user?.role === "Admin" || user?.role === "Master") && (
-                <TextField
-                  label="Motivo"
-                  value={motivo}
-                  onChange={(e) => setMotivo(e.target.value)}
-                  variant="outlined"
-                  fullWidth
-                />
-              )}
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              {(user?.role === "Admin" || user?.role === "Master") && (
-                <TextField
-                  label="Diferencia"
-                  value={diferencia}
-                  onChange={(e) => setDiferencia(e.target.value)}
-                  variant="outlined"
-                  fullWidth
-                />
-              )}
-            </Grid>
-          </Grid>
-
-          {/* Botones de acción */}
-          {(user?.role === "Admin" ||
-            user?.role === "Master" ||
-            user?.role === "Control" ||
-            user?.role === "PQ1" ||
-            user?.role === "Paquet") && (
-            <Button
-              onClick={actualizarGuia}
-              variant="contained"
-              color="primary"
-              fullWidth
-              style={{ marginTop: "20px" }}
-            >
-              Actualizar
-            </Button>
-          )}
-          <Button
-            onClick={closeDirectaModal}
-            variant="outlined"
-            color="secondary"
-            fullWidth
-            style={{ marginTop: "10px" }}
-          >
-            Cancelar
-          </Button>
         </Box>
       </Modal>
 

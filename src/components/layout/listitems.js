@@ -196,6 +196,7 @@ export const mainListItems = (user) => {
         "Control",
         "Audi",
         "ECOMERCE",
+        "Dep",
         "Recibo",
       ],
       path: "/dashboard/inventarios",

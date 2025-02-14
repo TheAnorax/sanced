@@ -1,11 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const { getObservacionesPorCliente, getUltimaFechaEmbarque, insertarRutas, obtenerRutasDePaqueteria,
-    getFechaYCajasPorPedido, actualizarGuia, getPedidosEmbarque, getTransportistas, getEmpresasTransportistas, 
-    insertarVisita, guardarDatos, obtenerDatos, eliminarRuta, getOrderStatus
+const { getObservacionesPorClientes, getUltimaFechaEmbarque, insertarRutas, obtenerRutasDePaqueteria,
+    getFechaYCajasPorPedido, actualizarGuia, getPedidosEmbarque, getTransportistas, getEmpresasTransportistas,
+    insertarVisita, guardarDatos, obtenerDatos, eliminarRuta, getOrderStatus, getHistoricoData,getColumnasHistorico,
+    getClientesHistorico
 } = require('../controller/TrasporteController');
 
-router.get('/clientes/observaciones/:venta', getObservacionesPorCliente);
+router.post('/clientes/observaciones', getObservacionesPorClientes);
 
 router.get('/pedido/ultima-fecha-embarque/:pedido', getUltimaFechaEmbarque);
 
@@ -30,6 +31,12 @@ router.post('/guardar-datos', guardarDatos);
 router.get('/obtener-datos', obtenerDatos);
 
 router.delete('/ruta/eliminar/:noOrden', eliminarRuta);  // Esta ruta eliminará la ruta por el parámetro noOrden
+
+router.get("/historico_clientes", getClientesHistorico);
+
+router.get("/historico_columnas", getColumnasHistorico);
+
+router.get("/historico", getHistoricoData);
 
 // router.get('/status/:orderNumber', getOrderStatus);
 

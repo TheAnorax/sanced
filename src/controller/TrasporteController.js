@@ -1,27 +1,37 @@
 const pool = require("../config/database");
 const moment = require("moment");
 
-const getObservacionesPorCliente = async (req, res) => {
-  const { venta } = req.params; // El parámetro "venta" ahora será el número de cliente
-  try {
-    // Actualiza el nombre de la columna a `NUM. CLIENTE`
-    const query =
-      "SELECT OBSERVACIONES FROM clientes_especificacciones WHERE `NUM_CLIENTE` = ?";
-    const [rows] = await pool.query(query, [venta]);
+const getObservacionesPorClientes = async (req, res) => {
+  const { clientes } = req.body; // Recibe un array con los números de clientes
 
-    if (rows.length > 0) {
-      // Si encuentra la observación, la devuelve
-      res.json({ observacion: rows[0].OBSERVACIONES });
-    } else {
-      // Si no encuentra observación, responde con "Sin observaciones disponibles"
-      res.json({ observacion: "Sin observaciones disponibles" });
-    }
+  if (!clientes || !Array.isArray(clientes) || clientes.length === 0) {
+    return res.status(400).json({ message: "No se proporcionaron clientes válidos" });
+  }
+
+  try {
+    // Generar los placeholders "?" para cada cliente en la consulta SQL
+    const placeholders = clientes.map(() => "?").join(", ");
+    const query = `SELECT NUM_CLIENTE, OBSERVACIONES FROM clientes_especificacciones WHERE NUM_CLIENTE IN (${placeholders})`;
+
+    const [rows] = await pool.query(query, clientes);
+
+    // Crear un mapa para almacenar las observaciones
+    const observacionesMap = {};
+    clientes.forEach((cliente) => {
+      observacionesMap[cliente] = "Sin observaciones"; // Valor por defecto
+    });
+
+    rows.forEach((row) => {
+      observacionesMap[row.NUM_CLIENTE] = row.OBSERVACIONES || "Sin observaciones";
+    });
+
+    res.json(observacionesMap);
   } catch (error) {
-    // En caso de error, responde con un mensaje de error
     console.error("Error al obtener observaciones:", error.message);
     res.status(500).json({ message: "Error al obtener observaciones" });
   }
 };
+
 
 const getUltimaFechaEmbarque = async (req, res) => {
   const { pedido } = req.params; // Tomamos el "pedido" como parámetro
@@ -494,6 +504,122 @@ const eliminarRuta = async (req, res) => {
   }
 };
 
+const getClientesHistorico = async (req, res) => {
+  try {
+    const query = `SELECT DISTINCT NO_DE_CLIENTE, CLIENTE FROM historico_2024 ORDER BY CLIENTE ASC;`;
+    const [rows] = await pool.query(query);
+    res.json(rows);
+  } catch (error) {
+    console.error("Error al obtener clientes:", error.message);
+    res.status(500).json({ message: "Error al obtener clientes del histórico" });
+  }
+};
+
+const getHistoricoData = async (req, res) => {
+  try {
+    const { cliente, columnas, mes, estado } = req.query; // 🟢 Agregar estado a la petición
+
+    if (!columnas || columnas.trim() === "") {
+      return res.status(400).json({ message: "Debes seleccionar al menos una columna." });
+    }
+
+    const columnasArray = columnas.split(",").map(col => col.trim());
+
+    const columnasPermitidas = [
+      "NO_DE_ORDEN", "FECHA", "NO_DE_CLIENTE", "CLIENTE", "MUNICIPIO",
+      "ESTADO", "OBSERVACIONES", "TOTAL", "PARTIDAS", "PIEZAS", "ZONA",
+      "TIPO_DE_ZONA", "NUMERO_DE_FACTURA", "FECHA_DE_FACTURA", "FECHA_DE_EMBARQUE",
+      "DIA_EN_QUE_ESTA_EN_RUTA", "HORA_DE_SALIDA", "CAJAS", "TARIMAS",
+      "TRANSPORTE", "PAQUETERIA", "GUIA", "FECHA_DE_ENTREGA_CLIENTE",
+      "DIAS_DE_ENTREGA", "ENTREGA_SATISFACTORIA_O_NO_SATISFACTORIA",
+      "MOTIVO", "NUMERO_DE_FACTURA_LT", "TOTAL_FACTURA_LT",
+      "PRORRATEO_$_FACTURA_LT", "PRORRATEO_$_FACTURA_PAQUETERIA",
+      "GASTOS_EXTRAS", "SUMA_FLETE", "%_ENVIO", "%_PAQUETERIA",
+      "SUMA_GASTOS_EXTRAS", "%_GLOBAL", "DIFERENCIA"
+    ];
+
+    const columnasFiltradas = columnasArray.filter(col => columnasPermitidas.includes(col));
+
+    if (columnasFiltradas.length === 0) {
+      return res.status(400).json({ message: "Las columnas seleccionadas no son válidas." });
+    }
+
+    // 🔹 Formateo de las columnas
+    const columnasConvertidas = columnasFiltradas.map(col => {
+      if (["TOTAL", "TOTAL_FACTURA_LT", "PRORRATEO_$_FACTURA_LT", "PRORRATEO_$_FACTURA_PAQUETERIA", "GASTOS_EXTRAS", "SUMA_FLETE", "SUMA_GASTOS_EXTRAS"].includes(col)) {
+        return `CONCAT('$', FORMAT(SUM(\`${col}\`), 0)) AS \`${col}\``; // 🔹 Se suma y formatea como dinero
+      }
+      if (["%_ENVIO", "%_PAQUETERIA", "%_GLOBAL"].includes(col)) {
+        return `CONCAT(FORMAT(AVG(\`${col}\`) * 100, 2), '%') AS \`${col}\``; // 🔹 Se obtiene el promedio y se formatea como porcentaje
+      }
+      return `\`${col}\``;
+    });
+
+    const columnasSeleccionadas = columnasConvertidas.join(", ");
+
+    let query = `SELECT DISTINCT ${columnasSeleccionadas}, DATE_FORMAT(FECHA, '%d/%m/%Y') AS FECHA FROM historico_2024`;
+    const queryParams = [];
+
+    let whereClauses = [];
+
+    // Filtrar por cliente si está seleccionado
+    if (cliente && cliente.trim() !== "") {
+      whereClauses.push("`NO_DE_CLIENTE` = ?");
+      queryParams.push(cliente);
+    }
+
+    // Filtrar por mes si está seleccionado
+    if (mes && mes.trim() !== "") {
+      whereClauses.push("MONTH(STR_TO_DATE(`FECHA`, '%Y-%m-%d')) = ?");
+      queryParams.push(mes);
+    }
+
+    // 🟢 Filtrar por estado si está seleccionado
+    if (estado && estado.trim() !== "") {
+      whereClauses.push("`ESTADO` = ?");
+      queryParams.push(estado);
+    }
+
+    // Unir los filtros en la consulta
+    if (whereClauses.length > 0) {
+      query += " WHERE " + whereClauses.join(" AND ");
+    }
+
+    // 🔹 Agrupar por estado si está seleccionado
+    if (estado && estado.trim() !== "") {
+      query += " GROUP BY ESTADO";
+    }
+
+    const [rows] = await pool.query(query, queryParams);
+    res.json(rows.length > 0 ? rows : []);
+  } catch (error) {
+    console.error("❌ Error al obtener datos históricos:", error.message);
+    res.status(500).json({ message: "Error en el servidor al obtener los datos históricos" });
+  }
+};
+
+
+const getColumnasHistorico = async (req, res) => {
+  try {
+    const query = `
+      SELECT DISTINCT COLUMN_NAME 
+      FROM INFORMATION_SCHEMA.COLUMNS 
+      WHERE TABLE_NAME = 'historico_2024'
+    `;
+
+    const [rows] = await pool.query(query);
+
+    const columnas = rows.map(row => row.COLUMN_NAME);
+    res.json(columnas);
+  } catch (error) {
+    console.error("❌ Error al obtener columnas del histórico:", error.message);
+    res.status(500).json({ message: "Error en el servidor al obtener las columnas" });
+  }
+};
+
+
+
+
 // const getOrderStatus = async (req, res) => {
 //   const { orderNumber } = req.params;
 
@@ -546,7 +672,7 @@ const eliminarRuta = async (req, res) => {
 // };
 
 module.exports = {
-  getObservacionesPorCliente,
+  getObservacionesPorClientes,
   getUltimaFechaEmbarque,
   insertarRutas,
   obtenerRutasDePaqueteria,
@@ -559,5 +685,8 @@ module.exports = {
   guardarDatos,
   obtenerDatos,
   eliminarRuta,
+  getHistoricoData,
+  getClientesHistorico,
+  getColumnasHistorico,
   // getOrderStatus,
 };

@@ -4,7 +4,7 @@ const { obtenerInventario, getproductinventory, updateInventory, getInventoryByP
 
 // Ruta para obtener el inventario
 router.get('/', obtenerInventario);
-router.get('/', getproductinventory);
+// router.get('/', getproductinventory);
 router.post('/', updateInventory);
 router.get('/getInventoryByPasillo', getInventoryByPasillo)
 router.post('/update_inventory', update_inventory)

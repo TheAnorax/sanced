@@ -2,8 +2,11 @@ const express = require('express');
 const router = express.Router();
 const { getObservacionesPorClientes, getUltimaFechaEmbarque, insertarRutas, obtenerRutasDePaqueteria,
     getFechaYCajasPorPedido, actualizarGuia, getPedidosEmbarque, getTransportistas, getEmpresasTransportistas,
-    insertarVisita, guardarDatos, obtenerDatos, eliminarRuta, getOrderStatus, getHistoricoData,getColumnasHistorico,
-    getClientesHistorico
+    insertarVisita, guardarDatos, obtenerDatos, eliminarRuta, getOrderStatus, getHistoricoData,getColumnasHistorico, getClientesHistorico,
+    obtenerListaDeRutas,
+    registrarNuevaRuta,
+    borrarRutaPorId,
+    asignarPedidoARuta,
 } = require('../controller/TrasporteController');
 
 router.post('/clientes/observaciones', getObservacionesPorClientes);
@@ -16,7 +19,7 @@ router.get('/rutas', obtenerRutasDePaqueteria);
 
 router.get('/pedido/detalles/:noOrden', getFechaYCajasPorPedido);
 
-router.put('/paqueteria/actualizar-guia/:noOrden/:guia', actualizarGuia);
+router.put('/paqueteria/actualizar-guia/:noOrden', actualizarGuia);
 
 router.get('/embarque/:codigo_ped', getPedidosEmbarque);
 
@@ -38,6 +41,8 @@ router.get("/historico_columnas", getColumnasHistorico);
 
 router.get("/historico", getHistoricoData);
 
-// router.get('/status/:orderNumber', getOrderStatus);
+router.get('/status/:orderNumber', getOrderStatus);
+
+// nuevas datos pra crear las rutas 
 
 module.exports = router;

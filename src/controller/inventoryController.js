@@ -2,15 +2,23 @@ const pool = require("../config/database");
 const fs = require("fs");
 const path = require("path");
 
-// Obtener el porcentaje de inventarios con estado "F"
 const porcentaje = async (req, res) => {
   try {
-    const [totalResults] = await pool.query(
-      "SELECT COUNT(*) AS total FROM inventory"
-    );
-    const [fResults] = await pool.query(
-      "SELECT COUNT(*) AS completed FROM inventory WHERE estado = 'F'"
-    );
+    // Excluir pasillos P09 en adelante, TAP, CAB y CAR, pero incluir P21
+    const [totalResults] = await pool.query(`
+      SELECT COUNT(*) AS total 
+      FROM inventoryalma 
+      WHERE TRIM(UPPER(ubi)) NOT LIKE '%B' 
+        AND ((ubi BETWEEN 'P01' AND 'P08') OR ubi = 'P21')
+    `);
+
+    const [fResults] = await pool.query(`
+      SELECT COUNT(*) AS completed 
+      FROM inventoryalma 
+      WHERE estado = 'F' 
+        AND TRIM(UPPER(ubi)) NOT LIKE '%B' 
+        AND ((ubi BETWEEN 'P01' AND 'P08') OR ubi = 'P21')
+    `);
 
     const total = totalResults[0].total;
     const completed = fResults[0].completed;
@@ -19,12 +27,15 @@ const porcentaje = async (req, res) => {
 
     res.json({ percentage });
   } catch (error) {
-    console.error("Error al obtener el porcentaje:", error);
+    console.error("❌ Error al obtener el porcentaje:", error);
     res.status(500).json({
       error: "Error al obtener el porcentaje de inventarios.",
     });
   }
 };
+
+
+
 
 // Obtener inventario
 const obtenerInventario = async (req, res) => {
@@ -94,9 +105,12 @@ const obtenerInventario = async (req, res) => {
 // Resto de las funciones
 const ubicaciones = async (req, res) => {
   try {
+    // Obtener todas las ubicaciones y excluir las que terminan en "B"
     const [locations] = await pool.query(`
-      SELECT id_ubi, tipo, ubi, cantidad, cant_stock, estado
-      FROM inventory
+      SELECT id_ubi, tipo, ubi, cantidad, estado
+      FROM inventoryalma
+      WHERE TRIM(UPPER(ubi)) NOT LIKE '%B'
+        AND ((ubi BETWEEN 'P01' AND 'P08') OR ubi = 'P21')
     `);
 
     const pasillos = {};
@@ -104,7 +118,7 @@ const ubicaciones = async (req, res) => {
     locations.forEach((location) => {
       const pasillo =
         typeof location.ubi === "string"
-          ? location.ubi.slice(0, 3)
+          ? location.ubi.slice(0, 3) // Extrae los primeros 3 caracteres del pasillo
           : "SIN_PASILLO";
 
       if (!pasillos[pasillo]) {
@@ -120,8 +134,10 @@ const ubicaciones = async (req, res) => {
       }
     });
 
+    // 🔄 **Nueva fórmula del porcentaje**
     const pasilloPercentages = Object.keys(pasillos).map((pasillo) => {
-      const { total, completed, pending } = pasillos[pasillo];
+      const { completed, pending } = pasillos[pasillo];
+      const total = completed + pending;
       const percentage = total > 0 ? (completed / total) * 100 : 0;
       return {
         pasillo,
@@ -133,10 +149,12 @@ const ubicaciones = async (req, res) => {
 
     res.json({ locations, pasilloPercentages });
   } catch (error) {
-    console.error("Error al obtener ubicaciones:", error);
+    console.error("❌ Error al obtener ubicaciones:", error);
     res.status(500).json({ message: "Error al obtener ubicaciones" });
   }
 };
+
+
 
 const persona = async (req, res) => {
   try {
@@ -381,6 +399,96 @@ const updateInventory = async (req, res) => {
   }
 };
 
+const obtenerDistribucionInventario = async (req, res) => {
+  try {
+    // Ejecutar la consulta SQL para obtener la distribución inicial
+    const [rows] = await pool.query(`
+      WITH total_inventario AS (
+          SELECT combined.codigo, prod.clave, SUM(combined.cantidad) AS total_cantidad
+          FROM (
+              SELECT codigo, cantidad FROM inventory WHERE codigo IS NOT NULL
+              UNION ALL
+              SELECT codigo, cantidad FROM inventoryalma WHERE codigo IS NOT NULL
+          ) AS combined
+          LEFT JOIN productos prod ON combined.codigo = prod.codigo_pro
+          GROUP BY combined.codigo, prod.clave
+      ),
+      lotes_suma AS (
+          SELECT clave, COUNT(lote) AS total_lotes, SUM(existencia) AS suma_existencia,
+                 MAX(existencia) AS max_lote,
+                 MIN(existencia) AS min_lote
+          FROM lotes
+          GROUP BY clave
+      ),
+      lotes_ordenados AS (
+          SELECT clave, lote, existencia AS capacidad_lote
+          FROM lotes
+          ORDER BY clave, existencia DESC -- Ordena de mayor a menor capacidad
+      ),
+      lotes_distribuidos AS (
+          SELECT 
+              lo.clave,
+              lo.lote,
+              lo.capacidad_lote,
+              LEAST(lo.capacidad_lote, ti.total_cantidad) AS cantidad_asignada,
+              ti.total_cantidad
+          FROM total_inventario ti
+          INNER JOIN lotes_ordenados lo ON ti.clave = lo.clave
+      ),
+      ajuste_excedente AS (
+          SELECT 
+              clave,
+              total_cantidad,
+              SUM(cantidad_asignada) AS cantidad_distribuida,
+              GREATEST(total_cantidad - SUM(cantidad_asignada), 0) AS excedente -- Evita valores negativos
+          FROM lotes_distribuidos
+          GROUP BY clave, total_cantidad
+      )
+      SELECT 
+          ld.clave,
+          ld.lote,
+          ld.capacidad_lote,
+          CASE 
+              WHEN ld.cantidad_asignada < ld.capacidad_lote THEN 
+                  LEAST(ld.capacidad_lote, ld.cantidad_asignada + COALESCE(ae.excedente, 0)) 
+              ELSE ld.cantidad_asignada
+          END AS cantidad_final
+      FROM lotes_distribuidos ld
+      LEFT JOIN ajuste_excedente ae ON ld.clave = ae.clave
+      ORDER BY ld.clave, ld.capacidad_lote DESC;
+    `);
+
+    // PASO 1: Crear un mapa de claves con el lote de mayor capacidad
+    const lotesMaximos = {};
+    rows.forEach(row => {
+      if (row.lote) { // Solo considerar filas que tienen lote asignado
+        if (!lotesMaximos[row.clave] || row.capacidad_lote > lotesMaximos[row.clave].capacidad) {
+          lotesMaximos[row.clave] = { lote: row.lote, capacidad: row.capacidad_lote };
+        }
+      }
+    });
+
+    // PASO 2: Asignar el lote más grande a las claves que no tienen lote
+    const resultadoFinal = rows.map(row => {
+      if (!row.lote && lotesMaximos[row.clave]) {
+        return { ...row, lote: lotesMaximos[row.clave].lote }; // Asigna el lote más grande disponible
+      }
+      return row;
+    });
+
+    // Enviar la respuesta con los datos corregidos
+    res.json(resultadoFinal);
+  } catch (error) {
+    console.error("Error al obtener la distribución del inventario:", error);
+    res.status(500).json({ message: "Error al obtener la distribución del inventario" });
+  }
+};
+
+
+
+
+
+
 module.exports = {
   porcentaje,
   obtenerInventario,
@@ -392,4 +500,5 @@ module.exports = {
   reportFinishInventoryAlma,
   reportConsolidatedInventory,
   updateInventory,
+  obtenerDistribucionInventario
 };

@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { porcentaje, ubicaciones, persona, manual, obtenerInventario, getInventoryDet, reportFinishInventory, reportFinishInventoryAlma, reportConsolidatedInventory, updateInventory } = require('../controller/inventoryController');
+const { porcentaje, ubicaciones, persona, manual, obtenerInventario, getInventoryDet, reportFinishInventory, reportFinishInventoryAlma, reportConsolidatedInventory, updateInventory, obtenerDistribucionInventario } = require('../controller/inventoryController');
 
 
 router.get('/porcentaje', porcentaje);
@@ -13,5 +13,7 @@ router.get('/reportFinishInventory', reportFinishInventory);
 router.get('/reportFinishInventoryAlma', reportFinishInventoryAlma);
 router.get('/reportConsolidatedInventory', reportConsolidatedInventory);
 router.put("/update/:id", updateInventory);
+router.get('/obtenerDistribucionInventario', obtenerDistribucionInventario);
+
 
 module.exports = router;

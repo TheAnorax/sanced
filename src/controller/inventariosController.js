@@ -234,6 +234,7 @@ u.ubi,
 prod.des,
 u.code_prod,
 u.cant_stock,
+u.cant_stock_real,
 u.pasillo,
 u.lote,
 u.almacen

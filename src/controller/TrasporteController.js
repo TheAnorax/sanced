@@ -5,7 +5,9 @@ const getObservacionesPorClientes = async (req, res) => {
   const { clientes } = req.body; // Recibe un array con los números de clientes
 
   if (!clientes || !Array.isArray(clientes) || clientes.length === 0) {
-    return res.status(400).json({ message: "No se proporcionaron clientes válidos" });
+    return res
+      .status(400)
+      .json({ message: "No se proporcionaron clientes válidos" });
   }
 
   try {
@@ -22,7 +24,8 @@ const getObservacionesPorClientes = async (req, res) => {
     });
 
     rows.forEach((row) => {
-      observacionesMap[row.NUM_CLIENTE] = row.OBSERVACIONES || "Sin observaciones";
+      observacionesMap[row.NUM_CLIENTE] =
+        row.OBSERVACIONES || "Sin observaciones";
     });
 
     res.json(observacionesMap);
@@ -31,7 +34,6 @@ const getObservacionesPorClientes = async (req, res) => {
     res.status(500).json({ message: "Error al obtener observaciones" });
   }
 };
-
 
 const getUltimaFechaEmbarque = async (req, res) => {
   const { pedido } = req.params; // Tomamos el "pedido" como parámetro
@@ -134,19 +136,29 @@ const insertarRutas = async (req, res) => {
 
 const obtenerRutasDePaqueteria = async (req, res) => {
   try {
-    const { page = 1, limit = 50 } = req.query; // Paginación
+    const { page = 1, limit = 900, tipo = "" } = req.query;
     const offset = (page - 1) * limit;
 
-    const query = "SELECT * FROM paqueteria LIMIT ? OFFSET ?";
-    const [rows] = await pool.query(query, [parseInt(limit), parseInt(offset)]);
+    let query = `
+      SELECT routeName, FECHA, \`NO ORDEN\`, NO_FACTURA, FECHA_DE_FACTURA, 
+             \`NUM. CLIENTE\`, \`NOMBRE DEL CLIENTE\`, ZONA, MUNICIPIO, ESTADO, 
+             OBSERVACIONES, TOTAL, PARTIDAS, PIEZAS, TARIMAS, TRANSPORTE, 
+             PAQUETERIA, GUIA, FECHA_DE_ENTREGA_CLIENTE, DIAS_DE_ENTREGA,TIPO
+      FROM paqueteria
+    `;
+    const params = [];
 
-    if (rows.length > 0) {
-      res.json(rows);
-    } else {
-      res
-        .status(404)
-        .json({ message: "No hay rutas de paquetería disponibles." });
+    if (tipo) {
+      query += " WHERE TIPO = ?";
+      params.push(tipo);
     }
+
+    query += " ORDER BY FECHA DESC LIMIT ? OFFSET ?";
+    params.push(parseInt(limit), parseInt(offset));
+
+    const [rows] = await pool.query(query, params);
+
+    res.json(rows);
   } catch (error) {
     console.error("Error al obtener rutas de paquetería:", error.message);
     res
@@ -154,6 +166,7 @@ const obtenerRutasDePaqueteria = async (req, res) => {
       .json({ message: "Error al obtener las rutas de paquetería" });
   }
 };
+
 
 const getFechaYCajasPorPedido = async (req, res) => {
   const { noOrden } = req.params;
@@ -192,8 +205,10 @@ const getFechaYCajasPorPedido = async (req, res) => {
   }
 };
 
+
 const actualizarGuia = async (req, res) => {
   const {
+    guia, // Ahora la guía viene del body
     paqueteria,
     fechaEntregaCliente,
     diasEntrega,
@@ -217,49 +232,53 @@ const actualizarGuia = async (req, res) => {
   } = req.body;
 
   try {
-    const noOrden = req.params.noOrden || null;
-    const guia = req.params.guia || null;
+    const noOrden = req.params.noOrden || null; // Ahora solo tomamos noOrden de la URL
 
-    if (!noOrden || !guia) {
+    if (!noOrden || guia === undefined || guia.trim() === "") {
       return res.status(400).json({
-        message: "Faltan datos automáticos: noOrden o guia no definidos.",
+        message: "❌ Faltan datos: NO ORDEN o GUIA no son válidos.",
       });
     }
 
-    // Verifica que 'guia' no sea vacío ni nulo
-    if (!guia || guia.trim() === "") {
-      console.error("❌ Error: La guía no tiene un valor válido.");
-      return res
-        .status(400)
-        .json({ message: "La guía no tiene un valor válido." });
+    // Verificar si el NO ORDEN existe
+    const [registroExiste] = await pool.query(
+      "SELECT GUIA FROM paqueteria WHERE `NO ORDEN` = ?",
+      [noOrden]
+    );
+
+    if (registroExiste.length === 0) {
+      return res.status(404).json({
+        message: `❌ No se encontró la orden con NO ORDEN ${noOrden}.`,
+      });
     }
 
+    // Ejecutar actualización
     const query = `
-            UPDATE paqueteria
-            SET 
-                GUIA = ?, 
-                PAQUETERIA = ?, 
-                FECHA_DE_ENTREGA_CLIENTE = ?, 
-                DIAS_DE_ENTREGA = ?, 
-                ENTREGA_SATISFACTORIA_O_NO_SATISFACTORIA = ?, 
-                MOTIVO = ?, 
-                TOTAL_FACTURA_LT = ?, 
-                PRORRATEO_FACTURA_LT = ?, 
-                PRORRATEO_FACTURA_PAQUETERIA = ?, 
-                GASTOS_EXTRAS = ?, 
-                SUMA_FLETE = ?, 
-                PORCENTAJE_ENVIO = ?, 
-                PORCENTAJE_PAQUETERIA = ?, 
-                SUMA_GASTOS_EXTRAS = ?, 
-                PORCENTAJE_GLOBAL = ?, 
-                DIFERENCIA = ?, 
-                NO_FACTURA = ?, 
-                FECHA_DE_FACTURA = ?, 
-                TARIMAS = ?, 
-                NUMERO_DE_FACTURA_LT = ?, 
-                OBSERVACIONES = ?
-            WHERE \`NO ORDEN\` = ?
-        `;
+      UPDATE paqueteria
+      SET 
+          GUIA = ?, 
+          PAQUETERIA = ?, 
+          FECHA_DE_ENTREGA_CLIENTE = ?, 
+          DIAS_DE_ENTREGA = ?, 
+          ENTREGA_SATISFACTORIA_O_NO_SATISFACTORIA = ?, 
+          MOTIVO = ?, 
+          TOTAL_FACTURA_LT = ?, 
+          PRORRATEO_FACTURA_LT = ?, 
+          PRORRATEO_FACTURA_PAQUETERIA = ?, 
+          GASTOS_EXTRAS = ?, 
+          SUMA_FLETE = ?, 
+          PORCENTAJE_ENVIO = ?, 
+          PORCENTAJE_PAQUETERIA = ?, 
+          SUMA_GASTOS_EXTRAS = ?, 
+          PORCENTAJE_GLOBAL = ?, 
+          DIFERENCIA = ?, 
+          NO_FACTURA = ?, 
+          FECHA_DE_FACTURA = ?, 
+          TARIMAS = ?, 
+          NUMERO_DE_FACTURA_LT = ?, 
+          OBSERVACIONES = ?
+      WHERE \`NO ORDEN\` = ?
+    `;
 
     const [result] = await pool.query(query, [
       guia,
@@ -287,27 +306,26 @@ const actualizarGuia = async (req, res) => {
     ]);
 
     if (result.affectedRows > 0) {
-      return res
-        .status(200)
-        .json({ message: "Guía actualizada correctamente" });
+      return res.status(200).json({ message: "✅ Guía actualizada correctamente." });
     } else {
       return res.status(404).json({
-        message:
-          "No se encontró el número de orden o no se actualizó ninguna fila",
+        message: `⚠ No se pudo actualizar la guía para el NO ORDEN ${noOrden}.`,
       });
     }
   } catch (error) {
-    console.error("Error al actualizar la guía:", error.message);
-    return res.status(500).json({ message: "Error al actualizar la guía" });
+    console.error("❌ Error al actualizar la guía:", error.message);
+    return res.status(500).json({ message: "❌ Error al actualizar la guía." });
   }
 };
+
+
 
 const getPedidosEmbarque = async (req, res) => {
   try {
     const { codigo_ped } = req.params;
 
     const query = `
-      SELECT pe.pedido, pe.codigo_ped, p.des, pe.cantidad, pe.um, pe._pz, 
+      SELECT pe.pedido, pe.codigo_ped, p.des, pe.cantidad, pe.um, pe._pz,  
              pe._inner, pe._master, pe.cantidad, pe.caja, pe.estado
       FROM pedido_finalizado pe
       LEFT JOIN productos p ON pe.codigo_ped = p.codigo_pro
@@ -472,7 +490,8 @@ const guardarDatos = async (req, res) => {
 
 const obtenerDatos = async (req, res) => {
   try {
-    const [rows] = await pool.query("SELECT * FROM rutas ORDER BY fecha DESC");
+    const [rows] = await pool.query("SELECT * FROM rutas ORDER BY fecha DESC"); // ✅ Ahora muestra la más reciente primero
+
     res.status(200).json(rows);
   } catch (error) {
     console.error("Error al obtener datos:", error);
@@ -511,7 +530,9 @@ const getClientesHistorico = async (req, res) => {
     res.json(rows);
   } catch (error) {
     console.error("Error al obtener clientes:", error.message);
-    res.status(500).json({ message: "Error al obtener clientes del histórico" });
+    res
+      .status(500)
+      .json({ message: "Error al obtener clientes del histórico" });
   }
 };
 
@@ -520,33 +541,76 @@ const getHistoricoData = async (req, res) => {
     const { cliente, columnas, mes, estado } = req.query; // 🟢 Agregar estado a la petición
 
     if (!columnas || columnas.trim() === "") {
-      return res.status(400).json({ message: "Debes seleccionar al menos una columna." });
+      return res
+        .status(400)
+        .json({ message: "Debes seleccionar al menos una columna." });
     }
 
-    const columnasArray = columnas.split(",").map(col => col.trim());
+    const columnasArray = columnas.split(",").map((col) => col.trim());
 
     const columnasPermitidas = [
-      "NO_DE_ORDEN", "FECHA", "NO_DE_CLIENTE", "CLIENTE", "MUNICIPIO",
-      "ESTADO", "OBSERVACIONES", "TOTAL", "PARTIDAS", "PIEZAS", "ZONA",
-      "TIPO_DE_ZONA", "NUMERO_DE_FACTURA", "FECHA_DE_FACTURA", "FECHA_DE_EMBARQUE",
-      "DIA_EN_QUE_ESTA_EN_RUTA", "HORA_DE_SALIDA", "CAJAS", "TARIMAS",
-      "TRANSPORTE", "PAQUETERIA", "GUIA", "FECHA_DE_ENTREGA_CLIENTE",
-      "DIAS_DE_ENTREGA", "ENTREGA_SATISFACTORIA_O_NO_SATISFACTORIA",
-      "MOTIVO", "NUMERO_DE_FACTURA_LT", "TOTAL_FACTURA_LT",
-      "PRORRATEO_$_FACTURA_LT", "PRORRATEO_$_FACTURA_PAQUETERIA",
-      "GASTOS_EXTRAS", "SUMA_FLETE", "%_ENVIO", "%_PAQUETERIA",
-      "SUMA_GASTOS_EXTRAS", "%_GLOBAL", "DIFERENCIA"
+      "NO_DE_ORDEN",
+      "FECHA",
+      "NO_DE_CLIENTE",
+      "CLIENTE",
+      "MUNICIPIO",
+      "ESTADO",
+      "OBSERVACIONES",
+      "TOTAL",
+      "PARTIDAS",
+      "PIEZAS",
+      "ZONA",
+      "TIPO_DE_ZONA",
+      "NUMERO_DE_FACTURA",
+      "FECHA_DE_FACTURA",
+      "FECHA_DE_EMBARQUE",
+      "DIA_EN_QUE_ESTA_EN_RUTA",
+      "HORA_DE_SALIDA",
+      "CAJAS",
+      "TARIMAS",
+      "TRANSPORTE",
+      "PAQUETERIA",
+      "GUIA",
+      "FECHA_DE_ENTREGA_CLIENTE",
+      "DIAS_DE_ENTREGA",
+      "ENTREGA_SATISFACTORIA_O_NO_SATISFACTORIA",
+      "MOTIVO",
+      "NUMERO_DE_FACTURA_LT",
+      "TOTAL_FACTURA_LT",
+      "PRORRATEO_$_FACTURA_LT",
+      "PRORRATEO_$_FACTURA_PAQUETERIA",
+      "GASTOS_EXTRAS",
+      "SUMA_FLETE",
+      "%_ENVIO",
+      "%_PAQUETERIA",
+      "SUMA_GASTOS_EXTRAS",
+      "%_GLOBAL",
+      "DIFERENCIA",
     ];
 
-    const columnasFiltradas = columnasArray.filter(col => columnasPermitidas.includes(col));
+    const columnasFiltradas = columnasArray.filter((col) =>
+      columnasPermitidas.includes(col)
+    );
 
     if (columnasFiltradas.length === 0) {
-      return res.status(400).json({ message: "Las columnas seleccionadas no son válidas." });
+      return res
+        .status(400)
+        .json({ message: "Las columnas seleccionadas no son válidas." });
     }
 
     // 🔹 Formateo de las columnas
-    const columnasConvertidas = columnasFiltradas.map(col => {
-      if (["TOTAL", "TOTAL_FACTURA_LT", "PRORRATEO_$_FACTURA_LT", "PRORRATEO_$_FACTURA_PAQUETERIA", "GASTOS_EXTRAS", "SUMA_FLETE", "SUMA_GASTOS_EXTRAS"].includes(col)) {
+    const columnasConvertidas = columnasFiltradas.map((col) => {
+      if (
+        [
+          "TOTAL",
+          "TOTAL_FACTURA_LT",
+          "PRORRATEO_$_FACTURA_LT",
+          "PRORRATEO_$_FACTURA_PAQUETERIA",
+          "GASTOS_EXTRAS",
+          "SUMA_FLETE",
+          "SUMA_GASTOS_EXTRAS",
+        ].includes(col)
+      ) {
         return `CONCAT('$', FORMAT(SUM(\`${col}\`), 0)) AS \`${col}\``; // 🔹 Se suma y formatea como dinero
       }
       if (["%_ENVIO", "%_PAQUETERIA", "%_GLOBAL"].includes(col)) {
@@ -594,10 +658,11 @@ const getHistoricoData = async (req, res) => {
     res.json(rows.length > 0 ? rows : []);
   } catch (error) {
     console.error("❌ Error al obtener datos históricos:", error.message);
-    res.status(500).json({ message: "Error en el servidor al obtener los datos históricos" });
+    res.status(500).json({
+      message: "Error en el servidor al obtener los datos históricos",
+    });
   }
 };
-
 
 const getColumnasHistorico = async (req, res) => {
   try {
@@ -609,67 +674,68 @@ const getColumnasHistorico = async (req, res) => {
 
     const [rows] = await pool.query(query);
 
-    const columnas = rows.map(row => row.COLUMN_NAME);
+    const columnas = rows.map((row) => row.COLUMN_NAME);
     res.json(columnas);
   } catch (error) {
     console.error("❌ Error al obtener columnas del histórico:", error.message);
-    res.status(500).json({ message: "Error en el servidor al obtener las columnas" });
+    res
+      .status(500)
+      .json({ message: "Error en el servidor al obtener las columnas" });
   }
 };
 
+const getOrderStatus = async (req, res) => {
+  const { orderNumber } = req.params;
 
+  try {
+    // Buscar registros del pedido en 'pedido_surtido'
+    const [result] = await pool.query(
+      `SELECT estado FROM pedido_surtido WHERE pedido = ?`,
+      [orderNumber]
+    );
 
+    if (result.length > 0) {
+      // Verificar si el pedido está completamente surtido
+      const isCompleted = result.some((row) => row.estado === "B");
 
-// const getOrderStatus = async (req, res) => {
-//   const { orderNumber } = req.params;
+      if (isCompleted) {
+        return res.status(200).json({
+          progress: 75,
+          statusText: "Surtiendo completado",
+          table: "pedido_surtido",
+        });
+      }
 
-//   try {
-//     const tables = [
-//       "pedi",
-//       "pedido_surtido",
-//       "pedido_embarque",
-//       "pedido_finalizado",
-//     ];
-//     const statusInfo = {
-//       pedi: { progress: 25, statusText: "En pedido" },
-//       pedido_surtido: { progress: 50, statusText: "Surtiendo" },
-//       pedido_embarque: { progress: 75, statusText: "Embarcando" },
-//       pedido_finalizado: { progress: 100, statusText: "Finalizado" },
-//     };
+      // Obtener el total de pedidos en `pedido_surtido`
+      const [totalSurtidos] = await pool.query(
+        `SELECT COUNT(*) as total FROM pedido_surtido WHERE estado = 'S'`
+      );
+      const totalPedidos = totalSurtidos[0]?.total || 1; // Evitar división por 0
 
-//     let bestStatus = { progress: 0, statusText: "No encontrado", table: null };
+      // Calcular el progreso dinámico
+      const progress = Math.min((result.length / totalPedidos) * 50 + 25, 75);
 
-//     for (const table of tables) {
-//       const [result] = await pool.query(
-//         `SELECT * FROM ${table} WHERE pedido = ?`,
-//         [orderNumber]
-//       );
+      return res.status(200).json({
+        progress,
+        statusText: "Surtiendo",
+        table: "pedido_surtido",
+      });
+    }
 
-//       if (result.length > 0) {
-//         const currentStatus = statusInfo[table];
-//         // Actualizar solo si el progreso es mayor al actual
-//         if (currentStatus.progress > bestStatus.progress) {
-//           bestStatus = { ...currentStatus, table };
-//         }
-//       }
-//     }
+    // Si no se encuentra en 'pedido_surtido', marcar como finalizado
+    return res.status(200).json({
+      progress: 100,
+      statusText: "Finalizado",
+    });
+  } catch (error) {
+    console.error("Error al buscar el pedido:", error);
+    res.status(500).json({ message: "Error interno del servidor" });
+  }
+};
 
-//     if (bestStatus.table) {
-//       return res.status(200).json(bestStatus);
-//     } else {
-//       return res
-//         .status(404)
-//         .json({
-//           message: "Pedido no encontrado",
-//           progress: 0,
-//           statusText: "No encontrado",
-//         });
-//     }
-//   } catch (error) {
-//     console.error("Error al buscar el pedido:", error);
-//     res.status(500).json({ message: "Error interno del servidor" });
-//   }
-// };
+// insertar datos de la informacion
+
+// Obtener todas las rutas desde MySQL
 
 module.exports = {
   getObservacionesPorClientes,
@@ -688,5 +754,5 @@ module.exports = {
   getHistoricoData,
   getClientesHistorico,
   getColumnasHistorico,
-  // getOrderStatus,
+  getOrderStatus,
 };

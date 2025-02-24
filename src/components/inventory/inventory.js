@@ -132,6 +132,44 @@ function Inventory() {
     applyFilters(pasillo, selectedTipo);
   };
 
+
+   // Función para obtener los datos de la API y exportarlos a Excel
+   const handleDownloadDistribucionInventario = async () => {
+    try {
+      setLoading(true);
+
+      // Llamada a la API para obtener los datos
+      const response = await axios.get(
+        "http://192.168.3.27:3007/api/inventory/obtenerDistribucionInventario"
+      );
+
+      const data = response.data;
+
+      if (!data || data.length === 0) {
+        console.error("No hay datos de distribución de inventario para exportar.");
+        return;
+      }
+
+      // Convertir los datos a una hoja de cálculo
+      const worksheet = utils.json_to_sheet(data);
+      const workbook = utils.book_new();
+      utils.book_append_sheet(workbook, worksheet, "Distribución Inventario");
+
+      // Crear el archivo Excel
+      const excelBuffer = write(workbook, { bookType: "xlsx", type: "array" });
+      const blob = new Blob([excelBuffer], { type: "application/octet-stream" });
+
+      // Descargar el archivo
+      saveAs(blob, "Distribucion_Inventario.xlsx");
+
+    } catch (error) {
+      console.error("Error al descargar la distribución de inventario:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
   // Manejar cambio en el filtro de tipo
   const handleTipoChange = (event) => {
     const tipo = event.target.value;
@@ -523,7 +561,7 @@ function Inventory() {
         <Box marginTop={4} display="flex" justifyContent="center">
           <Box width="50%" marginRight={2}>
             <Typography variant="h4" gutterBottom>
-              Progreso General de Ubicaciones
+              Progreso General de Ubicaciones Alma.
             </Typography>
             <Button
               variant="contained"
@@ -533,6 +571,18 @@ function Inventory() {
             >
               {loading ? "Cargando..." : "Descargar Excel"}
             </Button>
+
+
+
+            <Button
+        variant="contained"
+        color="primary"
+        onClick={handleDownloadDistribucionInventario}
+        disabled={loading}
+        sx={{ marginBottom: 4 }}
+      >
+        {loading ? "Descargando..." : "Descargar Distribución de Inventario"}
+      </Button>
             <br></br>
             <Box
               display="flex"

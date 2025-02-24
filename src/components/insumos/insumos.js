@@ -835,7 +835,7 @@ function Insumos() {
         <Box display="flex" gap={1}>
           {(user?.role === "Admin" ||
             user?.role === "Master" ||
-            user?.role === "INV") && (
+            user?.role === "INV" || user?.role === "Dep") && (
             <IconButton
               sx={{ color: "#51acf8" }}
               onClick={() => handleView(params.row)}
@@ -845,7 +845,7 @@ function Insumos() {
           )}
 
           {(user?.role === "Admin" ||
-            user?.role === "Master" || user?.role === "INV" || user?.role === "Recibo" || user?.role === "Eti") && (
+            user?.role === "Master" || user?.role === "INV" || user?.role === "Recibo" || user?.role === "Eti" || user?.role === "Dep") && (
             <IconButton
               sx={{ color: "black" }}
               onClick={() => handleConsumeFormOpen(params.row)}
@@ -881,7 +881,7 @@ function Insumos() {
 
           {(user?.role === "Admin" ||
             user?.role === "Master" ||
-            user?.role === "INV") && (
+            user?.role === "INV" || user?.role === "Dep") && (
             <Button
               variant="contained"
               sx={{ background: "green" }}

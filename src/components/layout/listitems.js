@@ -217,7 +217,7 @@ export const mainListItems = (user) => {
       text: "Insumos ",
     },
     {
-      role: ["Admin", "Master", "Master2"],
+      role: ["Admin", "Master", "Master2" ,"INV"],
       path: "/dashboard/inventario",
       icon: <AssessmentIcon />,
       text: "Inventario dia 0",

@@ -900,7 +900,7 @@ function InventarioAdmin() {
                 .replace(/\//g, "/") // Reemplaza el separador por '/'
             : "Fecha no disponible", // Mensaje alternativo si no hay fecha
         }));
-        setDepMue(list);
+        setDepMue(list); 
       } else {
         setDepMue([]);
         setError("No se encontraron datos.");
@@ -1939,7 +1939,7 @@ function InventarioAdmin() {
                   <TableCell>{dato.ubi}</TableCell>
                   <TableCell>{dato.des}</TableCell>
                   <TableCell>{dato.code_prod}</TableCell>
-                  <TableCell>{dato.cant_stock}</TableCell>
+                  <TableCell>{dato.cant_stock_real}</TableCell>
                   {/* <TableCell>{dato.pasillo}</TableCell>
                   <TableCell>{dato.lote || "N/A"}</TableCell>
                   <TableCell>{dato.almacen || "N/A"}</TableCell> */}

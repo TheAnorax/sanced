@@ -1403,41 +1403,41 @@ app.get('/inventory', async (req, res) => {
   }
 });
 
-app.get('/getproductinventory', async (req, res) => {
-  // Consulta SQL para filtrar por cualquiera de los códigos (code_pz, code_inner, code_master)
-  const query = `
-    SELECT 
-      id_prod,
-      codigo_pro,
-      des,
-      _pz,
-      _inner,
-      _master, 
-      _palet,
-      code_pz,
-      code_inner,
-      code_master
-    FROM productos
-    WHERE code_pz = ? OR code_inner = ? OR code_master = ?
-  `;
+// app.get('/getproductinventory', async (req, res) => {
+//   // Consulta SQL para filtrar por cualquiera de los códigos (code_pz, code_inner, code_master)
+//   const query = `
+//     SELECT 
+//       id_prod,
+//       codigo_pro,
+//       des,
+//       _pz,
+//       _inner,
+//       _master, 
+//       _palet,
+//       code_pz,
+//       code_inner,
+//       code_master
+//     FROM productos
+//     WHERE code_pz = ? OR code_inner = ? OR code_master = ?
+//   `;
 
-  // Obtener el parámetro `codigo` de la consulta
-  const { codigo_pz } = req.query;
+//   // Obtener el parámetro `codigo` de la consulta
+//   const { codigo_pz } = req.query;
 
-  // Verificar si se proporcionó `codigo`
-  if (!codigo_pz) {
-    return res.status(400).json({ error: 'El parámetro codigo es requerido' });
-  }
+//   // Verificar si se proporcionó `codigo`
+//   if (!codigo_pz) {
+//     return res.status(400).json({ error: 'El parámetro codigo es requerido' });
+//   }
 
-  try {
-    // Ejecutar la consulta con `codigo` como parámetro en las tres columnas
-    const [results] = await db.query(query, [codigo_pz, codigo_pz, codigo_pz]);
-    res.json(results);
-  } catch (error) {
-    console.error('Error al obtener los datos de productos:', error);
-    res.status(500).json({ error: 'Error al obtener los datos de productos' });
-  }
-});
+//   try {
+//     // Ejecutar la consulta con `codigo` como parámetro en las tres columnas
+//     const [results] = await db.query(query, [codigo_pz, codigo_pz, codigo_pz]);
+//     res.json(results);
+//   } catch (error) {
+//     console.error('Error al obtener los datos de productos:', error);
+//     res.status(500).json({ error: 'Error al obtener los datos de productos' });
+//   }
+// });
 
 
 

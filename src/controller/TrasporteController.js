@@ -136,7 +136,7 @@ const insertarRutas = async (req, res) => {
 
 const obtenerRutasDePaqueteria = async (req, res) => {
   try {
-    const { page = 1, limit = 900, tipo = "" } = req.query;
+    const { page = 1, limit = 1000, tipo = "" } = req.query;
     const offset = (page - 1) * limit;
 
     let query = `
@@ -166,7 +166,6 @@ const obtenerRutasDePaqueteria = async (req, res) => {
       .json({ message: "Error al obtener las rutas de paquetería" });
   }
 };
-
 
 const getFechaYCajasPorPedido = async (req, res) => {
   const { noOrden } = req.params;
@@ -204,7 +203,6 @@ const getFechaYCajasPorPedido = async (req, res) => {
       .json({ message: "Error al obtener la fecha de embarque y las cajas" });
   }
 };
-
 
 const actualizarGuia = async (req, res) => {
   const {
@@ -306,7 +304,9 @@ const actualizarGuia = async (req, res) => {
     ]);
 
     if (result.affectedRows > 0) {
-      return res.status(200).json({ message: "✅ Guía actualizada correctamente." });
+      return res
+        .status(200)
+        .json({ message: "✅ Guía actualizada correctamente." });
     } else {
       return res.status(404).json({
         message: `⚠ No se pudo actualizar la guía para el NO ORDEN ${noOrden}.`,
@@ -317,8 +317,6 @@ const actualizarGuia = async (req, res) => {
     return res.status(500).json({ message: "❌ Error al actualizar la guía." });
   }
 };
-
-
 
 const getPedidosEmbarque = async (req, res) => {
   try {
@@ -685,53 +683,90 @@ const getColumnasHistorico = async (req, res) => {
 };
 
 const getOrderStatus = async (req, res) => {
-  const { orderNumber } = req.params;
-
   try {
-    // Buscar registros del pedido en 'pedido_surtido'
-    const [result] = await pool.query(
-      `SELECT estado FROM pedido_surtido WHERE pedido = ?`,
-      [orderNumber]
-    );
+    // Si se envían varios pedidos en un array o un único pedido desde params
+    let orderNumbers = req.body.orderNumbers || [req.params.orderNumber];
 
-    if (result.length > 0) {
-      // Verificar si el pedido está completamente surtido
-      const isCompleted = result.some((row) => row.estado === "B");
-
-      if (isCompleted) {
-        return res.status(200).json({
-          progress: 75,
-          statusText: "Surtiendo completado",
-          table: "pedido_surtido",
-        });
-      }
-
-      // Obtener el total de pedidos en `pedido_surtido`
-      const [totalSurtidos] = await pool.query(
-        `SELECT COUNT(*) as total FROM pedido_surtido WHERE estado = 'S'`
-      );
-      const totalPedidos = totalSurtidos[0]?.total || 1; // Evitar división por 0
-
-      // Calcular el progreso dinámico
-      const progress = Math.min((result.length / totalPedidos) * 50 + 25, 75);
-
-      return res.status(200).json({
-        progress,
-        statusText: "Surtiendo",
-        table: "pedido_surtido",
-      });
+    if (!orderNumbers || orderNumbers.length === 0) {
+      return res.status(400).json({ message: "No se enviaron pedidos" });
     }
 
-    // Si no se encuentra en 'pedido_surtido', marcar como finalizado
-    return res.status(200).json({
-      progress: 100,
-      statusText: "Finalizado",
+    let statusResults = {};
+
+    // Buscar en `pedi` y asignar color rojo
+    let [result] = await pool.query(
+      `SELECT pedido FROM pedi WHERE pedido IN (?)`,
+      [orderNumbers]
+    );
+    result.forEach((row) => {
+      statusResults[row.pedido] = { 
+        statusText: "Por Asignar", 
+        color: "#ff0000", // Rojo 
+        table: "pedi" 
+      };
     });
+
+    // Buscar en `pedido_surtido` y asignar color amarillo
+    [result] = await pool.query(
+      `SELECT pedido FROM pedido_surtido WHERE pedido IN (?)`,
+      [orderNumbers]
+    );
+    result.forEach((row) => {
+      statusResults[row.pedido] = {
+        statusText: "Surtiendo",
+        color: "#040404", // Amarillo
+        table: "pedido_surtido",
+      };
+    });
+
+    // Buscar en `pedido_embarcado` (o `pedido_embarque`) y asignar color naranja
+    try {
+      [result] = await pool.query(
+        `SELECT pedido FROM pedido_embarque WHERE pedido IN (?)`,
+        [orderNumbers]
+      );
+      result.forEach((row) => {
+        statusResults[row.pedido] = {
+          statusText: "Embarcando",
+          color: "#0d10f3", // Naranja
+          table: "pedido_embarque",
+        };
+      });
+    } catch (error) {
+      console.warn("⚠️ Tabla `pedido_embarcado` no existe. Omitiendo búsqueda.");
+    }
+
+    // Buscar en `pedido_finalizado` y asignar color verde
+    [result] = await pool.query(
+      `SELECT pedido FROM pedido_finalizado WHERE pedido IN (?)`,
+      [orderNumbers]
+    );
+    result.forEach((row) => {
+      statusResults[row.pedido] = {
+        statusText: "Pedido Finalizado",
+        color: "#008000", // Verde
+        table: "pedido_finalizado",
+      };
+    });
+
+    // Para los pedidos que no se encontraron en ninguna tabla, asigna un status por defecto
+    orderNumbers.forEach((orderNumber) => {
+      if (!statusResults[orderNumber]) {
+        statusResults[orderNumber] = {
+          statusText: "Pedido no encontrado",
+          color: "#808080", // Gris (por defecto)
+          table: "Desconocido",
+        };
+      }
+    });
+
+    res.json(statusResults);
   } catch (error) {
-    console.error("Error al buscar el pedido:", error);
+    console.error("❌ Error en la API:", error);
     res.status(500).json({ message: "Error interno del servidor" });
   }
 };
+
 
 // insertar datos de la informacion
 

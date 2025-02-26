@@ -389,7 +389,7 @@ const uploadExcel = async (req, res) => {
         updatePromisesCompras.push(
           pool.query(
             `UPDATE recibo_compras 
-             SET arribo = ?, tipo = ?, referencia = ?, unidad_medida = ?, contenedor = ?, naviera = ?, pedimento = ?, usuario = ?, estado = ?, sucursal = ?, factura = ?
+             SET arribo = ?, tipo = ?, referencia = ?, unidad_medida = ?, contenedor = ?, naviera = ?, pedimento = ?, usuario = ?, estado = ?, sucursal = ?, factura = ?,  updated_at = NOW() 
              WHERE codigo = ? AND oc = ? AND cant_recibir = ?`,
             [arribo, tipoP, referencia, unidad_medida, contenedor, naviera, pedimento, usuario, estado, sucursal, factura, codigo, oc, cant_recibir]
           )
@@ -399,9 +399,9 @@ const uploadExcel = async (req, res) => {
         updatePromisesCedis.push(
           pool.query(
             `UPDATE recibo_cedis 
-             SET cantidad_total = ?, referencia = ?, contenedor = ?, naviera = ?, pedimento = ?, id_usuario = ?, est = ?, fecha_recibo = NOW()
+             SET cantidad_total = ?, referencia = ?, contenedor = ?, naviera = ?, pedimento = ?, id_usuario = ?, est = ?, fecha_recibo = ?, updated_at = NOW() 
              WHERE codigo = ? AND oc = ?`,
-            [cant_recibir, referencia, contenedor, naviera, pedimento, usuario, estado, codigo, oc]
+            [cant_recibir, referencia, contenedor, naviera, pedimento, usuario, estado, arribo, codigo, oc]
           )
         );
 

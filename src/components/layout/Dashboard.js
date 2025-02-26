@@ -159,7 +159,7 @@ const getTitle = (pathname) => {
     case "dashboard/visitas-reporte":
       return "Visitas Reporte";
     case "/dashboard/Trasporte":
-      return "Trasporte";
+      return "Transporte";
       case "/dashboard/kpi":
         return "kpi";
     default:

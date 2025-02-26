@@ -41,7 +41,7 @@ router.get("/historico_columnas", getColumnasHistorico);
 
 router.get("/historico", getHistoricoData);
 
-router.get('/status/:orderNumber', getOrderStatus);
+router.post('/status', getOrderStatus);
 
 // nuevas datos pra crear las rutas 
 

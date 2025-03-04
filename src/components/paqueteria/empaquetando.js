@@ -29,7 +29,7 @@ function Empaquetando() {
   useEffect(() => {
     const fetchPedidos = async () => {
       try {
-        const response = await fetch('http://192.168.3.27:3007/api/paqueterias/progreso');
+        const response = await fetch('http://66.232.105.87:3007/api/paqueterias/progreso');
         if (!response.ok) {
           throw new Error(`Error HTTP: ${response.status}`);
         }
@@ -64,7 +64,7 @@ function Empaquetando() {
   // Función para abrir el modal
   const handleOpen = async () => {
     try {
-      const response = await fetch('http://192.168.3.27:3007/api/paqueterias/productividad'); // URL para obtener los datos de productividad
+      const response = await fetch('http://66.232.105.87:3007/api/paqueterias/productividad'); // URL para obtener los datos de productividad
       if (!response.ok) {
         throw new Error(`Error HTTP: ${response.status}`);
       }

@@ -92,7 +92,7 @@ function EnSurtido() {
   useEffect(() => {
     const fetchPedidos = async () => {
       try {
-        const response = await axios.get('http://192.168.3.27:3007/api/pedidos-surtidos/pedidos-surtido');
+        const response = await axios.get('http://66.232.105.87:3007/api/pedidos-surtidos/pedidos-surtido');
         const dataWithTimes = response.data.map(pedido => {
           const itemsInStateB = pedido.items.filter(item => item.estado === 'B');
           const itemsAV = itemsInStateB.filter(item => item.pasillo === 'AV');
@@ -136,7 +136,7 @@ function EnSurtido() {
 
     const fetchBahias = async () => {
       try {
-        const response = await axios.get('http://192.168.3.27:3007/api/pedidos/bahias');
+        const response = await axios.get('http://66.232.105.87:3007/api/pedidos/bahias');
         const filteredBahias = response.data.filter(bahia => bahia.estado === null && bahia.id_pdi === null);
         setBahias(filteredBahias);
       } catch (error) {
@@ -241,7 +241,7 @@ function EnSurtido() {
   
   const fetchTurnoPedidos = async (turno) => {
     try {
-      const response = await axios.get('http://192.168.3.27:3007/api/pedidos-surtidos/pedidos-dia'); 
+      const response = await axios.get('http://66.232.105.87:3007/api/pedidos-surtidos/pedidos-dia'); 
       const data = response.data[turno] || [];
       
       // Calcular tiempos y otros datos
@@ -386,7 +386,7 @@ function EnSurtido() {
         ubi_bahia: combinedBahias,
       };
 
-      await axios.put(`http://192.168.3.27:3007/api/pedidos-surtidos/pedidos-surtido/${selectedPedido.pedido}`, updatedPedido);
+      await axios.put(`http://66.232.105.87:3007/api/pedidos-surtidos/pedidos-surtido/${selectedPedido.pedido}`, updatedPedido);
       const updatedPedidos = pedidos.map(pedido =>
         pedido.pedido === selectedPedido.pedido ? { ...selectedPedido, items: updatedItems } : pedido
       );
@@ -412,7 +412,7 @@ function EnSurtido() {
       const existingBahias = selectedPedido.ubi_bahia ? selectedPedido.ubi_bahia.split(', ') : [];
       const combinedBahias = [...new Set([...existingBahias, ...selectedBahias.map(b => b.bahia)])].join(', ');
 
-      const response = await axios.put(`http://192.168.3.27:3007/api/pedidos-surtidos/pedidos-surtido/${selectedPedido.pedido}/bahias`, {
+      const response = await axios.put(`http://66.232.105.87:3007/api/pedidos-surtidos/pedidos-surtido/${selectedPedido.pedido}/bahias`, {
         ubi_bahia: combinedBahias 
       });
 
@@ -479,7 +479,7 @@ function EnSurtido() {
         tipo: selectedPedido.tipo 
       }));
 
-      await axios.post(`http://192.168.3.27:3007/api/pedidos-surtidos/pedidos-surtido/${selectedPedido.pedido}/authorize`, { items: updatedItems });
+      await axios.post(`http://66.232.105.87:3007/api/pedidos-surtidos/pedidos-surtido/${selectedPedido.pedido}/authorize`, { items: updatedItems });
 
       const updatedPedidos = pedidos.filter(pedido => pedido.pedido !== selectedPedido.pedido);
       setPedidos(updatedPedidos);
@@ -596,7 +596,7 @@ function EnSurtido() {
 
   const handleCancelPedido = async (pedidoId) => {
     try {
-      const response = await axios.put(`http://192.168.3.27:3007/api/pedidos-surtidos/pedidos-surtido/${pedidoId}/cancel`, { estado: 'C' });
+      const response = await axios.put(`http://66.232.105.87:3007/api/pedidos-surtidos/pedidos-surtido/${pedidoId}/cancel`, { estado: 'C' });
       if (response.status === 200) {
         const updatedPedidos = pedidos.map(pedido => {
           if (pedido.pedido === pedidoId) {

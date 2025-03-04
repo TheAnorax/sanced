@@ -131,7 +131,7 @@ function ProductoCRUD() {
   const fetchProductos = async () => {
     try {
       const response = await axios.get(
-        "http://192.168.3.27:3007/api/productos"
+        "http://66.232.105.87:3007/api/productos"
       );
       setProductos(response.data);
       setFilteredProductos(response.data);
@@ -149,7 +149,7 @@ function ProductoCRUD() {
   const fetchUbicaciones = async (codigo_pro) => {
     try {
       const response = await axios.get(
-        `http://192.168.3.27:3007/api/productos/ubicaciones?codigo_pro=${codigo_pro}`
+        `http://66.232.105.87:3007/api/productos/ubicaciones?codigo_pro=${codigo_pro}`
       );
       setUbicaciones(response.data);
     } catch (error) {
@@ -260,7 +260,7 @@ function ProductoCRUD() {
           });
           if (confirmUpdate.isConfirmed) {
             await axios.put(
-              `http://192.168.3.27:3007/api/productos/${editId}`,
+              `http://66.232.105.87:3007/api/productos/${editId}`,
               formData,
               {
                 headers: {
@@ -276,7 +276,7 @@ function ProductoCRUD() {
             );
           }
         } else {
-          await axios.post("http://192.168.3.27:3007/api/productos", formData, {
+          await axios.post("http://66.232.105.87:3007/api/productos", formData, {
             headers: {
               "Content-Type": "multipart/form-data",
             },
@@ -316,7 +316,7 @@ function ProductoCRUD() {
   //   // Carga los datos de la volumetría para el Flyer
   //   try {
   //     const response = await axios.get(
-  //       `http://192.168.3.27:3007/api/productos/volumetria?codigo_pro=${producto.codigo_pro}`
+  //       `http://66.232.105.87:3007/api/productos/volumetria?codigo_pro=${producto.codigo_pro}`
   //     );
   //     setFlyerData(response.data);
   //   } catch (error) {
@@ -338,7 +338,7 @@ function ProductoCRUD() {
     // Carga los datos de la volumetría para el Flyer
     try {
       const response = await axios.get(
-        `http://192.168.3.27:3007/api/productos/volumetria?codigo_pro=${producto.codigo_pro}`
+        `http://66.232.105.87:3007/api/productos/volumetria?codigo_pro=${producto.codigo_pro}`
       );
       console.log("Datos de volumetría:", response.data); // Verifica los datos
       setFlyerData(response.data);
@@ -364,7 +364,7 @@ function ProductoCRUD() {
     });
     if (confirmDelete.isConfirmed) {
       try {
-        await axios.delete(`http://192.168.3.27:3007/api/productos/${id}`);
+        await axios.delete(`http://66.232.105.87:3007/api/productos/${id}`);
         fetchProductos();
         MySwal.fire("Eliminado", "El producto ha sido eliminado.", "success");
       } catch (error) {
@@ -391,7 +391,7 @@ function ProductoCRUD() {
 
       // Usa form.codigo_pro pero pásalo como 'codigo' en la URL
       await axios.put(
-        `http://192.168.3.27:3007/api/productos/volumetria/${form.codigo_pro}`, // Aquí envías el código correctamente
+        `http://66.232.105.87:3007/api/productos/volumetria/${form.codigo_pro}`, // Aquí envías el código correctamente
         volumetriaData // Datos del cuerpo de la solicitud
       );
 

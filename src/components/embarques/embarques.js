@@ -32,7 +32,7 @@ function Embarques() {
   useEffect(() => {
     const fetchPedidos = async () => {
       try {
-        const response = await axios.get('http://192.168.3.27:3007/api/embarque/embarque');
+        const response = await axios.get('http://66.232.105.87:3007/api/embarque/embarque');
         setPedidos(response.data);
       } catch (error) {
         console.error('Error fetching pedidos:', error);
@@ -41,7 +41,7 @@ function Embarques() {
  
     const fetchUsuarios = async () => {
       try {
-        const response = await axios.get('http://192.168.3.27:3007/api/pedidos/usuarios');
+        const response = await axios.get('http://66.232.105.87:3007/api/pedidos/usuarios');
     
         // Filtrar usuarios con validación de que 'role' no sea null o undefined
         const paqueteriaUsuarios = response.data.filter(usuario => 
@@ -76,7 +76,7 @@ function Embarques() {
     }));
 
     try {
-      await axios.put(`http://192.168.3.27:3007/api/embarque/embarque/${pedidoId}/usuario-embarque`, {
+      await axios.put(`http://66.232.105.87:3007/api/embarque/embarque/${pedidoId}/usuario-embarque`, {
         id_usuario_paqueteria: value,
       });
       setSnackbarMessage('Usuario de embarques asignado correctamente');

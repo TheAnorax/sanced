@@ -1,6 +1,7 @@
 const pool = require('../config/database'); // Importa la configuración de la base de datos
 
 // Controlador para obtener datos de embarques
+
 const obtenerEmbarques = async (req, res) => {
   const query = `
     SELECT
@@ -106,4 +107,26 @@ const obtenerEmbarques = async (req, res) => {
   }
 };
 
-module.exports = { obtenerEmbarques };
+const actualizarBahiaEmbarque = async (req, res) => {
+  console.log("UPDT-BHIA",req.body);
+  const { pedido } = req.body;
+  const updateBahiasQuery = "UPDATE bahias SET id_pdi=NULL, estado=NULL, ingreso = NULL WHERE id_pdi=?";
+
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    await connection.query(updateBahiasQuery, [pedido]);
+
+    await connection.commit();
+    res.status(200).json({ message: "Cantidad surtida actualizada correctamente" });
+  } catch (error) {
+    await connection.rollback();
+    console.error("Error en la transacción:", error);
+    res.status(500).send("Error en la transacción");
+  } finally {
+    connection.release();
+  }
+};
+
+module.exports = { obtenerEmbarques, actualizarBahiaEmbarque };

@@ -71,7 +71,7 @@ function Recibo() {
 
     try {
       // Guardar los datos en la base de datos antes de generar el PDF
-      await axios.post("http://192.168.3.27:3007/api/recibo/guardarRecibo", {
+      await axios.post("http://66.232.105.87:3007/api/recibo/guardarRecibo", {
         codigo: tarimaData.recibido?.codigo,
         cantidad_recibida: tarimaData.recibido?.cant_recibir,
         fecha_recibo: new Date().toLocaleDateString("es-MX"),
@@ -195,7 +195,7 @@ function Recibo() {
 
     try {
       // Guardar los datos en la base de datos antes de generar el PDF
-      await axios.post("http://192.168.3.27:3007/api/recibo/guardarRecibo", {
+      await axios.post("http://66.232.105.87:3007/api/recibo/guardarRecibo", {
         codigo: tarimaData.recibido?.codigo,
         cantidad_recibida: cantidadRecibida,
         fecha_recibo: new Date().toLocaleDateString("es-MX"),
@@ -262,7 +262,7 @@ function Recibo() {
     try {
       setLoading(true);
       const response = await axios.post(
-        "http://192.168.3.27:3007/recibo/lista",
+        "http://66.232.105.87:3007/recibo/lista",
         {
           dato: dato,
         }
@@ -309,7 +309,7 @@ function Recibo() {
     setLoading(true);
     try {
       const response = await axios.post(
-        "http://192.168.3.27:3007/recibo/tarima",
+        "http://66.232.105.87:3007/recibo/tarima",
         { 
           id_recibo: recibo.id_recibo,
         }
@@ -459,7 +459,7 @@ function Recibo() {
 
       if (confirmacion.isConfirmed) {
         await axios.post(
-          "http://192.168.3.27:3007/api/recibo/guardarTarima",
+          "http://66.232.105.87:3007/api/recibo/guardarTarima",
           editedTarimaData
         );
         Swal.fire(

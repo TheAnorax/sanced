@@ -24,7 +24,7 @@ const getProyectoQueretaro = async (req, res) => {
       params.push(dia_visita);
     }
 
-    console.log("Consulta generada:", query, "Parámetros:", params);
+    // console.log("Consulta generada:", query, "Parámetros:", params);
 
     const [rows] = await pool.query(query, params);
     res.json(rows);
@@ -37,11 +37,11 @@ const getProyectoQueretaro = async (req, res) => {
 // Obtener datos filtrados por categoría, portafolio y segmento
 const getCategoryData = async (req, res) => {
   const { giro, portafolio, segmento } = req.params;
-  console.log("giro:", giro, "portafolio:", portafolio, "segmento:", segmento);
+  // console.log("giro:", giro, "portafolio:", portafolio, "segmento:", segmento);
 
   try {
     const tableName = mapGiroToTable(giro);
-    console.log("Consultando tabla:", tableName);
+    // console.log("Consultando tabla:", tableName);
 
     // Determinar la columna del segmento
     let segmentColumn = "";
@@ -64,7 +64,7 @@ const getCategoryData = async (req, res) => {
       `;
 
     const [categoryRows] = await pool.query(query, [portafolio]);
-    console.log("Datos obtenidos de la base de datos (categoría):", categoryRows);
+    // console.log("Datos obtenidos de la base de datos (categoría):", categoryRows);
 
     // Si no hay productos base, retornar los resultados vacíos
     if (categoryRows.length === 0) {
@@ -82,7 +82,7 @@ const getCategoryData = async (req, res) => {
       `;
 
     const [priceRows] = await pool.query(queryPrices, [codigos]);
-    console.log("Datos obtenidos de la base de datos (precios):", priceRows);
+    // console.log("Datos obtenidos de la base de datos (precios):", priceRows);
 
     const normalizeCode = (code) => code.toString().trim();
 

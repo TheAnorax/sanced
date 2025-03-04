@@ -1688,6 +1688,6 @@ app.post('/update_inventory', (req, res) => {
 
 // Iniciar el servidor
 server.listen(port, () => {
-  console.log(`Servidor escuchando en http://192.168.3.27:${port}`);
+  console.log(`Servidor escuchando en http://66.232.105.87:${port}`);
 });
 

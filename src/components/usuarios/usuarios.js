@@ -168,7 +168,7 @@ function Usuarios() {
     const fetchUsuarios = async () => {
       try {
         const response = await axios.get(
-          "http://192.168.3.27:3007/api/usuarios/usuarios"
+          "http://66.232.105.87:3007/api/usuarios/usuarios"
         );
         let usuariosFiltrados = response.data;
 
@@ -227,7 +227,7 @@ function Usuarios() {
     const fetchSecciones = async () => {
       try {
         const response = await axios.get(
-          "http://192.168.3.27:3007/api/usuarios/secciones"
+          "http://66.232.105.87:3007/api/usuarios/secciones"
         );
         setSecciones(response.data);
       } catch (error) {
@@ -275,14 +275,14 @@ function Usuarios() {
       if (isEditMode) {
         // Actualizar usuario
         await axios.put(
-          `http://192.168.3.27:3007/api/usuarios/usuarios/${selectedUser.id_usu}`,
+          `http://66.232.105.87:3007/api/usuarios/usuarios/${selectedUser.id_usu}`,
           userForm
         );
         alert("Usuario actualizado correctamente");
       } else {
         // Crear nuevo usuario
         await axios.post(
-          `http://192.168.3.27:3007/api/usuarios/usuarios`,
+          `http://66.232.105.87:3007/api/usuarios/usuarios`,
           userForm
         );
         alert("Usuario creado correctamente");
@@ -303,7 +303,7 @@ function Usuarios() {
 
     try {
       await axios.delete(
-        `http://192.168.3.27:3007/api/usuarios/usuarios/${id_usu}`
+        `http://66.232.105.87:3007/api/usuarios/usuarios/${id_usu}`
       );
       alert("Usuario eliminado correctamente");
       //fetchUsuarios(); // Refrescar la lista de usuarios
@@ -324,7 +324,7 @@ function Usuarios() {
     setSelectedUser(usuario);
     try {
       const response = await axios.get(
-        `http://192.168.3.27:3007/api/usuarios/usuarios/${usuario.id_usu}/accesos`
+        `http://66.232.105.87:3007/api/usuarios/usuarios/${usuario.id_usu}/accesos`
       );
       console.log(response.data);
       setAccesos(response.data); // Cargar accesos del usuario seleccionado
@@ -365,7 +365,7 @@ function Usuarios() {
   const handleSaveAccess = async () => {
     try {
       await axios.put(
-        `http://192.168.3.27:3007/api/usuarios/usuarios/${selectedUser.id_usu}/accesos`,
+        `http://66.232.105.87:3007/api/usuarios/usuarios/${selectedUser.id_usu}/accesos`,
         {
           secciones: accesos,
         }
@@ -420,7 +420,7 @@ function Usuarios() {
   const saveEditablePermissions = async () => {
     try {
       await axios.put(
-        `http://192.168.3.27:3007/api/usuarios/usuarios/${selectedUser.id_usu}/permisos`,
+        `http://66.232.105.87:3007/api/usuarios/usuarios/${selectedUser.id_usu}/permisos`,
         { permisos: editablePermissions }
       );
       alert("Permisos actualizados correctamente");
@@ -440,7 +440,7 @@ function Usuarios() {
   const generarPDF = async () => {
     try {
       const response = await axios.get(
-        "http://192.168.3.27:3007/api/usuarios/usuarios"
+        "http://66.232.105.87:3007/api/usuarios/usuarios"
       );
       const usuariosPorTurno = response.data;
 
@@ -749,8 +749,9 @@ function Usuarios() {
         </Box>
       )}
 
+
       {/* Tabla para usuarios de Paquetería */}
-      {usuariosPaqueteria.length > 0 && (
+      {/* {usuariosPaqueteria.length > 0 && (
         <Box sx={{ mb: 5 }}>
           <Typography variant="h5" sx={{ mb: 2 }}>
             Usuarios de Paquetería
@@ -812,7 +813,83 @@ function Usuarios() {
             </Table>
           </TableContainer>
         </Box>
-      )}
+      )} */}
+
+      {/* Mostrar solo la tabla de Paquetería si el usuario tiene el rol "Paquet" */}
+{user?.role === "Paquet" ? (
+  <Box sx={{ mb: 5 }}>
+    <Typography variant="h5" sx={{ mb: 2 }}>
+      Usuarios de Paquetería
+    </Typography>
+    <TableContainer component={Paper}>
+      <Table>
+        <TableHead>
+          <TableRow>
+            <TableCell>ID</TableCell>
+            <TableCell>Nombre</TableCell>
+            <TableCell>Rol</TableCell>
+            <TableCell>Unidad de Negocio</TableCell>
+            <TableCell>Acciones</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {usuariosPaqueteria.map((usuario) => (
+            <TableRow key={usuario.id_usu}>
+              <TableCell>{usuario.id_usu}</TableCell>
+              <TableCell>{usuario.name}</TableCell>
+              <TableCell>{usuario.role}</TableCell>
+              <TableCell>{usuario.unidad}</TableCell>
+              <TableCell>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={() => handleOpenModal(usuario)}
+                >
+                  Ver Accesos
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  </Box>
+) : (
+  <>
+    {/* Mostrar otras tablas si el usuario NO es "Paquet" */}
+    {usuariosPorTurno.map((turnoData, index) => (
+      <Box key={index} sx={{ mb: 5 }}>
+        <Typography variant="h5" sx={{ mb: 2 }}>
+          Surtido Turno {turnoData.turno}
+        </Typography>
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>ID</TableCell>
+                <TableCell>Nombre</TableCell>
+                <TableCell>Pasillo</TableCell>
+                <TableCell>Unidad de Negocio</TableCell>
+                <TableCell>Acciones</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {turnoData.usuarios.map((usuario) => (
+                <TableRow key={usuario.id_usu}>
+                  <TableCell>{usuario.id_usu}</TableCell>
+                  <TableCell>{usuario.name}</TableCell>
+                  <TableCell>{usuario.role}</TableCell>
+                  <TableCell>{usuario.unidad}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Box>
+    ))}
+  </>
+)}
+
 
       {/* Tabla para usuarios con rol MONTA */}
       {usuariosMonta.length > 0 && (

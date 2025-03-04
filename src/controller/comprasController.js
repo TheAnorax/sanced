@@ -515,7 +515,7 @@ dayjs.extend(timezone);
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'C:/Users/Sistema Surtido/Desktop/React/docs');
+    cb(null, 'C:/Users/rodrigo/Desktop/react/docs');
   },
   filename: (req, file, cb) => {
     // Obtener la fecha actual en la zona horaria de la Ciudad de México
@@ -528,7 +528,7 @@ const storage = multer.diskStorage({
 
 const storageDocsOC = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'C:/Users/Sistema Surtido/Desktop/React/docsOC'); // Ruta para uploadPDFsOC
+    cb(null, 'C:/Users/rodrigo/Desktop/react/docsOC'); // Ruta para uploadPDFsOC
   },
   filename: (req, file, cb) => {
     cb(null, `${file.originalname}`);
@@ -674,12 +674,12 @@ const uploadPDFs = async (req, res) => {
             const previousPdf4 = existingRecibo[0].pdf_4;
             const previousPdf5 = existingRecibo[0].pdf_5;
             const previousPdf6 = existingRecibo[0].pdf_6;
-            if (previousPdf1 && pdf_1) deleteFile(`C:/Users/Sistema Surtido/Desktop/React/docs/${previousPdf1}`);
-            if (previousPdf2 && pdf_2) deleteFile(`C:/Users/Sistema Surtido/Desktop/React/docs/${previousPdf2}`);
-            if (previousPdf3 && pdf_3) deleteFile(`C:/Users/Sistema Surtido/Desktop/React/docs/${previousPdf3}`);
-            if (previousPdf4 && pdf_4) deleteFile(`C:/Users/Sistema Surtido/Desktop/React/docs/${previousPdf4}`);
-            if (previousPdf5 && pdf_5) deleteFile(`C:/Users/Sistema Surtido/Desktop/React/docs/${previousPdf5}`);            
-            if (previousPdf6 && pdf_6) deleteFile(`C:/Users/Sistema Surtido/Desktop/React/docs/${previousPdf6}`);
+            if (previousPdf1 && pdf_1) deleteFile(`C:/Users/rodrigo/Desktop/react/docs/${previousPdf1}`);
+            if (previousPdf2 && pdf_2) deleteFile(`C:/Users/rodrigo/Desktop/react/docs/${previousPdf2}`);
+            if (previousPdf3 && pdf_3) deleteFile(`C:/Users/rodrigo/Desktop/react/docs/${previousPdf3}`);
+            if (previousPdf4 && pdf_4) deleteFile(`C:/Users/rodrigo/Desktop/react/docs/${previousPdf4}`);
+            if (previousPdf5 && pdf_5) deleteFile(`C:/Users/rodrigo/Desktop/react/docs/${previousPdf5}`);            
+            if (previousPdf6 && pdf_6) deleteFile(`C:/Users/rodrigo/Desktop/react/docs/${previousPdf6}`);
           }
         }
 

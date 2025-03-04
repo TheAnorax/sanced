@@ -36,38 +36,50 @@ const getObservacionesPorClientes = async (req, res) => {
 };
 
 const getUltimaFechaEmbarque = async (req, res) => {
-  const { pedido } = req.params; // Tomamos el "pedido" como parámetro
-
   try {
-    // Consulta SQL para obtener el último registro de embarque
-    const query = `
-            SELECT registro_embarque 
-            FROM pedido_embarque 
-            WHERE pedido = ?
-            ORDER BY registro_embarque DESC 
-            LIMIT 1;
-        `;
+    // req.query.pedidos vendrá como una cadena tipo "70325,70454,70455"
+    const { pedidos } = req.query;
 
-    const [rows] = await pool.query(query, [pedido]); // Ejecutamos la consulta con el número de pedido
-
-    if (rows.length > 0) {
-      // Si encontramos un registro, devolvemos la fecha de embarque
-      res.json({ registro_embarque: rows[0].registro_embarque });
-    } else {
-      // Si no encontramos registros, devolvemos un mensaje adecuado
-      res.json({ message: "No se encontraron registros para este pedido" });
+    if (!pedidos) {
+      return res.status(400).json({ message: "No se proporcionaron pedidos" });
     }
+
+    const pedidosArray = pedidos
+      .split(",")
+      .map((p) => `'${p.trim()}'`); // comillado para VARCHAR
+
+    const query = `
+      SELECT 
+        pedido, 
+        fin_embarque 
+      FROM pedido_finalizado 
+      WHERE pedido IN (${pedidosArray.join(",")})
+    `;
+
+    const [rows] = await pool.query(query);
+
+    return res.json({ fechasEmbarque: rows });
   } catch (error) {
-    console.error("Error al obtener la fecha de embarque:", error.message);
-    res.status(500).json({ message: "Error al obtener la fecha de embarque" });
+    console.error("Error al obtener fechas:", error);
+    return res
+      .status(500)
+      .json({ message: "Error al obtener fechas de embarque" });
   }
 };
 
+
 const insertarRutas = async (req, res) => {
   const { rutas } = req.body;
-  // console.log("📥 Datos recibidos del frontend:", rutas);
+
+  if (!rutas || rutas.length === 0) {
+    return res.status(400).json({ message: "No se enviaron rutas para insertar." });
+  }
+
+  const connection = await pool.getConnection(); // Obtener conexión
 
   try {
+    await connection.beginTransaction(); // Iniciar la transacción
+
     for (let ruta of rutas) {
       const {
         routeName,
@@ -87,20 +99,21 @@ const insertarRutas = async (req, res) => {
         DIRECCION,
         TELEFONO,
         CORREO,
-        GUIA, // ✅ Agregamos GUIA
+        GUIA,
       } = ruta;
 
       const formattedDate = moment(FECHA, "DD/MM/YYYY").format("YYYY-MM-DD");
 
-      // Consulta SQL
-      const query = `
-                INSERT INTO paqueteria (routeName, FECHA, \`NO ORDEN\`, \`NO_FACTURA\`, \`NUM. CLIENTE\`, 
-                    \`NOMBRE DEL CLIENTE\`, ZONA, MUNICIPIO, ESTADO, OBSERVACIONES, TOTAL, PARTIDAS, PIEZAS, 
-                    TRANSPORTE, PAQUETERIA, TIPO, DIRECCION, TELEFONO, CORREO, GUIA) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `;
+      // ✅ Consulta para insertar sin duplicados
+      const insertQuery = `
+        INSERT INTO paqueteria (
+          routeName, FECHA, \`NO ORDEN\`, \`NO_FACTURA\`, \`NUM. CLIENTE\`,
+          \`NOMBRE DEL CLIENTE\`, ZONA, MUNICIPIO, ESTADO, OBSERVACIONES,
+          TOTAL, PARTIDAS, PIEZAS, TRANSPORTE, PAQUETERIA, TIPO, DIRECCION, TELEFONO, CORREO, GUIA
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `;
 
-      // Eliminado el cálculo de IVA. Se inserta TOTAL directamente.
       const values = [
         routeName,
         formattedDate,
@@ -124,28 +137,49 @@ const insertarRutas = async (req, res) => {
         GUIA,
       ];
 
-      await pool.query(query, values);
+      await connection.query(insertQuery, values);
     }
 
-    res.status(200).json({ message: "✅ Rutas insertadas correctamente." });
+    // ✅ Eliminar duplicados dejando solo el primero registrado
+    const deleteDuplicatesQuery = `
+      DELETE FROM paqueteria 
+      WHERE id NOT IN (
+        SELECT id FROM (
+          SELECT MIN(id) AS id
+          FROM paqueteria
+          GROUP BY \`NO ORDEN\`
+        ) AS temp
+      )
+    `;
+
+    await connection.query(deleteDuplicatesQuery);
+
+    await connection.commit(); // Confirmar la inserción
+
+    res.status(200).json({ message: "✅ Rutas insertadas y duplicados eliminados correctamente." });
   } catch (error) {
-    console.error("❌ Error al insertar las rutas:", error.message);
-    res.status(500).json({ message: "Error al insertar las rutas" });
+    await connection.rollback(); // Revertir cambios si hay un error
+    console.error("❌ Error al insertar rutas o eliminar duplicados:", error.message);
+    res.status(500).json({ message: "Error al insertar rutas o eliminar duplicados" });
+  } finally {
+    connection.release(); // Liberar la conexión
   }
 };
 
 const obtenerRutasDePaqueteria = async (req, res) => {
   try {
-    const { page = 1, limit = 1000, tipo = "" } = req.query;
+    const { page = 1, limit = 900, tipo = "" } = req.query;
     const offset = (page - 1) * limit;
 
     let query = `
       SELECT routeName, FECHA, \`NO ORDEN\`, NO_FACTURA, FECHA_DE_FACTURA, 
              \`NUM. CLIENTE\`, \`NOMBRE DEL CLIENTE\`, ZONA, MUNICIPIO, ESTADO, 
              OBSERVACIONES, TOTAL, PARTIDAS, PIEZAS, TARIMAS, TRANSPORTE, 
-             PAQUETERIA, GUIA, FECHA_DE_ENTREGA_CLIENTE, DIAS_DE_ENTREGA,TIPO
+             PAQUETERIA, GUIA, FECHA_DE_ENTREGA_CLIENTE, DIAS_DE_ENTREGA,
+             TIPO, DIRECCION, TELEFONO, TOTAL_FACTURA_LT
       FROM paqueteria
     `;
+
     const params = [];
 
     if (tipo) {
@@ -161,9 +195,7 @@ const obtenerRutasDePaqueteria = async (req, res) => {
     res.json(rows);
   } catch (error) {
     console.error("Error al obtener rutas de paquetería:", error.message);
-    res
-      .status(500)
-      .json({ message: "Error al obtener las rutas de paquetería" });
+    res.status(500).json({ message: "Error al obtener las rutas de paquetería" });
   }
 };
 
@@ -390,7 +422,6 @@ const getEmpresasTransportistas = async (req, res) => {
 const insertarVisita = async (req, res) => {
   const { id_vit, clave_visit, motivo, personal, reg_entrada, id_veh } =
     req.body;
-  // console.log("📥 Datos recibidos en la solicitud:", req.body);
 
   if (!id_veh) {
     return res
@@ -699,10 +730,10 @@ const getOrderStatus = async (req, res) => {
       [orderNumbers]
     );
     result.forEach((row) => {
-      statusResults[row.pedido] = { 
-        statusText: "Por Asignar", 
+      statusResults[row.pedido] = {
+        statusText: "Por Asignar",
         color: "#ff0000", // Rojo 
-        table: "pedi" 
+        table: "pedi"
       };
     });
 

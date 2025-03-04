@@ -12,7 +12,7 @@ function Ubicaciones() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const response = await axios.get('http://192.168.3.27:3007/api/ubicaciones');
+                const response = await axios.get('http://66.232.105.87:3007/api/ubicaciones');
                 setUbicaciones(response.data);
             } catch (error) {
                 console.error('Error fetching ubicaciones:', error);

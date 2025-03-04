@@ -31,4 +31,30 @@ const getHistorial = async (req, res) => {
   }
 };
 
-module.exports = { getHistorial };
+const almacenamiento = async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+     SELECT 
+	id_ubi,
+	ubi,
+	code_prod,
+	cant_stock,
+	almacen,
+	pasillo,
+	lote,
+	ingreso
+	FROM ubi_alma
+	
+    `);
+
+    // Modificar el valor de code_prod si es igual a '9999'
+    const modifiedRows = rows;
+
+    res.status(200).json(modifiedRows);
+  } catch (error) {
+    console.error('Error al obtener el historial de movimientos:', error.message);
+    res.status(500).json({ error: 'Error al obtener el historial de movimientos' });
+  }
+};
+
+module.exports = { getHistorial, almacenamiento };

@@ -106,7 +106,7 @@ function ReporteReciboCedis() {
       try {
         setLoading(true); // Iniciar el estado de carga
         const response = await axios.get(
-          "http://192.168.3.27:3007/recibo/reporte"
+          "http://66.232.105.87:3007/recibo/reporte"
         );
         if (response.data.resultado.error === "false") {
           setReporteData(response.data.resultado.list); // Guardar los datos obtenidos en el estado
@@ -145,7 +145,7 @@ function ReporteReciboCedis() {
 
     try {
       const response = await axios.post(
-        "http://192.168.3.27:3007/recibo/detalle",
+        "http://66.232.105.87:3007/recibo/detalle",
         { id_recibo }
       );
 
@@ -300,7 +300,7 @@ function ReporteReciboCedis() {
       setUploadProgress(0); // Reiniciar progreso
   
       const response = await axios.post(
-        "http://192.168.3.27:3007/api/compras/compras/upload-pdfs",
+        "http://66.232.105.87:3007/api/compras/compras/upload-pdfs",
         formData,
         {
           headers: { "Content-Type": "multipart/form-data" },
@@ -810,7 +810,7 @@ function ReporteReciboCedis() {
                       >
                         {/* Botón principal */}
                         <Button
-                          href={`http://192.168.3.27:3011/docs/${detalleData.pdf_1}`}
+                          href={`http://66.232.105.87:3011/docs/${detalleData.pdf_1}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           variant="contained"
@@ -880,7 +880,7 @@ function ReporteReciboCedis() {
                         {detalleData.pdf_2.split(",").map((pdfName, index) => (
                           <Button
                             key={index}
-                            href={`http://192.168.3.27:3011/docs/${pdfName.trim()}`}
+                            href={`http://66.232.105.87:3011/docs/${pdfName.trim()}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             variant="contained"
@@ -952,7 +952,7 @@ function ReporteReciboCedis() {
                         }}
                       >
                         <Button
-                          href={`http://192.168.3.27:3011/docs/${detalleData.pdf_3}`}
+                          href={`http://66.232.105.87:3011/docs/${detalleData.pdf_3}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           variant="contained"
@@ -1026,7 +1026,7 @@ function ReporteReciboCedis() {
                         {detalleData.pdf_4.split(",").map((pdfName, index) => (
                           <Button
                             key={index}
-                            href={`http://192.168.3.27:3011/docs/${pdfName.trim()}`}
+                            href={`http://66.232.105.87:3011/docs/${pdfName.trim()}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             variant="contained"
@@ -1107,7 +1107,7 @@ function ReporteReciboCedis() {
                       }}
                     >
                         <Button
-                          href={`http://192.168.3.27:3011/docs/${detalleData.pdf_5}`}
+                          href={`http://66.232.105.87:3011/docs/${detalleData.pdf_5}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           variant="contained"
@@ -1185,7 +1185,7 @@ function ReporteReciboCedis() {
                         {detalleData.pdf_6.split(",").map((pdfName, index) => (
                           <Button
                             key={index}
-                            href={`http://192.168.3.27:3011/docs/${pdfName.trim()}`}
+                            href={`http://66.232.105.87:3011/docs/${pdfName.trim()}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             variant="contained"

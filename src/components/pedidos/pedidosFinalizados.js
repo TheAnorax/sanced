@@ -19,7 +19,7 @@ function Finalizados() {
   useEffect(() => {
     const fetchPedidos = async () => {
       try {
-        const response = await axios.get('http://192.168.3.27:3007/api/finalizados/pedidos-finalizados');
+        const response = await axios.get('http://66.232.105.87:3007/api/finalizados/pedidos-finalizados');
         const dataWithFormattedTimes = response.data.map((pedido, index) => ({
           id: index,
           ...pedido,
@@ -41,7 +41,7 @@ function Finalizados() {
 
   const handleOpenModal = async (pedido) => {
     try {
-      const response = await axios.get(`http://192.168.3.27:3007/api/finalizados/pedido/${pedido.pedido}`);
+      const response = await axios.get(`http://66.232.105.87:3007/api/finalizados/pedido/${pedido.pedido}`);
       const detallesOrdenados = response.data
   .sort((a, b) => {
     if (a.cant_no_env !== 0 && b.cant_no_env === 0) return -1;

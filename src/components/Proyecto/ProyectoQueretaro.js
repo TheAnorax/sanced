@@ -41,7 +41,7 @@ function ProyectoQueretaro() {
     useEffect(() => {
         if (currentDay) {
             console.log("Enviando solicitud a la API con dia_visita:", currentDay);  // Verifica el valor de dia_visita
-            axios.get(`http://192.168.3.27:3007/api/Queretaro/proyectoqueretaro?dia_visita=${currentDay}`)
+            axios.get(`http://66.232.105.87:3007/api/Queretaro/proyectoqueretaro?dia_visita=${currentDay}`)
                 .then((response) => {
                     console.log("Respuesta de la API:", response.data);  // Verifica la respuesta de la API
                     setData(response.data);
@@ -121,7 +121,7 @@ function ProyectoQueretaro() {
         const encodedSegmento = encodeURIComponent(segmento);
 
         // Hacer la consulta a la API para obtener los datos filtrados por categoría y segmento
-        axios.get(`http://192.168.3.27:3007/api/Queretaro/category/${encodedGiro}/${encodedPortafolio}/${encodedSegmento}`)
+        axios.get(`http://66.232.105.87:3007/api/Queretaro/category/${encodedGiro}/${encodedPortafolio}/${encodedSegmento}`)
             .then((response) => {
                 console.log('Datos filtrados por portafolio, categoría y segmento:', response.data.data);
                 if (response.data.data && response.data.data.length > 0) {
@@ -143,7 +143,7 @@ function ProyectoQueretaro() {
         setSelectedZone(zone);
 
         // Filtrar los proyectos según la zona seleccionada
-        axios.get(`http://192.168.3.27:3007/api/Queretaro/proyectoqueretaro?zona=${zone}`)
+        axios.get(`http://66.232.105.87:3007/api/Queretaro/proyectoqueretaro?zona=${zone}`)
             .then((response) => {
                 setFilteredData(response.data);
                 setPage(0); // Reset the page when changing the filter
@@ -198,7 +198,7 @@ function ProyectoQueretaro() {
         }
 
         // Llamada a la API para obtener los datos de la tabla correspondiente
-        axios.get(`http://192.168.3.27:3007/api/Queretaro/${table}`)
+        axios.get(`http://66.232.105.87:3007/api/Queretaro/${table}`)
             .then((response) => {
                 setTabData(response.data);  // Establecer los datos para mostrar en el segundo tab
             })
@@ -255,7 +255,7 @@ function ProyectoQueretaro() {
     const fetchFilteredData = () => {
         if (!selectedZone || selectedRoutes.length === 0) return; // No hacer nada si no hay filtros
 
-        axios.get('http://192.168.3.27:3007/api/Queretaro/proyectoqueretaro/filtrado', {
+        axios.get('http://66.232.105.87:3007/api/Queretaro/proyectoqueretaro/filtrado', {
             params: {
                 zona: selectedZone,
                 rutas: selectedRoutes.join(',')  // Pasar las rutas como una cadena

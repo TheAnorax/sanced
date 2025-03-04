@@ -42,7 +42,7 @@ function Kpi() {
 
         try {
             const formattedDate = date.format('YYYY-MM-DD');
-            const response = await axios.get(`http://192.168.3.27:3007/api/kpi/getPrduSurtido`, {
+            const response = await axios.get(`http://66.232.105.87:3007/api/kpi/getPrduSurtido`, {
                 params: { date: formattedDate },
             });
             setData(response.data);

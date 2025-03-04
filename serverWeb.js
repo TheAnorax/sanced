@@ -72,5 +72,5 @@ app.use('/api/kpi', KPi)
 
 
 app.listen(port, () => {
-  console.log(`Server is running on http://192.168.3.27:${port}`);
+  console.log(`Server is running on http://66.232.105.87:${port}`);
 });

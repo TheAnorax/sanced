@@ -29,7 +29,7 @@ function EnSurtido() {
   useEffect(() => {
     const fetchPedidos = async () => {
       try {
-        const response = await axios.get('http://192.168.3.27:3007/api/surtidos/surtido');
+        const response = await axios.get('http://66.232.105.87:3007/api/surtidos/surtido');
         setPedidos(response.data);
         setLoading(false);
       } catch (error) {

@@ -122,7 +122,7 @@ function Muestras() {
   const obtenerDepartamentos = async () => {
     try {
       const response = await axios.get(
-        "http://192.168.3.27:3007/api/muestras/departamentos"
+        "http://66.232.105.87:3007/api/muestras/departamentos"
       );
       setDepartamentos(response.data);
     } catch (error) {
@@ -195,7 +195,7 @@ function Muestras() {
 
     try {
       const response = await axios.get(
-        `http://192.168.3.27:3007/api/muestras/producto/${codigo}`
+        `http://66.232.105.87:3007/api/muestras/producto/${codigo}`
       );
 
       // Verifica la estructura de la respuesta

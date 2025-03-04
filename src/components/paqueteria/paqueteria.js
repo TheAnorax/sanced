@@ -56,7 +56,7 @@ function Paqueteria() {
   useEffect(() => {
     const fetchPedidos = async () => {
       try {
-        const response = await axios.get('http://192.168.3.27:3007/api/paqueterias/paqueteria');
+        const response = await axios.get('http://66.232.105.87:3007/api/paqueterias/paqueteria');
         setOriginalPedidos(response.data); // Guardar los datos originales
         setPedidos(response.data);
       } catch (error) {
@@ -66,7 +66,7 @@ function Paqueteria() {
     
     const fetchUsuarios = async () => {
       try {
-        const response = await axios.get('http://192.168.3.27:3007/api/pedidos/usuarios');
+        const response = await axios.get('http://66.232.105.87:3007/api/pedidos/usuarios');
         
         // Filtra usuarios que tienen un rol definido y contienen 'PQ' en cualquier parte
         const paqueteriaUsuarios = response.data.filter(usuario =>     usuario.role && usuario.role.toUpperCase().includes('PQ')
@@ -116,7 +116,7 @@ function Paqueteria() {
     }));
 
     try {
-      await axios.put(`http://192.168.3.27:3007/api/paqueterias/paqueteria/${pedidoId}/usuario-paqueteria`, {
+      await axios.put(`http://66.232.105.87:3007/api/paqueterias/paqueteria/${pedidoId}/usuario-paqueteria`, {
         id_usuario_paqueteria: value,
       });
       setSnackbarMessage('Usuario de paquetería asignado correctamente');

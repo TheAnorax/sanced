@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { getObservacionesPorClientes, getUltimaFechaEmbarque, insertarRutas, obtenerRutasDePaqueteria,
     getFechaYCajasPorPedido, actualizarGuia, getPedidosEmbarque, getTransportistas, getEmpresasTransportistas,
-    insertarVisita, guardarDatos, obtenerDatos, eliminarRuta, getOrderStatus, getHistoricoData,getColumnasHistorico, getClientesHistorico,
+    insertarVisita, guardarDatos, obtenerDatos, eliminarRuta, getOrderStatus, getHistoricoData, getColumnasHistorico, getClientesHistorico,
     obtenerListaDeRutas,
     registrarNuevaRuta,
     borrarRutaPorId,
@@ -11,7 +11,7 @@ const { getObservacionesPorClientes, getUltimaFechaEmbarque, insertarRutas, obte
 
 router.post('/clientes/observaciones', getObservacionesPorClientes);
 
-router.get('/pedido/ultima-fecha-embarque/:pedido', getUltimaFechaEmbarque);
+router.get('/pedido/ultimas-fechas-embarque', getUltimaFechaEmbarque);
 
 router.post('/insertarRutas', insertarRutas);
 
@@ -33,7 +33,7 @@ router.post('/guardar-datos', guardarDatos);
 
 router.get('/obtener-datos', obtenerDatos);
 
-router.delete('/ruta/eliminar/:noOrden', eliminarRuta);  // Esta ruta eliminará la ruta por el parámetro noOrden
+router.delete('/ruta/eliminar/:noOrden', eliminarRuta);
 
 router.get("/historico_clientes", getClientesHistorico);
 
@@ -43,6 +43,5 @@ router.get("/historico", getHistoricoData);
 
 router.post('/status', getOrderStatus);
 
-// nuevas datos pra crear las rutas 
 
 module.exports = router;

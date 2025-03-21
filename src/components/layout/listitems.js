@@ -29,7 +29,10 @@ import SummarizeIcon from "@mui/icons-material/Summarize";
 import AnalyticsIcon from "@mui/icons-material/Analytics";
 import CompareArrowsIcon from "@mui/icons-material/CompareArrows";
 import PersonPinCircleIcon from "@mui/icons-material/PersonPinCircle";
+import GarageIcon from '@mui/icons-material/Garage';
 import { AdminPanelSettings } from "@mui/icons-material";
+import PlaceIcon from '@mui/icons-material/Place';
+import MapIcon from '@mui/icons-material/Map';
 
 // Personalizando el Tooltip
 const CustomTooltip = styled(({ className, ...props }) => (
@@ -74,16 +77,25 @@ export const mainListItems = (user) => {
         "Plan",
         "VENT",
         "CON",
+        "Vent",
+         "VENT",
+         "Tran","Rep"
       ],
       path: "/dashboard/productos",
       icon: <HandymanIcon />,
       text: "Productos",
     },
     {
-      role: ["Admin", "Master", "Trans", "PQ1", "Control", "EB1", "Paquet", "Embar"],
+      role: ["Admin", "Master", "Trans", "PQ1", "Control", "EB1", "Paquet", "Embar","Tran","Rep"],
       path: "/dashboard/Trasporte",
-      icon: <ManageSearchIcon />,
+      icon: <GarageIcon />,
       text: "Transporte",
+    },
+    {
+      role: ["Admin", "Master", "Trans", "Rep", "Vent", "VENT","Tran","Audi"],
+      path: "/dashboard/Tracking",
+      icon: <PlaceIcon />,
+      text: "Tracking",
     },
     {
       role: ["Control", "Admin"],
@@ -196,6 +208,7 @@ export const mainListItems = (user) => {
         "Control",
         "Audi",
         "ECOMERCE",
+        "Dep",
         "Recibo",
       ],
       path: "/dashboard/inventarios",
@@ -216,7 +229,7 @@ export const mainListItems = (user) => {
       text: "Insumos ",
     },
     {
-      role: ["Admin", "Master", "Master2"],
+      role: ["Admin", "Master", "Master2" ,"INV"],
       path: "/dashboard/inventario",
       icon: <AssessmentIcon />,
       text: "Inventario dia 0",
@@ -248,8 +261,8 @@ export const mainListItems = (user) => {
     {
       role: ["Admin", "Master", "Master2"],
       path: "/dashboard/Queretaro",
-      icon: <AnalyticsIcon />,
-      text: "PQ",
+      icon: <MapIcon />,
+      text: "Proyectos",
     },
     {
       role: ["Admin",'POLIA', 'POLIB', 'POLIP', 'POLIAR', 'CONTROL', 'RH', 'TRAFICO', 'Nac'],

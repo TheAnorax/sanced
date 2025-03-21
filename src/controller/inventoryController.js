@@ -102,7 +102,10 @@ const ubicaciones = async (req, res) => {
     const pasillos = {};
 
     locations.forEach((location) => {
-      const pasillo = typeof location.ubi === "string" ? location.ubi.slice(0, 3) : "SIN_PASILLO";
+      const pasillo =
+        typeof location.ubi === "string"
+          ? location.ubi.slice(0, 3)
+          : "SIN_PASILLO";
 
       if (!pasillos[pasillo]) {
         pasillos[pasillo] = { total: 0, completed: 0, pending: 0 };
@@ -168,10 +171,11 @@ const manual = async (req, res) => {
     res.json(rows);
   } catch (error) {
     console.error("Error al obtener los datos de inventario:", error);
-    res.status(500).json({ message: "Error al obtener los datos de inventario" });
+    res
+      .status(500)
+      .json({ message: "Error al obtener los datos de inventario" });
   }
 };
-
 
 // Obtener detalles del inventario
 const getInventoryDet = async (req, res) => {
@@ -200,7 +204,10 @@ const getInventoryDet = async (req, res) => {
     // Reemplazar valores nulos con 0
     const formattedRows = rows.map((row) => {
       return Object.fromEntries(
-        Object.entries(row).map(([key, value]) => [key, value === null ? 0 : value])
+        Object.entries(row).map(([key, value]) => [
+          key,
+          value === null ? 0 : value,
+        ])
       );
     });
 
@@ -234,15 +241,22 @@ const reportFinishInventory = async (req, res) => {
     const [rows] = await pool.query(query);
 
     // Calcular el total de la cantidad
-    const totalGeneral = rows.reduce((sum, row) => sum + (row.cantidad || 0), 0);
+    const totalGeneral = rows.reduce(
+      (sum, row) => sum + (row.cantidad || 0),
+      0
+    );
 
     // Enviar el total dentro del cuerpo de la respuesta JSON
     res.json({ data: rows, totalGeneral });
   } catch (error) {
-    res.status(500).json({ message: 'Error al obtener los productos', error: error.message });
+    res
+      .status(500)
+      .json({
+        message: "Error al obtener los productos",
+        error: error.message,
+      });
   }
 };
-
 
 const reportFinishInventoryAlma = async (req, res) => {
   const query = `
@@ -259,12 +273,20 @@ const reportFinishInventoryAlma = async (req, res) => {
     const [rows] = await pool.query(query);
 
     // Calcular el total de la cantidad
-    const totalGeneral = rows.reduce((sum, row) => sum + (row.cantidad || 0), 0);
+    const totalGeneral = rows.reduce(
+      (sum, row) => sum + (row.cantidad || 0),
+      0
+    );
 
     // Enviar el total dentro del cuerpo de la respuesta JSON
     res.json({ data: rows, totalGeneral });
   } catch (error) {
-    res.status(500).json({ message: 'Error al obtener los productos', error: error.message });
+    res
+      .status(500)
+      .json({
+        message: "Error al obtener los productos",
+        error: error.message,
+      });
   }
 };
 
@@ -294,7 +316,7 @@ const reportConsolidatedInventory = async (req, res) => {
     const groupedData = combinedRows.reduce((acc, row) => {
       const { codigo, clave, ubi, cantidad } = row;
       if (!acc[codigo]) {
-        acc[codigo] = { codigo, clave,  cantidad: cantidad || 0 };
+        acc[codigo] = { codigo, clave, cantidad: cantidad || 0 };
       } else {
         acc[codigo].cantidad += cantidad || 0;
       }
@@ -305,15 +327,69 @@ const reportConsolidatedInventory = async (req, res) => {
     const finalData = Object.values(groupedData);
 
     // Calcular el total general
-    const totalGeneral = finalData.reduce((sum, item) => sum + item.cantidad, 0);
+    const totalGeneral = finalData.reduce(
+      (sum, item) => sum + item.cantidad,
+      0
+    );
 
     // Enviar la respuesta con los datos agrupados y el total general
     res.json({ data: finalData, totalGeneral });
   } catch (error) {
-    res.status(500).json({ message: 'Error al obtener el inventario consolidado', error: error.message });
+    res
+      .status(500)
+      .json({
+        message: "Error al obtener el inventario consolidado",
+        error: error.message,
+      });
   }
 };
 
+const updateInventory = async (req, res) => {
+  try {
+    const { id } = req.params; // Asegúrate de que esto es "id_ubi"
+    const { _pz, _inner, _master, _pallet, cantidad, cant_stock } = req.body;
 
+    if (!id) {
+      return res
+        .status(400)
+        .json({ error: "ID de ubicación no proporcionado" });
+    }
 
-module.exports = { porcentaje, obtenerInventario, ubicaciones, persona, manual, getInventoryDet, reportFinishInventory, reportFinishInventoryAlma, reportConsolidatedInventory };
+    // Construcción de los campos a actualizar dinámicamente
+    const updateFields = {};
+    if (_pz !== undefined) updateFields._pz = _pz;
+    if (_inner !== undefined) updateFields._inner = _inner;
+    if (_master !== undefined) updateFields._master = _master;
+    if (_pallet !== undefined) updateFields._pallet = _pallet;
+    if (cantidad !== undefined) updateFields.cantidad = cantidad;
+    if (cant_stock !== undefined) updateFields.cant_stock = cant_stock;
+
+    if (Object.keys(updateFields).length === 0) {
+      return res
+        .status(400)
+        .json({ error: "No hay datos válidos para actualizar" });
+    }
+
+    // Actualizar solo la fila con el id_ubi correcto
+    const query = "UPDATE inventory SET ? WHERE id_ubi = ?";
+    await pool.query(query, [updateFields, id]);
+
+    res.json({ message: "Inventario actualizado correctamente" });
+  } catch (error) {
+    console.error("Error al actualizar inventario:", error);
+    res.status(500).json({ error: "Error al actualizar inventario" });
+  }
+};
+
+module.exports = {
+  porcentaje,
+  obtenerInventario,
+  ubicaciones,
+  persona,
+  manual,
+  getInventoryDet,
+  reportFinishInventory,
+  reportFinishInventoryAlma,
+  reportConsolidatedInventory,
+  updateInventory,
+};

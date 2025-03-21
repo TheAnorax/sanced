@@ -153,13 +153,15 @@ const getTitle = (pathname) => {
     case "/dashboard/RH":
       return "RH";
     case "/dashboard/Queretaro":
-      return "Proyecto Queretaro";
+      return "Proyecto";
     case "dashboard/visitas":
       return "Visitas";
     case "dashboard/visitas-reporte":
       return "Visitas Reporte";
     case "/dashboard/Trasporte":
       return "Trasporte";
+    case "/dashboard/Tracking":
+      return "Tracking";
       case "/dashboard/kpi":
         return "kpi";
     default:

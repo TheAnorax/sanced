@@ -1,5 +1,6 @@
 const pool = require('../config/database');
 const bcrypt = require('bcrypt');
+const fs = require("fs");
 
 
 const getUsuarios = async (req, res) => {
@@ -245,5 +246,4 @@ const updateRoleAccess = async (req, res) => {
 
 
 
-
-module.exports = { getUsuarios, getAccesosUsuario, updateAccesosUsuario, getSecciones, createUsuario, updateUsuario, deleteUsuario, checkAccess, getRolesWithAccess, updateRoleAccess };
+module.exports = {getUsuarios, getAccesosUsuario, updateAccesosUsuario, getSecciones, createUsuario, updateUsuario, deleteUsuario, checkAccess, getRolesWithAccess, updateRoleAccess };

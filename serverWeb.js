@@ -30,6 +30,7 @@ const Queretaro= require('./src/routes/queretaroRoutes')
 const visi = require('./src/routes/visitasRoutes')
 const Trasporte= require('./src/routes/TransporteRouter')
 const KPi = require('./src/routes/reporteRoutes')
+const Tracking = require('./src/routes/ventasRoutes')
 
 const app = express();
 const port = 3007;
@@ -69,8 +70,9 @@ app.use('/api/visitas', visi)
 app.use('/api/fotos', express.static('C:/acc-ced/'));
 app.use('/api/Trasporte',Trasporte)
 app.use('/api/kpi', KPi)
+app.use('/api/Ventas', Tracking)
 
 
 app.listen(port, () => {
-  console.log(`Server is running on http://192.168.3.27:${port}`);
+  console.log(`Server is running on http://localhost:${port}`);
 });

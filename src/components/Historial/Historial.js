@@ -16,7 +16,7 @@ function Historial() {
   useEffect(() => {
     const fetchMovimientos = async () => {
       try {
-        const response = await axios.get('http://192.168.3.27:3007/api/historial/histo'); // Ruta para obtener datos
+        const response = await axios.get('http://localhost:3007/api/historial/histo'); // Ruta para obtener datos
         // Reemplazar "9999" por "recibido" en los datos
         const modifiedData = response.data.map(movimiento => {
           return {

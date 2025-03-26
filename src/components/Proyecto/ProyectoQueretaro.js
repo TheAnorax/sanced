@@ -6,6 +6,8 @@ import {
 } from '@mui/material';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import CloseIcon from '@mui/icons-material/Close';
+import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
+
 
 function ProyectoQueretaro() {
 
@@ -33,6 +35,18 @@ function ProyectoQueretaro() {
     const [selectedPersona, setSelectedPersona] = useState('');
     const [selectedRoutes, setSelectedRoutes] = useState([]);
 
+    const [imagenSeleccionada, setImagenSeleccionada] = useState(null);
+    const [modalImagenAbierto, setModalImagenAbierto] = useState(false);
+
+    const abrirImagen = (src) => {
+        setImagenSeleccionada(src);
+        setModalImagenAbierto(true);
+    };
+
+    const cerrarImagen = () => {
+        setModalImagenAbierto(false);
+        setImagenSeleccionada(null);
+    };
 
     const [exhibitors, setExhibitors] = useState([]);
 
@@ -346,8 +360,26 @@ function ProyectoQueretaro() {
                                     height="120"
                                     image={row.foto}
                                     alt={row.nombre}
-                                    sx={{ objectFit: 'cover', width: '120px', height: '120px', marginRight: '16px' }}
+                                    onClick={(e) => {
+                                        e.stopPropagation(); // 👈 Detiene el evento para que no llegue al Card
+                                        abrirImagen(row.foto); // Abre el modal de la imagen
+                                    }}
+                                    sx={{
+                                        objectFit: 'cover',
+                                        width: '120px',
+                                        height: '120px',
+                                        marginRight: '16px',
+                                        cursor: 'pointer',
+                                        borderRadius: '4px',
+                                        transition: '0.3s',
+                                        '&:hover': {
+                                            boxShadow: '0 0 10px rgba(0,0,0,0.5)',
+                                            transform: 'scale(1.03)',
+                                        }
+                                    }}
                                 />
+
+
 
                                 {/* Columna 2: Información */}
                                 <Box sx={{ flexGrow: 1 }}>
@@ -356,7 +388,7 @@ function ProyectoQueretaro() {
                                     </Typography>
 
                                     <Typography variant="body2" color="text.secondary">
-                                        Zona: {row.zona}
+                                        {row.zona}
                                     </Typography>
 
                                     <Typography variant="body2" color="text.secondary">
@@ -370,6 +402,28 @@ function ProyectoQueretaro() {
                                     <Typography variant="body2" color="text.secondary">
                                         Ruta: {row.ruta}
                                     </Typography>
+
+                                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                        <Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>
+                                            Status:
+                                        </Typography>
+                                        <FiberManualRecordIcon
+                                            sx={{
+                                                fontSize: 14,
+                                                color: row.status === 'ACTIVO'
+                                                    ? 'green'
+                                                    : row.status === 'PROSPECTO'
+                                                        ? 'orange'
+                                                        : 'gray',
+                                                mr: 0.5
+                                            }}
+                                        />
+                                        <Typography variant="body2" color="text.secondary">
+                                            {row.status}
+                                        </Typography>
+                                    </Box>
+
+
 
                                 </Box>
                             </CardContent>
@@ -402,7 +456,39 @@ function ProyectoQueretaro() {
                     }}
                 >
 
-                    <DialogTitle>{selectedProject ? selectedProject.nombre : 'Cargando...'}</DialogTitle>
+                    <DialogTitle>
+                        {selectedProject ? (
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                                    {selectedProject.nombre}
+                                </Typography>
+
+                                <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                                    /
+                                </Typography>
+
+                                <FiberManualRecordIcon
+                                    sx={{
+                                        fontSize: 16,
+                                        color:
+                                            selectedProject.status === 'ACTIVO'
+                                                ? 'green'
+                                                : selectedProject.status === 'PROSPECTO'
+                                                    ? 'orange'
+                                                    : 'gray',
+                                    }}
+                                />
+                                <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                                    {selectedProject.status}
+                                </Typography>
+                            </Box>
+                        ) : (
+                            'Cargando...'
+                        )}
+                    </DialogTitle>
+
+
+
                     <DialogContent>
                         <Tabs value={tabIndex} onChange={handleTabChange} aria-label="Información del Proyecto">
                             <Tab label="Información General" />
@@ -622,7 +708,22 @@ function ProyectoQueretaro() {
                                                         image={exhibitor.imagen}
                                                         alt={exhibitor.descripcion || "Imagen no disponible"}
                                                         onError={(e) => e.target.src = "/imagenes/default.png"}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation(); // Evita que se dispare algún evento del Card si existiera
+                                                            abrirImagen(exhibitor.imagen);
+                                                        }}
+                                                        sx={{
+                                                            cursor: 'pointer',
+                                                            borderRadius: '4px',
+                                                            objectFit: 'cover',
+                                                            transition: '0.3s',
+                                                            '&:hover': {
+                                                                transform: 'scale(1.05)',
+                                                                boxShadow: '0 0 10px rgba(0,0,0,0.3)',
+                                                            }
+                                                        }}
                                                     />
+
                                                     <CardContent>
                                                         <Typography variant="h6">{exhibitor.descripcion}</Typography>
                                                         <Typography variant="body2">Medidas: {exhibitor.medidas}</Typography>
@@ -943,8 +1044,45 @@ function ProyectoQueretaro() {
 
             {/* Renderiza la vista seleccionada */}
             {renderView()}
+
+            {/* //MODAL PARA ABRIR LAS IMAGENES */}
+            <Modal
+                open={modalImagenAbierto}
+                onClose={cerrarImagen}
+                sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+                <Box sx={{
+                    bgcolor: 'white',
+                    borderRadius: 2,
+                    p: 2,
+                    maxWidth: '90vw',
+                    maxHeight: '90vh',
+                    outline: 'none',
+                    boxShadow: 24
+                }}>
+                    <IconButton onClick={cerrarImagen} sx={{ position: 'absolute', top: 8, right: 8 }}>
+                        <CloseIcon />
+                    </IconButton>
+                    <img
+                        src={imagenSeleccionada}
+                        alt="Vista ampliada"
+                        style={{
+                            width: '100%',
+                            height: 'auto',
+                            maxHeight: '80vh',
+                            borderRadius: '8px'
+                        }}
+                        onError={(e) => e.target.src = "/imagenes/default.png"}
+                    />
+                </Box>
+            </Modal>
+
+
+
         </>
     );
+
+
 
 }
 

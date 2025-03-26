@@ -182,14 +182,15 @@ const obtenerRutasDePaqueteria = async (req, res) => {
     const now = new Date();
     const currentMonth = now.getMonth() + 1;
     const currentYear = now.getFullYear();
+    const today = now.toISOString().split("T")[0]; // YYYY-MM-DD
 
     let query = `
       SELECT routeName, FECHA, \`NO ORDEN\`, NO_FACTURA, FECHA_DE_FACTURA, 
              \`NUM. CLIENTE\`, \`NOMBRE DEL CLIENTE\`, ZONA, MUNICIPIO, ESTADO, 
              OBSERVACIONES, TOTAL, PARTIDAS, PIEZAS, TARIMAS, TRANSPORTE, 
              PAQUETERIA, GUIA, FECHA_DE_ENTREGA_CLIENTE, DIAS_DE_ENTREGA,
-             TIPO, DIRECCION, TELEFONO, TOTAL_FACTURA_LT,ENTREGA_SATISFACTORIA_O_NO_SATISFACTORIA,
-             created_at,MOTIVO,NUMERO_DE_FACTURA_LT,FECHA_DE_ENTREGA_CLIENTE
+             TIPO, DIRECCION, TELEFONO, TOTAL_FACTURA_LT, ENTREGA_SATISFACTORIA_O_NO_SATISFACTORIA,
+             created_at, MOTIVO, NUMERO_DE_FACTURA_LT, FECHA_DE_ENTREGA_CLIENTE
       FROM paqueteria
       WHERE MONTH(FECHA) = ? AND YEAR(FECHA) = ?
     `;
@@ -206,8 +207,15 @@ const obtenerRutasDePaqueteria = async (req, res) => {
       params.push(guia);
     }
 
-    query += " ORDER BY FECHA DESC LIMIT ? OFFSET ?";
-    params.push(parseInt(limit), parseInt(offset));
+    // 🔹 Ordenamiento: primero los del día de hoy, luego por TRANSPORTE A-Z
+    query += `
+      ORDER BY 
+        (DATE(created_at) = ?) DESC,  -- Primero pedidos de hoy
+        TRANSPORTE ASC                -- Luego ordenar alfabéticamente por transporte
+      LIMIT ? OFFSET ?
+    `;
+
+    params.push(today, parseInt(limit), parseInt(offset));
 
     const [rows] = await pool.query(query, params);
 
@@ -217,7 +225,6 @@ const obtenerRutasDePaqueteria = async (req, res) => {
     res.status(500).json({ message: "Error al obtener las rutas de paquetería" });
   }
 };
-
 
 
 const getFechaYCajasPorPedido = async (req, res) => {
@@ -844,6 +851,78 @@ const getOrderStatus = async (req, res) => {
   }
 };
 
+const getFusionInfo = async (req, res) => {
+  try {
+    const orderNumbers = req.body.orderNumbers || [req.params.orderNumber];
+
+    if (!orderNumbers || orderNumbers.length === 0) {
+      return res.status(400).json({ message: "No se enviaron pedidos" });
+    }
+
+    const fusionResults = {};
+
+    // Tablas que vas a revisar (con prioridad alta a baja)
+    const tablas = [
+      { nombre: "pedido_finalizado", etiqueta: "Finalizado" },
+      { nombre: "pedido_embarque", etiqueta: "Embarcando" },
+      { nombre: "pedido_surtido", etiqueta: "Surtiendo" },
+    ];
+
+    for (const tabla of tablas) {
+      try {
+        const [rows] = await pool.query(
+          `SELECT pedido, fusion FROM ${tabla.nombre} WHERE pedido IN (?)`,
+          [orderNumbers]
+        );
+
+        rows.forEach((row) => {
+          const pedido = row.pedido;
+          const fusion = row.fusion;
+
+          if (!fusionResults[pedido]) {
+            fusionResults[pedido] = {
+              fusionado: false,
+              fusionWith: null,
+              estado: tabla.etiqueta,
+              tabla: tabla.nombre,
+            };
+          }
+
+          // Si está fusionado con otro distinto (y no vacío)
+          if (fusion && fusion.trim() !== "" && fusion !== pedido) {
+            fusionResults[pedido] = {
+              fusionado: true,
+              fusionWith: fusion,
+              estado: tabla.etiqueta,
+              tabla: tabla.nombre,
+            };
+          }
+        });
+      } catch (error) {
+        console.warn(`⚠️ Error al consultar tabla ${tabla.nombre}:`, error.message);
+      }
+    }
+
+    // Marcar los que no se encontraron en ninguna tabla
+    orderNumbers.forEach((pedido) => {
+      if (!fusionResults[pedido]) {
+        fusionResults[pedido] = {
+          fusionado: false,
+          fusionWith: null,
+          estado: "Pedido no encontrado",
+          tabla: "Desconocido",
+        };
+      }
+    });
+
+    res.json(fusionResults);
+  } catch (error) {
+    console.error("❌ Error en getFusionInfo:", error);
+    res.status(500).json({ message: "Error interno al consultar fusión" });
+  }
+};
+
+
 
 
 
@@ -927,82 +1006,76 @@ const upload = multer({ storage: storage });
 
 const actualizarPorGuia = async (req, res) => {
   const { guia } = req.params;
-  console.log("📥 Recibida guía:", guia); // Depuración
 
-  if (!guia) {
-    return res.status(400).json({ message: "❌ Falta la guía en la solicitud." });
+
+  const { numeroFacturaLT, totalFacturaLT, pedidos } = req.body;
+
+  if (!guia || !Array.isArray(pedidos) || pedidos.length === 0) {
+    return res.status(400).json({ message: "❌ Faltan datos o pedidos vacíos." });
   }
 
-  const {
-    numeroFacturaLT,
-    totalFacturaLT,
-    prorrateoFacturaLT,
-    prorrateoFacturaPaqueteria,
-    sumaFlete,
-    gastosExtras,
-    porcentajeEnvio,
-    porcentajePaqueteria,
-    porcentajeGlobal,
-  } = req.body;
-
-  console.log("📥 Datos recibidos en la API:", req.body);
-
   try {
-    // Verificar si existen pedidos con esa GUIA
-    const [pedidosExistentes] = await pool.query(
-      "SELECT `NO ORDEN` FROM paqueteria WHERE `GUIA` = ?",
-      [guia]
-    );
+    let totalActualizados = 0;
 
-    if (pedidosExistentes.length === 0) {
-      return res.status(404).json({
-        message: `❌ No se encontraron pedidos con la guía ${guia}.`,
-      });
+    for (const pedido of pedidos) {
+      const {
+        noOrden,
+        prorrateoFacturaLT,
+        prorrateoFacturaPaqueteria,
+        sumaFlete,
+        gastosExtras,
+        porcentajeEnvio,
+        porcentajePaqueteria,
+        porcentajeGlobal,
+      } = pedido;
+
+      const query = `
+        UPDATE paqueteria
+        SET 
+          NUMERO_DE_FACTURA_LT = ?, 
+          TOTAL_FACTURA_LT = ?, 
+          PRORRATEO_FACTURA_LT = ?, 
+          PRORRATEO_FACTURA_PAQUETERIA = ?,
+          SUMA_FLETE = ?, 
+          GASTOS_EXTRAS = ?, 
+          PORCENTAJE_ENVIO = ?, 
+          PORCENTAJE_PAQUETERIA = ?, 
+          PORCENTAJE_GLOBAL = ?
+        WHERE GUIA = ? AND \`NO ORDEN\` = ?;
+      `;
+
+      const [result] = await pool.query(query, [
+        numeroFacturaLT,
+        totalFacturaLT,
+        prorrateoFacturaLT,
+        prorrateoFacturaPaqueteria,
+        sumaFlete,
+        gastosExtras,
+        limpiarPorcentaje(porcentajeEnvio),
+        limpiarPorcentaje(porcentajePaqueteria),
+        limpiarPorcentaje(porcentajeGlobal),
+        guia,
+        noOrden,
+      ]);
+
+      totalActualizados += result.affectedRows;
     }
 
-    // Ejecutar la actualización para todos los pedidos con esa GUIA
-    const query = `
-      UPDATE paqueteria
-      SET 
-        NUMERO_DE_FACTURA_LT = ?, 
-        TOTAL_FACTURA_LT = ?, 
-        PRORRATEO_FACTURA_LT = ?, 
-        PRORRATEO_FACTURA_PAQUETERIA = ?,
-        SUMA_FLETE = ?, 
-        GASTOS_EXTRAS = ?, 
-        PORCENTAJE_ENVIO = ?, 
-        PORCENTAJE_PAQUETERIA = ?, 
-        PORCENTAJE_GLOBAL = ?
-      WHERE GUIA = ?;
-    `;
-
-    const [result] = await pool.query(query, [
-      numeroFacturaLT,
-      totalFacturaLT,
-      prorrateoFacturaLT,
-      prorrateoFacturaPaqueteria,
-      sumaFlete,
-      gastosExtras,
-      porcentajeEnvio.replace(" %", ""),
-      porcentajePaqueteria.replace(" %", ""),
-      porcentajeGlobal.replace(" %", ""),
-      guia,
-    ]);
-
-    console.log("✅ Registros actualizados:", result.affectedRows);
-
-    if (result.affectedRows > 0) {
-      return res.status(200).json({ message: "✅ Datos actualizados correctamente para la guía." });
-    } else {
-      return res.status(404).json({
-        message: `⚠ No se actualizaron registros para la guía ${guia}.`,
-      });
-    }
+    return res.status(200).json({
+      message: `✅ Se actualizaron ${totalActualizados} pedidos para la guía ${guia}.`,
+    });
   } catch (error) {
     console.error("❌ Error al actualizar por guía:", error.message);
     return res.status(500).json({ message: "❌ Error interno al actualizar los datos." });
   }
 };
+
+// Función auxiliar segura
+function limpiarPorcentaje(valor) {
+  if (typeof valor === "string") return parseFloat(valor.replace(" %", "")) || 0;
+  if (typeof valor === "number") return valor;
+  return 0;
+}
 
 
 //para que la puedan ver las demas computadora 
@@ -1070,7 +1143,7 @@ const crearRuta = async (req, res) => {
 
 
 const agregarPedidoARuta = async (req, res) => {
-  console.log("📥 Pedido recibido en el backend:", req.body); // 🔹 Verificar qué datos llegan
+  // console.log("📥 Pedido recibido en el backend:", req.body); // 🔹 Verificar qué datos llegan
 
   const {
     ruta_id,
@@ -1291,4 +1364,5 @@ module.exports = {
   obtenerRutasConPedidos,
   obtenerRutaPorId,
   obtenerResumenDelDia,
+  getFusionInfo,
 };

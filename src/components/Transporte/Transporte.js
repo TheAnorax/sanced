@@ -14,10 +14,12 @@ import { CloudUpload } from "@mui/icons-material";
 import CompareArrowsIcon from "@mui/icons-material/CompareArrows";
 import { Tooltip } from "@mui/material";
 
+
 import axios from "axios";
 import {
   Typography, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Box, Button, Modal, Select, MenuItem, FormControl,
   InputLabel, AppBar, Tabs, Tab, IconButton, Snackbar, Checkbox, Grid, Dialog, DialogTitle, DialogContent, DialogActions, TablePagination, Card, CircularProgress, CardContent, CardActions,
+
 } from "@mui/material";
 
 import { jsPDF } from "jspdf";
@@ -197,6 +199,7 @@ function Transporte() {
 
     console.log(`🔍 Se ejecutará fetchStatuses para la pestaña: ${tabName}`);
     fetchStatuses(filteredData, tabName)
+      .then(() => fetchFusions(filteredData)) // 👈 Llamada a fusión justo después
       .catch((error) => console.error(error))
       .finally(() => {
         isFetchingRef.current = false;
@@ -308,6 +311,75 @@ function Transporte() {
       );
     }
   };
+
+  //fusion de los pedidos 
+
+  const fetchFusions = async (data) => {
+    const orderNumbers = data.map((d) => d["NO ORDEN"]);
+    console.log("🔄 Consultando fusión para pedidos:", orderNumbers);
+
+    try {
+      const response = await axios.post(
+        `http://localhost:3007/api/Trasporte/fusion`,
+        { orderNumbers }
+      );
+
+      const fusionMap = response.data;
+
+      // Actualiza el estado con la info de fusión
+      setSentRoutesData((prevData) =>
+        prevData.map((route) =>
+          fusionMap[route["NO ORDEN"]]
+            ? {
+              ...route,
+              fusionWith: fusionMap[route["NO ORDEN"]].fusionWith || null,
+              fusionState: fusionMap[route["NO ORDEN"]].estado,
+              fusionTable: fusionMap[route["NO ORDEN"]].tabla,
+            }
+            : route
+        )
+      );
+
+      // Si también quieres reflejarlo en los tabs específicos
+      setPaqueteriaData((prevData) =>
+        prevData.map((route) =>
+          fusionMap[route["NO ORDEN"]]
+            ? {
+              ...route,
+              fusionWith: fusionMap[route["NO ORDEN"]].fusionWith || null,
+            }
+            : route
+        )
+      );
+      setDirectaData((prevData) =>
+        prevData.map((route) =>
+          fusionMap[route["NO ORDEN"]]
+            ? {
+              ...route,
+              fusionWith: fusionMap[route["NO ORDEN"]].fusionWith || null,
+            }
+            : route
+        )
+      );
+      setVentaEmpleadoData((prevData) =>
+        prevData.map((route) =>
+          fusionMap[route["NO ORDEN"]]
+            ? {
+              ...route,
+              fusionWith: fusionMap[route["NO ORDEN"]].fusionWith || null,
+            }
+            : route
+        )
+      );
+    } catch (error) {
+      console.error("❌ Error al consultar fusión:", error);
+    }
+  };
+
+
+
+
+
   //estos son lo del estatus
 
   const handleRowClick = (routeData) => {
@@ -2446,7 +2518,7 @@ function Transporte() {
     // console.log("Observaciones actuales:", observacionesPorRegistro);
   }, [observacionesPorRegistro, groupedData]);
 
-  const MAX_VISIBLE_ROUTES = 25;
+  const MAX_VISIBLE_ROUTES = 100;
 
   const removeRoute = (route) => {
     setGroupedData((prevData) => {
@@ -2786,29 +2858,7 @@ function Transporte() {
 
   useEffect(() => { }, [observacionesPorRegistro, groupedData]);
 
-  const moveRowUp = (route, index) => {
-    setGroupedData((prevData) => {
-      const updatedRoute = { ...prevData[route] };
-      if (index > 0) {
-        const temp = updatedRoute.rows[index - 1];
-        updatedRoute.rows[index - 1] = updatedRoute.rows[index];
-        updatedRoute.rows[index] = temp;
-      }
-      return { ...prevData, [route]: updatedRoute };
-    });
-  };
 
-  const moveRowDown = (route, index) => {
-    setGroupedData((prevData) => {
-      const updatedRoute = { ...prevData[route] };
-      if (index < updatedRoute.rows.length - 1) {
-        const temp = updatedRoute.rows[index + 1];
-        updatedRoute.rows[index + 1] = updatedRoute.rows[index];
-        updatedRoute.rows[index] = temp;
-      }
-      return { ...prevData, [route]: updatedRoute };
-    });
-  };
 
   const getTransportUrl = (transport) => {
     const cleanedTransport = transport
@@ -2994,17 +3044,30 @@ function Transporte() {
     );
   }, [filteredData, page, rowsPerPage]);
 
-  const filteredAsignacion = [...directaData, ...paqueteriaData].filter(
-    (routeData) =>
-      routeData["NO ORDEN"]
-        ?.toString()
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
-      routeData["NUM. CLIENTE"]
-        ?.toString()
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase())
-  );
+  const [filtroGeneralAsignacion, setFiltroGeneralAsignacion] = useState("");
+  const [filtroEstadoAsignacion, setFiltroEstadoAsignacion] = useState("");
+
+
+  const filteredAsignacion = useMemo(() => {
+    return sentRoutesData.filter((item) => {
+      if (item.TIPO?.toLowerCase() !== "paqueteria" && item.TIPO?.toLowerCase() !== "directa") {
+        return false;
+      }
+
+      const cumpleGeneral =
+        !filtroGeneralAsignacion ||
+        item["NO ORDEN"]?.toString().includes(filtroGeneralAsignacion) ||
+        item["NUM. CLIENTE"]?.toString().includes(filtroGeneralAsignacion) ||
+        item["NOMBRE DEL CLIENTE"]?.toLowerCase().includes(filtroGeneralAsignacion.toLowerCase());
+
+      const cumpleEstado =
+        !filtroEstadoAsignacion ||
+        item.ESTADO?.toLowerCase().includes(filtroEstadoAsignacion.toLowerCase());
+
+      return cumpleGeneral && cumpleEstado;
+    });
+  }, [sentRoutesData, filtroGeneralAsignacion, filtroEstadoAsignacion]);
+
 
   const paginatedAsignacion = filteredAsignacion.slice(
     page * rowsPerPage,
@@ -3032,39 +3095,46 @@ function Transporte() {
 
   const [mostrarSinGuia, setMostrarSinGuia] = useState(false);
 
+  const [filtroGeneral, setFiltroGeneral] = useState(""); // para No Orden y Num Cliente
+  const [filtroEstado, setFiltroEstado] = useState("");   // separado
+
+
   const toggleMostrarSinGuia = () => {
     setMostrarSinGuia((prev) => !prev);
   };
 
   const paqueteriaFiltrada = useMemo(() => {
     return paqueteriaData.filter((routeData) => {
-      const cumpleFiltro =
-        !filtro ||
-        routeData["NO ORDEN"]?.toString().includes(filtro) ||
-        routeData["NOMBRE DEL CLIENTE"]
-          ?.toLowerCase()
-          .includes(filtro.toLowerCase()) ||
-        routeData.ESTADO?.toLowerCase().includes(filtro.toLowerCase());
+      const coincideGeneral =
+        !filtroGeneral ||
+        routeData["NO ORDEN"]?.toString().includes(filtroGeneral) ||
+        routeData["NUM. CLIENTE"]?.toString().toLowerCase().includes(filtroGeneral.toLowerCase());
 
-      const cumplePaqueteria =
+      const coincideEstado =
+        !filtroEstado ||
+        routeData.ESTADO?.toLowerCase().includes(filtroEstado.toLowerCase());
+
+      const coincidePaqueteria =
         !paqueteriaSeleccionada ||
         routeData.PAQUETERIA === paqueteriaSeleccionada;
 
-      const cumpleEstatus =
+      const coincideEstatus =
         !estatusSeleccionado || routeData.statusText === estatusSeleccionado;
 
-      const cumpleGuia =
-        !mostrarSinGuia || !routeData.GUIA || routeData.GUIA.trim() === ""; // Filtra solo las que NO tienen guía
+      const coincideGuia =
+        !mostrarSinGuia || !routeData.GUIA || routeData.GUIA.trim() === "";
 
-      return cumpleFiltro && cumplePaqueteria && cumpleEstatus && cumpleGuia;
+      return coincideGeneral && coincideEstado && coincidePaqueteria && coincideEstatus && coincideGuia;
     });
   }, [
-    filtro,
+    filtroGeneral,
+    filtroEstado,
     paqueteriaData,
     paqueteriaSeleccionada,
     estatusSeleccionado,
     mostrarSinGuia,
   ]);
+
 
   const [facturaSeleccionada, setFacturaSeleccionada] = useState(""); // Filtro por factura
   const [fechaEntregaSeleccionada, setFechaEntregaSeleccionada] = useState(""); // Filtro por fecha
@@ -3095,37 +3165,42 @@ function Transporte() {
   // Filtrar los datos de "directaData"
   const directaFiltrada = useMemo(() => {
     return directaData.filter((item) => {
-      const cumpleFiltro =
-        !filtro ||
-        item["NOMBRE DEL CLIENTE"]
-          ?.toLowerCase()
-          .includes(filtro.toLowerCase()) ||
-        item["NO ORDEN"]?.toString().includes(filtro) ||
-        item.ESTADO?.toLowerCase().includes(filtro.toLowerCase());
+      const cumpleGeneral =
+        !filtroGeneral ||
+        item["NUM. CLIENTE"]?.toLowerCase().includes(filtroGeneral.toLowerCase()) ||
+        item["NO ORDEN"]?.toString().includes(filtroGeneral);
+
+      const cumpleEstado =
+        !filtroEstado || item.ESTADO?.toLowerCase().includes(filtroEstado.toLowerCase());
 
       const cumpleEstatus =
         !estatusSeleccionado || item.statusText === estatusSeleccionado;
 
-      // 🔹 Comparar directamente con el valor ingresado por el usuario
       const cumpleFechaEntrega =
-        !fechaEntregaSeleccionada ||
-        item.FECHA_DE_ENTREGA_CLIENTE === fechaEntregaSeleccionada;
+        !fechaEntregaSeleccionada || item.FECHA_DE_ENTREGA_CLIENTE === fechaEntregaSeleccionada;
 
-      return cumpleFiltro && cumpleEstatus && cumpleFechaEntrega;
+      return cumpleGeneral && cumpleEstado && cumpleEstatus && cumpleFechaEntrega;
     });
-  }, [filtro, directaData, estatusSeleccionado, fechaEntregaSeleccionada]);
+  }, [filtroGeneral, filtroEstado, directaData, estatusSeleccionado, fechaEntregaSeleccionada]);
+
+
 
   const ventaEmpleadoFiltrada = useMemo(() => {
-    if (!filtro) return ventaEmpleadoData; // Si no hay filtro, muestra todos los datos
-    return ventaEmpleadoData.filter(
-      (item) =>
-        item["NOMBRE DEL CLIENTE"]
-          ?.toLowerCase()
-          .includes(filtro.toLowerCase()) ||
-        item["NO ORDEN"]?.toString().includes(filtro) ||
-        item.ESTADO?.toLowerCase().includes(filtro.toLowerCase())
-    );
-  }, [filtro, ventaEmpleadoData]);
+    return ventaEmpleadoData.filter((item) => {
+      const cumpleGeneral =
+        !filtroGeneral ||
+        item["NUM. CLIENTE"]?.toLowerCase().includes(filtroGeneral.toLowerCase()) ||
+        item["NO ORDEN"]?.toString().includes(filtroGeneral);
+
+      const cumpleEstado =
+        !filtroEstado || item.ESTADO?.toLowerCase().includes(filtroEstado.toLowerCase());
+
+      return cumpleGeneral && cumpleEstado;
+    });
+  }, [filtroGeneral, filtroEstado, ventaEmpleadoData]);
+
+
+
 
   const calcularDiasEntrega = (fechaInicio, fechaFin) => {
     if (!fechaInicio || !fechaFin) return 0;
@@ -3328,26 +3403,18 @@ function Transporte() {
   };
 
   //porrateo va aui
+
   const [modalGuiaOpen, setModalGuiaOpen] = useState(false);
   const [pedidos, setPedidos] = useState([]);
 
-  // Función para abrir el modal
-  const handleOpenModalGuia = () => {
-    setModalGuiaOpen(true);
-  };
 
-  // Función para cerrar el modal
-  const handleCloseModalGuia = () => {
-    setModalGuiaOpen(false);
-  };
-
-  // Función para buscar pedidos por número de guía
   const buscarPedidosPorGuia = async () => {
     try {
       if (!guia) {
         alert("⚠ Debes ingresar un número de guía.");
         return;
       }
+
       const response = await fetch(
         `http://localhost:3007/api/Trasporte/rutas?guia=${guia}`
       );
@@ -3355,9 +3422,29 @@ function Transporte() {
 
       if (Array.isArray(data) && data.length > 0) {
         setPedidos(data);
+
+        // ✅ Calcular la suma total de los pedidos de inmediato
+        const sumaTotal = data.reduce((sum, pedido) => {
+          const totalLimpio = parseFloat(
+            String(pedido.TOTAL).replace(/[^0-9.-]+/g, "")
+          );
+          return sum + (isNaN(totalLimpio) ? 0 : totalLimpio);
+        }, 0);
+
+        setSumaTotalPedidos(sumaTotal);
+        // También puedes limpiar el % de relación si no hay Factura LT aún
+        if (totalFacturaLT > 0) {
+          const relacion = (sumaTotal / totalFacturaLT) * 100;
+          setPorcentajeRelacion(relacion);
+        } else {
+          setPorcentajeRelacion(0);
+        }
+
       } else {
         alert("⚠ No se encontraron pedidos para esta guía.");
         setPedidos([]);
+        setSumaTotalPedidos(0); // Reiniciar si no hay datos
+        setPorcentajeRelacion(0);
       }
     } catch (error) {
       console.error("❌ Error al buscar pedidos:", error);
@@ -3369,51 +3456,66 @@ function Transporte() {
     const value = parseFloat(e.target.value) || 0;
     setTotalFacturaLT(value);
 
-    const sumaTotalPedidos = pedidos.reduce(
-      (sum, pedido) => sum + (Number(pedido.TOTAL) || 0),
-      0
-    );
+    const sumaTotal = pedidos.reduce((sum, pedido) => {
+      const total = parseFloat(String(pedido.TOTAL).replace(/[^0-9.-]+/g, ""));
+      return sum + (isNaN(total) ? 0 : total);
+    }, 0);
+
+    setSumaTotalPedidos(sumaTotal);
 
     const nuevosPedidos = pedidos.map((pedido) => {
-      const totalPedido = Number(pedido.TOTAL) || 0;
+      const totalPedido = parseFloat(String(pedido.TOTAL).replace(/[^0-9.-]+/g, "")) || 0;
 
-      // ✅ Cambiamos `const` por `let` para variables que se modificarán
-      let prorrateoFacturaLT = parseFloat(pedido.prorrateoFacturaLT) || 0;
-      let prorrateoFacturaPaqueteria = totalFacturaLT
-        ? (totalPedido / sumaTotalPedidos) * parseFloat(totalFacturaLT)
-        : 0;
+      // Calcular el porcentaje prorrateado del total
+      const porcentaje = sumaTotal > 0 ? totalPedido / sumaTotal : 0;
 
-      // ✅ Asegurar que "Suma Flete" siempre es un número válido
-      let sumaFlete = prorrateoFacturaLT + prorrateoFacturaPaqueteria;
+      // Calcular el valor proporcional para el prorrateo
+      const prorrateoFacturaLT = porcentaje * value;
 
-      // ✅ Corrección del cálculo de porcentaje de Envío y Paquetería
-      let porcentajeEnvio =
-        prorrateoFacturaLT > 0 ? (sumaFlete / prorrateoFacturaLT) * 100 : 0;
-      let porcentajePaqueteria =
-        totalPedido > 0 ? (prorrateoFacturaPaqueteria / totalPedido) * 100 : 0;
-
-      // ✅ Cálculo correcto de la Suma de Gastos Extras y % Global
-      let sumaGastosExtras =
-        prorrateoFacturaLT +
-        prorrateoFacturaPaqueteria +
-        (Number(pedido.gastosExtras) || 0);
-      let porcentajeGlobal =
-        totalPedido > 0 ? (sumaGastosExtras / totalPedido) * 100 : 0;
+      // Calcular valores iniciales (sin gastos)
+      const sumaFlete = prorrateoFacturaLT; // Se duplica solo si no hay gastos luego
+      const porcentajePaqueteria = totalPedido > 0 ? (prorrateoFacturaLT / totalPedido) * 100 : 0;
 
       return {
         ...pedido,
         prorrateoFacturaLT: prorrateoFacturaLT.toFixed(2),
-        prorrateoFacturaPaqueteria: prorrateoFacturaPaqueteria.toFixed(2),
+        gastosExtras: 0,
         sumaFlete: sumaFlete.toFixed(2),
-        porcentajeEnvio: porcentajeEnvio.toFixed(2) + " %",
+        porcentajeEnvio: "", // Se actualizará después con gastos
         porcentajePaqueteria: porcentajePaqueteria.toFixed(2) + " %",
-        sumaGastosExtras: sumaGastosExtras.toFixed(2),
-        porcentajeGlobal: porcentajeGlobal.toFixed(2) + " %",
+        porcentajeGlobal: "",
       };
     });
 
     setPedidos(nuevosPedidos);
   };
+
+
+  const handleGastosExtrasChange = (index, value) => {
+    const nuevosPedidos = [...pedidos];
+    const pedido = nuevosPedidos[index];
+
+    const gastosExtras = parseFloat(value) || 0;
+    const prorrateo = parseFloat(pedido.prorrateoFacturaLT) || 0;
+    const totalPedido = parseFloat(String(pedido.TOTAL).replace(/[^0-9.-]+/g, "")) || 0;
+
+    pedido.gastosExtras = gastosExtras;
+
+    // Calcular suma flete
+    const sumaFlete = gastosExtras > 0 ? prorrateo + gastosExtras : prorrateo;
+    pedido.sumaFlete = sumaFlete.toFixed(2);
+
+    // % Envío = prorrateo / total pedido
+    const porcentajeEnvio = totalPedido > 0 ? (prorrateo / totalPedido) * 100 : 0;
+    pedido.porcentajeEnvio = porcentajeEnvio.toFixed(2) + " %";
+
+    // % Global = (suma flete + gastos) / total pedido
+    const porcentajeGlobal = totalPedido > 0 ? (sumaFlete / totalPedido) * 100 : 0;
+    pedido.porcentajeGlobal = porcentajeGlobal.toFixed(2) + " %";
+
+    setPedidos(nuevosPedidos);
+  };
+
 
   const guardarPorGuia = async () => {
     if (!guia || guia.trim() === "") {
@@ -3421,45 +3523,37 @@ function Transporte() {
       return;
     }
 
+    // Modificación del bloque datosAGuardar dentro de guardarPorGuia
+
     const datosAGuardar = {
       numeroFacturaLT,
       totalFacturaLT,
-      prorrateoFacturaLT: pedidos.reduce(
-        (sum, pedido) => sum + (parseFloat(pedido.prorrateoFacturaLT) || 0),
-        0
-      ),
-      prorrateoFacturaPaqueteria: pedidos.reduce(
-        (sum, pedido) =>
-          sum + (parseFloat(pedido.prorrateoFacturaPaqueteria) || 0),
-        0
-      ),
-      sumaFlete: pedidos.reduce(
-        (sum, pedido) => sum + (parseFloat(pedido.sumaFlete) || 0),
-        0
-      ),
-      gastosExtras: pedidos.reduce(
-        (sum, pedido) => sum + (parseFloat(pedido.gastosExtras) || 0),
-        0
-      ),
-      porcentajeEnvio:
-        pedidos.reduce(
-          (sum, pedido) =>
-            sum + parseFloat(pedido.porcentajeEnvio.replace(" %", "")),
-          0
-        ) + " %",
-      porcentajePaqueteria:
-        pedidos.reduce(
-          (sum, pedido) =>
-            sum + parseFloat(pedido.porcentajePaqueteria.replace(" %", "")),
-          0
-        ) + " %",
-      porcentajeGlobal:
-        pedidos.reduce(
-          (sum, pedido) =>
-            sum + parseFloat(pedido.porcentajeGlobal.replace(" %", "")),
-          0
-        ) + " %",
+      pedidos: pedidos.map((pedido) => ({
+        noOrden: pedido["NO ORDEN"],
+        numeroFacturaLT, // ✅ Aquí lo agregamos dentro de cada pedido
+        prorrateoFacturaLT: parseFloat(pedido.prorrateoFacturaLT) || 0,
+        prorrateoFacturaPaqueteria: 0,
+        sumaFlete: parseFloat(pedido.sumaFlete) || 0,
+        gastosExtras: parseFloat(pedido.gastosExtras) || 0,
+        porcentajeEnvio: parseFloat(
+          typeof pedido.porcentajeEnvio === "string"
+            ? pedido.porcentajeEnvio.replace(" %", "")
+            : pedido.porcentajeEnvio
+        ) || 0,
+        porcentajePaqueteria: parseFloat(
+          typeof pedido.porcentajePaqueteria === "string"
+            ? pedido.porcentajePaqueteria.replace(" %", "")
+            : pedido.porcentajePaqueteria
+        ) || 0,
+        porcentajeGlobal: parseFloat(
+          typeof pedido.porcentajeGlobal === "string"
+            ? pedido.porcentajeGlobal.replace(" %", "")
+            : pedido.porcentajeGlobal
+        ) || 0,
+      })),
     };
+
+
 
     console.log("📤 Enviando datos a la API:", datosAGuardar);
 
@@ -3486,13 +3580,38 @@ function Transporte() {
     }
   };
 
+
+  const limpiarPorcentaje = (valor) => {
+    if (typeof valor === "string") {
+      return parseFloat(valor.replace(" %", "")) || 0;
+    }
+    return typeof valor === "number" ? valor : 0;
+  };
+
+
+
+  const handleOpenModalGuia = () => {
+    setModalGuiaOpen(true);
+  };
+
+  const handleCloseModalGuia = () => {
+    setModalGuiaOpen(false);
+  };
+
+
+
   //sincronisar rutas y toda la informacion
-  const [loadingSync, setLoadingSync] = useState(false); // Estado de carga
+
+  const [loadingSync, setLoadingSync] = useState(false);
 
   const [pedidosDeBDOpen, setPedidosDeBDOpen] = useState(false);
-  const [rutasConPedidos, setRutasConPedidos] = useState([]); // ✅ Almacena las rutas con pedidos
+  const [rutasConPedidos, setRutasConPedidos] = useState([]);
   const [selectedRuta, setSelectedRuta] = useState(null);
-  const [lastSync, setLastSync] = useState(null); // Guardar última sincronización
+  const [lastSync, setLastSync] = useState(null);
+
+  const [sumaTotalPedidos, setSumaTotalPedidos] = useState(0);
+  const [porcentajeRelacion, setPorcentajeRelacion] = useState(0);
+
 
   const syncRoutesToDB = async () => {
     if (loadingSync) return; // ✅ Evita que se ejecute si ya está en proceso
@@ -3577,7 +3696,11 @@ function Transporte() {
     setLoadingSync(false);
   };
 
-  // ✅ useEffect para ejecutar sincronización cada 5 minutos
+  const getTotalRuta = (ruta) => {
+    if (!ruta?.pedidos || ruta.pedidos.length === 0) return 0;
+    return ruta.pedidos.reduce((acc, pedido) => acc + (Number(pedido.total) || 0), 0);
+  };
+
   useEffect(() => {
     syncRoutesToDB(); // ✅ Se ejecuta una vez al inicio
 
@@ -3589,7 +3712,6 @@ function Transporte() {
     return () => clearInterval(interval); // 🔹 Limpia el intervalo al desmontar el componente
   }, []);
 
-  // ✅ Definir la función antes del useEffect
   const fetchRutasConPedidos = async () => {
     try {
       const response = await axios.get(
@@ -3602,19 +3724,16 @@ function Transporte() {
     }
   };
 
-  // ✅ Ahora sí podemos usar la función en useEffect
   useEffect(() => {
     fetchRutasConPedidos();
   }, []);
 
-  // 🔹 Abrir modal con los pedidos de una ruta específica
   const openPedidosDeBDModal = (ruta) => {
-    setSelectedRuta(ruta); // Guarda la ruta seleccionada
+    setSelectedRuta(ruta);
   };
 
-  // 🔹 Cerrar modal de pedidos
   const closePedidosDeBDModal = () => {
-    setSelectedRuta(null); // Borra la ruta seleccionada
+    setSelectedRuta(null);
   };
 
   //calculo del dia
@@ -3636,23 +3755,87 @@ function Transporte() {
     fetchResumenDelDia();
   }, []);
 
+  //Funcionamiento para poder mover los pedidos 
+
+  const moverPedido = (ruta, index, direccion) => {
+    setGroupedData((prev) => {
+      const nuevaRuta = { ...prev[ruta] };
+      const items = [...nuevaRuta.rows];
+
+      if (direccion === 'arriba' && index > 0) {
+        [items[index - 1], items[index]] = [items[index], items[index - 1]];
+      }
+
+      if (direccion === 'abajo' && index < items.length - 1) {
+        [items[index], items[index + 1]] = [items[index + 1], items[index]];
+      }
+
+      return {
+        ...prev,
+        [ruta]: {
+          ...nuevaRuta,
+          rows: items,
+        },
+      };
+    });
+  };
+
+  //AGREGAR MASIVAMENTE A UNA RUTA VARIOS PEDIDOS 
+
+  const [selectedOrders, setSelectedOrders] = useState([]);
+  const [selectedMassRoute, setSelectedMassRoute] = useState("");
+
+  const handleToggleOrderSelection = (pedido) => {
+    setSelectedOrders((prev) => {
+      const already = prev.includes(pedido["NO ORDEN"]);
+      return already
+        ? prev.filter((id) => id !== pedido["NO ORDEN"])
+        : [...prev, pedido["NO ORDEN"]];
+    });
+  };
+
+
+  const handleAssignMultipleToRoute = () => {
+    if (!selectedMassRoute) {
+      alert("Selecciona una ruta antes de continuar.");
+      return;
+    }
+
+    const pedidosSeleccionados = data.filter((row) =>
+      selectedOrders.includes(row["NO ORDEN"])
+    );
+
+    pedidosSeleccionados.forEach((pedido) => {
+      assignToRoute(pedido, selectedMassRoute); // ✅ Usa la función existente
+    });
+
+    // Limpiar selección
+    setSelectedOrders([]);
+    setSelectedMassRoute("");
+  };
+
+
+
+
   return (
     <Paper elevation={3} style={{ padding: "20px" }}>
       {/* Pestañas */}
       <AppBar
         position="static"
-        sx={{ backgroundColor: "white", boxShadow: "none" }}
-      >
+        sx={{ backgroundColor: "white", boxShadow: "none" }}>
+
         <Tabs
           value={tabIndex}
           onChange={handleChangeTab}
           textColor="primary"
           indicatorColor="primary"
-          centered
-        >
+          centered>
+
           <Tab label="OVR y Rutas" />
           <Tab label="Embarques" />
+
         </Tabs>
+
       </AppBar>
 
       {/* Primer Tab: Mostrar rutas y detalles */}
@@ -3981,110 +4164,110 @@ function Transporte() {
 
           {(user?.role === "Admin" || user?.role === "Control") && (
             <Box>
-              {/* Modal para ver las rutas ya creadas */}
-              <Typography variant="h6" gutterBottom>
-                Rutas Disponibles
-              </Typography>
+              <Grid container spacing={2} wrap="nowrap">
+                {/* Modal para ver las rutas ya creadas */}
+                <Typography variant="h6" gutterBottom>
+                  Rutas Disponibles
+                </Typography>
 
-              <Grid container spacing={2}>
-                {rutasConPedidos.length > 0 ? (
-                  rutasConPedidos.map((ruta) => (
-                    <Grid item key={ruta.id} xs={12} sm={6} md={4}>
-                      <Card
-                        sx={{ bgcolor: "#f5f5f5", borderRadius: "8px", p: 2 }}
-                      >
-                        <CardContent>
-                          <Typography variant="h6" textAlign="center">
-                            {ruta.nombre}
-                          </Typography>
-                          <Typography variant="body2" color="textSecondary">
-                            Pedidos: {ruta.pedidos ? ruta.pedidos.length : 0}
-                          </Typography>
-                        </CardContent>
-                        <CardActions sx={{ justifyContent: "center" }}>
-                          <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={() => setSelectedRuta(ruta)}
-                          >
-                            Ver Pedidos
-                          </Button>
-                        </CardActions>
-                      </Card>
-                    </Grid>
-                  ))
-                ) : (
-                  <Typography>No hay rutas disponibles.</Typography>
-                )}
-              </Grid>
-
-              {/* Modal para mostrar pedidos de la ruta seleccionada */}
-              <Modal
-                open={!!selectedRuta}
-                onClose={() => setSelectedRuta(null)}
-              >
-                <Box
-                  sx={{
-                    position: "absolute",
-                    top: "50%",
-                    left: "50%",
-                    transform: "translate(-50%, -50%)",
-                    width: "80%",
-                    maxHeight: "80vh",
-                    overflowY: "auto",
-                    bgcolor: "white",
-                    boxShadow: 24,
-                    p: 4,
-                    borderRadius: "12px",
-                  }}
-                >
-                  <Typography variant="h6" gutterBottom>
-                    Pedidos de la Ruta: {selectedRuta?.nombre}
-                  </Typography>
-
-                  {selectedRuta?.pedidos?.length > 0 ? (
-                    <TableContainer component={Paper}>
-                      <Table>
-                        <TableHead>
-                          <TableRow>
-                            <TableCell>No. Orden</TableCell>
-                            <TableCell>Cliente</TableCell>
-                            <TableCell>Municipio</TableCell>
-                            <TableCell>Estado</TableCell>
-                            <TableCell>Total</TableCell>
-                            <TableCell>Partidas</TableCell>
-                            <TableCell>Piezas</TableCell>
-                            <TableCell>Fecha Emisión</TableCell>
-                            <TableCell>Observaciones</TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {selectedRuta?.pedidos?.map((pedido) => (
-                            <TableRow key={pedido.id}>
-                              <TableCell>{pedido.no_orden}</TableCell>
-                              <TableCell>{pedido.nombre_cliente}</TableCell>
-                              <TableCell>{pedido.municipio}</TableCell>
-                              <TableCell>{pedido.estado}</TableCell>
-                              <TableCell>{pedido.total}</TableCell>
-                              <TableCell>{pedido.partidas}</TableCell>
-                              <TableCell>{pedido.piezas}</TableCell>
-                              <TableCell>{pedido.fecha_emision}</TableCell>
-                              <TableCell>{pedido.observaciones}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
+                <Grid container spacing={2}>
+                  {rutasConPedidos.length > 0 ? (
+                    rutasConPedidos.map((ruta) => {
+                      const totalRuta = ruta.pedidos?.reduce((acc, pedido) => acc + pedido.total, 0) || 0; // Calcula el total de la ruta
+                      return (
+                        <Grid item key={ruta.id} xs={12} sm={6} md={4}>
+                          <Card sx={{ bgcolor: "#f5f5f5", borderRadius: "8px", p: 2 }}>
+                            <CardContent>
+                              <Typography variant="h6" textAlign="center">
+                                {ruta.nombre}
+                              </Typography>
+                              <Typography variant="body2" color="textSecondary">
+                                Pedidos: {ruta.pedidos ? ruta.pedidos.length : 0}
+                              </Typography>
+                            </CardContent>
+                            <CardActions sx={{ justifyContent: "center" }}>
+                              <Button
+                                variant="contained"
+                                color="primary"
+                                onClick={() => setSelectedRuta(ruta)}
+                              >
+                                Ver Pedidos
+                              </Button>
+                            </CardActions>
+                          </Card>
+                        </Grid>
+                      );
+                    })
                   ) : (
-                    <Typography color="textSecondary">
-                      No hay pedidos en esta ruta.
-                    </Typography>
+                    <Typography>No hay rutas disponibles.</Typography>
                   )}
-                </Box>
-              </Modal>
+                </Grid>
 
+                {/* Modal para mostrar pedidos de la ruta seleccionada */}
+                <Modal open={!!selectedRuta} onClose={() => setSelectedRuta(null)}>
+                  <Box
+                    sx={{
+                      position: "absolute",
+                      top: "50%",
+                      left: "50%",
+                      transform: "translate(-50%, -50%)",
+                      width: "80%",
+                      maxHeight: "80vh",
+                      overflowY: "auto",
+                      bgcolor: "white",
+                      boxShadow: 24,
+                      p: 4,
+                      borderRadius: "12px",
+                    }}
+                  >
+                    {/* ✅ Muestra correctamente el total al lado del nombre */}
+                    <Typography variant="h6" gutterBottom>
+                      Pedidos de la Ruta: {selectedRuta?.nombre} - {formatCurrency(getTotalRuta(selectedRuta))}
+                    </Typography>
+
+                    {selectedRuta?.pedidos?.length > 0 ? (
+                      <TableContainer component={Paper}>
+                        <Table>
+                          <TableHead>
+                            <TableRow>
+                              <TableCell>No. Orden</TableCell>
+                              <TableCell>Cliente</TableCell>
+                              <TableCell>Municipio</TableCell>
+                              <TableCell>Estado</TableCell>
+                              <TableCell>Total</TableCell>
+                              <TableCell>Partidas</TableCell>
+                              <TableCell>Piezas</TableCell>
+                              <TableCell>Fecha Emisión</TableCell>
+                              <TableCell>Observaciones</TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {selectedRuta?.pedidos?.map((pedido) => (
+                              <TableRow key={pedido.id}>
+                                <TableCell>{pedido.no_orden}</TableCell>
+                                <TableCell>{pedido.nombre_cliente}</TableCell>
+                                <TableCell>{pedido.municipio}</TableCell>
+                                <TableCell>{pedido.estado}</TableCell>
+                                {/* ✅ Asegura que el total de cada pedido esté bien formateado */}
+                                <TableCell>{formatCurrency(Number(pedido.total) || 0)}</TableCell>
+                                <TableCell>{pedido.partidas}</TableCell>
+                                <TableCell>{pedido.piezas}</TableCell>
+                                <TableCell>{pedido.fecha_emision}</TableCell>
+                                <TableCell>{pedido.observaciones}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    ) : (
+                      <Typography color="textSecondary">No hay pedidos en esta ruta.</Typography>
+                    )}
+                  </Box>
+                </Modal>
+              </Grid>
             </Box>
           )}
+
 
           <center>
             <div
@@ -4386,7 +4569,6 @@ function Transporte() {
               borderRadius="12px"
               boxShadow="0 4px 20px rgba(0, 0, 0, 0.1)"
             >
-              {/* Encabezado con Nombre de Ruta y Edición */}
               <Box display="flex" alignItems="center" gap={1}>
                 {editingRoute === selectedRoute ? (
                   <>
@@ -4394,15 +4576,13 @@ function Transporte() {
                       value={newRouteName}
                       onChange={(e) => setNewRouteName(e.target.value)}
                       onBlur={() => {
-                        renameRoute(selectedRoute, newRouteName); // Renombrar sin perder datos
+                        renameRoute(selectedRoute, newRouteName);
                         setEditingRoute(null);
                       }}
                       autoFocus
                       size="small"
                     />
-                    <Button
-                      onClick={() => renameRoute(selectedRoute, newRouteName)}
-                    >
+                    <Button onClick={() => renameRoute(selectedRoute, newRouteName)}>
                       Guardar
                     </Button>
                   </>
@@ -4423,17 +4603,10 @@ function Transporte() {
                 )}
               </Box>
 
-              {/* Validación de Datos */}
-              {selectedRoute &&
-                groupedData[selectedRoute]?.rows?.length > 0 ? (
+              {selectedRoute && groupedData[selectedRoute]?.rows?.length > 0 ? (
                 <>
                   <TableContainer>
-                    <Grid
-                      item
-                      xs={12}
-                      sm={4}
-                      style={{ marginBottom: "20px" }}
-                    >
+                    <Grid item xs={12} sm={4} style={{ marginBottom: "20px" }}>
                       <TextField
                         label="Buscar por No Orden"
                         variant="outlined"
@@ -4445,7 +4618,8 @@ function Transporte() {
                       />
                     </Grid>
 
-                    <Table>
+                    <Table size="small" sx={{ '& td, & th': { padding: '4px 8px', fontSize: '12px' }, '& tr': { height: '36px' } }}>
+
                       <TableHead>
                         <TableRow>
                           <TableCell>Movimientos</TableCell>
@@ -4467,97 +4641,47 @@ function Transporte() {
 
                       <TableBody>
                         {groupedData[selectedRoute].rows.map((row, index) => (
-                          <TableRow
-                            key={index}
-                            style={{
-                              backgroundColor:
-                                highlightedRow === index
-                                  ? "#FFD700"
-                                  : "inherit",
-                              transition: "background-color 0.3s ease",
-                            }}
-                          >
-                            <TableCell align="center">
-                              <IconButton
-                                onClick={() =>
-                                  moveRowUp(selectedRoute, index)
-                                }
-                                disabled={index === 0}
-                              >
-                                <ArrowUpwardIcon
-                                  fontSize="large"
-                                  style={{
-                                    color: index === 0 ? "#ccc" : "red",
-                                  }}
-                                />
-                              </IconButton>
-                              <IconButton
-                                onClick={() =>
-                                  moveRowDown(selectedRoute, index)
-                                }
-                                disabled={
-                                  index ===
-                                  groupedData[selectedRoute].rows.length - 1
-                                }
-                              >
-                                <ArrowDownwardIcon
-                                  fontSize="large"
-                                  style={{
-                                    color:
-                                      index ===
-                                        groupedData[selectedRoute].rows.length -
-                                        1
-                                        ? "#ccc"
-                                        : "red",
-                                  }}
-                                />
-                              </IconButton>
+                          <TableRow key={row["NO ORDEN"]}>
+                            <TableCell>
+                              {index !== 0 && (
+                                <IconButton onClick={() => moverPedido(selectedRoute, index, 'arriba')}>
+                                  <ArrowUpwardIcon color="primary" fontSize="small" />
+                                </IconButton>
+                              )}
+                              {index !== groupedData[selectedRoute].rows.length - 1 && (
+                                <IconButton onClick={() => moverPedido(selectedRoute, index, 'abajo')}>
+                                  <ArrowDownwardIcon color="primary" fontSize="small" />
+                                </IconButton>
+                              )}
                             </TableCell>
-                            <TableCell>{row.FECHA}</TableCell>
+
+                            <TableCell>{row["FECHA"]}</TableCell>
                             <TableCell>{row["NO ORDEN"]}</TableCell>
                             <TableCell>{row["NO FACTURA"]}</TableCell>
                             <TableCell>{row["NUM. CLIENTE"]}</TableCell>
                             <TableCell>{row["NOMBRE DEL CLIENTE"]}</TableCell>
                             <TableCell>{row["ZONA"]}</TableCell>
-                            <TableCell>{row.MUNICIPIO}</TableCell>
-                            <TableCell>{row.ESTADO}</TableCell>
+                            <TableCell>{row["MUNICIPIO"]}</TableCell>
+                            <TableCell>{row["ESTADO"]}</TableCell>
 
                             <TableCell>
-                              {editingObservationId ===
-                                row["NUM. CLIENTE"] ? (
+                              {editingObservationId === row["NUM. CLIENTE"] ? (
                                 <TextField
-                                  value={
-                                    modalObservaciones[row["NUM. CLIENTE"]] ||
-                                    row["OBSERVACIONES"] ||
-                                    ""
-                                  }
-                                  onChange={(e) =>
-                                    handleSaveModalObservation(
-                                      row["NUM. CLIENTE"],
-                                      e.target.value
-                                    )
-                                  }
+                                  value={modalObservaciones[row["NUM. CLIENTE"]] || row["OBSERVACIONES"] || ""}
+                                  onChange={(e) => handleSaveModalObservation(row["NUM. CLIENTE"], e.target.value)}
                                   variant="outlined"
                                   size="small"
                                   autoFocus
                                   onKeyDown={(e) => {
-                                    if (e.key === "Enter") {
-                                      setEditingObservationId(null);
-                                    }
+                                    if (e.key === "Enter") setEditingObservationId(null);
                                   }}
                                 />
                               ) : (
                                 <span
-                                  onDoubleClick={() =>
-                                    handleEditModalObservation(
-                                      row["NUM. CLIENTE"]
-                                    )
-                                  }
+                                  onDoubleClick={() => handleEditModalObservation(row["NUM. CLIENTE"])}
                                   style={{ cursor: "pointer" }}
                                 >
-                                  {modalObservaciones[row["NUM. CLIENTE"]] ||
-                                    row["OBSERVACIONES"] ||
-                                    "Sin observaciones"}
+                                  {modalObservaciones[row["NUM. CLIENTE"]] || row["OBSERVACIONES"] || "Sin observaciones"}
                                 </span>
                               )}
                             </TableCell>
@@ -4566,9 +4690,7 @@ function Transporte() {
                             <TableCell>{row.PARTIDAS}</TableCell>
                             <TableCell>{row.PIEZAS}</TableCell>
 
-                            {/* Columna de Acciones */}
                             <TableCell>
-                              {/* Botón para activar el selector */}
                               {editRouteIndex === index ? (
                                 <FormControl fullWidth size="small">
                                   <InputLabel>Cambiar Ruta</InputLabel>
@@ -4576,13 +4698,11 @@ function Transporte() {
                                     value={selectedRoute}
                                     onChange={(e) => {
                                       assignToRoute(row, e.target.value);
-                                      setEditRouteIndex(null); // Ocultar selector después de seleccionar
+                                      setEditRouteIndex(null);
                                     }}
                                     displayEmpty
                                   >
-                                    <MenuItem disabled value="">
-                                      Seleccionar Ruta
-                                    </MenuItem>
+                                    <MenuItem disabled value="">Seleccionar Ruta</MenuItem>
                                     {Object.keys(groupedData).map((route) => (
                                       <MenuItem key={route} value={route}>
                                         {route}
@@ -4591,68 +4711,34 @@ function Transporte() {
                                   </Select>
                                 </FormControl>
                               ) : (
-                                <IconButton
-                                  onClick={() => setEditRouteIndex(index)}
-                                >
+                                <IconButton onClick={() => setEditRouteIndex(index)}>
                                   <CompareArrowsIcon />
                                 </IconButton>
                               )}
-
-                              {/* Botón de eliminar */}
-                              <IconButton
-                                color="error"
-                                onClick={() =>
-                                  removeFromRoute(row, selectedRoute)
-                                }
-                              >
+                              <IconButton color="error" onClick={() => removeFromRoute(row, selectedRoute)}>
                                 <DeleteIcon />
                               </IconButton>
                             </TableCell>
                           </TableRow>
                         ))}
-
-                        {/* Fila de Totales Generales */}
-                        <TableRow style={{ backgroundColor: "#f5f5f5" }}>
-                          <TableCell colSpan={8} align="right">
-                            <strong>Totales Generales:</strong>
-                          </TableCell>
-                          <TableCell align="center">
-                            <strong>
-                              {formatCurrency(
-                                calculateTotals(selectedRoute).TOTAL
-                              )}
-                            </strong>
-                          </TableCell>
-                          <TableCell align="center">
-                            <strong>
-                              {calculateTotals(selectedRoute).PARTIDAS}
-                            </strong>
-                          </TableCell>
-                          <TableCell align="center">
-                            <strong>
-                              {calculateTotals(selectedRoute).PIEZAS}
-                            </strong>
-                          </TableCell>
-                          <TableCell />
-                        </TableRow>
                       </TableBody>
                     </Table>
                   </TableContainer>
                 </>
               ) : (
-                <Typography>
-                  No hay datos disponibles para esta ruta.
-                </Typography>
+                <Typography>No hay datos disponibles para esta ruta.</Typography>
               )}
 
-              {/* Botón de Cerrar */}
               <Box textAlign="right" marginTop={2}>
-                <Button onClick={closeModal} variant="contained">
+                <Button onClick={closeModal} variant="contained" size="small">
                   Cerrar
                 </Button>
+
               </Box>
             </Box>
           </Modal>
+
+
 
           {/* Tabla de datos cargados */}
           <TableContainer component={Paper} style={{ marginTop: "20px" }}>
@@ -4703,6 +4789,36 @@ function Transporte() {
               </Grid>
             </Grid>
 
+            {tabIndex === 0 && selectedOrders.length > 0 && ["Admin", "Master", "Trans"].includes(user?.role) && (
+              <Box display="flex" alignItems="center" gap={2} mb={2}>
+                <FormControl variant="outlined" size="small" style={{ minWidth: 200 }}>
+                  <InputLabel>Seleccionar Ruta</InputLabel>
+                  <Select
+                    value={selectedMassRoute}
+                    onChange={(e) => setSelectedMassRoute(e.target.value)}
+                    label="Seleccionar Ruta"
+                  >
+                    {Object.keys(groupedData).map((ruta) => (
+                      <MenuItem key={ruta} value={ruta}>
+                        {ruta}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                <Button
+                  variant="contained"
+                  color="primary"
+                  disabled={!selectedMassRoute}
+                  onClick={handleAssignMultipleToRoute}
+                >
+                  Asignar
+                </Button>
+              </Box>
+            )}
+
+
+
             <TablePagination
               component="div"
               count={filteredData.length} // Se asegura de que `count` es válido
@@ -4720,6 +4836,7 @@ function Transporte() {
             <Table>
               <TableHead>
                 <TableRow>
+                  <TableCell>Seleccionar</TableCell>
                   <TableCell>FECHA</TableCell>
                   <TableCell>NO ORDEN</TableCell>
                   <TableCell>NUM. CLIENTE</TableCell>
@@ -4744,6 +4861,14 @@ function Transporte() {
                 ) : (
                   paginatedData.map((row, index) => (
                     <TableRow key={index}>
+
+                      <TableCell padding="checkbox">
+                        <Checkbox
+                          checked={selectedOrders.includes(row["NO ORDEN"])}
+                          onChange={() => handleToggleOrderSelection(row)}
+                        />
+                      </TableCell>
+
                       <TableCell>{row.FECHA}</TableCell>
                       <TableCell>{row["NO ORDEN"]}</TableCell>
                       <TableCell>{row["NUM. CLIENTE"]}</TableCell>
@@ -4819,147 +4944,145 @@ function Transporte() {
 
       {/* Segundo Tab: Otra información o tabla */}
       {tabIndex === 1 && (user?.role === "Admin" || user?.role === "Master" || user?.role === "Trans" || user?.role === "PQ1" || user?.role === "Control" || user?.role === "EB1" || user?.role === "Paquet" || user?.role === "Embar" || user?.role === "Rep" || user?.role === "Tran", "Rep") && (
+
         <Box marginTop={2}>
           <Typography variant="h5" style={{ textAlign: "center" }}>
             Tipos de rutas
           </Typography>
 
-          {tabIndex === 1 &&
-            (user?.role === "Admin" ||
-              user?.role === "Master" ||
-              user?.role === "Tran") && (
-              <Card
-                sx={{
-                  padding: 2,
-                  marginBottom: 2,
-                  boxShadow: 2,
-                  borderRadius: 2,
-                  maxWidth: "600px",
-                  mx: "auto",
-                }}
+          {tabIndex === 1 && (user?.role === "Admin" || user?.role === "Master" || user?.role === "Tran") && (
+            <Card
+              sx={{
+                padding: 2,
+                marginBottom: 2,
+                boxShadow: 2,
+                borderRadius: 2,
+                maxWidth: "600px",
+                mx: "auto",
+              }}
+            >
+              <Typography
+                variant="h6"
+                color="black"
+                sx={{ fontSize: "16px", marginBottom: 1 }}
               >
-                <Typography
-                  variant="h6"
-                  color="black"
-                  sx={{ fontSize: "16px", marginBottom: 1 }}
-                >
-                  Subir archivo de facturas
-                </Typography>
+                Subir archivo de facturas
+              </Typography>
 
-                {/* Contenedor de carga de archivo */}
-                <Box
-                  display="flex"
-                  alignItems="center"
-                  gap={1}
-                  marginBottom={1}
-                >
-                  <Button
-                    variant="contained"
-                    component="label"
-                    startIcon={<CloudUpload />}
-                    sx={{
+              {/* Contenedor de carga de archivo */}
+              <Box
+                display="flex"
+                alignItems="center"
+                gap={1}
+                marginBottom={1}
+              >
+                <Button
+                  variant="contained"
+                  component="label"
+                  startIcon={<CloudUpload />}
+                  sx={{
+                    background:
+                      "linear-gradient(to right, #ff6b6b, #ff8e53)",
+                    color: "white",
+                    fontSize: "12px",
+                    padding: "6px 12px",
+                    borderRadius: "6px",
+                    minWidth: "auto",
+                    "&:hover": {
                       background:
-                        "linear-gradient(to right, #ff6b6b, #ff8e53)",
-                      color: "white",
-                      fontSize: "12px",
-                      padding: "6px 12px",
-                      borderRadius: "6px",
-                      minWidth: "auto",
-                      "&:hover": {
-                        background:
-                          "linear-gradient(to right, #ff3b3b, #ff6b6b)",
-                      },
-                    }}
-                  >
-                    Subir Archivo
-                    <input
-                      type="file"
-                      accept=".xlsx, .xls"
-                      hidden
-                      onChange={(e) => setFile(e.target.files[0])}
-                    />
-                  </Button>
+                        "linear-gradient(to right, #ff3b3b, #ff6b6b)",
+                    },
+                  }}
+                >
+                  Subir Archivo
+                  <input
+                    type="file"
+                    accept=".xlsx, .xls"
+                    hidden
+                    onChange={(e) => setFile(e.target.files[0])}
+                  />
+                </Button>
 
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={updateFacturas}
-                    disabled={!file || uploading}
-                    sx={{
-                      textTransform: "none",
-                      fontSize: "12px",
-                      padding: "6px 12px",
-                      borderRadius: "6px",
-                      minWidth: "auto",
-                      boxShadow: "1px 1px 3px rgba(0, 0, 0, 0.2)",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "6px",
-                    }}
-                  >
-                    {uploading ? (
-                      <CircularProgress size={16} color="inherit" />
-                    ) : (
-                      "Actualizar"
-                    )}
-                  </Button>
-                </Box>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={updateFacturas}
+                  disabled={!file || uploading}
+                  sx={{
+                    textTransform: "none",
+                    fontSize: "12px",
+                    padding: "6px 12px",
+                    borderRadius: "6px",
+                    minWidth: "auto",
+                    boxShadow: "1px 1px 3px rgba(0, 0, 0, 0.2)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                  }}
+                >
+                  {uploading ? (
+                    <CircularProgress size={16} color="inherit" />
+                  ) : (
+                    "Actualizar"
+                  )}
+                </Button>
+              </Box>
 
-                {uploadMessage && (
+              {uploadMessage && (
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: uploading ? "gray" : "green",
+                    marginBottom: 1,
+                    fontSize: "12px",
+                  }}
+                >
+                  {uploadMessage}
+                </Typography>
+              )}
+
+              {/* Lista de órdenes actualizadas */}
+              {updatedOrders.length > 0 && (
+                <Card
+                  sx={{
+                    padding: 1,
+                    backgroundColor: "#f5f5f5",
+                    borderRadius: 2,
+                    fontSize: "12px",
+                  }}
+                >
                   <Typography
-                    variant="body2"
-                    sx={{
-                      color: uploading ? "gray" : "green",
-                      marginBottom: 1,
-                      fontSize: "12px",
-                    }}
+                    variant="subtitle2"
+                    color="textSecondary"
+                    sx={{ fontSize: "12px" }}
                   >
-                    {uploadMessage}
+                    Órdenes actualizadas:
                   </Typography>
-                )}
-
-                {/* Lista de órdenes actualizadas */}
-                {updatedOrders.length > 0 && (
-                  <Card
+                  <Box
                     sx={{
-                      padding: 1,
-                      backgroundColor: "#f5f5f5",
-                      borderRadius: 2,
-                      fontSize: "12px",
+                      maxHeight: "100px",
+                      overflowY: "auto",
+                      padding: "3px",
                     }}
                   >
-                    <Typography
-                      variant="subtitle2"
-                      color="textSecondary"
-                      sx={{ fontSize: "12px" }}
-                    >
-                      Órdenes actualizadas:
-                    </Typography>
-                    <Box
-                      sx={{
-                        maxHeight: "100px",
-                        overflowY: "auto",
-                        padding: "3px",
-                      }}
-                    >
-                      {updatedOrders.map((order, index) => (
-                        <Typography
-                          key={index}
-                          variant="body2"
-                          sx={{
-                            fontWeight: "bold",
-                            color: "#333",
-                            fontSize: "12px",
-                          }}
-                        >
-                          {order}
-                        </Typography>
-                      ))}
-                    </Box>
-                  </Card>
-                )}
-              </Card>
-            )}
+                    {updatedOrders.map((order, index) => (
+                      <Typography
+                        key={index}
+                        variant="body2"
+                        sx={{
+                          fontWeight: "bold",
+                          color: "#333",
+                          fontSize: "12px",
+                        }}
+                      >
+                        {order}
+                      </Typography>
+                    ))}
+                  </Box>
+                </Card>
+              )}
+            </Card>
+          )}
 
           <Button
             variant="contained"
@@ -4970,6 +5093,7 @@ function Transporte() {
           </Button>
 
           {/* Modal dentro de Transporte.js */}
+
           <Dialog
             open={modalGuiaOpen}
             onClose={handleCloseModalGuia}
@@ -5025,116 +5149,127 @@ function Transporte() {
                     margin="dense"
                     sx={{ fontSize: "1rem", textAlign: "right" }}
                   />
+
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      label="Suma Total Pedidos"
+                      value={`$${sumaTotalPedidos.toFixed(2)}`}
+                      InputProps={{ readOnly: true }}
+                      fullWidth
+                      sx={{ fontSize: "1rem", textAlign: "right" }}
+                    />
+                  </Grid>
+
                 </Grid>
 
+
+
+
                 {/* Mostrando los pedidos en tarjetas organizadas */}
-                {pedidos.length > 0 &&
-                  pedidos.map((pedido, index) => (
-                    <Grid
-                      container
-                      spacing={3}
-                      key={pedido["NO ORDEN"]}
-                      sx={{
-                        padding: 3,
-                        border: "2px solid #ddd",
-                        borderRadius: "8px",
-                        marginBottom: "20px",
-                        backgroundColor: "#f9f9f9",
-                      }}
-                    >
-                      {/* Fila 1: Pedido, Total y Prorrateo Factura LT */}
-                      <Grid item xs={12} sm={4}>
-                        <TextField
-                          label="Pedido"
-                          value={pedido["NO ORDEN"]}
-                          fullWidth
-                          disabled
-                          sx={{ fontSize: "1rem" }}
-                        />
-                      </Grid>
-                      <Grid item xs={12} sm={4}>
-                        <TextField
-                          label="Total Pedido"
-                          value={`$${pedido.TOTAL}`}
-                          fullWidth
-                          disabled
-                          sx={{ fontSize: "1rem", textAlign: "right" }}
-                        />
-                      </Grid>
-                      <Grid item xs={12} sm={4}>
-                        <TextField
-                          label="Prorrateo Factura LT"
-                          value={pedido.prorrateoFacturaLT}
-                          fullWidth
-                          onChange={(e) => {
-                            const newPedidos = [...pedidos];
-                            newPedidos[index].prorrateoFacturaLT =
-                              e.target.value;
-                            setPedidos(newPedidos);
-                          }}
-                          sx={{ fontSize: "1rem" }}
-                        />
-                      </Grid>
-
-                      {/* Fila 2: Prorrateo Factura Paquetería, Suma Flete y Gastos Extras */}
-                      <Grid item xs={12} sm={4}>
-                        <TextField
-                          label="Total Factura Paquetería"
-                          value={pedido.prorrateoFacturaPaqueteria}
-                          fullWidth
-                          disabled
-                          sx={{ fontSize: "1rem", textAlign: "right" }}
-                        />
-                      </Grid>
-                      <Grid item xs={12} sm={4}>
-                        <TextField
-                          label="Suma Flete"
-                          value={`$${pedido.sumaFlete}`}
-                          fullWidth
-                          disabled
-                          sx={{ fontSize: "1rem", textAlign: "right" }}
-                        />
-                      </Grid>
-                      <Grid item xs={12} sm={4}>
-                        <TextField
-                          label="Gastos Extras"
-                          value={gastosExtras}
-                          onChange={(e) => setGastosExtras(e.target.value)}
-                          variant="outlined"
-                          fullWidth
-                        />
-                      </Grid>
-
-                      {/* Fila 3: Porcentajes organizados correctamente */}
-                      <Grid item xs={12} sm={4}>
-                        <TextField
-                          label="% Envío"
-                          value={pedido.porcentajeEnvio}
-                          fullWidth
-                          disabled
-                          sx={{ fontSize: "1rem", textAlign: "right" }}
-                        />
-                      </Grid>
-                      <Grid item xs={12} sm={4}>
-                        <TextField
-                          label="% Paquetería"
-                          value={pedido.porcentajePaqueteria}
-                          fullWidth
-                          disabled
-                          sx={{ fontSize: "1rem", textAlign: "right" }}
-                        />
-                      </Grid>
-                      <Grid item xs={12} sm={4}>
-                        <TextField
-                          label="% Global"
-                          value={pedido.porcentajeGlobal}
-                          fullWidth
-                          disabled
-                          sx={{ fontSize: "1rem", textAlign: "right" }}
-                        />
-                      </Grid>
+                {pedidos.length > 0 && pedidos.map((pedido, index) => (
+                  <Grid
+                    container
+                    spacing={3}
+                    key={pedido["NO ORDEN"]}
+                    sx={{
+                      padding: 3,
+                      border: "2px solid #ddd",
+                      borderRadius: "8px",
+                      marginBottom: "20px",
+                      backgroundColor: "#f9f9f9",
+                    }}
+                  >
+                    {/* Fila 1: Pedido, Total y Prorrateo Factura LT */}
+                    <Grid item xs={12} sm={4}>
+                      <TextField
+                        label="Pedido"
+                        value={pedido["NO ORDEN"]}
+                        fullWidth
+                        disabled
+                        sx={{ fontSize: "1rem" }}
+                      />
                     </Grid>
-                  ))}
+
+                    <Grid item xs={12} sm={4}>
+                      <TextField
+                        label="Total Pedido"
+                        value={`$${pedido.TOTAL}`}
+                        fullWidth
+                        disabled
+                        sx={{ fontSize: "1rem", textAlign: "right" }}
+                      />
+                    </Grid>
+
+                    <Grid item xs={12} sm={4}>
+                      <TextField
+                        label="Prorrateo Factura LT"
+                        value={pedido.prorrateoFacturaLT}
+                        fullWidth
+                        onChange={(e) => {
+                          const newPedidos = [...pedidos];
+                          newPedidos[index].prorrateoFacturaLT =
+                            e.target.value;
+                          setPedidos(newPedidos);
+                        }}
+                        sx={{ fontSize: "1rem" }}
+                      />
+                    </Grid>
+
+                    {/* Fila 2: Prorrateo Factura Paquetería, Suma Flete y Gastos Extras */}
+
+                    <Grid item xs={12} sm={4}>
+                      <TextField
+                        label="Suma Flete"
+                        value={`$${pedido.sumaFlete}`}
+                        fullWidth
+                        disabled
+                        sx={{ fontSize: "1rem", textAlign: "right" }}
+                      />
+                    </Grid>
+
+                    <Grid item xs={12} sm={4}>
+                      <TextField
+                        label="Gastos Extras"
+                        value={pedido.gastosExtras || ""}
+                        onChange={(e) => handleGastosExtrasChange(index, e.target.value)}
+                        fullWidth
+                      />
+
+
+
+                    </Grid>
+
+                    {/* Fila 3: Porcentajes organizados correctamente */}
+                    <Grid item xs={12} sm={4}>
+                      <TextField
+                        label="% Envío"
+                        value={pedido.porcentajeEnvio || ""}
+                        fullWidth
+                        disabled
+                        sx={{ fontSize: "1rem", textAlign: "right" }}
+                      />
+
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                      <TextField
+                        label="% Paquetería"
+                        value={pedido.porcentajePaqueteria}
+                        fullWidth
+                        disabled
+                        sx={{ fontSize: "1rem", textAlign: "right" }}
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                      <TextField
+                        label="% Global"
+                        value={pedido.porcentajeGlobal}
+                        fullWidth
+                        disabled
+                        sx={{ fontSize: "1rem", textAlign: "right" }}
+                      />
+                    </Grid>
+                  </Grid>
+                ))}
               </Grid>
             </DialogContent>
 
@@ -5188,13 +5323,21 @@ function Transporte() {
               <Typography variant="h6">Paquetería</Typography>
 
               <TextField
-                label="Filtrar por Cliente, Orden o Estado"
+                label="Buscar por No Orden o Num Cliente"
+                value={filtroGeneral}
+                onChange={(e) => setFiltroGeneral(e.target.value)}
                 variant="outlined"
                 size="small"
-                value={filtro}
-                onChange={(e) => setFiltro(e.target.value)}
-                style={{ marginBottom: 10, width: "300px" }}
               />
+
+              <TextField
+                label="Buscar por Estado"
+                value={filtroEstado}
+                onChange={(e) => setFiltroEstado(e.target.value)}
+                variant="outlined"
+                size="small"
+              />
+
 
               <FormControl
                 variant="outlined"
@@ -5257,63 +5400,25 @@ function Transporte() {
               <Table>
                 <TableBody>
                   <TableRow>
-                    {visibleColumns.includes("NO ORDEN") && (
-                      <TableCell>NO ORDEN</TableCell>
-                    )}
-                    {visibleColumns.includes("NO ORDEN") && (
-                      <TableCell>Estado del Pedido</TableCell>
-                    )}
-                    {visibleColumns.includes("FECHA") && (
-                      <TableCell>FECHA</TableCell>
-                    )}
-                    {visibleColumns.includes("NUM CLIENTE") && (
-                      <TableCell>NUM CLIENTE</TableCell>
-                    )}
-                    {visibleColumns.includes("NOMBRE DEL CLIENTE") && (
-                      <TableCell>NOMBRE DEL CLIENTE</TableCell>
-                    )}
-                    {visibleColumns.includes("MUNICIPIO") && (
-                      <TableCell>MUNICIPIO</TableCell>
-                    )}
-                    {visibleColumns.includes("ESTADO") && (
-                      <TableCell>ESTADO</TableCell>
-                    )}
-                    {visibleColumns.includes("OBSERVACIONES") && (
-                      <TableCell>OBSERVACIONES</TableCell>
-                    )}
-                    {visibleColumns.includes("TOTAL") && (
-                      <TableCell>TOTAL</TableCell>
-                    )}
-                    {visibleColumns.includes("TOTAL FACTURA LT") && (
-                      <TableCell>TOTAL FACTURA LT</TableCell>
-                    )}
-                    {visibleColumns.includes("NUMERO DE FACTURA") && (
-                      <TableCell>NUMERO DE FACTURA</TableCell>
-                    )}
-                    {visibleColumns.includes("PARTIDAS") && (
-                      <TableCell>PARTIDAS</TableCell>
-                    )}
-                    {visibleColumns.includes("PIEZAS") && (
-                      <TableCell>PIEZAS</TableCell>
-                    )}
-                    {visibleColumns.includes("FECHA DE FACTURA") && (
-                      <TableCell>FECHA DE FACTURA</TableCell>
-                    )}
-                    {visibleColumns.includes("TRANSPORTE") && (
-                      <TableCell>TRANSPORTE</TableCell>
-                    )}
-                    {visibleColumns.includes("PAQUETERIA") && (
-                      <TableCell>PAQUETERIA</TableCell>
-                    )}
-                    {visibleColumns.includes("GUIA") && (
-                      <TableCell>GUIA</TableCell>
-                    )}
-                    {visibleColumns.includes(
-                      "FECHA DE ENTREGA (CLIENTE)"
-                    ) && <TableCell>FECHA DE ENTREGA</TableCell>}
-                    {visibleColumns.includes("Acciones") && (
-                      <TableCell>Acciones</TableCell>
-                    )}
+                    {visibleColumns.includes("NO ORDEN") && (<TableCell>NO ORDEN</TableCell>)}
+                    {visibleColumns.includes("NO ORDEN") && (<TableCell>Estado del Pedido</TableCell>)}
+                    {visibleColumns.includes("FECHA") && (<TableCell>FECHA</TableCell>)}
+                    {visibleColumns.includes("NUM CLIENTE") && (<TableCell>NUM CLIENTE</TableCell>)}
+                    {visibleColumns.includes("NOMBRE DEL CLIENTE") && (<TableCell>NOMBRE DEL CLIENTE</TableCell>)}
+                    {visibleColumns.includes("MUNICIPIO") && (<TableCell>MUNICIPIO</TableCell>)}
+                    {visibleColumns.includes("ESTADO") && (<TableCell>ESTADO</TableCell>)}
+                    {visibleColumns.includes("OBSERVACIONES") && (<TableCell>OBSERVACIONES</TableCell>)}
+                    {visibleColumns.includes("TOTAL") && (<TableCell>TOTAL</TableCell>)}
+                    {visibleColumns.includes("TOTAL FACTURA LT") && (<TableCell>TOTAL FACTURA LT</TableCell>)}
+                    {visibleColumns.includes("NUMERO DE FACTURA") && (<TableCell>NUMERO DE FACTURA</TableCell>)}
+                    {visibleColumns.includes("PARTIDAS") && (<TableCell>PARTIDAS</TableCell>)}
+                    {visibleColumns.includes("PIEZAS") && (<TableCell>PIEZAS</TableCell>)}
+                    {visibleColumns.includes("FECHA DE FACTURA") && (<TableCell>FECHA DE FACTURA</TableCell>)}
+                    {visibleColumns.includes("TRANSPORTE") && (<TableCell>TRANSPORTE</TableCell>)}
+                    {visibleColumns.includes("PAQUETERIA") && (<TableCell>PAQUETERIA</TableCell>)}
+                    {visibleColumns.includes("GUIA") && (<TableCell>GUIA</TableCell>)}
+                    {visibleColumns.includes("FECHA DE ENTREGA (CLIENTE)") && <TableCell>FECHA DE ENTREGA</TableCell>}
+                    {visibleColumns.includes("Acciones") && (<TableCell>Acciones</TableCell>)}
                   </TableRow>
                   {paqueteriaData.length === 0 ? (
                     <TableRow>
@@ -5335,9 +5440,7 @@ function Transporte() {
                           key={index}
                           onClick={() => handleRowClick(routeData)}
                         >
-                          {visibleColumns.includes("NO ORDEN") && (
-                            <TableCell>{routeData["NO ORDEN"]}</TableCell>
-                          )}
+                          {visibleColumns.includes("NO ORDEN") && (<TableCell>{routeData["NO ORDEN"]}</TableCell>)}
 
                           <TableCell>
                             {/* Estado del pedido con color */}
@@ -5362,35 +5465,13 @@ function Transporte() {
                             )}
                           </TableCell>
 
-                          {visibleColumns.includes("FECHA") && (
-                            <TableCell>
-                              {formatDate(routeData.FECHA)}
-                            </TableCell>
-                          )}
-                          {visibleColumns.includes("NUM CLIENTE") && (
-                            <TableCell>{routeData["NUM. CLIENTE"]}</TableCell>
-                          )}
-                          {visibleColumns.includes("NOMBRE DEL CLIENTE") && (
-                            <TableCell>
-                              {" "}
-                              {routeData["NOMBRE DEL CLIENTE"]}{" "}
-                            </TableCell>
-                          )}
-                          {visibleColumns.includes("MUNICIPIO") && (
-                            <TableCell>{routeData.MUNICIPIO}</TableCell>
-                          )}
-                          {visibleColumns.includes("ESTADO") && (
-                            <TableCell>{routeData.ESTADO}</TableCell>
-                          )}
-                          {visibleColumns.includes("OBSERVACIONES") && (
-                            <TableCell>{routeData.OBSERVACIONES}</TableCell>
-                          )}
-                          {visibleColumns.includes("TOTAL") && (
-                            <TableCell>
-                              {" "}
-                              {formatCurrency(routeData.TOTAL)}{" "}
-                            </TableCell>
-                          )}
+                          {visibleColumns.includes("FECHA") && (<TableCell>{formatDate(routeData.FECHA)}</TableCell>)}
+                          {visibleColumns.includes("NUM CLIENTE") && (<TableCell>{routeData["NUM. CLIENTE"]}</TableCell>)}
+                          {visibleColumns.includes("NOMBRE DEL CLIENTE") && (<TableCell>{" "}{routeData["NOMBRE DEL CLIENTE"]}{" "}</TableCell>)}
+                          {visibleColumns.includes("MUNICIPIO") && (<TableCell>{routeData.MUNICIPIO}</TableCell>)}
+                          {visibleColumns.includes("ESTADO") && (<TableCell>{routeData.ESTADO}</TableCell>)}
+                          {visibleColumns.includes("OBSERVACIONES") && (<TableCell>{routeData.OBSERVACIONES}</TableCell>)}
+                          {visibleColumns.includes("TOTAL") && (<TableCell>{" "}{formatCurrency(routeData.TOTAL)}{" "}</TableCell>)}
                           {visibleColumns.includes("TOTAL FACTURA LT") && (
                             <TableCell>
                               {routeData.TOTAL_FACTURA_LT &&
@@ -5402,39 +5483,14 @@ function Transporte() {
                             </TableCell>
                           )}
 
-                          {visibleColumns.includes("NUMERO DE FACTURA") && (
-                            <TableCell>{routeData["NO_FACTURA"]}</TableCell>
-                          )}
-                          {visibleColumns.includes("PARTIDAS") && (
-                            <TableCell>{routeData.PARTIDAS}</TableCell>
-                          )}
-                          {visibleColumns.includes("PIEZAS") && (
-                            <TableCell>{routeData.PIEZAS}</TableCell>
-                          )}
-                          {visibleColumns.includes("FECHA DE FACTURA") && (
-                            <TableCell>
-                              {formatDate(routeData.FECHA_DE_FACTURA)}
-                            </TableCell>
-                          )}
-                          {visibleColumns.includes("TRANSPORTE") && (
-                            <TableCell>{routeData.TRANSPORTE}</TableCell>
-                          )}
-                          {visibleColumns.includes("PAQUETERIA") && (
-                            <TableCell>{routeData.PAQUETERIA}</TableCell>
-                          )}
-                          {visibleColumns.includes("GUIA") && (
-                            <TableCell>{routeData.GUIA}</TableCell>
-                          )}
-                          {visibleColumns.includes(
-                            "FECHA DE ENTREGA (CLIENTE)"
-                          ) && (
-                              <TableCell>
-                                {" "}
-                                {formatDate(
-                                  routeData.FECHA_DE_ENTREGA_CLIENTE
-                                )}{" "}
-                              </TableCell>
-                            )}
+                          {visibleColumns.includes("NUMERO DE FACTURA") && (<TableCell>{routeData["NO_FACTURA"]}</TableCell>)}
+                          {visibleColumns.includes("PARTIDAS") && (<TableCell>{routeData.PARTIDAS}</TableCell>)}
+                          {visibleColumns.includes("PIEZAS") && (<TableCell>{routeData.PIEZAS}</TableCell>)}
+                          {visibleColumns.includes("FECHA DE FACTURA") && (<TableCell>{formatDate(routeData.FECHA_DE_FACTURA)}</TableCell>)}
+                          {visibleColumns.includes("TRANSPORTE") && (<TableCell>{routeData.TRANSPORTE}</TableCell>)}
+                          {visibleColumns.includes("PAQUETERIA") && (<TableCell>{routeData.PAQUETERIA}</TableCell>)}
+                          {visibleColumns.includes("GUIA") && (<TableCell>{routeData.GUIA}</TableCell>)}
+                          {visibleColumns.includes("FECHA DE ENTREGA (CLIENTE)") && (<TableCell>{" "}{formatDate(routeData.FECHA_DE_ENTREGA_CLIENTE)}{" "}</TableCell>)}
 
                           <TableCell>
                             <Grid
@@ -5512,14 +5568,25 @@ function Transporte() {
           {subTabIndex === 1 && (
             <TableContainer component={Paper} style={{ marginTop: "20px" }}>
               <Typography variant="h6">Directa</Typography>
+
+
               <TextField
-                label="Filtrar por Cliente, Orden o Estado"
+                label="Buscar por No Orden o Nombre del Cliente"
+                value={filtroGeneral}
+                onChange={(e) => setFiltroGeneral(e.target.value)}
                 variant="outlined"
                 size="small"
-                value={filtro}
-                onChange={(e) => setFiltro(e.target.value)}
-                style={{ marginBottom: 10, width: "300px" }}
+                sx={{ mr: 2 }}
               />
+
+              <TextField
+                label="Buscar por Estado"
+                value={filtroEstado}
+                onChange={(e) => setFiltroEstado(e.target.value)}
+                variant="outlined"
+                size="small"
+              />
+
 
               <FormControl
                 variant="outlined"
@@ -5584,58 +5651,23 @@ function Transporte() {
               <Table>
                 <TableHead>
                   <TableRow>
-                    {visibleColumns.includes("NO ORDEN") && (
-                      <TableCell>NO ORDEN</TableCell>
-                    )}
-                    {visibleColumns.includes("ESTADO") && (
-                      <TableCell>Estado del Pedido</TableCell>
-                    )}
-                    {visibleColumns.includes("FECHA") && (
-                      <TableCell>FECHA</TableCell>
-                    )}
-                    {visibleColumns.includes("NUM CLIENTE") && (
-                      <TableCell>NUM CLIENTE</TableCell>
-                    )}
-                    {visibleColumns.includes("NOMBRE DEL CLIENTE") && (
-                      <TableCell>NOMBRE DEL CLIENTE</TableCell>
-                    )}
-                    {visibleColumns.includes("MUNICIPIO") && (
-                      <TableCell>MUNICIPIO</TableCell>
-                    )}
-                    {visibleColumns.includes("ESTADO") && (
-                      <TableCell>ESTADO</TableCell>
-                    )}
-                    {visibleColumns.includes("OBSERVACIONES") && (
-                      <TableCell>OBSERVACIONES</TableCell>
-                    )}
-                    {visibleColumns.includes("TOTAL") && (
-                      <TableCell>TOTAL</TableCell>
-                    )}
-                    {visibleColumns.includes("NUMERO DE FACTURA") && (
-                      <TableCell>NUMERO DE FACTURA</TableCell>
-                    )}
-                    {visibleColumns.includes("FECHA DE FACTURA") && (
-                      <TableCell>FECHA DE FACTURA</TableCell>
-                    )}
-                    {visibleColumns.includes("PARTIDAS") && (
-                      <TableCell>PARTIDAS</TableCell>
-                    )}
-                    {visibleColumns.includes("PIEZAS") && (
-                      <TableCell>PIEZAS</TableCell>
-                    )}
-                    {visibleColumns.includes("TRANSPORTE") && (
-                      <TableCell>TRANSPORTE</TableCell>
-                    )}
-                    {visibleColumns.includes("PAQUETERIA") && (
-                      <TableCell>TIPO DE RUTA</TableCell>
-                    )}
-                    {visibleColumns.includes(
-                      "FECHA DE ENTREGA (CLIENTE)"
-                    ) && <TableCell>FECHA DE ENTREGA (CLIENTE)</TableCell>}
-
-                    {visibleColumns.includes("Acciones") && (
-                      <TableCell>Acciones</TableCell>
-                    )}
+                    {visibleColumns.includes("NO ORDEN") && (<TableCell>NO ORDEN</TableCell>)}
+                    {visibleColumns.includes("ESTADO") && (<TableCell>Estado del Pedido</TableCell>)}
+                    {visibleColumns.includes("FECHA") && (<TableCell>FECHA</TableCell>)}
+                    {visibleColumns.includes("NUM CLIENTE") && (<TableCell>NUM CLIENTE</TableCell>)}
+                    {visibleColumns.includes("NOMBRE DEL CLIENTE") && (<TableCell>NOMBRE DEL CLIENTE</TableCell>)}
+                    {visibleColumns.includes("MUNICIPIO") && (<TableCell>MUNICIPIO</TableCell>)}
+                    {visibleColumns.includes("ESTADO") && (<TableCell>ESTADO</TableCell>)}
+                    {visibleColumns.includes("OBSERVACIONES") && (<TableCell>OBSERVACIONES</TableCell>)}
+                    {visibleColumns.includes("TOTAL") && (<TableCell>TOTAL</TableCell>)}
+                    {visibleColumns.includes("NUMERO DE FACTURA") && (<TableCell>NUMERO DE FACTURA</TableCell>)}
+                    {visibleColumns.includes("FECHA DE FACTURA") && (<TableCell>FECHA DE FACTURA</TableCell>)}
+                    {visibleColumns.includes("PARTIDAS") && (<TableCell>PARTIDAS</TableCell>)}
+                    {visibleColumns.includes("PIEZAS") && (<TableCell>PIEZAS</TableCell>)}
+                    {visibleColumns.includes("TRANSPORTE") && (<TableCell>TRANSPORTE</TableCell>)}
+                    {visibleColumns.includes("PAQUETERIA") && (<TableCell>TIPO DE RUTA</TableCell>)}
+                    {visibleColumns.includes("FECHA DE ENTREGA (CLIENTE)") && <TableCell>FECHA DE ENTREGA (CLIENTE)</TableCell>}
+                    {visibleColumns.includes("Acciones") && (<TableCell>Acciones</TableCell>)}
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -5656,9 +5688,7 @@ function Transporte() {
                       ) // ✅ PAGINACIÓN SIN AFECTAR FILTROS
                       .map((routeData, index) => (
                         <TableRow key={index}>
-                          {visibleColumns.includes("NO ORDEN") && (
-                            <TableCell>{routeData["NO ORDEN"]}</TableCell>
-                          )}
+                          {visibleColumns.includes("NO ORDEN") && (<TableCell>{routeData["NO ORDEN"]}</TableCell>)}
 
                           <TableCell>
                             {/* Estado del pedido con color */}
@@ -5683,60 +5713,20 @@ function Transporte() {
                             )}
                           </TableCell>
 
-                          {visibleColumns.includes("FECHA") && (
-                            <TableCell>
-                              {formatDate(routeData.FECHA)}
-                            </TableCell>
-                          )}
-                          {visibleColumns.includes("NUM CLIENTE") && (
-                            <TableCell>{routeData["NUM. CLIENTE"]}</TableCell>
-                          )}
-                          {visibleColumns.includes("NOMBRE DEL CLIENTE") && (
-                            <TableCell>
-                              {routeData["NOMBRE DEL CLIENTE"]}
-                            </TableCell>
-                          )}
-                          {visibleColumns.includes("MUNICIPIO") && (
-                            <TableCell>{routeData.MUNICIPIO}</TableCell>
-                          )}
-                          {visibleColumns.includes("ESTADO") && (
-                            <TableCell>{routeData.ESTADO}</TableCell>
-                          )}
-                          {visibleColumns.includes("OBSERVACIONES") && (
-                            <TableCell>{routeData.OBSERVACIONES}</TableCell>
-                          )}
-                          {visibleColumns.includes("TOTAL") && (
-                            <TableCell>
-                              {formatCurrency(routeData.TOTAL)}
-                            </TableCell>
-                          )}
-                          {visibleColumns.includes("NUMERO DE FACTURA") && (
-                            <TableCell>{routeData["NO_FACTURA"]}</TableCell>
-                          )}
-                          {visibleColumns.includes("FECHA DE FACTURA") && (
-                            <TableCell>
-                              {formatDate(routeData.FECHA_DE_FACTURA)}
-                            </TableCell>
-                          )}
-                          {visibleColumns.includes("PARTIDAS") && (
-                            <TableCell>{routeData.PARTIDAS}</TableCell>
-                          )}
-                          {visibleColumns.includes("PIEZAS") && (
-                            <TableCell>{routeData.PIEZAS}</TableCell>
-                          )}
-                          {visibleColumns.includes("TRANSPORTE") && (
-                            <TableCell>{routeData.TRANSPORTE}</TableCell>
-                          )}
-                          {visibleColumns.includes("PAQUETERIA") && (
-                            <TableCell>{routeData.PAQUETERIA}</TableCell>
-                          )}
-                          {visibleColumns.includes(
-                            "FECHA DE ENTREGA (CLIENTE)"
-                          ) && (
-                              <TableCell>
-                                {formatDate(routeData.FECHA_DE_ENTREGA_CLIENTE)}
-                              </TableCell>
-                            )}
+                          {visibleColumns.includes("FECHA") && (<TableCell>{formatDate(routeData.FECHA)}</TableCell>)}
+                          {visibleColumns.includes("NUM CLIENTE") && (<TableCell>{routeData["NUM. CLIENTE"]}</TableCell>)}
+                          {visibleColumns.includes("NOMBRE DEL CLIENTE") && (<TableCell>{routeData["NOMBRE DEL CLIENTE"]}</TableCell>)}
+                          {visibleColumns.includes("MUNICIPIO") && (<TableCell>{routeData.MUNICIPIO}</TableCell>)}
+                          {visibleColumns.includes("ESTADO") && (<TableCell>{routeData.ESTADO}</TableCell>)}
+                          {visibleColumns.includes("OBSERVACIONES") && (<TableCell>{routeData.OBSERVACIONES}</TableCell>)}
+                          {visibleColumns.includes("TOTAL") && (<TableCell>{formatCurrency(routeData.TOTAL)}</TableCell>)}
+                          {visibleColumns.includes("NUMERO DE FACTURA") && (<TableCell>{routeData["NO_FACTURA"]}</TableCell>)}
+                          {visibleColumns.includes("FECHA DE FACTURA") && (<TableCell>{formatDate(routeData.FECHA_DE_FACTURA)}</TableCell>)}
+                          {visibleColumns.includes("PARTIDAS") && (<TableCell>{routeData.PARTIDAS}</TableCell>)}
+                          {visibleColumns.includes("PIEZAS") && (<TableCell>{routeData.PIEZAS}</TableCell>)}
+                          {visibleColumns.includes("TRANSPORTE") && (<TableCell>{routeData.TRANSPORTE}</TableCell>)}
+                          {visibleColumns.includes("PAQUETERIA") && (<TableCell>{routeData.PAQUETERIA}</TableCell>)}
+                          {visibleColumns.includes("FECHA DE ENTREGA (CLIENTE)") && (<TableCell>{formatDate(routeData.FECHA_DE_ENTREGA_CLIENTE)}</TableCell>)}
                           {visibleColumns.includes("Acciones") && (
                             <TableCell>
                               <Grid
@@ -5817,14 +5807,24 @@ function Transporte() {
             <TableContainer component={Paper} style={{ marginTop: "20px" }}>
               <Typography variant="h6">Venta Empleado</Typography>
               <br />
+
               <TextField
-                label="Filtrar por Cliente, Orden o Estado"
+                label="Buscar por No Orden o Nombre del Cliente"
+                value={filtroGeneral}
+                onChange={(e) => setFiltroGeneral(e.target.value)}
                 variant="outlined"
                 size="small"
-                value={filtro}
-                onChange={(e) => setFiltro(e.target.value)}
-                style={{ marginBottom: 10, width: "300px" }}
+                sx={{ mr: 2 }}
               />
+
+              <TextField
+                label="Buscar por Estado"
+                value={filtroEstado}
+                onChange={(e) => setFiltroEstado(e.target.value)}
+                variant="outlined"
+                size="small"
+              />
+
 
               <TablePagination
                 component="div"
@@ -5991,293 +5991,199 @@ function Transporte() {
           )}
 
           {/* Sub-tab de Asignación */}
-          {tabIndex === 1 &&
-            (user?.role === "Admin" ||
-              user?.role === "Master" ||
-              user?.role === "Trans" ||
-              user?.role === "Rep" ||
-              user?.role === "Tran",
-              "Rep") &&
-            subTabIndex === 3 && (
-              <TableContainer
-                component={Paper}
-                style={{ marginTop: "20px", padding: "20px" }}
-              >
-                <Typography variant="h6">
-                  Asignación de transporte / Historico
-                </Typography>
+          {tabIndex === 1 && (user?.role === "Admin" || user?.role === "Master" || user?.role === "Trans" || user?.role === "Rep" || user?.role === "Tran", "Rep") && subTabIndex === 3 && (
+            <TableContainer
+              component={Paper}
+              style={{ marginTop: "20px", padding: "20px" }}
+            >
+              <Typography variant="h6">
+                Asignación de transporte / Historico
+              </Typography>
 
-                <TextField
-                  type="text"
-                  placeholder="Buscar por No. Orden"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
+              <TextField
+                label="Buscar por No. Orden, Cliente o Num. Cliente"
+                value={filtroGeneralAsignacion}
+                onChange={(e) => setFiltroGeneralAsignacion(e.target.value)}
+                variant="outlined"
+                size="small"
+                sx={{ mr: 2 }}
+              />
 
-                <Table>
-                  <TableHead>
+              <TextField
+                label="Buscar por Estado"
+                value={filtroEstadoAsignacion}
+                onChange={(e) => setFiltroEstadoAsignacion(e.target.value)}
+                variant="outlined"
+                size="small"
+              />
+
+
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    {visibleColumns.includes("ESTADO") && (<TableCell>Estado del Pedido</TableCell>)}
+                    {visibleColumns.includes("FECHA") && (<TableCell>FECHA</TableCell>)}
+                    {visibleColumns.includes("NO ORDEN") && (<TableCell>NO ORDEN</TableCell>)}
+                    {visibleColumns.includes("GUIA") && (<TableCell>GUIA</TableCell>)}
+                    {visibleColumns.includes("NUMERO DE FACTURA") && (<TableCell>NUMERO DE FACTURA</TableCell>)}
+                    {visibleColumns.includes("NUM CLIENTE") && (<TableCell>NUM CLIENTE</TableCell>)}
+                    {visibleColumns.includes("NOMBRE DEL CLIENTE") && (<TableCell>NOMBRE DEL CLIENTE</TableCell>)}
+                    {visibleColumns.includes("TRANSPORTE") && (<TableCell>TRANSPORTE / RUTA</TableCell>)}
+                    {visibleColumns.includes("TOTAL") && (<TableCell>TOTAL</TableCell>)}
+                    {visibleColumns.includes("TOTAL FACTURA LT") && (<TableCell>COSTO DEL FLETE</TableCell>)}
+                    {visibleColumns.includes("FECHA DE FACTURA") && (<TableCell>FECHA DE FACTURA</TableCell>)}
+                    {visibleColumns.includes("FECHA DE EMBARQUE") && (<TableCell>FECHA DE EMBARQUE</TableCell>)}
+                    {visibleColumns.includes("FECHA DE ENTREGA (CLIENTE)") && <TableCell>FECHA DE ENTREGA CLIENTE</TableCell>}
+                    {visibleColumns.includes("PARTIDAS") && (<TableCell>PARTIDAS</TableCell>)}
+                    {visibleColumns.includes("PIEZAS") && (<TableCell>PIEZAS</TableCell>)}
+                    {visibleColumns.includes("CAJAS") && (<TableCell>CAJAS</TableCell>)}
+                    {visibleColumns.includes("DIA EN QUE ESTA EN RUTA") && (<TableCell>DIA EN QUE ESTA EN RUTA</TableCell>)}
+                    {visibleColumns.includes("DIAS DE ENTREGA") && (<TableCell>DIAS DE ENTREGA</TableCell>)}
+                    {visibleColumns.includes("ENTREGA SATISFACTORIA O NO SATISFACTORIA") && (<TableCell>ENTREGA SATISFACTORIA O NO SATISFACTORIA</TableCell>)}
+                    {visibleColumns.includes("MOTIVO") && (<TableCell>MOTIVO</TableCell>)}
+                    {visibleColumns.includes("DIFERENCIA") && (<TableCell>DIFERENCIA</TableCell>)}
+                    {visibleColumns.includes("Acciones") && (<TableCell>Acciones</TableCell>)}
+                  </TableRow>
+                </TableHead>
+
+                <TableBody>
+                  {paginatedAsignacion.length === 0 ? (
                     <TableRow>
-                      {visibleColumns.includes("ESTADO") && (
-                        <TableCell>Estado del Pedido</TableCell>
-                      )}
-                      {visibleColumns.includes("FECHA") && (
-                        <TableCell>FECHA</TableCell>
-                      )}
-                      {visibleColumns.includes("NO ORDEN") && (
-                        <TableCell>NO ORDEN</TableCell>
-                      )}
-                      {visibleColumns.includes("GUIA") && (
-                        <TableCell>GUIA</TableCell>
-                      )}
-                      {visibleColumns.includes("NUMERO DE FACTURA") && (
-                        <TableCell>NUMERO DE FACTURA</TableCell>
-                      )}
-                      {visibleColumns.includes("NUM CLIENTE") && (
-                        <TableCell>NUM CLIENTE</TableCell>
-                      )}
-                      {visibleColumns.includes("NOMBRE DEL CLIENTE") && (
-                        <TableCell>NOMBRE DEL CLIENTE</TableCell>
-                      )}
-                      {visibleColumns.includes("TRANSPORTE") && (
-                        <TableCell>TRANSPORTE / RUTA</TableCell>
-                      )}
-                      {visibleColumns.includes("TOTAL") && (
-                        <TableCell>TOTAL</TableCell>
-                      )}
-                      {visibleColumns.includes("TOTAL FACTURA LT") && (
-                        <TableCell>COSTO DEL FLETE</TableCell>
-                      )}
-                      {visibleColumns.includes("FECHA DE FACTURA") && (
-                        <TableCell>FECHA DE FACTURA</TableCell>
-                      )}
-                      {visibleColumns.includes("FECHA DE EMBARQUE") && (
-                        <TableCell>FECHA DE EMBARQUE</TableCell>
-                      )}
-                      {visibleColumns.includes(
-                        "FECHA DE ENTREGA (CLIENTE)"
-                      ) && <TableCell>FECHA DE ENTREGA CLIENTE</TableCell>}
-                      {visibleColumns.includes("PARTIDAS") && (
-                        <TableCell>PARTIDAS</TableCell>
-                      )}
-                      {visibleColumns.includes("PIEZAS") && (
-                        <TableCell>PIEZAS</TableCell>
-                      )}
-                      {visibleColumns.includes("CAJAS") && (
-                        <TableCell>CAJAS</TableCell>
-                      )}
-                      {visibleColumns.includes("DIA EN QUE ESTA EN RUTA") && (
-                        <TableCell>DIA EN QUE ESTA EN RUTA</TableCell>
-                      )}
-                      {visibleColumns.includes("DIAS DE ENTREGA") && (
-                        <TableCell>DIAS DE ENTREGA</TableCell>
-                      )}
-                      {visibleColumns.includes(
-                        "ENTREGA SATISFACTORIA O NO SATISFACTORIA"
-                      ) && (
+                      <TableCell
+                        colSpan={visibleColumns.length}
+                        style={{ textAlign: "center" }}
+                      >
+                        No hay datos disponibles.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    paginatedAsignacion.map((routeData, index) => (
+                      <TableRow key={index}>
+                        <TableCell>
+                          {/* Estado del pedido con color */}
+                          <Typography
+                            variant="body2"
+                            style={{ color: routeData.color }}
+                          >
+                            {routeData.statusText}
+                          </Typography>
+
+                          {/* Si el pedido está fusionado, mostrarlo debajo en morado */}
+                          {routeData.fusionWith && (
+                            <Typography
+                              variant="caption"
+                              style={{
+                                color: "#800080",
+                                fontWeight: "bold",
+                              }}
+                            >
+                              ({routeData.fusionWith})
+                            </Typography>
+                          )}
+                        </TableCell>
+
+                        {visibleColumns.includes("FECHA") && (
                           <TableCell>
-                            ENTREGA SATISFACTORIA O NO SATISFACTORIA
+                            {formatDate(routeData.FECHA)}
                           </TableCell>
                         )}
-                      {visibleColumns.includes("MOTIVO") && (
-                        <TableCell>MOTIVO</TableCell>
-                      )}
-                      {visibleColumns.includes("DIFERENCIA") && (
-                        <TableCell>DIFERENCIA</TableCell>
-                      )}
-                      {visibleColumns.includes("Acciones") && (
-                        <TableCell>Acciones</TableCell>
-                      )}
-                    </TableRow>
-                  </TableHead>
-
-                  <TableBody>
-                    {paginatedAsignacion.length === 0 ? (
-                      <TableRow>
-                        <TableCell
-                          colSpan={visibleColumns.length}
-                          style={{ textAlign: "center" }}
-                        >
-                          No hay datos disponibles.
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      paginatedAsignacion.map((routeData, index) => (
-                        <TableRow key={index}>
+                        {visibleColumns.includes("NO ORDEN") && (<TableCell>{routeData["NO ORDEN"]}</TableCell>)}
+                        {visibleColumns.includes("GUIA") && (<TableCell>{routeData.GUIA}</TableCell>)}
+                        {visibleColumns.includes("NUMERO DE FACTURA") && (<TableCell>{routeData["NO_FACTURA"]}</TableCell>)}
+                        {visibleColumns.includes("NUM CLIENTE") && (<TableCell>{routeData["NUM. CLIENTE"]}</TableCell>)}
+                        {visibleColumns.includes("NOMBRE DEL CLIENTE") && (<TableCell>{routeData["NOMBRE DEL CLIENTE"]}</TableCell>)}
+                        {visibleColumns.includes("PAQUETERIA") && (<TableCell>{routeData.PAQUETERIA}</TableCell>)}
+                        {visibleColumns.includes("TOTAL") && (<TableCell>{formatCurrency(routeData.TOTAL)}</TableCell>)}
+                        {visibleColumns.includes("TOTAL FACTURA LT") && (
                           <TableCell>
-                            {/* Estado del pedido con color */}
-                            <Typography
-                              variant="body2"
-                              style={{ color: routeData.color }}
-                            >
-                              {routeData.statusText}
-                            </Typography>
-
-                            {/* Si el pedido está fusionado, mostrarlo debajo en morado */}
-                            {routeData.fusionWith && (
-                              <Typography
-                                variant="caption"
-                                style={{
-                                  color: "#800080",
-                                  fontWeight: "bold",
-                                }}
-                              >
-                                ({routeData.fusionWith})
-                              </Typography>
-                            )}
+                            {routeData.TOTAL_FACTURA_LT &&
+                              !isNaN(parseFloat(routeData.TOTAL_FACTURA_LT))
+                              ? formatCurrency(
+                                parseFloat(routeData.TOTAL_FACTURA_LT)
+                              )
+                              : "$0.00"}
                           </TableCell>
-
-                          {visibleColumns.includes("FECHA") && (
-                            <TableCell>
-                              {formatDate(routeData.FECHA)}
-                            </TableCell>
-                          )}
-                          {visibleColumns.includes("NO ORDEN") && (
-                            <TableCell>{routeData["NO ORDEN"]}</TableCell>
-                          )}
-                          {visibleColumns.includes("GUIA") && (
-                            <TableCell>{routeData.GUIA}</TableCell>
-                          )}
-                          {visibleColumns.includes("NUMERO DE FACTURA") && (
-                            <TableCell>{routeData["NO_FACTURA"]}</TableCell>
-                          )}
-                          {visibleColumns.includes("NUM CLIENTE") && (
-                            <TableCell>{routeData["NUM. CLIENTE"]}</TableCell>
-                          )}
-                          {visibleColumns.includes("NOMBRE DEL CLIENTE") && (
-                            <TableCell>
-                              {routeData["NOMBRE DEL CLIENTE"]}
-                            </TableCell>
-                          )}
-                          {visibleColumns.includes("PAQUETERIA") && (
-                            <TableCell>{routeData.PAQUETERIA}</TableCell>
-                          )}
-                          {visibleColumns.includes("TOTAL") && (
-                            <TableCell>
-                              {formatCurrency(routeData.TOTAL)}
-                            </TableCell>
-                          )}
-                          {visibleColumns.includes("TOTAL FACTURA LT") && (
-                            <TableCell>
-                              {routeData.TOTAL_FACTURA_LT &&
-                                !isNaN(parseFloat(routeData.TOTAL_FACTURA_LT))
-                                ? formatCurrency(
-                                  parseFloat(routeData.TOTAL_FACTURA_LT)
+                        )}
+                        {visibleColumns.includes("FECHA DE FACTURA") && (<TableCell>{formatDate(routeData.FECHA_DE_FACTURA)}</TableCell>)}
+                        {visibleColumns.includes("FECHA DE EMBARQUE") && (
+                          <TableCell>
+                            {loading
+                              ? "Cargando..."
+                              : fechasEmbarque[routeData["NO ORDEN"]]
+                                ? formatDate(
+                                  fechasEmbarque[routeData["NO ORDEN"]]
                                 )
-                                : "$0.00"}
-                            </TableCell>
-                          )}
-                          {visibleColumns.includes("FECHA DE FACTURA") && (
-                            <TableCell>
-                              {formatDate(routeData.FECHA_DE_FACTURA)}
-                            </TableCell>
-                          )}
-                          {visibleColumns.includes("FECHA DE EMBARQUE") && (
-                            <TableCell>
-                              {loading
-                                ? "Cargando..."
-                                : fechasEmbarque[routeData["NO ORDEN"]]
-                                  ? formatDate(
-                                    fechasEmbarque[routeData["NO ORDEN"]]
-                                  )
-                                  : "Sin fecha"}
-                            </TableCell>
-                          )}
-                          {visibleColumns.includes(
-                            "FECHA DE ENTREGA (CLIENTE)"
-                          ) && (
-                              <TableCell>
-                                {formatDate(routeData.FECHA_DE_ENTREGA_CLIENTE)}
-                              </TableCell>
-                            )}
-                          {visibleColumns.includes("PARTIDAS") && (
-                            <TableCell>{routeData.PARTIDAS}</TableCell>
-                          )}
-                          {visibleColumns.includes("PIEZAS") && (
-                            <TableCell>{routeData.PIEZAS}</TableCell>
-                          )}
-                          {visibleColumns.includes("CAJAS") && (
-                            <TableCell>{routeData.totalCajas}</TableCell>
-                          )}
-                          {visibleColumns.includes(
-                            "DIA EN QUE ESTA EN RUTA"
-                          ) && (
-                              <TableCell>
-                                {formatDate(routeData.ultimaFechaEmbarque)}
-                              </TableCell>
-                            )}
-                          {visibleColumns.includes("DIAS DE ENTREGA") && (
-                            <TableCell>{routeData.DIAS_DE_ENTREGA}</TableCell>
-                          )}
-                          {visibleColumns.includes(
-                            "ENTREGA SATISFACTORIA O NO SATISFACTORIA"
-                          ) && (
-                              <TableCell>
-                                {
-                                  routeData.ENTREGA_SATISFACTORIA_O_NO_SATISFACTORIA
+                                : "Sin fecha"}
+                          </TableCell>
+                        )}
+                        {visibleColumns.includes("FECHA DE ENTREGA (CLIENTE)") && (<TableCell>{formatDate(routeData.FECHA_DE_ENTREGA_CLIENTE)}</TableCell>)}
+                        {visibleColumns.includes("PARTIDAS") && (<TableCell>{routeData.PARTIDAS}</TableCell>)}
+                        {visibleColumns.includes("PIEZAS") && (<TableCell>{routeData.PIEZAS}</TableCell>)}
+                        {visibleColumns.includes("CAJAS") && (<TableCell>{routeData.totalCajas}</TableCell>)}
+                        {visibleColumns.includes("DIA EN QUE ESTA EN RUTA") && (<TableCell>{formatDate(routeData.ultimaFechaEmbarque)}</TableCell>)}
+                        {visibleColumns.includes("DIAS DE ENTREGA") && (<TableCell>{routeData.DIAS_DE_ENTREGA}</TableCell>)}
+                        {visibleColumns.includes("ENTREGA SATISFACTORIA O NO SATISFACTORIA") && (<TableCell>{routeData.ENTREGA_SATISFACTORIA_O_NO_SATISFACTORIA}</TableCell>)}
+                        {visibleColumns.includes("MOTIVO") && (<TableCell>{routeData.MOTIVO}</TableCell>)}
+                        {visibleColumns.includes("DIFERENCIA") && (<TableCell>{routeData.DIFERENCIA}</TableCell>)}
+
+                        {visibleColumns.includes("Acciones") && (
+                          <TableCell>
+                            <Grid item>
+                              <IconButton
+                                onClick={() => {
+                                  const url = getTransportUrl(
+                                    routeData.PAQUETERIA
+                                  );
+                                  window.open(url, "_blank");
+                                }}
+                                size="small"
+                                style={{ color: "#616161" }}
+                              >
+                                <AirportShuttleIcon />
+                              </IconButton>
+                            </Grid>
+
+                            <Grid item>
+                              <IconButton
+                                variant="contained"
+                                style={{ color: "black" }}
+                                onClick={() =>
+                                  generatePDF(routeData["NO ORDEN"])
                                 }
-                              </TableCell>
-                            )}
-                          {visibleColumns.includes("MOTIVO") && (
-                            <TableCell>{routeData.MOTIVO}</TableCell>
-                          )}
-                          {visibleColumns.includes("DIFERENCIA") && (
-                            <TableCell>{routeData.DIFERENCIA}</TableCell>
-                          )}
+                              >
+                                <ArticleIcon />
+                              </IconButton>
+                            </Grid>
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
 
-                          {visibleColumns.includes("Acciones") && (
-                            <TableCell>
-                              <Grid item>
-                                <IconButton
-                                  onClick={() => {
-                                    const url = getTransportUrl(
-                                      routeData.PAQUETERIA
-                                    );
-                                    window.open(url, "_blank");
-                                  }}
-                                  size="small"
-                                  style={{ color: "#616161" }}
-                                >
-                                  <AirportShuttleIcon />
-                                </IconButton>
-                              </Grid>
+              <TablePagination
+                component="div"
+                count={filteredAsignacion.length}
+                rowsPerPage={rowsPerPage}
+                page={page}
+                onPageChange={(event, newPage) => setPage(newPage)}
+                onRowsPerPageChange={(event) => {
+                  setRowsPerPage(parseInt(event.target.value, 10));
+                  setPage(0);
+                }}
+              />
+            </TableContainer>
+          )}
 
-                              <Grid item>
-                                <IconButton
-                                  variant="contained"
-                                  style={{ color: "black" }}
-                                  onClick={() =>
-                                    generatePDF(routeData["NO ORDEN"])
-                                  }
-                                >
-                                  <ArticleIcon />
-                                </IconButton>
-                              </Grid>
-                            </TableCell>
-                          )}
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
 
-                <TablePagination
-                  component="div"
-                  count={filteredAsignacion.length}
-                  rowsPerPage={rowsPerPage}
-                  page={page}
-                  onPageChange={(event, newPage) => setPage(newPage)}
-                  onRowsPerPageChange={(event) => {
-                    setRowsPerPage(parseInt(event.target.value, 10));
-                    setPage(0);
-                  }}
-                />
-              </TableContainer>
-            )}
         </Box>
+
       )}
 
       {/* El Modal para actualizar la guía */}
       <Modal open={directaModalOpen} onClose={closeDirectaModal}>
+
         <Box
           padding="20px"
           backgroundColor="white"
@@ -6487,6 +6393,23 @@ function Transporte() {
               </Grid>
             )}
 
+            {/* 🔹 Observaciones */}
+            {visibleColumns.includes("OBSERVACIONES") && (
+              <Grid item xs={12} sm={12}>
+                <TextField
+                  label="Observaciones"
+                  value={observaciones}
+                  onChange={(e) => setObservaciones(e.target.value)}
+                  variant="outlined"
+                  fullWidth
+                  multiline
+                  minRows={2}
+                />
+              </Grid>
+            )}
+
+
+
             {/* Botón para actualizar */}
             <Grid item xs={12}>
               <Button
@@ -6514,6 +6437,7 @@ function Transporte() {
             </Grid>
           </Grid>
         </Box>
+
       </Modal>
 
       <Snackbar

@@ -5,7 +5,7 @@ const pool = require('../config/database');
 
 // Obtener proyectos con filtros dinámicos
 const getProyectoQueretaro = async (req, res) => {
-  const { zona, ruta, dia_visita } = req.query;
+  const { zona, ruta, dia_visita , status } = req.query;
 
   try {
     let query = `
@@ -30,6 +30,11 @@ const getProyectoQueretaro = async (req, res) => {
     if (dia_visita) {
       query += ' AND p.dia_visita = ?';
       params.push(dia_visita);
+    }
+
+    if (status) {
+      query += ' AND p.status = ?';
+      params.push(status);
     }
 
     query += ' ORDER BY p.id';
@@ -180,6 +185,6 @@ const getFilteredProyectoQueretaro = async (req, res) => {
   }
 };
 
-
+ 
 
 module.exports = { getProyectoQueretaro, getCategoryData, getFilteredProyectoQueretaro };

@@ -3,7 +3,8 @@ const router = express.Router();
 const { getObservacionesPorClientes, getUltimaFechaEmbarque, insertarRutas, obtenerRutasDePaqueteria,
     getFechaYCajasPorPedido, actualizarGuia, getPedidosEmbarque, getTransportistas, getEmpresasTransportistas,
     insertarVisita, guardarDatos, obtenerDatos, eliminarRuta, getOrderStatus, getHistoricoData, getColumnasHistorico, getClientesHistorico,
-    upload, actualizarFacturasDesdeExcel, actualizarPorGuia, crearRuta, agregarPedidoARuta, obtenerRutasConPedidos, obtenerRutaPorId, obtenerResumenDelDia
+    upload, actualizarFacturasDesdeExcel, actualizarPorGuia, crearRuta, agregarPedidoARuta, obtenerRutasConPedidos, obtenerRutaPorId, obtenerResumenDelDia,
+    getFusionInfo
 } = require('../controller/TrasporteController');
 
 router.post('/clientes/observaciones', getObservacionesPorClientes);
@@ -39,6 +40,8 @@ router.get("/historico_columnas", getColumnasHistorico);
 router.get("/historico", getHistoricoData);
 
 router.post('/status', getOrderStatus);
+
+router.post("/fusion", getFusionInfo);
 
 router.post("/subir-excel", upload.single("archivo"), actualizarFacturasDesdeExcel);
 

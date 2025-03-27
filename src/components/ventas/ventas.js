@@ -2818,7 +2818,7 @@ function Tracking() {
                             <TableBody>
                                 <TableRow>
                                     {visibleColumns.includes("NO ORDEN") && (
-                                        <TableCell>NO ORDEN</TableCell>
+                                        <TableCell>NO ORDENssss</TableCell>
                                     )}
                                     {visibleColumns.includes("NO ORDEN") && (
                                         <TableCell>Estado del Pedido</TableCell>
@@ -3487,6 +3487,7 @@ function Tracking() {
                         <Table>
                             <TableHead>
                                 <TableRow>
+                                    {visibleColumns.includes("ESTADO") && (<TableCell>Estado del Pedidoaaaaa</TableCell>)}
                                     {visibleColumns.includes("ESTADO") && (<TableCell>Estado del Pedido</TableCell>)}
                                     {visibleColumns.includes("FECHA") && (<TableCell>FECHA</TableCell>)}
                                     {visibleColumns.includes("NO ORDEN") && (<TableCell>NO ORDEN</TableCell>)}
@@ -3535,7 +3536,9 @@ function Tracking() {
                                                         ? routeData.statusText
                                                         : "Cargando..."}
                                                 </Typography>
+                                            
                                             </TableCell>
+                                            {visibleColumns.includes("FECHA") && (<TableCell>{routeData["EJECUTIVO VTAS"]}</TableCell>)}
                                             {visibleColumns.includes("FECHA") && (<TableCell>{formatDate(routeData.FECHA)}</TableCell>)}
                                             {visibleColumns.includes("NO ORDEN") && (<TableCell>{routeData["NO ORDEN"]}</TableCell>)}
                                             {visibleColumns.includes("GUIA") && (<TableCell>{routeData.GUIA}</TableCell>)}

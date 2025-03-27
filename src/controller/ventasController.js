@@ -184,7 +184,7 @@ const obtenerRutasDePaqueteria = async (req, res) => {
              \`NUM. CLIENTE\`, \`NOMBRE DEL CLIENTE\`, ZONA, MUNICIPIO, ESTADO, 
              OBSERVACIONES, TOTAL, PARTIDAS, PIEZAS, TARIMAS, TRANSPORTE, 
              PAQUETERIA, GUIA, FECHA_DE_ENTREGA_CLIENTE, DIAS_DE_ENTREGA,
-             TIPO, DIRECCION, TELEFONO, TOTAL_FACTURA_LT
+             TIPO, DIRECCION, TELEFONO, TOTAL_FACTURA_LT,\`EJECUTIVO VTAS\`
       FROM paqueteria
       WHERE MONTH(FECHA) = ? AND YEAR(FECHA) = ?
     `;
@@ -880,6 +880,6 @@ module.exports = {
   getClientesHistorico,
   getColumnasHistorico,
   getOrderStatus,
-  upload, 
+  upload,
   actualizarFacturasDesdeExcel,
 };

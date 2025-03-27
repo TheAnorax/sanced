@@ -100,8 +100,10 @@ const insertarRutas = async (req, res) => {
         DIRECCION,
         TELEFONO,
         CORREO,
+        "EJECUTIVO VTAS": ejecutivoVtas, // ✅ aquí está bien
         GUIA,
       } = ruta;
+
 
       const formattedDate = moment(FECHA, "DD/MM/YYYY").format("YYYY-MM-DD");
 
@@ -110,9 +112,9 @@ const insertarRutas = async (req, res) => {
         INSERT INTO paqueteria (
           routeName, FECHA, \`NO ORDEN\`, \`NO_FACTURA\`, \`NUM. CLIENTE\`,
           \`NOMBRE DEL CLIENTE\`, ZONA, MUNICIPIO, ESTADO, OBSERVACIONES,
-          TOTAL, PARTIDAS, PIEZAS, TRANSPORTE, PAQUETERIA, TIPO, DIRECCION, TELEFONO, CORREO, GUIA
+          TOTAL, PARTIDAS, PIEZAS, TRANSPORTE, PAQUETERIA, TIPO, DIRECCION, TELEFONO, CORREO,\`EJECUTIVO VTAS\`, GUIA
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
 
       const values = [
@@ -135,8 +137,10 @@ const insertarRutas = async (req, res) => {
         DIRECCION,
         TELEFONO,
         CORREO,
+        ejecutivoVtas, // ✅ este nombre debe coincidir
         GUIA,
       ];
+
 
       await connection.query(insertQuery, values);
     }
@@ -265,6 +269,7 @@ const getFechaYCajasPorPedido = async (req, res) => {
   }
 };
 
+
 const actualizarGuia = async (req, res) => {
   const {
     guia,
@@ -384,6 +389,7 @@ const actualizarGuia = async (req, res) => {
     return res.status(500).json({ message: "❌ Error al actualizar la guía." });
   }
 };
+
 
 const getPedidosEmbarque = async (req, res) => {
   try {

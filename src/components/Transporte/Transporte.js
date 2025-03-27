@@ -13,6 +13,7 @@ import Autocomplete from "@mui/material/Autocomplete";
 import { CloudUpload } from "@mui/icons-material";
 import CompareArrowsIcon from "@mui/icons-material/CompareArrows";
 import { Tooltip } from "@mui/material";
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 
 
 import axios from "axios";
@@ -377,9 +378,6 @@ function Transporte() {
   };
 
 
-
-
-
   //estos son lo del estatus
 
   const handleRowClick = (routeData) => {
@@ -565,6 +563,8 @@ function Transporte() {
       } ${row["Codigo Postal"] || ""} ${row["Estado"] || ""}`,
     CORREO: row["E-mail"] || "",
     TELEFONO: row["No. Telefonico"] || "",
+    "EJECUTIVO VTAS": row["Ejecutico Vtas"] || ""
+
   });
 
   const handleFileUpload = (e) => {
@@ -1375,6 +1375,8 @@ function Transporte() {
                 "Sin observaciones disponibles",
               TIPO: tipoRutaActual, // ✅ Asegurar que se inserta el tipo correcto
               GUIA: guiaEnviar, // ✅ Asignar "NA" si es Directa o Venta Empleado
+
+
             });
           });
         } else {
@@ -1539,96 +1541,28 @@ function Transporte() {
     const allColumns = [
       {
         name: "NO ORDEN",
-        role: [
-          "Admin",
-          "Master",
-          "Trans",
-          "PQ1",
-          "EB1",
-          "Paquet",
-          "Control",
-          "Rep",
-          "Tran",
-          "Rep",
-          "Embar",
-        ],
+        role: [ "Admin","Master", "Trans", "PQ1", "EB1", "Paquet", "Control", "Rep", "Tran", "Rep", "Embar", ],
       },
       {
         name: "ESTADO",
-        role: [
-          "Admin",
-          "Master",
-          "Trans",
-          "PQ1",
-          "EB1",
-          "Paquet",
-          "Embar",
-          "Control",
-          "Rep",
-          "Tran",
-          "Rep",
-        ],
+        role: [ "Admin", "Master", "Trans", "PQ1", "EB1", "Paquet", "Embar", "Control", "Rep", "Tran", "Rep",],
       },
       {
         name: "FECHA",
-        role: [
-          "Admin",
-          "Master",
-          "Trans",
-          "PQ1",
-          "EB1",
-          "Paquet",
-          "Embar",
-          "Rep",
-          "Tran",
-          "Rep",
-        ],
+        role: [ "Admin", "Master", "Trans", "PQ1", "EB1", "Paquet", "Embar", "Rep", "Tran", "Rep", ],
       },
       {
         name: "NUM CLIENTE",
-        role: [
-          "Admin",
-          "Master",
-          "Trans",
-          "PQ1",
-          "EB1",
-          "Paquet",
-          "Embar",
-          "Rep",
-          "Tran",
-          "Rep",
-        ],
+        role: [ "Admin", "Master", "Trans", "PQ1", "EB1", "Paquet", "Embar", "Rep", "Tran", "Rep", ],
       },
       {
         name: "NOMBRE DEL CLIENTE",
-        role: [
-          "Admin",
-          "Master",
-          "Trans",
-          "PQ1",
-          "EB1",
-          "Control",
-          "Paquet",
-          "Embar",
-          "Rep",
-          "Tran",
-          "Rep",
-        ],
+        role: [ "Admin", "Master", "Trans", "PQ1", "EB1", "Control", "Paquet", "Embar", "Rep", "Tran", "Rep", ],
       },
       {
         name: "MUNICIPIO",
-        role: [
-          "Admin",
-          "Master",
-          "Trans",
-          "PQ1",
-          "EB1",
-          "Paquet",
-          "Embar",
-          "Rep",
-          "Tran",
-          "Rep",
-        ],
+        role: [ "Admin",
+          "Master", "Trans", "PQ1", "EB1", "Paquet", "Embar", "Rep", "Tran", "Rep",],
       },
       {
         name: "ESTADO",
@@ -1699,16 +1633,7 @@ function Transporte() {
       },
       {
         name: "NUMERO DE FACTURA",
-        role: [
-          "Admin",
-          "Master",
-          "Trans",
-          "Rep",
-          "Control",
-          "Tran",
-          "Rep",
-          "Embar",
-        ],
+        role: [ "Admin","Master", "Trans", "Rep", "Control", "Tran", "Rep", "Embar", ],
       },
       {
         name: "FECHA DE FACTURA",
@@ -1720,42 +1645,15 @@ function Transporte() {
       },
       {
         name: "DIA EN QUE ESTA EN RUTA",
-        role: [
-          "Admin",
-          "Master",
-          "Trans",
-          "Rep",
-          "EB1",
-          "Embar",
-          "Tran",
-          "Rep",
-        ],
+        role: [ "Admin", "Master", "Trans", "Rep", "EB1", "Embar", "Tran", "Rep", ],
       },
       {
         name: "HORA DE SALIDA",
-        role: [
-          "Admin",
-          "Master",
-          "Trans",
-          "Rep",
-          "EB1",
-          "Embar",
-          "Tran",
-          "Rep",
-        ],
+        role: [ "Admin", "Master", "Trans", "Rep", "EB1", "Embar", "Tran", "Rep", ],
       },
       {
         name: "CAJAS",
-        role: [
-          "Admin",
-          "Master",
-          "Trans",
-          "Rep",
-          "PQ1",
-          "Paquet",
-          "Tran",
-          "Rep",
-        ],
+        role: [ "Admin", "Master", "Trans", "Rep", "PQ1", "Paquet", "Tran", "Rep", ],
       },
       {
         name: "TARIMAS",
@@ -1763,18 +1661,7 @@ function Transporte() {
       },
       {
         name: "TRANSPORTE",
-        role: [
-          "Admin",
-          "Master",
-          "Trans",
-          "Rep",
-          "PQ1",
-          "Paquet",
-          "Control",
-          "Tran",
-          "Rep",
-          "Embar",
-        ],
+        role: [ "Admin", "Master", "Trans", "Rep", "PQ1", "Paquet", "Control", "Tran", "Rep", "Embar", ],
       },
       {
         name: "PAQUETERIA",
@@ -1963,7 +1850,8 @@ function Transporte() {
 
       console.log(`🔍 Comparando: ${rowDate} === ${today}`);
 
-      return row["TIPO"].toLowerCase() === "directa" && rowDate === today;
+      return (row["TIPO"]?.toLowerCase?.() === "directa") && rowDate === today;
+
     });
 
     if (filteredData.length === 0) {
@@ -3815,9 +3703,114 @@ function Transporte() {
   };
 
 
+  const handleBuscarPorOrden = () => {
+    const noOrdenBuscado = filterOrderValue.trim();
+    if (!noOrdenBuscado) return;
+
+    let rutaEncontrada = null;
+
+    for (const ruta in groupedData) {
+      const contieneOrden = groupedData[ruta].rows.some(
+        (row) => String(row["NO ORDEN"]) === noOrdenBuscado
+      );
+
+      if (contieneOrden) {
+        rutaEncontrada = ruta;
+        break;
+      }
+    }
+
+    if (rutaEncontrada) {
+      openModal(rutaEncontrada); // 👈 ya tienes esta función para abrir ruta
+      setHighlightedRow(noOrdenBuscado); // (opcional) para resaltar visualmente
+    } else {
+      alert("No se encontró el número de orden en ninguna ruta.");
+    }
+  };
+
+
+  //ocultar las rutas
+
+  const [hiddenRoutes, setHiddenRoutes] = useState(() => {
+    const saved = localStorage.getItem("hiddenRoutes");
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem("hiddenRoutes", JSON.stringify(hiddenRoutes));
+  }, [hiddenRoutes]);
+
+  useEffect(() => {
+    const storedHidden = localStorage.getItem("hiddenRoutes");
+    if (storedHidden) {
+      setHiddenRoutes(JSON.parse(storedHidden));
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("hiddenRoutes", JSON.stringify(hiddenRoutes));
+  }, [hiddenRoutes]);
+
+
+  //actualizar las guias de directas 
+
+  const [bulkGuiaModalOpen, setBulkGuiaModalOpen] = useState(false);
+  const [bulkNoOrdenes, setBulkNoOrdenes] = useState("");
+  const [bulkGuiaValue, setBulkGuiaValue] = useState("");
+
+  const handleBulkGuiaUpdate = async () => {
+    if (!bulkGuiaValue || !bulkNoOrdenes) {
+      alert("Por favor ingresa los pedidos y la guía.");
+      return;
+    }
+
+    const ordenes = bulkNoOrdenes
+      .split(",")
+      .map((o) => o.trim())
+      .filter((o) => o !== "");
+
+    const errores = [];
+
+    for (const orden of ordenes) {
+      try {
+        const response = await fetch(`http://localhost:3007/api/Trasporte/paqueteria/actualizar-guia/${orden}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            guia: bulkGuiaValue,
+            paqueteria,
+            transporte: paqueteria,
+          }),
+        });
+
+        if (!response.ok) {
+          const data = await response.json();
+          errores.push(`Pedido ${orden}: ${data.message}`);
+        }
+      } catch (err) {
+        errores.push(`Pedido ${orden}: Error de red`);
+      }
+    }
+
+    if (errores.length > 0) {
+      alert("Errores al actualizar:\n" + errores.join("\n"));
+    } else {
+      alert("✅ Guía actualizada correctamente en todos los pedidos.");
+      fetchPaqueteriaRoutes(); // Recarga los datos actualizados
+    }
+
+    setBulkGuiaModalOpen(false);
+    setBulkGuiaValue("");
+    setBulkNoOrdenes("");
+  };
+
 
 
   return (
+
+
     <Paper elevation={3} style={{ padding: "20px" }}>
       {/* Pestañas */}
       <AppBar
@@ -3842,6 +3835,24 @@ function Transporte() {
       {tabIndex === 0 && (user?.role === "Admin" || user?.role === "Master" || user?.role === "Trans" || user?.role === "Control") && (
         <Box marginTop={2}>
           <Typography variant="h5">Cargar Archivo Excel</Typography>
+
+          <TextField
+            label="Buscar No. Orden"
+            variant="outlined"
+            size="small"
+            value={filterOrderValue}
+            onChange={(e) => setFilterOrderValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                handleBuscarPorOrden(); // Función que definimos abajo
+              }
+            }}
+            style={{ marginRight: 10 }}
+          />
+          <Button variant="contained" onClick={handleBuscarPorOrden}>
+            Buscar Orden
+          </Button>
+
 
           <Box marginTop={2} display="flex" alignItems="center" gap={2}>
             <label htmlFor="file-upload">
@@ -4393,97 +4404,140 @@ function Transporte() {
 
 
 
+
           {Object.keys(groupedData).length <= MAX_VISIBLE_ROUTES ? (
-            <Box
-              sx={{
-                display: "flex",
-                overflowX: "auto", // Habilita el desplazamiento horizontal
-                whiteSpace: "nowrap", // Evita que los elementos salten de línea
-                padding: "10px",
-                gap: "10px", // Espaciado entre tarjetas
-                maxWidth: "100%", // Ocupa el ancho de la pantalla
-              }}
-            >
-              {Object.keys(groupedData).map((route) => {
-                const totals = calculateTotals(route);
-                const pedidosOrdenes = groupedData[route].rows.map((pedido) => pedido["NO ORDEN"]).join(", ");
+            <>
+              <Box
+                sx={{
+                  display: "flex",
+                  overflowX: "auto",
+                  whiteSpace: "nowrap",
+                  padding: "10px",
+                  gap: "10px",
+                  maxWidth: "100%",
+                }}
+              >
+                {Object.keys(groupedData)
+                  .filter((route) => !hiddenRoutes.includes(route)) // 👈 filtra rutas ocultas
+                  .map((route) => {
+                    const totals = calculateTotals(route);
+                    const pedidosOrdenes = groupedData[route].rows.map((pedido) => pedido["NO ORDEN"]).join(", ");
 
-                return (
-                  <Tooltip
-                    key={route}
-                    title={
-                      <Typography sx={{ fontSize: "16px", fontWeight: "bold", p: 1 }}>
-                        Órdenes: {pedidosOrdenes.length > 0 ? pedidosOrdenes : "Sin pedidos"}
-                      </Typography>
-                    }
-                    arrow
-                    sx={{
-                      "& .MuiTooltip-tooltip": {
-                        fontSize: "16px",
-                        maxWidth: "300px", // Ajusta el ancho máximo del tooltip
-                        backgroundColor: "#333", // Color de fondo más visible
-                        color: "white", // Texto en blanco
-                        padding: "10px", // Más espacio interno
-                      },
-                    }}
-                  >
-
-                    <Box
-                      sx={{
-                        minWidth: "200px",
-                        maxWidth: "200px",
-                        textAlign: "center",
-                        padding: "10px",
-                        border: "1px solid #ddd",
-                        borderRadius: "5px",
-                        backgroundColor: "#fff",
-                        boxShadow: "2px 2px 5px rgba(0,0,0,0.1)",
-                        position: "relative", // Necesario para la posición del botón de cerrar
-                        cursor: "pointer", // Hace que parezca interactivo
-                      }}
-                    >
-                      {/* Botón para eliminar ruta */}
-                      <IconButton
-                        size="small"
-                        color="error"
-                        onClick={() => removeRoute(route)}
+                    return (
+                      <Tooltip
+                        key={route}
+                        title={
+                          <Typography sx={{ fontSize: "16px", fontWeight: "bold", p: 1 }}>
+                            Órdenes: {pedidosOrdenes.length > 0 ? pedidosOrdenes : "Sin pedidos"}
+                          </Typography>
+                        }
+                        arrow
                         sx={{
-                          position: "absolute",
-                          top: "5px",
-                          right: "5px",
+                          "& .MuiTooltip-tooltip": {
+                            fontSize: "16px",
+                            maxWidth: "300px",
+                            backgroundColor: "#333",
+                            color: "white",
+                            padding: "10px",
+                          },
                         }}
                       >
-                        <CloseIcon />
-                      </IconButton>
+                        <Box
+                          sx={{
+                            minWidth: "200px",
+                            maxWidth: "200px",
+                            textAlign: "center",
+                            padding: "10px",
+                            border: "1px solid #ddd",
+                            borderRadius: "5px",
+                            backgroundColor: "#fff",
+                            boxShadow: "2px 2px 5px rgba(0,0,0,0.1)",
+                            position: "relative",
+                            cursor: "pointer",
+                          }}
+                        >
+                          {/* Botón para ocultar ruta */}
+                          <Box
+                            sx={{
+                              position: "absolute",
+                              top: "5px",
+                              right: "5px",
+                              display: "flex",
+                              flexDirection: "row",
+                              gap: "4px"
+                            }}
+                          >
+                            {/* Ocultar */}
+                            <IconButton
+                              size="small"
+                              color="warning"
+                              onClick={() => setHiddenRoutes((prev) => [...prev, route])}
+                            >
+                              <VisibilityOffIcon />
+                            </IconButton>
 
-                      <Checkbox
-                        checked={selectedRoutes.includes(route)}
-                        onChange={() => handleSelectRoute(route)}
-                      />
-                      <Typography variant="h6" fontWeight="bold">
-                        Ruta: {route}
-                      </Typography>
-                      <Typography variant="body2">
-                        <strong>Total:</strong> {formatCurrency(totals.TOTAL)}
-                      </Typography>
-                      <Typography variant="body2">
-                        <strong>Partidas:</strong> {totals.PARTIDAS}
-                      </Typography>
-                      <Typography variant="body2">
-                        <strong>Piezas:</strong> {totals.PIEZAS}
-                      </Typography>
+                            {/* Eliminar */}
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={() => removeRoute(route)}
+                            >
+                              <CloseIcon />
+                            </IconButton>
+                          </Box>
+
+
+
+                          <Checkbox
+                            checked={selectedRoutes.includes(route)}
+                            onChange={() => handleSelectRoute(route)}
+                          />
+                          <Typography variant="h6" fontWeight="bold">
+                            Ruta: {route}
+                          </Typography>
+                          <Typography variant="body2">
+                            <strong>Total:</strong> {formatCurrency(totals.TOTAL)}
+                          </Typography>
+                          <Typography variant="body2">
+                            <strong>Partidas:</strong> {totals.PARTIDAS}
+                          </Typography>
+                          <Typography variant="body2">
+                            <strong>Piezas:</strong> {totals.PIEZAS}
+                          </Typography>
+                          <Button
+                            onClick={() => openModal(route)}
+                            size="small"
+                            color="primary"
+                          >
+                            Ver Detalles
+                          </Button>
+                        </Box>
+                      </Tooltip>
+                    );
+                  })}
+              </Box>
+
+              {/* Sección para mostrar rutas ocultas */}
+              {hiddenRoutes.length > 0 && (
+                <Box mt={2}>
+                  <Typography fontWeight="bold">Rutas ocultas:</Typography>
+                  {hiddenRoutes.map((route) => (
+                    <Box key={route} display="flex" alignItems="center" gap={1} mt={1}>
+                      <Typography>{route}</Typography>
                       <Button
-                        onClick={() => openModal(route)}
                         size="small"
-                        color="primary"
+                        variant="outlined"
+                        onClick={() =>
+                          setHiddenRoutes((prev) => prev.filter((r) => r !== route))
+                        }
                       >
-                        Ver Detalles
+                        Mostrar
                       </Button>
                     </Box>
-                  </Tooltip>
-                );
-              })}
-            </Box>
+                  ))}
+                </Box>
+              )}
+            </>
           ) : (
             <FormControl fullWidth style={{ marginTop: "20px" }}>
               <InputLabel>Seleccionar Ruta</InputLabel>
@@ -4502,6 +4556,7 @@ function Transporte() {
               </Select>
             </FormControl>
           )}
+
 
 
           {/* Modal para mandar a paqueteria */}
@@ -4606,17 +4661,6 @@ function Transporte() {
               {selectedRoute && groupedData[selectedRoute]?.rows?.length > 0 ? (
                 <>
                   <TableContainer>
-                    <Grid item xs={12} sm={4} style={{ marginBottom: "20px" }}>
-                      <TextField
-                        label="Buscar por No Orden"
-                        variant="outlined"
-                        value={filterOrderValue}
-                        onChange={handleOrderFilterChange}
-                        fullWidth
-                        size="small"
-                        style={{ maxWidth: "300px" }}
-                      />
-                    </Grid>
 
                     <Table size="small" sx={{ '& td, & th': { padding: '4px 8px', fontSize: '12px' }, '& tr': { height: '36px' } }}>
 
@@ -4641,7 +4685,14 @@ function Transporte() {
 
                       <TableBody>
                         {groupedData[selectedRoute].rows.map((row, index) => (
-                          <TableRow key={row["NO ORDEN"]}>
+                          <TableRow
+                            key={row["NO ORDEN"]}
+                            style={{
+                              backgroundColor:
+                                highlightedRow === row["NO ORDEN"] ? "#fff59d" : "transparent",
+                            }}
+                          >
+
                             <TableCell>
                               {index !== 0 && (
                                 <IconButton onClick={() => moverPedido(selectedRoute, index, 'arriba')}>
@@ -5084,13 +5135,59 @@ function Transporte() {
             </Card>
           )}
 
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={handleOpenModalGuia}
-          >
-            Buscar Pedidos
-          </Button>
+          {["Admin", "Master", "Control"].includes(user?.role) && (
+            <Box display="flex" gap={2} mb={2}>
+              <Button
+                variant="contained"
+                color="error"
+                onClick={handleOpenModalGuia}
+                sx={{ fontWeight: "bold" }}
+              >
+                PRORRATEO
+              </Button>
+
+              <Button
+                variant="contained"
+                color="warning"
+                onClick={() => setBulkGuiaModalOpen(true)}
+                sx={{ fontWeight: "bold" }}
+              >
+                Actualizar Guías
+              </Button>
+            </Box>
+          )}
+
+
+          {/* Modal para actualizar las guias */}
+
+          <Dialog open={bulkGuiaModalOpen} onClose={() => setBulkGuiaModalOpen(false)} maxWidth="sm" fullWidth>
+            <DialogTitle>Actualizar Guía en Pedidos</DialogTitle>
+            <DialogContent>
+              <TextField
+                label="Números de Orden (separados por comas)"
+                fullWidth
+                multiline
+                minRows={2}
+                value={bulkNoOrdenes}
+                onChange={(e) => setBulkNoOrdenes(e.target.value)}
+                margin="normal"
+              />
+              <TextField
+                label="Nueva Guía"
+                fullWidth
+                value={bulkGuiaValue}
+                onChange={(e) => setBulkGuiaValue(e.target.value)}
+                margin="normal"
+              />
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setBulkGuiaModalOpen(false)}>Cancelar</Button>
+              <Button variant="contained" color="primary" onClick={handleBulkGuiaUpdate}>
+                Actualizar Guía
+              </Button>
+            </DialogActions>
+          </Dialog>
+
 
           {/* Modal dentro de Transporte.js */}
 
@@ -5309,6 +5406,7 @@ function Transporte() {
 
           <br />
 
+
           {/* Pestañas internas para Paquetería, Directa, Venta Empleado */}
           <Tabs value={subTabIndex} onChange={handleChangeSubTab} centered>
             <Tab label="Paquetería" />
@@ -5316,6 +5414,7 @@ function Transporte() {
             <Tab label="Recoge" />
             <Tab label="Asignacion" />
           </Tabs>
+
 
           {/* Sub-tab de PAQUETERIA */}
           {subTabIndex === 0 && (
@@ -5564,6 +5663,7 @@ function Transporte() {
             </TableContainer>
           )}
 
+
           {/* Sub-tab de Directa */}
           {subTabIndex === 1 && (
             <TableContainer component={Paper} style={{ marginTop: "20px" }}>
@@ -5802,6 +5902,7 @@ function Transporte() {
             </TableContainer>
           )}
 
+
           {/* Sub-tab de Venta Empleado */}
           {subTabIndex === 2 && (
             <TableContainer component={Paper} style={{ marginTop: "20px" }}>
@@ -5989,6 +6090,7 @@ function Transporte() {
               </Table>
             </TableContainer>
           )}
+
 
           {/* Sub-tab de Asignación */}
           {tabIndex === 1 && (user?.role === "Admin" || user?.role === "Master" || user?.role === "Trans" || user?.role === "Rep" || user?.role === "Tran", "Rep") && subTabIndex === 3 && (
@@ -6456,6 +6558,8 @@ function Transporte() {
         }
       />
     </Paper>
+
+
   );
 }
 

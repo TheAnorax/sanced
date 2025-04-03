@@ -57,4 +57,48 @@ const almacenamiento = async (req, res) => {
   }
 };
 
-module.exports = { getHistorial, almacenamiento };
+
+const getHistorialPorFecha = async (req, res) => {
+  try {
+    // Si no se envía una fecha en los parámetros, se usa la fecha de hoy
+    const fecha = req.params.fecha || new Date().toISOString().split('T')[0]; // Obtiene 'YYYY-MM-DD'
+
+    const [rows] = await pool.query(`
+      WITH turnos AS (
+          SELECT  
+              h.ubi_origen, 
+              h.ubi_destino, 
+              h.code_prod, 
+              h.cant_stock, 
+              h.fecha_movimiento,
+              us.name AS usuario,
+              DATE(h.fecha_movimiento) AS fecha,
+              CASE 
+                  WHEN TIME(h.fecha_movimiento) >= '21:30:00' THEN 'Turno 3'
+                  WHEN TIME(h.fecha_movimiento) >= '14:00:00' THEN 'Turno 2'
+                  WHEN TIME(h.fecha_movimiento) >= '06:00:00' THEN 'Turno 1'
+                  ELSE 'Turno 3'
+              END AS turno
+          FROM historial_movimientos h
+          LEFT JOIN usuarios us ON h.usuario = us.id_usu
+      )
+      SELECT 
+          fecha, 
+          turno, 
+          usuario,
+          COUNT(*) AS total_movimientos
+      FROM turnos
+      WHERE fecha = ?
+      GROUP BY fecha, turno, usuario
+      ORDER BY fecha DESC, FIELD(turno, 'Turno 3', 'Turno 1', 'Turno 2');
+    `, [fecha]);
+
+    res.status(200).json(rows);
+  } catch (error) {
+    console.error('Error al obtener el historial de movimientos:', error.message);
+    res.status(500).json({ error: 'Error al obtener el historial de movimientos' });
+  }
+};
+
+
+module.exports = { getHistorial, almacenamiento, getHistorialPorFecha};

@@ -89,6 +89,54 @@ function EnSurtido() {
   const [usuarios, setUsuarios] = useState({});
   const { user } = useContext(UserContext);
 
+  const [openBahiaModal, setOpenBahiaModal] = useState(false);
+  const [pedidoBahiaSeleccionado, setPedidoBahiaSeleccionado] = useState(null);
+  const [selectedBahiasModal, setSelectedBahiasModal] = useState([]);
+
+  const handleOpenBahiaModal = (pedido) => {
+    const existingBahias = pedido.ubi_bahia ? pedido.ubi_bahia.split(', ') : [];
+    setPedidoBahiaSeleccionado(pedido);
+    setSelectedBahiasModal(existingBahias.map(b => ({ bahia: b })));
+    setOpenBahiaModal(true);
+  };
+  
+  const handleCloseBahiaModal = () => {
+    setOpenBahiaModal(false);
+    setPedidoBahiaSeleccionado(null);
+    setSelectedBahiasModal([]);
+  };
+
+  const updateBahiasFromModal = async () => {
+    try {
+      const combinedBahias = [...new Set(selectedBahiasModal.map(b => b.bahia))].join(', ');
+  
+      const response = await axios.put(`http://66.232.105.87:3007/api/pedidos-surtidos/pedidos-surtido/${pedidoBahiaSeleccionado.pedido}/bahias`, {
+        ubi_bahia: combinedBahias
+      });
+  
+      if (response.status === 200) {
+        const updatedPedidos = pedidos.map(pedido =>
+          pedido.pedido === pedidoBahiaSeleccionado.pedido
+            ? { ...pedido, ubi_bahia: combinedBahias }
+            : pedido
+        );
+        setPedidos(updatedPedidos);
+        setFilteredPedidos(updatedPedidos);
+        handleCloseBahiaModal();
+        setSnackbarMessage('Bahías actualizadas exitosamente');
+        setSnackbarSeverity('success');
+        setSnackbarOpen(true);
+      }
+    } catch (error) {
+      console.error('Error al actualizar bahías:', error);
+      setSnackbarMessage('Error al actualizar las bahías');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+    }
+  };
+  
+
+
   useEffect(() => {
     const fetchPedidos = async () => {
       try {
@@ -503,29 +551,116 @@ function EnSurtido() {
     return pedido.items.every(item => item.estado === 'B' && item.cant_surti === item.cantidad);
   };
 
+  
+
   const generatePDF = (items, pedido) => {
-    const doc = new jsPDF();
-    doc.setFontSize(16);
+    const drawHeader = (doc, itemTipo, pedido, totalCodigos, bahiaFromItems, fusion, route, tipoFusionado, isFaltantes = false, esUnificado = false) => {
+      doc.setFontSize(14);
   
-    // Obtener el tipo del ítem si existe
-    const itemTipo = items.length > 0 ? items[0].tipo || '' : '';
+      const baseY = 10;
+      const rowHeight = 7;
+      const title = isFaltantes ? `Faltantes Pedido: ${itemTipo} ${pedido}` : `Pedido: ${itemTipo} ${pedido} (Total códigos: ${totalCodigos})`;
+      doc.text(title, 10, baseY);
   
-    // Agregar título
-    doc.text(`Pedido: ${itemTipo} ${pedido}`, 10, 10);
+      let y = baseY + rowHeight;
   
-    // Filtrar ítems con `cant_no_env !== 0`
-    const filteredItems = items.filter(item => item.cant_no_env !== 0);
+      if (tipoFusionado) {
+        doc.text(`Pedido Fusionado: ${fusion}`, 10, y);
+        y += rowHeight;
+      }
   
-    // Validar si hay datos para la tabla
-    if (filteredItems.length === 0) {
-      doc.text('No hay ítems con cantidades no enviadas.', 10, 20);
+      doc.text(`Bahías: ${bahiaFromItems}`, 10, y);
+      y += rowHeight;
+      doc.text(`Tipo de Ruta: ${route}`, 10, y);
+      y += rowHeight;
+  
+     
+  
+      return y + 4; // espacio extra
+    };
+  
+    const generateFullPDF = () => {
+      const doc = new jsPDF();
+      const itemTipo = items[0]?.tipo || '';
+      const totalCodigos = items.length;
+      const bahiaFromItems = items[0]?.ubi_bahia || 'No asignadas';
+      const fusion = items[0]?.fusion || 'N/A';
+      const route = items[0]?.routeName || 'N/A';
+      const tipoFusionado = ['VQ, VT', 'VT, VQ'].includes(itemTipo);
+  
+      const unidos = items.filter(i => i.unido === 1);
+      const noUnidos = items.filter(i => i.unido !== 1);
+      const sortedItems = [...unidos, ...noUnidos].sort((a, b) => b.cant_no_env - a.cant_no_env);
+  
+      const startY = drawHeader(doc, itemTipo, pedido, totalCodigos, bahiaFromItems, fusion, route, tipoFusionado, false, unidos.length > 0);
+  
+      const tableData = sortedItems.map(item => {
+        const isUnido = item.unido === 1;
+        const unificado = isUnido ? 'SI' : '';
+        const highlight = item.cant_no_env > 0;
+  
+        return [
+          item.codigo_ped,
+          item.des,
+          item.cantidad,
+          item.cant_surti,
+          item.cant_no_env,
+          item.motivo || '',
+          item.tipo.length > 3 ? item.unificado || '' : '',
+          unificado,
+          highlight,
+          isUnido
+        ];
+      });
+  
+      const tableHeaders = ['Código', 'Descripción', 'Cantidad', 'Cant Surti', 'Cant No Enviado', 'Motivo'];
+      if (items.some(item => item.tipo.length > 3)) tableHeaders.push('Unificado');
+      tableHeaders.push('Unificado');
+  
+      doc.autoTable({
+        head: [tableHeaders],
+        body: tableData.map(row => row.slice(0, -1)),
+        startY,
+        didParseCell(data) {
+          const rowData = tableData[data.row.index];
+          const isHighlighted = rowData[rowData.length - 2];
+          const isUnido = rowData[rowData.length - 1];
+  
+          if (data.section === 'body') {
+            if (isHighlighted) {
+              data.cell.styles.fillColor = [255, 0, 0];
+              data.cell.styles.textColor = [255, 255, 255];
+            }
+            if (isUnido && data.column.dataKey === tableHeaders.length - 1) {
+              data.cell.text = ['SI'];
+              data.cell.styles.textColor = [165, 42, 42];
+            }
+          }
+        }
+      });
+  
       doc.save(`Pedido-${pedido}.pdf`);
-      return;
-    }
+    };
   
-    // Configurar datos de la tabla
-    const tableData = filteredItems.map(item => {
-      return [
+    const generateMissingPDF = () => {
+      const doc = new jsPDF();
+      const itemTipo = items[0]?.tipo || '';
+      const fusion = items[0]?.fusion || 'N/A';
+      const route = items[0]?.routeName || 'N/A';
+      const bahiaFromItems = items[0]?.ubi_bahia || 'No asignadas';
+      const tipoFusionado = ['VT', 'VQ', 'VQ, VT', 'VT, VQ'].includes(itemTipo);
+  
+      const filteredItems = items.filter(item => item.cant_no_env > 0);
+  
+      const startY = drawHeader(doc, itemTipo, pedido, filteredItems.length, bahiaFromItems, fusion, route, tipoFusionado, true);
+  
+      if (filteredItems.length === 0) {
+        doc.text('No hay ítems con cantidades no enviadas.', 10, startY);
+        doc.save(`Faltantes-${pedido}.pdf`);
+        return;
+      }
+  
+      const tableData = filteredItems.map(item => [
         item.codigo_ped,
         item.des,
         item.cantidad,
@@ -533,35 +668,29 @@ function EnSurtido() {
         item.cant_no_env,
         item.motivo || '',
         item.tipo.length > 3 ? item.unificado || '' : ''
-      ];
-    });
+      ]);
   
-    // Configurar encabezados de la tabla
-    const tableHeaders = [
-      'Código',
-      'Descripción',
-      'Cantidad',
-      'Cant Surti',
-      'Cant No Enviado',
-      'Motivo'
-    ];
+      const tableHeaders = ['Código', 'Descripción', 'Cantidad', 'Cant Surti', 'Cant No Enviado', 'Motivo'];
+      if (filteredItems.some(item => item.tipo.length > 3)) tableHeaders.push('Unificado');
   
-    // Agregar "Unificado" si aplica
-    if (filteredItems.some(item => item.tipo.length > 3)) {
-      tableHeaders.push('Unificado');
-    }
+      doc.autoTable({
+        head: [tableHeaders],
+        body: tableData,
+        startY
+      });
   
-    // Generar tabla
-    doc.autoTable({
-      head: [tableHeaders],
-      body: tableData,
-      startY: 20,
-    });
+      doc.save(`Faltantes-${pedido}.pdf`);
+    };
   
-    // Descargar PDF
-    doc.save(`Pedido-${pedido}.pdf`);
+    generateFullPDF();
+    setTimeout(generateMissingPDF, 1000);
   };
   
+  
+  
+
+
+
   
   const confirmCancelPedido = (pedidoId) => {
     handleCloseCancelModal(); 
@@ -827,6 +956,17 @@ function EnSurtido() {
       width: 200,
       renderCell: (params) => renderProgress(params, item => item.pasillo !== 'AV', 'Pasillo')
     },
+    {
+      field: 'bahias',
+      headerName: 'Bahías',
+      width: 120,
+      renderCell: (params) =>
+        (user.role === "Admin" || user.role === "Control") ? (
+          <Button variant="outlined" size="small" onClick={() => handleOpenBahiaModal(params.row)}>
+            Agregar Bahía
+          </Button>
+        ) : null
+    }
   ];
 
   return (
@@ -999,9 +1139,13 @@ function EnSurtido() {
               )}
               {isAuthorization && !isEditing && (
                 <Box sx={{ mt: 2 }}>
-                  <Button variant="contained" color="primary" onClick={() => generatePDF(selectedPedido.items, selectedPedido.pedido)}>
+              <Button variant="contained" color="primary" onClick={() => generatePDF(selectedPedido.items, selectedPedido.pedido)}>
                     Descargar PDF Faltantes
                   </Button>
+
+
+
+
                 </Box>
               )}
             </>
@@ -1169,6 +1313,32 @@ function EnSurtido() {
         </Box>
       </Modal>
 
+      <Modal open={openBahiaModal} onClose={handleCloseBahiaModal}>
+  <Box sx={{
+    position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+    width: 1000, bgcolor: 'background.paper', borderRadius: 2, boxShadow: 24, p: 4
+  }}>
+    <Typography variant="h6" mb={2}>
+      Asignar Bahías al Pedido {pedidoBahiaSeleccionado?.pedido}
+    </Typography>
+    <Autocomplete
+      multiple
+      options={bahias}
+      getOptionLabel={(option) => option.bahia}
+      filterSelectedOptions
+      value={selectedBahiasModal}
+      onChange={(event, value) => setSelectedBahiasModal(value)}
+      renderInput={(params) => (
+        <TextField {...params} variant="outlined" label="Bahías" placeholder="Seleccionar Bahías" />
+      )}
+    />
+    <Box mt={2} textAlign="right">
+      <Button onClick={handleCloseBahiaModal} sx={{ mr: 1 }}>Cancelar</Button>
+      <Button variant="contained" color="primary" onClick={updateBahiasFromModal}>Actualizar</Button>
+    </Box>
+  </Box>
+</Modal>
+
       <Snackbar open={snackbarOpen} autoHideDuration={6000} onClose={() => setSnackbarOpen(false)}>
         <Alert onClose={() => setSnackbarOpen(false)} severity={snackbarSeverity}>
           {snackbarMessage}
@@ -1178,4 +1348,4 @@ function EnSurtido() {
   );
 }
 
-export default EnSurtido;
+export default EnSurtido; 

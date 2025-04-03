@@ -16,7 +16,7 @@ const fetchPedidos = async () => {
 //   const response = await axios.get('http://66.232.105.87:3007/api/pedidos/bahias'); 
   
 //   // Filtrar las bahías que no comiencen con "B" o "C"
-//   const filteredBahias = response.data.filter(bahia => !/^C-/.test(bahia.bahia));
+//   const filteredBahias = response.data.filter(bahia => !/^C-/.teyyst(bahia.bahia));
   
 //   return filteredBahias;
 // };

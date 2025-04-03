@@ -9,6 +9,7 @@ const getSurtidos = async (req, res) => {
         p.id_pedi,
         p.pedido,
         p.tipo,
+        pq.routeName,
         p.codigo_ped,
         prod.des,
         prod._pz AS pieza,
@@ -28,6 +29,7 @@ const getSurtidos = async (req, res) => {
         p.estado,
         p.motivo,
         p.unificado,
+        p.fusion,
         u.cant_stock,
         u.ubi,
         u.pasillo,
@@ -36,6 +38,7 @@ const getSurtidos = async (req, res) => {
          WHERE p2.pedido = p.pedido) AS partidas 
       FROM pedido_surtido p
       LEFT JOIN productos prod ON p.codigo_ped = prod.codigo_pro
+       LEFT JOIN paqueteria pq ON p.pedido = pq.\`NO ORDEN\`
       LEFT JOIN ubicaciones u ON p.codigo_ped = u.code_prod      
       WHERE p.estado = "S" OR p.estado = "B"
       GROUP BY p.id_pedi
@@ -56,6 +59,7 @@ const getSurtidos = async (req, res) => {
       acc[pedido.pedido].items.push({
         id_pedi: pedido.id_pedi,
         tipo: pedido.tipo,
+        routeName: pedido.routeName,
         codigo_ped: pedido.codigo_ped,
         des: pedido.des,
         cantidad: pedido.cantidad,
@@ -72,6 +76,7 @@ const getSurtidos = async (req, res) => {
         _inner: pedido._inner,
         _master: pedido._master,
         ubi_bahia: pedido.ubi_bahia,
+        fusion: pedido.fusion,
         estado: pedido.estado,
         motivo: pedido.motivo,
         unificado: pedido.unificado,
@@ -150,9 +155,9 @@ const authorizePedido = async (req, res) => {
     // Insertar datos en la tabla pedido_embarque usando el pedidoId
     const insertQueries = pedidoSurtidoItems.map(item => {
       return connection.query(
-        `INSERT INTO pedido_embarque (pedido, tipo, codigo_ped, clave, cantidad, cant_surti, cant_no_env, um, _pz, _pq, _inner, _master, ubi_bahia, estado, id_usuario, inicio_surtido, fin_surtido, unido, id_usuario_surtido, registro, registro_surtido, registro_embarque, motivo, unificado) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'E', ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?)`,
-        [pedidoId, item.tipo, item.codigo_ped, item.clave, item.cantidad, item.cant_surti, item.cant_no_env, item.um, item._pz, item._pq, item._inner, item._master, item.ubi_bahia, item.id_usuario, item.inicio_surtido, item.fin_surtido, item.unido, item.id_usuario_surtido, item.registro, item.registro_surtido, item.motivo, item.unificado]
+        `INSERT INTO pedido_embarque (pedido, tipo, codigo_ped, clave, cantidad, cant_surti, cant_no_env, um, _pz, _pq, _inner, _master, ubi_bahia, estado, id_usuario, inicio_surtido, fin_surtido, unido, id_usuario_surtido, registro, registro_surtido, registro_embarque, motivo, unificado, fusion) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'E', ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?)`,
+        [pedidoId, item.tipo, item.codigo_ped, item.clave, item.cantidad, item.cant_surti, item.cant_no_env, item.um, item._pz, item._pq, item._inner, item._master, item.ubi_bahia, item.id_usuario, item.inicio_surtido, item.fin_surtido, item.unido, item.id_usuario_surtido, item.registro, item.registro_surtido, item.motivo, item.unificado, item.fusion]
       );
     });
 

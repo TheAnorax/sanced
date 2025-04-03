@@ -35,6 +35,9 @@ import Visitantes from './components/visitas/visitantes';
 import VisitasReporte from './components/visitas/visitasReporte';
 import Trasporte from './components/Transporte/Transporte';
 import KPi from './components/reporte/kpi'
+import Tracking from './components/ventas/ventas';
+import Plansurtido from './components/Transporte/plan';
+import Mapa from './components/reporte/mapa';
 
 function App() {
   return (        
@@ -73,6 +76,10 @@ function App() {
             <Route path="visitas-reporte" element={<ProtectedRoute><VisitasReporte  /></ProtectedRoute>} />
             <Route path="Trasporte" element={<ProtectedRoute><Trasporte  /></ProtectedRoute>} />
             <Route path="kpi" element={<ProtectedRoute><KPi  /></ProtectedRoute>} />
+            <Route path="Tracking" element={<ProtectedRoute><Tracking  /></ProtectedRoute>} />
+            <Route path="Plansurtido" element={<ProtectedRoute><Plansurtido /></ProtectedRoute>} />
+            <Route path="Mapa" element={<ProtectedRoute><Mapa /></ProtectedRoute>} />
+
           </Route>
         </Routes>
       </Router>

@@ -92,14 +92,14 @@ const actualizarEmbarque = async (req, res) => {
         _pz, _pq, _inner, _master, v_pz, v_pq, v_inner, v_master, 
         ubi_bahia, estado, id_usuario, registro, inicio_surtido, fin_surtido, 
         unido, id_usuario_paqueteria, id_usuario_surtido, registro_surtido, 
-        registro_embarque, inicio_embarque, fin_embarque, motivo, unificado,  registro_fin, caja
+        registro_embarque, inicio_embarque, fin_embarque, motivo, unificado,  registro_fin, caja, fusion
       )
       SELECT 
         pedido, tipo, codigo_ped, clave, cantidad, cant_surti, cant_no_env, um, 
         _pz, _pq, _inner, _master, v_pz, v_pq, v_inner, v_master, 
         ubi_bahia, estado, id_usuario, registro, inicio_surtido, fin_surtido, 
         unido, id_usuario_paqueteria, id_usuario_surtido, registro_surtido, 
-        registro_embarque, inicio_embarque, fin_embarque, motivo, unificado, NOW(), caja
+        registro_embarque, inicio_embarque, fin_embarque, motivo, unificado, NOW(), caja, fusion
       FROM pedido_embarque
       WHERE estado = ?;
     `, [estado]);

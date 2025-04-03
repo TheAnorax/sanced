@@ -78,6 +78,9 @@ function ProductoCRUD() {
   const [filteredProductos, setFilteredProductos] = useState([]);
   const { user } = useContext(UserContext);
   const [search, setSearch] = useState("");
+  const codigosSinImagenRef = React.useRef(new Set());
+
+
   const [form, setForm] = useState({
     codigo_pro: "",
     clave: "",
@@ -124,6 +127,8 @@ function ProductoCRUD() {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [calculatedTotal, setCalculatedTotal] = useState(0);
   const [flyerData, setFlyerData] = useState(null);
+  const [openImageModal, setOpenImageModal] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
 
   const isSmallScreen = useMediaQuery("(max-width:600px)");
   const isMediumScreen = useMediaQuery("(max-width:960px)");
@@ -142,9 +147,20 @@ function ProductoCRUD() {
 
   const [enteredQuantities, setEnteredQuantities] = useState({
     pieces: 0,
-    inners: 0, 
+    inners: 0,
     masters: 0,
   });
+
+  const handleOpenImageModal = (imagePath) => {
+    setSelectedImage(imagePath);
+    setOpenImageModal(true);
+  };
+
+  // Función para cerrar el modal
+  const handleCloseImageModal = () => {
+    setOpenImageModal(false);
+    setSelectedImage(null);
+  };
 
   const fetchUbicaciones = async (codigo_pro) => {
     try {
@@ -166,20 +182,9 @@ function ProductoCRUD() {
     filterProductos(e.target.value);
   };
 
-  const handleOpenCalculator = (product) => {
-    setSelectedProduct(product);
-    setCalculatorOpen(true);
-  };
 
-  useEffect(() => {
-    console.log("Estado de calculatorOpen:", calculatorOpen);
-    console.log("Producto seleccionado:", selectedProduct);
-  }, [calculatorOpen, selectedProduct]);
 
-  const handleCloseCalculator = () => {
-    setCalculatorOpen(false);
-    setSelectedProduct(null);
-  };
+ 
 
   const filterProductos = (searchTerm) => {
     const filtered = productos.filter(
@@ -276,11 +281,15 @@ function ProductoCRUD() {
             );
           }
         } else {
-          await axios.post("http://66.232.105.87:3007/api/productos", formData, {
-            headers: {
-              "Content-Type": "multipart/form-data",
-            },
-          });
+          await axios.post(
+            "http://66.232.105.87:3007/api/productos",
+            formData,
+            {
+              headers: {
+                "Content-Type": "multipart/form-data",
+              },
+            }
+          );
           fetchProductos();
           handleClose();
           MySwal.fire(
@@ -324,6 +333,7 @@ function ProductoCRUD() {
   //     setFlyerData(null); // Limpia los datos en caso de error
   //   }
   // };
+  
 
   const handleView = async (producto) => {
     setForm(producto);
@@ -377,7 +387,6 @@ function ProductoCRUD() {
       }
     }
   };
-  
 
   const handleVolumetriaSubmit = async () => {
     try {
@@ -500,7 +509,6 @@ function ProductoCRUD() {
     saveAs(blob, `Productos-Santul-${fecha}.xlsx`);
   };
 
-
   const formatNumber = (number) => {
     if (number === null || number === undefined) return "0";
     return new Intl.NumberFormat("es-MX").format(number);
@@ -523,17 +531,37 @@ function ProductoCRUD() {
               src={`../assets/image/img_pz/${params.row.codigo_pro}.jpg`}
               alt="Producto"
               style={{
-                width: "100px",
-                height: "100px",
+                width: "50px",
+                height: "50px",
                 objectFit: "cover",
+                cursor: "pointer",
               }}
+              onClick={() =>
+                handleOpenImageModal(
+                  `../assets/image/img_pz/${params.row.codigo_pro}.jpg`
+                )
+              }
               onError={(e) => {
                 e.target.onerror = null;
                 e.target.src = "../assets/image/img_pz/noimage.png";
+        
+                // Guardar código del producto sin imagen
+                codigosSinImagenRef.add(params.row.codigo_pro);
+        
+                // Mostrar en consola en tiempo real
+                console.warn(
+                  `[IMG NOT FOUND] Producto sin imagen: ${params.row.codigo_pro}`
+                );
+        
+                // (Opcional) Mostrar lista completa cada vez que se añade uno nuevo
+                console.log(
+                  "[LISTA COMPLETA SIN IMAGEN]:",
+                  Array.from(codigosSinImagenRef)
+                );
               }}
             />
           ),
-        },
+        },        
         {
           field: "actions",
           headerName: "Actions",
@@ -569,7 +597,13 @@ function ProductoCRUD() {
                 width: "50px",
                 height: "50px",
                 objectFit: "cover",
+                cursor: "pointer",
               }}
+              onClick={() =>
+                handleOpenImageModal(
+                  `../assets/image/img_pz/${params.row.codigo_pro}.jpg`
+                )
+              }
               onError={(e) => {
                 e.target.onerror = null;
                 e.target.src = "../assets/image/img_pz/noimage.png";
@@ -587,19 +621,34 @@ function ProductoCRUD() {
           field: "stock_total",
           headerName: "Total",
           width: 150,
-          renderCell: (params) => <span>{formatNumber(params.value)}</span>,
+          renderCell: (params) =>
+            ["Admin", "Master",  "INV" ,"Control"].includes(user?.role) ? (
+              <span>{formatNumber(params.value)}</span>
+            ) : (
+              <span>-</span> // Muestra un guion si no tiene permiso
+            ),
         },
         {
-          field: "stock_almacen" ,
+          field: "stock_almacen",
           headerName: "Almacenamiento",
           width: 150,
-          renderCell: (params) => <span>{formatNumber(params.value)}</span>,
+          renderCell: (params) =>
+            ["Admin", "Master", "INV" ,"Control"].includes(user?.role) ? (
+              <span>{formatNumber(params.value)}</span>
+            ) : (
+              <span>-</span>
+            ),
         },
         {
           field: "stock_picking",
           headerName: "Picking",
           width: 150,
-          renderCell: (params) => <span>{formatNumber(params.value)}</span>,
+          renderCell: (params) =>
+            ["Admin", "Master", "INV" ,"Control"].includes(user?.role) ? (
+              <span>{formatNumber(params.value)}</span>
+            ) : (
+              <span>-</span>
+            ),
         },
         {
           field: "actions",
@@ -683,6 +732,17 @@ function ProductoCRUD() {
             Descargar Reporte
           </Button>
         </Box>
+
+        <Button
+  variant="outlined"
+  onClick={() => {
+    console.table(Array.from(codigosSinImagenRef.current));
+  }}
+>
+  Ver productos sin imagen
+</Button>
+
+
       </Box>
       <Paper elevation={3} sx={{ p: 3, overflow: "auto" }}>
         <div style={{ height: isMediumScreen ? 500 : 750, width: "100%" }}>
@@ -694,98 +754,7 @@ function ProductoCRUD() {
           />
         </div>
       </Paper>
-      <Dialog
-        open={calculatorOpen}
-        onClose={handleCloseCalculator}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>Calcular Total por Unidades</DialogTitle>
-        <DialogContent>
-          {selectedProduct ? (
-            <Box display="flex" flexDirection="column" gap={2}>
-              <Typography variant="h6">
-                Producto: {selectedProduct.des}
-              </Typography>
-              <TextField
-                label="Cantidad de PIEZAS"
-                type="number"
-                defaultValue={selectedProduct._pz}
-                onChange={(e) =>
-                  setSelectedProduct({
-                    ...selectedProduct,
-                    _pz: parseInt(e.target.value, 10) || 0,
-                  })
-                }
-              />
-              <TextField
-                label="Cantidad de INNER"
-                type="number"
-                defaultValue={selectedProduct._inner}
-                onChange={(e) =>
-                  setSelectedProduct({
-                    ...selectedProduct,
-                    _inner: parseInt(e.target.value, 10) || 0,
-                  })
-                }
-              />
-              <TextField
-                label="Cantidad de MASTER"
-                type="number"
-                defaultValue={selectedProduct._master}
-                onChange={(e) =>
-                  setSelectedProduct({
-                    ...selectedProduct,
-                    _master: parseInt(e.target.value, 10) || 0,
-                  })
-                }
-              />
-              <TextField
-                label="Cantidad de PIEZAS"
-                type="number"
-                value={enteredQuantities.pieces}
-                onChange={(e) =>
-                  setEnteredQuantities((prev) => ({
-                    ...prev,
-                    pieces: parseInt(e.target.value, 10) || 0,
-                  }))
-                }
-              />
-              <TextField
-                label="Cantidad de INNER"
-                type="number"
-                value={enteredQuantities.inners}
-                onChange={(e) =>
-                  setEnteredQuantities((prev) => ({
-                    ...prev,
-                    inners: parseInt(e.target.value, 10) || 0,
-                  }))
-                }
-              />
-              <TextField
-                label="Cantidad de MASTER"
-                type="number"
-                value={enteredQuantities.masters}
-                onChange={(e) =>
-                  setEnteredQuantities((prev) => ({
-                    ...prev,
-                    masters: parseInt(e.target.value, 10) || 0,
-                  }))
-                }
-              />
-            </Box>
-          ) : (
-            <Typography variant="body1">
-              Cargando datos del producto...
-            </Typography>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseCalculator} color="secondary">
-            Cerrar
-          </Button>
-        </DialogActions>
-      </Dialog>
+     
 
       <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
         <DialogTitle>
@@ -1584,9 +1553,30 @@ function ProductoCRUD() {
           {tabIndex === 3 && <div>Contenido de Ficha Comercial</div>}
         </DialogContent>
       </Dialog>
+      <Dialog
+        open={openImageModal}
+        onClose={handleCloseImageModal}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>Vista Previa de la Imagen</DialogTitle>
+        <DialogContent dividers>
+          {selectedImage && (
+            <img
+              src={selectedImage}
+              alt="Producto"
+              style={{ width: "100%", height: "auto", objectFit: "contain" }}
+            />
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseImageModal} color="primary">
+            Cerrar
+          </Button>
+        </DialogActions>
+      </Dialog>
     </ThemeProvider>
   );
 }
 
 export default ProductoCRUD;
- 

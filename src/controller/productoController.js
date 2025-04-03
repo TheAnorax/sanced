@@ -44,6 +44,7 @@ const getAllProducts = async (req, res) => {
   p.peso_pz,               
   p.peso_inner,            
   p.peso_master,
+  p.img_pz,
 
   -- Sumar correctamente el stock en almacenamiento
   COALESCE(ua.cant_stock, 0) AS stock_almacen,
@@ -328,8 +329,49 @@ const deleteProduct = async (req, res) => {
   }
 };
 
+// const updateVolumetria = async (req, res) => {
+//   const { codigo } = req.params; // El valor que viene en la URL será tomado como 'codigo'
+//   const { cajas_cama, pieza_caja, cajas_tarima, camas_tarima, pieza_tarima } = req.body; 
+
+//   if (!codigo) {
+//     return res.status(400).json({ message: "El código del producto es obligatorio" });
+//   }
+
+//   try {
+//     // Verifica si el producto existe usando 'codigo'
+//     const [producto] = await pool.query(
+//       `SELECT * FROM volumetria WHERE codigo = ?`,
+//       [codigo]
+//     );
+
+//     if (producto.length === 0) {
+//       return res.status(404).json({ message: "Producto no encontrado" });
+//     }
+
+//     // Actualiza los datos de volumetría
+//     const [result] = await pool.query(
+//       `UPDATE volumetria 
+//        SET cajas_cama = ?, pieza_caja = ?, cajas_tarima = ?, camas_tarima = ?, pieza_tarima = ? 
+//        WHERE codigo = ?`,
+//       [cajas_cama, pieza_caja, cajas_tarima, camas_tarima, pieza_tarima, codigo]
+//     );
+
+//     if (result.affectedRows === 0) {
+//       return res.status(500).json({ message: "No se pudo actualizar la volumetría" });
+
+      
+//     }
+
+//     res.json({ message: "Volumetría actualizada correctamente" });
+//   } catch (error) {
+//     console.error("Error al actualizar la volumetría:", error);
+//     res.status(500).json({ message: "Error al actualizar la volumetría", error: error.message });
+//   }
+// };
+
+
 const updateVolumetria = async (req, res) => {
-  const { codigo } = req.params; // El valor que viene en la URL será tomado como 'codigo'
+  const { codigo } = req.params; // Código del producto desde la URL
   const { cajas_cama, pieza_caja, cajas_tarima, camas_tarima, pieza_tarima } = req.body; 
 
   if (!codigo) {
@@ -337,34 +379,47 @@ const updateVolumetria = async (req, res) => {
   }
 
   try {
-    // Verifica si el producto existe usando 'codigo'
+    // Verificar si el producto existe en la tabla `volumetria`
     const [producto] = await pool.query(
       `SELECT * FROM volumetria WHERE codigo = ?`,
       [codigo]
     );
 
     if (producto.length === 0) {
-      return res.status(404).json({ message: "Producto no encontrado" });
+      // Si el producto NO existe, insertarlo en la base de datos
+      const [insertResult] = await pool.query(
+        `INSERT INTO volumetria (codigo, cajas_cama, pieza_caja, cajas_tarima, camas_tarima, pieza_tarima) 
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [codigo, cajas_cama, pieza_caja, cajas_tarima, camas_tarima, pieza_tarima]
+      );
+
+      if (insertResult.affectedRows === 1) {
+        return res.status(201).json({ message: "Producto insertado correctamente en volumetría" });
+      } else {
+        return res.status(500).json({ message: "No se pudo insertar el producto" });
+      }
     }
 
-    // Actualiza los datos de volumetría
-    const [result] = await pool.query(
+    // Si el producto SÍ existe, actualizarlo
+    const [updateResult] = await pool.query(
       `UPDATE volumetria 
        SET cajas_cama = ?, pieza_caja = ?, cajas_tarima = ?, camas_tarima = ?, pieza_tarima = ? 
        WHERE codigo = ?`,
       [cajas_cama, pieza_caja, cajas_tarima, camas_tarima, pieza_tarima, codigo]
     );
 
-    if (result.affectedRows === 0) {
+    if (updateResult.affectedRows === 0) {
       return res.status(500).json({ message: "No se pudo actualizar la volumetría" });
     }
 
     res.json({ message: "Volumetría actualizada correctamente" });
+
   } catch (error) {
-    console.error("Error al actualizar la volumetría:", error);
-    res.status(500).json({ message: "Error al actualizar la volumetría", error: error.message });
+    console.error("Error al actualizar/insertar la volumetría:", error);
+    res.status(500).json({ message: "Error al procesar la volumetría", error: error.message });
   }
 };
+
 
 
 const getStockTotal = async (req, res) => {

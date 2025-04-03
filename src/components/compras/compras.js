@@ -789,7 +789,7 @@ function Compras() {
         html: `
           <img src="../assets/image/img_pz/${
             selectedProduct.codigo_pro
-          }.jpg" alt="Producto" style="width: 150px; height: 150px; margin-bottom: 10px;" />
+          }.jpg" alt="Producto" style="width: 150px; height: 150px; margin-bottom: 10px;" /> 
           <p><strong>Código:</strong> ${selectedProduct.codigo_pro}</p>
           <p><strong>Cantidad a ${
             isEditing ? "Editar" : "Recibir"

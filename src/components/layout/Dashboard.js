@@ -153,15 +153,21 @@ const getTitle = (pathname) => {
     case "/dashboard/RH":
       return "RH";
     case "/dashboard/Queretaro":
-      return "Proyecto Queretaro";
+      return "Proyecto";
     case "dashboard/visitas":
       return "Visitas";
     case "dashboard/visitas-reporte":
       return "Visitas Reporte";
     case "/dashboard/Trasporte":
       return "Transporte";
-      case "/dashboard/kpi":
-        return "kpi";
+    case "/dashboard/Tracking":
+      return "Tracking";
+    case "/dashboard/kpi":
+      return "kpi";
+      case "/dashboard/Mapa":
+      return "Mapa";
+      case "/dashboard/Plansurtido":
+        return "Plansurtido";
     default:
       return "Dashboard";
   }
@@ -279,31 +285,37 @@ export default function Dashboard() {
             </Menu>
           </Toolbar>
         </AppBar>
-        <Drawer variant="permanent" open={open}>
-          <Toolbar />
-          <Divider />
-          <List component="nav">
-            {user && mainListItems(user)}
-            <Divider sx={{ my: 1 }} />
-          </List>
-        </Drawer>
+        <Drawer
+  variant="permanent"
+  open={open}
+  sx={{
+    display: open ? 'block' : 'none' // 👈 Esto lo oculta cuando open es false
+  }}
+>
+  <Toolbar />
+  <Divider />
+  <Box sx={{ overflowY: "auto", height: "calc(100vh - 64px)" }}>
+    <List component="nav">
+      {user && mainListItems(user)}
+      <Divider sx={{ my: 1 }} />
+    </List>
+  </Box>
+</Drawer>
+
         <Box
-          component="main"
-          sx={{
-            backgroundColor:
-              theme.palette.mode === "light"
-                ? theme.palette.grey[100]
-                : theme.palette.grey[900],
-            flexGrow: 1,
-            height: "auto",
-            overflow: "auto",
-            marginTop: theme.spacing(8),
-            transition: theme.transitions.create(["margin-left"], {
-              easing: theme.transitions.easing.sharp,
-              duration: theme.transitions.duration.leavingScreen,
-            }),
-          }}
-        >
+  component="main"
+  sx={{
+    backgroundColor:
+      theme.palette.mode === "light"
+        ? theme.palette.grey[100]
+        : theme.palette.grey[900],
+    flexGrow: 1,
+    height: "100vh",            // ✅ Altura completa de la ventana
+    overflowY: "auto",          // ✅ Scroll solo vertical
+    marginTop: theme.spacing(8),
+  }}
+>
+
           <Container maxWidth={false} sx={{ mb: 4, mx: "auto", px: 2, mt: 1 }}>
             <Grid container spacing={3}>
               <Grid item xs={12}>

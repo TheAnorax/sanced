@@ -251,37 +251,49 @@ function TareaDev() {
                       <TableCell>{formatFecha(tarea.fecha_inicio)}</TableCell>
                       <TableCell>{formatFecha(tarea.fecha_fin)}</TableCell>
                       <TableCell>
-                        <IconButton
-                          color="success"
-                          onClick={() =>
-                            handleCambiarEstado(tarea.id, "En Progreso")
-                          }
-                        >
-                          <PlayArrow />
-                        </IconButton>
-                        <IconButton
-                          color="secondary"
-                          onClick={() =>
-                            handleCambiarEstado(tarea.id, "Finalizado")
-                          }
-                        >
-                          <CheckCircle />
-                        </IconButton>
-                        <IconButton
-                          color="error"
-                          onClick={() => handleEliminarTarea(tarea.id)}
-                        >
-                          <Delete />
-                        </IconButton>
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          onClick={() => handleVerDetalles(tarea)}
-                          sx={{ ml: 1 }}
-                        >
-                          Ver Detalles
-                        </Button>
-                      </TableCell>
+  <TextField
+    select
+    size="small"
+    value={tarea.estado}
+    onChange={(e) => handleCambiarEstado(tarea.id, e.target.value)}
+    SelectProps={{ native: true }}
+    sx={{
+      minWidth: 150,
+      backgroundColor: "#fff",
+      borderRadius: "6px",
+    }}
+  >
+    {[
+      "Creado Pendiente",
+      "En Progreso",
+      "Pruebas Unitarias",
+      "Autorizada",
+      "Finalizado",
+    ].map((estado) => (
+      <option key={estado} value={estado}>
+        {estado}
+      </option>
+    ))}
+  </TextField>
+  <Box sx={{ mt: 1 }}>
+    <IconButton
+      color="error"
+      onClick={() => handleEliminarTarea(tarea.id)}
+      title="Eliminar"
+    >
+      <Delete />
+    </IconButton>
+    <Button
+      variant="outlined"
+      size="small"
+      onClick={() => handleVerDetalles(tarea)}
+      sx={{ ml: 1 }}
+    >
+      Ver Detalles
+    </Button>
+  </Box>
+</TableCell>
+
                     </TableRow>
                   ))}
               </TableBody>

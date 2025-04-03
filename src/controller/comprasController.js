@@ -68,37 +68,44 @@ const updateRecibo = async (req, res) => {
 
   try {
     console.log('Actualizando recibo:', req.body);
+    console.log('Actualizando recibo:', req.params);
 
     // Verifica si el código ya existe en otro recibo distinto al que estás actualizando
-    const [existingRecibos] = await pool.query('SELECT * FROM recibo_compras WHERE codigo = ? AND id_recibo != ?', [req.body.codigo, id_recibo]);
+    // const [existingRecibos] = await pool.query('SELECT * FROM recibo_compras WHERE codigo = ? AND id_recibo != ?', [cantidad, id_recibo]);
+
+    const [existingRecibos] = await pool.query('SELECT * FROM recibo_compras WHERE id_recibo = ?', [ id_recibo]);
     
-    if (existingRecibos.length > 0) {
-      console.error('El código ya existe en otro recibo:', existingRecibos);
-      return res.status(400).json({ message: 'El código ya existe en otro recibo' });
-    }
+    
+    // if (existingRecibos.length > 0) {
+    //   console.error('El código ya existe en otro recibo:', existingRecibos);
+    //   return res.status(400).json({ message: 'El código ya existe en otro recibo' });
+    // }
 
     console.log('Ejecutando UPDATE con datos:', [oc, cantidad, recepcion, tipo, referencia, unidad_medida, contenedor, naviera, pedimento, id_recibo]);
+
+
 
     await pool.query(
       `
       UPDATE recibo_compras 
       SET oc = ?, cant_recibir = ?, arribo = ?, tipo = ?, referencia = ?, unidad_medida = ?, contenedor = ?, naviera = ?, pedimento = ?
-      WHERE id_recibo = ?
+      WHERE id_recibo = ? 
       `,
       [oc, cantidad, recepcion, tipo, referencia, unidad_medida, contenedor, naviera, pedimento, id_recibo]
     );
+    
 
-     if (recepcion) {
-      await pool.query(
-        `
-        UPDATE recibo_compras 
-        SET arribo = ?
-        WHERE contenedor = ? AND id_recibo != ?
-        `,
-        [recepcion, contenedor, id_recibo]
-      );
-      console.log('Fecha de arribo sincronizada en productos con el mismo contenedor');
-    }
+    //  if (recepcion) {
+    //   await pool.query(
+    //     `
+    //     UPDATE recibo_compras 
+    //     SET arribo = ?
+    //     WHERE contenedor = ? AND id_recibo = ?
+    //     `,
+    //     [recepcion, contenedor, id_recibo]
+    //   );
+    //   console.log('Fecha de arribo sincronizada en productos con el mismo contenedor');
+    // }
 
     await pool.query(`
       UPDATE recibo_cedis AS rc
@@ -108,7 +115,8 @@ const updateRecibo = async (req, res) => {
         rc.referencia = rco.referencia,
         rc.contenedor = rco.contenedor,
         rc.naviera = rco.naviera,
-        rc.pedimento = rco.pedimento
+        rc.pedimento = rco.pedimento,
+        rc.cantidad_total = rco.cant_recibir
       WHERE rc.id_recibo_compras IS NOT NULL;
     `);
 
@@ -448,13 +456,13 @@ const uploadExcel = async (req, res) => {
     }
 
     // Insertar en recibo_cedis si hay nuevos registros
-    if (insertDataCedis.length > 0) {
-      const insertQueryCedis = `
-        INSERT INTO recibo_cedis (codigo, cantidad_total, cantidad_recibida, fecha_recibo, oc, referencia, contenedor, naviera, pedimento, est, id_usuario)
-        VALUES ?
-      `;
-      await pool.query(insertQueryCedis, [insertDataCedis]);
-    }
+    // if (insertDataCedis.length > 0) {
+    //   const insertQueryCedis = `
+    //     INSERT INTO recibo_cedis (codigo, cantidad_total, cantidad_recibida, fecha_recibo, oc, referencia, contenedor, naviera, pedimento, est, id_usuario)
+    //     VALUES ?
+    //   `;
+    //   await pool.query(insertQueryCedis, [insertDataCedis]);
+    // }
 
     for (const row of insertDataCompras) {
       const contenedor = row[7];
@@ -515,14 +523,11 @@ dayjs.extend(timezone);
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'C:/Users/rodrigo/Desktop/react/docs');
+    cb(null, 'C:/Users/rodrigo/Desktop/react/docs'); // Carpeta de destino
   },
   filename: (req, file, cb) => {
-    // Obtener la fecha actual en la zona horaria de la Ciudad de México
-    const currentDate = dayjs().tz("America/Mexico_City").format('YYYY-MM-DD');
-    
-    // Crear el nombre del archivo con la fecha correcta
-    cb(null, `${currentDate}-${file.originalname}`);
+    const currentDate = dayjs().tz("America/Mexico_City").format('YYYY-MM-DD-HH-mm-ss');
+    cb(null, `${currentDate}-${file.originalname}`); // Agregar timestamp para evitar sobrescribir
   }
 });
 
@@ -535,41 +540,6 @@ const storageDocsOC = multer.diskStorage({
   }
 });
 
-
-
-
-
-// Configuración de multer para aceptar hasta 5 archivos
-const upload = multer({
-  storage: storage,
-  limits: { files: 100 }, // Permitir hasta 20 archivos en total
-}).fields([
-  { name: 'pdf_1', maxCount: 1 },
-  { name: 'pdf_2', maxCount: 20  },
-  { name: 'pdf_3', maxCount: 1 },
-  { name: 'pdf_4', maxCount: 20 }, // Cambiar para aceptar hasta 20 archivos
-  { name: 'pdf_5', maxCount: 1 },
-  { name: 'pdf_6', maxCount: 20 }, 
-]);
-
-// Configuración de multer para uploadPDFsOC (docsOC)
-// Configuración de multer para uploadPDFsOC (docsOC)
-const uploadOC = multer({
-  storage: storageDocsOC,
-  limits: { files: 30 }, // Limitar la cantidad máxima de archivos a 30
-}).array('pdf_oc', 30);  // Cambiar a .array() para aceptar hasta 30 archivos
-
-
-
-// Función para eliminar un archivo existente
-const deleteFile = (filePath) => { 
-  if (fs.existsSync(filePath)) {
-    fs.unlink(filePath, (err) => {
-      if (err) console.error(`Error al eliminar el archivo: ${filePath}`, err);
-      else console.log(`Archivo eliminado: ${filePath}`);
-    });
-  }
-}; 
 
 const uploadPDFsOC = async (req, res) => {
   uploadOC(req, res, async (err) => {
@@ -606,12 +576,49 @@ const uploadPDFsOC = async (req, res) => {
 
 
 
+// Configuración de multer para aceptar hasta 5 archivos
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 10 * 1024 * 1024, files: 100 }, // Permitir hasta 20 archivos en total
+  
+}).fields([
+  { name: 'pdf_1', maxCount: 1 },
+  { name: 'pdf_2', maxCount: 20  },
+  { name: 'pdf_3', maxCount: 1 },
+  { name: 'pdf_4', maxCount: 20 }, // Cambiar para aceptar hasta 20 archivosfv
+  { name: 'pdf_5', maxCount: 1 },
+  { name: 'pdf_6', maxCount: 20 }, 
+]);
+
+// Configuración de multer para uploadPDFsOC (docsOC)
+// Configuración de multer para uploadPDFsOC (docsOC)
+const uploadOC = multer({
+  storage: storageDocsOC,
+  limits: { files: 30 }, // Limitar la cantidad máxima de archivos a 30
+}).array('pdf_oc', 30);  // Cambiar a .array() para aceptar hasta 30 archivos
+
+
+
+// Función para eliminar un archivo existente
+const deleteFile = (filePath) => { 
+  if (fs.existsSync(filePath)) {
+    fs.unlink(filePath, (err) => {
+      if (err) console.error(`Error al eliminar el archivo: ${filePath}`, err);
+      else console.log(`Archivo eliminado: ${filePath}`);
+    });
+  }
+}; 
+
+
+
+
 
 const uploadPDFs = async (req, res) => {
   upload(req, res, async (err) => {
     if (err) {
       return res.status(500).json({ message: 'Error al subir archivos', error: err.message });
     }
+    console.log("Archivos subidos (Multer):", req.files);
 
     const { ordenCompra: oc, pedimento, referencia, estado = 'C' } = req.body;
     const uploadedFiles = req.files;
@@ -657,13 +664,13 @@ const uploadPDFs = async (req, res) => {
           if (existingRecibo.length === 0) {
             const insertValues = [
               producto.codigo, producto.cant_recibir, 0, producto.arribo, producto.oc, producto.referencia, 
-              producto.contenedor, producto.naviera, producto.pedimento, estado, null, null, null, null, null, null, producto.id_recibo
+              producto.contenedor, producto.naviera, producto.pedimento, estado, null, null, null, null, null, null, producto.id_recibo, producto.usuario
             ];
 
             await pool.query(`
               INSERT INTO recibo_cedis (codigo, cantidad_total, cantidad_recibida, fecha_recibo, oc, referencia, 
-              contenedor, naviera, pedimento, est, pdf_1, pdf_2, pdf_3, pdf_4, pdf_5, pdf_6, id_recibo_compras)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, insertValues);
+              contenedor, naviera, pedimento, est, pdf_1, pdf_2, pdf_3, pdf_4, pdf_5, pdf_6, id_recibo_compras, id_usuario)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )`, insertValues);
               console.log(`Producto insertado en recibo_cedis con OC: ${producto.oc}`);
           }
           else {

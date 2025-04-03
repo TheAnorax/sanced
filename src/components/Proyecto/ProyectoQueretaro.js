@@ -2,12 +2,20 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import {
     Card, CardContent, CardMedia, Grid, Typography, Dialog, DialogActions, DialogContent, DialogTitle, Button, IconButton, Box, TextField, TablePagination,
-    Tabs, Tab, MenuItem, Select, InputLabel, FormControl, Table, TableHead, TableRow, TableCell, TableBody,
+    Tabs, Tab, MenuItem, Select, InputLabel, FormControl, Table, TableHead, TableRow, TableCell, TableBody, Modal
 } from '@mui/material';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
+import CloseIcon from '@mui/icons-material/Close';
+import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
+
 
 function ProyectoQueretaro() {
-    // 📊 **Estados Principales**
+
+    const [ciudadSeleccionada, setCiudadSeleccionada] = useState("queretaro");
+
+
+
+
     const [data, setData] = useState([]);
     const [filteredData, setFilteredData] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
@@ -22,12 +30,27 @@ function ProyectoQueretaro() {
     const [diaVisita, setDiaVisita] = useState('');
     const [rutaReparto, setRutaReparto] = useState('');
     const [currentDay, setCurrentDay] = useState('');
-    const [currentView, setCurrentView] = useState('empty'); // Vista inicial vacía
-    const [selectedZone, setSelectedZone] = useState('');  // State for selected zone
+    const [currentView, setCurrentView] = useState('empty');
+    const [selectedZone, setSelectedZone] = useState('');
     const [selectedPersona, setSelectedPersona] = useState('');
     const [selectedRoutes, setSelectedRoutes] = useState([]);
 
-    // 📅 **Obtener Día Actual**
+    const [imagenSeleccionada, setImagenSeleccionada] = useState(null);
+    const [modalImagenAbierto, setModalImagenAbierto] = useState(false);
+
+    const abrirImagen = (src) => {
+        setImagenSeleccionada(src);
+        setModalImagenAbierto(true);
+    };
+
+    const cerrarImagen = () => {
+        setModalImagenAbierto(false);
+        setImagenSeleccionada(null);
+    };
+
+
+    const [exhibitors, setExhibitors] = useState([]);
+
     useEffect(() => {
         const daysOfWeek = ['DOMINGO', 'LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SÁBADO'];
         const today = new Date().getDay();
@@ -108,17 +131,18 @@ function ProyectoQueretaro() {
     };
 
     const handleClickOpen = (project) => {
-        console.log('Proyecto seleccionado:', project);  // Verifica si los datos son correctos
-        setSelectedProject(project);  // Establece el proyecto seleccionado
-        setOpen(true);  // Abre el modal
+        console.log('Proyecto seleccionado:', project);
+        setSelectedProject(project);
+        setOpen(true);
 
-        // Obtener el valor del portafolio, giro y segmento del proyecto
-        const { giro, portafolio, segmento } = project;
+        const { giro, portafolio, segmento, exhibidores } = project;
 
-        // Codificar los parámetros para evitar problemas con caracteres especiales
         const encodedGiro = encodeURIComponent(giro);
         const encodedPortafolio = encodeURIComponent(portafolio);
         const encodedSegmento = encodeURIComponent(segmento);
+
+        // Guardar los exhibidores directamente
+        setExhibitors(exhibidores || []);
 
         // Hacer la consulta a la API para obtener los datos filtrados por categoría y segmento
         axios.get(`http://66.232.105.87:3007/api/Queretaro/category/${encodedGiro}/${encodedPortafolio}/${encodedSegmento}`)
@@ -134,8 +158,6 @@ function ProyectoQueretaro() {
             .catch((error) => {
                 console.error('Error al obtener los datos filtrados:', error);
             });
-
-
     };
 
     const handleZoneChange = (event) => {
@@ -210,7 +232,6 @@ function ProyectoQueretaro() {
     const handleTabChange = (event, newValue) => {
         setTabIndex(newValue);
 
-        // Cuando se cambia al segundo tab, obtener los datos de la tabla según el giro
         if (newValue === 1 && selectedProject) {
             const table = selectedProject.giro;
             fetchTableData(table);
@@ -219,13 +240,13 @@ function ProyectoQueretaro() {
 
     useEffect(() => {
         const daysOfWeek = ['DOMINGO', 'LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SÁBADO'];
-        const today = new Date().getDay();  // Obtén el día de la semana como número (0-6)
-        console.log("Día actual:", daysOfWeek[today]);  // Verifica que este valor sea correcto
-        setCurrentDay(daysOfWeek[today]);  // Establece el día actual en la variable `currentDay`
+        const today = new Date().getDay();
+        console.log("Día actual:", daysOfWeek[today]);
+        setCurrentDay(daysOfWeek[today]);
     }, []);
 
     useEffect(() => {
-        filterData();  // Vuelve a filtrar cuando el día actual cambie
+        filterData();
     }, [currentDay]);
 
     const handleZonaChange = (event) => {
@@ -241,37 +262,32 @@ function ProyectoQueretaro() {
     };
 
     useEffect(() => {
-        filterData(); // Actualiza los datos cuando cambie algún filtro
+        filterData();
     }, [selectedZona, selectedRuta, diaVisita]);
 
-    // Manejo de las rutas seleccionadas
     const handleRoutesChange = (event) => {
         const value = event.target.value;
-        const routes = value.split(',').map(route => route.trim());  // Convertir las rutas en un array
+        const routes = value.split(',').map(route => route.trim());
         setSelectedRoutes(routes);
     };
 
-    // Obtener datos filtrados cuando se aplican filtros
     const fetchFilteredData = () => {
-        if (!selectedZone || selectedRoutes.length === 0) return; // No hacer nada si no hay filtros
+        if (!selectedZone || selectedRoutes.length === 0) return;
 
         axios.get('http://66.232.105.87:3007/api/Queretaro/proyectoqueretaro/filtrado', {
             params: {
                 zona: selectedZone,
-                rutas: selectedRoutes.join(',')  // Pasar las rutas como una cadena
+                rutas: selectedRoutes.join(',')
             }
         })
             .then(response => {
-                setData(response.data);  // Establecer los datos filtrados
+                setData(response.data);
             })
             .catch(error => {
                 console.error('Error al obtener los datos filtrados:', error);
             });
     };
 
-    /*
-     * 🟢 **Vista Principal: Formulario y Resultados**
-     */
     const renderVistaPrincipal = () => (
         <>
 
@@ -345,8 +361,26 @@ function ProyectoQueretaro() {
                                     height="120"
                                     image={row.foto}
                                     alt={row.nombre}
-                                    sx={{ objectFit: 'cover', width: '120px', height: '120px', marginRight: '16px' }}
+                                    onClick={(e) => {
+                                        e.stopPropagation(); // 👈 Detiene el evento para que no llegue al Card
+                                        abrirImagen(row.foto); // Abre el modal de la imagen
+                                    }}
+                                    sx={{
+                                        objectFit: 'cover',
+                                        width: '120px',
+                                        height: '120px',
+                                        marginRight: '16px',
+                                        cursor: 'pointer',
+                                        borderRadius: '4px',
+                                        transition: '0.3s',
+                                        '&:hover': {
+                                            boxShadow: '0 0 10px rgba(0,0,0,0.5)',
+                                            transform: 'scale(1.03)',
+                                        }
+                                    }}
                                 />
+
+
 
                                 {/* Columna 2: Información */}
                                 <Box sx={{ flexGrow: 1 }}>
@@ -355,7 +389,7 @@ function ProyectoQueretaro() {
                                     </Typography>
 
                                     <Typography variant="body2" color="text.secondary">
-                                        Zona: {row.zona}
+                                        {row.zona}
                                     </Typography>
 
                                     <Typography variant="body2" color="text.secondary">
@@ -369,6 +403,28 @@ function ProyectoQueretaro() {
                                     <Typography variant="body2" color="text.secondary">
                                         Ruta: {row.ruta}
                                     </Typography>
+
+                                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                        <Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>
+                                            Status:
+                                        </Typography>
+                                        <FiberManualRecordIcon
+                                            sx={{
+                                                fontSize: 14,
+                                                color: row.status === 'ACTIVO'
+                                                    ? 'green'
+                                                    : row.status === 'PROSPECTO'
+                                                        ? 'orange'
+                                                        : 'gray',
+                                                mr: 0.5
+                                            }}
+                                        />
+                                        <Typography variant="body2" color="text.secondary">
+                                            {row.status}
+                                        </Typography>
+                                    </Box>
+
+
 
                                 </Box>
                             </CardContent>
@@ -401,13 +457,45 @@ function ProyectoQueretaro() {
                     }}
                 >
 
-                    <DialogTitle>{selectedProject ? selectedProject.nombre : 'Cargando...'}</DialogTitle>
+                    <DialogTitle>
+                        {selectedProject ? (
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                                    {selectedProject.nombre}
+                                </Typography>
+
+                                <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                                    /
+                                </Typography>
+
+                                <FiberManualRecordIcon
+                                    sx={{
+                                        fontSize: 16,
+                                        color:
+                                            selectedProject.status === 'ACTIVO'
+                                                ? 'green'
+                                                : selectedProject.status === 'PROSPECTO'
+                                                    ? 'orange'
+                                                    : 'gray',
+                                    }}
+                                />
+                                <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                                    {selectedProject.status}
+                                </Typography>
+                            </Box>
+                        ) : (
+                            'Cargando...'
+                        )}
+                    </DialogTitle>
+
+
+
                     <DialogContent>
                         <Tabs value={tabIndex} onChange={handleTabChange} aria-label="Información del Proyecto">
                             <Tab label="Información General" />
                             <Tab label="Datos de Compra" />
                             <Tab label="Marketing" />
-                            <Tab label="Promaciones" />
+                            <Tab label="Promociones" />
                         </Tabs>
 
                         {tabIndex === 0 && (
@@ -610,18 +698,53 @@ function ProyectoQueretaro() {
 
                         {tabIndex === 2 && (
                             <Box sx={{ paddingTop: 2 }}>
-                                <p>Marketing</p>
+                                {exhibitors.length > 0 ? (
+                                    <Grid container spacing={2}>
+                                        {exhibitors.map((exhibitor) => (
+                                            <Grid item xs={12} sm={6} md={4} key={exhibitor.id}>
+                                                <Card>
+                                                    <CardMedia
+                                                        component="img"
+                                                        height="140"
+                                                        image={exhibitor.imagen}
+                                                        alt={exhibitor.descripcion || "Imagen no disponible"}
+                                                        onError={(e) => e.target.src = "/imagenes/default.png"}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation(); // Evita que se dispare algún evento del Card si existiera
+                                                            abrirImagen(exhibitor.imagen);
+                                                        }}
+                                                        sx={{
+                                                            cursor: 'pointer',
+                                                            borderRadius: '4px',
+                                                            objectFit: 'cover',
+                                                            transition: '0.3s',
+                                                            '&:hover': {
+                                                                transform: 'scale(1.05)',
+                                                                boxShadow: '0 0 10px rgba(0,0,0,0.3)',
+                                                            }
+                                                        }}
+                                                    />
+
+                                                    <CardContent>
+                                                        <Typography variant="h6">{exhibitor.descripcion}</Typography>
+                                                        <Typography variant="body2">Medidas: {exhibitor.medidas}</Typography>
+                                                        <Typography variant="body2">Material: {exhibitor.material}</Typography>
+                                                    </CardContent>
+                                                </Card>
+                                            </Grid>
+                                        ))}
+                                    </Grid>
+                                ) : (
+                                    <Typography variant="body1">No hay exhibidores disponibles.</Typography>
+                                )}
                             </Box>
                         )}
-
 
                         {tabIndex === 3 && (
                             <Box sx={{ paddingTop: 2 }}>
                                 <p>Prodcutos nuevos</p>
                             </Box>
                         )}
-
-
 
                     </DialogContent >
                     <DialogActions>
@@ -635,9 +758,6 @@ function ProyectoQueretaro() {
 
     );
 
-    /*
-     * 🟠 **Vista 1: Formulario Adicional**
-     */
     const renderTable = () => (
         <Table>
             <TableHead>
@@ -663,7 +783,6 @@ function ProyectoQueretaro() {
         </Table>
     );
 
-    // Renderizado del formulario
     const renderVista1 = () => (
         <Box sx={{ p: 3 }}>
             <Typography variant="h5">Vista 1: Formulario Personalizado</Typography>
@@ -687,44 +806,283 @@ function ProyectoQueretaro() {
         </Box>
     );
 
-    /*
-     🔵 Vista 2: Mapa Personalizado de Google Maps
-    */
-    const renderVista2 = () => (
-        <Box sx={{ p: 3 }}>
-            <iframe
-                src="https://www.google.com/maps/d/embed?mid=16AT0b4cYTSNQQVQYHkQKC8Rp4Q1g2VE&ll=20.561320310882667,-100.38615969894488&z=15"
-                width="100%"
-                height="600px"
-                title="Mapa Personalizado"
-                style={{ border: 'none' }}
-                allowFullScreen
-            />
-        </Box>
-    );
 
-    /*
-     * 🎯 **Renderizar Vistas**
-     */
+    // Mapeo de la informacion
+
+    const convertToEmbedUrl = (url) => {
+        if (!url.includes("viewer")) return url; // Si ya es embed, no cambiarlo
+        return url.replace("/viewer?", "/embed?");
+    };
+
+    const mainMap = "https://www.google.com/maps/d/embed?mid=16AT0b4cYTSNQQVQYHkQKC8Rp4Q1g2VE&ll=20.561320310882667,-100.38615969894488&z=15";
+
+    const otherMaps = [
+        convertToEmbedUrl("https://www.google.com/maps/d/u/0/viewer?mid=1ih6-YP-d1yE3ZviYr5z-ddiPhdwfVCI&femb=1&ll=20.563953977471986%2C-100.39009649543087&z=13"),
+        convertToEmbedUrl("https://www.google.com/maps/d/u/0/viewer?mid=1VSCN-JF-whrAHR5twiO6CRrPfxOAXu8&femb=1&ll=20.640139755227455%2C-100.42183552642823&z=12"),
+        convertToEmbedUrl("https://www.google.com/maps/d/u/0/viewer?mid=1KXHSTDk2Cp0AjYSE_y3mXsO9s9XfAGs&femb=1&ll=20.636652202622624%2C-100.44765901324463&z=13"),
+        convertToEmbedUrl("https://www.google.com/maps/d/u/0/viewer?mid=15d-dWNOfWPMZnm85WI0hYTaqUvNB3Yg&ll=20.64328286231578%2C-100.39405011241543&z=13"),
+        convertToEmbedUrl("https://www.google.com/maps/d/u/0/viewer?mid=16Mxu_WIDcLeIdh3TpdM42BfPEZTS49A&ll=20.562950614267464%2C-100.39048423373035&z=14"),
+    ];
+
+    const imagePaths = [
+        "/Rutas/Ruta1.jpeg",
+        "/Rutas/Ruta2.jpeg",
+        "/Rutas/Ruta3.jpeg",
+        "/Rutas/Ruta4.jpeg",
+        "/Rutas/Ruta5.jpeg",
+    ];
+
+    const MapaRutas = () => {
+        const [openModal, setOpenModal] = useState(false);
+        const [selectedImage, setSelectedImage] = useState("");
+        const [selectedMap, setSelectedMap] = useState("");
+
+        // Función para abrir el modal con la imagen y el mapa seleccionados
+        const handleOpenModal = (image, map) => {
+            setSelectedImage(image);
+            setSelectedMap(map);
+            setOpenModal(true);
+        };
+
+        // Función para cerrar el modal
+        const handleCloseModal = () => {
+            setOpenModal(false);
+        };
+
+        return (
+            <Box sx={{ p: 3 }}>
+                {/* Mapa principal arriba */}
+                <Box sx={{ mb: 3 }}>
+                    <iframe
+                        src={mainMap}
+                        width="100%"
+                        height="600px"
+                        title="Mapa Principal"
+                        style={{ border: "none" }}
+                        allowFullScreen
+                    />
+                </Box>
+
+                {/* Otros mapas con sus imágenes */}
+                <Grid container spacing={2} justifyContent="center">
+                    {otherMaps.map((link, index) => (
+                        <Grid item xs={12} sm={6} md={4} lg={3} key={index}>
+                            <Card sx={{ maxWidth: "100%", cursor: "pointer" }} onClick={() => handleOpenModal(imagePaths[index], link)}>
+                                {/* Imagen asociada al mapa */}
+                                <CardMedia
+                                    component="img"
+                                    sx={{
+                                        width: "100%",
+                                        height: 180,
+                                        objectFit: "contain",
+                                    }}
+                                    image={imagePaths[index]}
+                                    alt={`Ruta ${index + 1}`}
+                                    onError={(e) => e.target.style.display = 'none'}
+                                />
+                                {/* Mapa en iframe */}
+                                <iframe
+                                    src={link}
+                                    width="100%"
+                                    height="300px"
+                                    title={`Mapa ${index + 2}`}
+                                    style={{ border: "none" }}
+                                    allowFullScreen
+                                />
+                            </Card>
+                        </Grid>
+                    ))}
+                </Grid>
+
+                {/* Modal para mostrar la imagen y el mapa en grande */}
+                <Modal open={openModal} onClose={handleCloseModal}
+                    sx={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <Box sx={{
+                        bgcolor: "white",
+                        p: 3,
+                        borderRadius: 2,
+                        boxShadow: 24,
+                        width: "80vw",
+                        height: "80vh",
+                        overflow: "auto",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center"
+                    }}>
+                        {/* Botón de cierre */}
+                        <IconButton onClick={handleCloseModal} sx={{ alignSelf: "flex-end" }}>
+                            <CloseIcon />
+                        </IconButton>
+
+                        <Typography variant="h6" sx={{ mb: 2, textAlign: "center" }}>Vista Ampliada</Typography>
+
+                        {/* Imagen ampliada con mayor tamaño */}
+                        <CardMedia
+                            component="img"
+                            sx={{
+                                width: "100%",      // Ocupa el ancho completo del modal
+                                maxWidth: "95vw",   // Máximo 80% del viewport width
+                                height: "auto",
+                                maxHeight: "95vh",  // Máximo 80% del viewport height
+                                objectFit: "contain",
+                                marginBottom: 2
+                            }}
+                            image={selectedImage}
+                            alt="Imagen ampliada"
+                        />
+
+                        {/* Mapa ampliado */}
+                        <iframe
+                            src={selectedMap}
+                            width="100%"
+                            height="400px"
+                            title="Mapa ampliado"
+                            style={{ border: "none" }}
+                            allowFullScreen
+                        />
+                    </Box>
+                </Modal>
+
+            </Box>
+        );
+    };
+
+    const transformImageUrl = (url) => {
+        if (!url || typeof url !== 'string') {
+            return "https://via.placeholder.com/140"; // Imagen de respaldo si la URL es inválida
+        }
+
+        if (url.includes("drive.google.com")) {
+            const fileIdMatch = url.match(/id=([-\w]+)/);
+            return fileIdMatch ? `https://drive.google.com/uc?export=view&id=${fileIdMatch[1]}` : url;
+        }
+
+        return url;
+    };
+
+    //Menu de los de queretaro 
+
     const renderView = () => {
-        switch (currentView) {
-            case 'default': return renderVistaPrincipal();
-            case 'view1': return renderVista2();
-            case 'view2': return renderVista1();
-            default: return <Typography variant="h6">Selecciona una vista para empezar</Typography>;
+        if (ciudadSeleccionada === "queretaro") {
+            return (
+                <>
+                    <Grid container spacing={2} justifyContent="center" sx={{ mb: 3 }}>
+                        <Button onClick={() => setCurrentView('view1')}>Mapa</Button>
+                        <Button onClick={() => setCurrentView('default')}>Lugares de visita</Button>
+                    </Grid>
+
+                    {currentView === 'default' && renderVistaPrincipal()}
+                    {currentView === 'view1' && <MapaRutas />}
+                </>
+            );
+        } else if (ciudadSeleccionada === "guadalajara") {
+            return (
+                <>
+                    <Grid container spacing={2} justifyContent="center" sx={{ mb: 3 }}>
+                        <Button onClick={() => setCurrentView('view1')}>Mapa</Button>
+                        <Button onClick={() => setCurrentView('default')}>Lugares de visita</Button>
+                    </Grid>
+                    {currentView === 'default' && <Typography variant="h6" sx={{ textAlign: 'center' }}>Lugares de Visita en Guadalajara</Typography>}
+                    {currentView === 'view1' && <MapaGuadalajara />}
+                </>
+            );
         }
     };
 
+    //Menu de guadalajara 
+
+    const mainMapGuadalajara = "https://www.google.com/maps/d/embed?mid=12F4jYMqNRKzfA-yKLT103arH_z6-O20&usp=sharing";
+
+    const guadalajaraMaps = [
+        "https://www.google.com/maps/d/embed?mid=1Kquz4EpHe4OC8iIHDr4OGORC1mCgfas&usp=sharing",
+        "https://www.google.com/maps/d/embed?mid=18tM2i6o7VGZxaKbY4OovV7Goo2NT6ew&usp=sharing",
+        "https://www.google.com/maps/d/embed?mid=1FbRzanZ4v40HgMhTIWR9YPkL2Yapzis&usp=sharing",
+        "https://www.google.com/maps/d/embed?mid=1zZGg93zlxhcz1wYZQCP-k1vLlxTlqYw&usp=sharing",
+        "https://www.google.com/maps/d/embed?mid=1BrkCdcLCVZF9joPSaclV8TSHSEwekyM&usp=sharing",
+        "https://www.google.com/maps/d/embed?mid=12F4jYMqNRKzfA-yKLT103arH_z6-O20&usp=sharing",
+    ];
+
+    const MapaGuadalajara = () => (
+        <Box sx={{ p: 3 }}>
+            {/* Mapa principal */}
+            <iframe
+                src={mainMapGuadalajara}
+                width="100%"
+                height="600px"
+                title="Mapa Guadalajara"
+                style={{ border: "none", marginBottom: "20px" }}
+                allowFullScreen
+            />
+            {/* Mapas adicionales */}
+            <Grid container spacing={2} justifyContent="center">
+                {guadalajaraMaps.map((map, index) => (
+                    <Grid item xs={12} sm={6} md={4} key={index}>
+                        <Card sx={{ maxWidth: "100%", mb: 2 }}>
+                            <iframe
+                                src={map}
+                                width="100%"
+                                height="300px"
+                                title={`Mapa Adicional ${index + 1}`}
+                                style={{ border: "none" }}
+                                allowFullScreen
+                            />
+                        </Card>
+                    </Grid>
+                ))}
+            </Grid>
+        </Box>
+    );
+
+
+
     return (
         <>
+            {/* Botones para cambiar la ciudad */}
             <Grid container spacing={2} justifyContent="center" sx={{ mb: 3 }}>
-                <Button onClick={() => setCurrentView('view1')}>Mapeo</Button>
-                <Button onClick={() => setCurrentView('view2')}>Informacion</Button>
-                <Button onClick={() => setCurrentView('default')}>Lugares de visita</Button>
+                <Button onClick={() => setCiudadSeleccionada("guadalajara")} sx={{ color: "red" }}>Ver Guadalajara</Button>
+                <Button onClick={() => setCiudadSeleccionada("queretaro")} sx={{ color: "red" }}>Ver Querétaro</Button>
             </Grid>
+
+            {/* Renderiza la vista seleccionada */}
             {renderView()}
+
+            {/* //MODAL PARA ABRIR LAS IMAGENES */}
+            <Modal
+                open={modalImagenAbierto}
+                onClose={cerrarImagen}
+                sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+                <Box sx={{
+                    bgcolor: 'white',
+                    borderRadius: 2,
+                    p: 2,
+                    maxWidth: '90vw',
+                    maxHeight: '90vh',
+                    outline: 'none',
+                    boxShadow: 24
+                }}>
+                    <IconButton onClick={cerrarImagen} sx={{ position: 'absolute', top: 8, right: 8 }}>
+                        <CloseIcon />
+                    </IconButton>
+                    <img
+                        src={imagenSeleccionada}
+                        alt="Vista ampliada"
+                        style={{
+                            width: '100%',
+                            height: 'auto',
+                            maxHeight: '80vh',
+                            borderRadius: '8px'
+                        }}
+                        onError={(e) => e.target.src = "/imagenes/default.png"}
+                    />
+                </Box>
+            </Modal>
+
+
+
         </>
     );
+
 }
 
 export default ProyectoQueretaro;

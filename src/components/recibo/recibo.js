@@ -267,7 +267,7 @@ function Recibo() {
           dato: dato,
         }
       );
-
+  
       if (response.data.resultado.error) {
         Swal.fire({
           icon: "info",
@@ -276,9 +276,14 @@ function Recibo() {
         });
         setRecibos([]);
       } else {
-        const recibosOrdenados = response.data.resultado.list.sort(
+        const recibosFiltrados = response.data.resultado.list.filter(
+          (recibo) => Number(recibo.cant_recibir) > 0
+        );
+  
+        const recibosOrdenados = recibosFiltrados.sort(
           (a, b) => new Date(a.arribo) - new Date(b.arribo)
         );
+  
         setRecibos(recibosOrdenados);
       }
     } catch (error) {
@@ -292,7 +297,7 @@ function Recibo() {
       setLoading(false);
     }
   };
-
+  
   useEffect(() => {
     fetchRecibos("0");
   }, []);

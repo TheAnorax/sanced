@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from "react";
 import axios from "axios";
-import * as XLSX from "xlsx";
+import * as XLSX from "xlsx"; 
 import {
   Typography,
   Table,
@@ -73,6 +73,12 @@ function InventarioAdmin() {
     nuevoLote: "",
     nuevoAlmacen: "",
   });
+const [originalInsumos, setOriginalInsumos] = useState([]); const [cantStockFilter, setCantStockFilter] = useState("");
+
+const [nivelFilter, setNivelFilter] = useState("");
+const [ingresoFilter, setIngresoFilter] = useState("");
+const [ setDescripcionFilter] = useState("");
+
 
   // Estado para controlar la apertura del modal
   const [openModal, setOpenModal] = useState(false);
@@ -134,7 +140,22 @@ function InventarioAdmin() {
   });
 
   const isSmallScreen = useMediaQuery("(max-width:600px)");
-
+  useEffect(() => {
+    const filtered = originalInsumos.filter((dato) => {
+      return (
+        (ubicacionFilter === "" || (dato.ubi?.toLowerCase() || "").includes(ubicacionFilter.toLowerCase())) &&
+        (descripcionFilter === "" || (dato.des?.toLowerCase() || "").includes(descripcionFilter.toLowerCase())) &&
+        (codigoFilter === "" || (dato.code_prod?.toLowerCase() || "").includes(codigoFilter.toLowerCase())) &&
+        (cantStockFilter === "" || (dato.cant_stock?.toString() || "").includes(cantStockFilter)) &&
+        (nivelFilter === "" || (dato.nivel?.toString() || "").includes(nivelFilter)) &&
+        (ingresoFilter === "" || (dato.ingreso?.toString() || "").includes(ingresoFilter))
+      );
+    });
+  
+    setInsumos(filtered);
+  }, [ubicacionFilter, descripcionFilter, codigoFilter, cantStockFilter, nivelFilter,  ingresoFilter, originalInsumos]);
+  
+  
   useEffect(() => {
     const fetchInventariosData = async () => {
       try {
@@ -501,12 +522,10 @@ function InventarioAdmin() {
     setError(null);
 
     try {
-      // Cambiar el método a GET y usar la URL adecuada
       const response = await axios.get(
         "http://66.232.105.87:3007/api/inventarios/inventarios/obtenerUbiAlma"
       );
 
-      // Validar la respuesta de la API
       if (response.data && !response.data.resultado.error) {
         const nuevosInsumos = response.data.resultado.list.map((insumo) => ({
           id: insumo.id_ubi,
@@ -520,8 +539,11 @@ function InventarioAdmin() {
               })
             : null,
         }));
-        setInsumos(nuevosInsumos);
+
+        setOriginalInsumos(nuevosInsumos); // Guardar los datos originales
+        setInsumos(nuevosInsumos); // Aplicar en la tabla también
       } else {
+        setOriginalInsumos([]);
         setInsumos([]);
         setError("No se encontraron datos.");
       }
@@ -531,7 +553,8 @@ function InventarioAdmin() {
     } finally {
       setLoading(false);
     }
-  };
+};
+
 
   const handleSearchUbi = async (nuevoCodigo) => {
     setCodigo(nuevoCodigo);
@@ -1004,6 +1027,8 @@ function InventarioAdmin() {
       Swal.fire("Error", "Hubo un problema al insertar la ubicación", "error");
     }
   };
+
+  
   const handleGuardarNuevaUbipICK = async () => {
     if (
       !newData.ubi ||
@@ -1344,27 +1369,8 @@ function InventarioAdmin() {
     }
   };
 
-  const exportToExcel = () => {
-    // Usar filteredData para exportar solo los datos visibles
-    const dataToExport = filteredData.map((dato) => ({
-      Ubicación: dato.ubi || "N/A",
-      Descripción: dato.des || "N/A",
-      "Código Producto": dato.code_prod || "N/A",
-      "Cantidad Stock": dato.cant_stock || 0,
-      Pasillo: dato.pasillo || "N/A",
-      Lote: dato.lote || "N/A",
-      Almacén: dato.almacen || "N/A",
-    }));
-  
-    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Picking");
-  
-    XLSX.writeFile(workbook, "Filtered_Picking.xlsx");
-  };
-  
 
-  // Función para cargar ubicaciones pares
+   // Función para cargar ubicaciones pares
   const fetchPares = async () => {
     setLoading(true);
     setInsumos([]); // Limpiar los datos previos
@@ -1393,41 +1399,32 @@ function InventarioAdmin() {
       setLoading(false);
     }
   };
+  const exportToExcel = () => {
+    // Usar filteredData para exportar solo los datos visibles
+    const dataToExport = filteredData.map((dato) => ({
+      Ubicación: dato.ubi || "N/A",
+      Descripción: dato.des || "N/A",
+      "Código Producto": dato.code_prod || "N/A",
+      "Cantidad Stock": dato.cant_stock || 0,
+      Pasillo: dato.pasillo || "N/A",
+      Lote: dato.lote || "N/A",
+      Almacén: dato.almacen || "N/A",
+    }));
+  
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Picking");
+  
+    XLSX.writeFile(workbook, "Filtered_Picking.xlsx");
+  };
+  
+
+ 
 
   const columns = [
-    {
-      field: "ubi",
-      headerName: (
-        <Box
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "flex-start",
-            width: "200%",
-          }}
-        >
-          <TextField
-            label="Ubicación"
-            size="small"
-            color="primary"
-            value={ubi}
-            onChange={(e) => {
-              const nuevaUbicacion = e.target.value;
-              setUbi(nuevaUbicacion);
-              handleSearchUbi(nuevaUbicacion); // Llamar a la búsqueda cada vez que cambia el texto
-            }}
-            placeholder="Ubicación"
-            fullWidth
-            onKeyPress={(e) => {
-              if (e.key === "Enter") {
-                handleSearchUbi(ubi); // Usar la función para buscar
-              }
-            }}
-          />
-        </Box>
-      ),
-      width: 200,
-    },
+    
+    { field: "des", headerName: "Descripción", width: 300 },  
+    { field: "ubi", headerName: "Ubicación", width: 200 },    
     {
       field: "code_prod",
       headerName: "Código Producto",
@@ -1444,13 +1441,9 @@ function InventarioAdmin() {
         return params.value === 0 ? "" : params.value;
       },
     },
-    // { field: "lote", headerName: "Lote", width: 100 },
-    // { field: "almacen", headerName: "Almacén", width: 120 },
-    // { field: "pasillo", headerName: "Pasillo", width: 100 },
-    { field: "ingreso", headerName: "Ingreso", width: 160 },
-    // { field: "area", headerName: "Área", width: 120 },
-    // { field: "Estado", headerName: "Estados", width: 120 },
     
+    { field: "nivel", headerName: "Nivel", width: 160 }, 
+    { field: "ingreso", headerName: "Ingreso", width: 160 },    
     {
       field: "movimiento",
       headerName: "Movimiento",
@@ -1471,7 +1464,7 @@ function InventarioAdmin() {
     {
       field: "actions",
       headerName: "Acciones",
-      width: 200,
+      width: 300,
       renderCell: (params) => (
         <Box display="flex" gap={1}>
           <div>
@@ -2347,28 +2340,68 @@ function InventarioAdmin() {
             Inventario 7050
           </Typography>
         </center>
+       
+        <Box display="flex" gap={2} mb={2}>
+        <TextField
+    label="Descripción"
+    variant="outlined"
+    size="small"
+    value={descripcionFilter}
+    onChange={(e) => setDescripcionFilter(e.target.value)}
+    sx={{ width: "300px" }}
+  />
+  <TextField
+    label="Ubicación"
+    variant="outlined"
+    size="small"
+    value={ubicacionFilter}
+    onChange={(e) => setUbicacionFilter(e.target.value)}
+    sx={{ width: "180px " }}
+  />
+ 
+  <TextField
+    label="Código Producto"
+    variant="outlined"
+    size="small"
+    value={codigoFilter}
+    onChange={(e) => setCodigoFilter(e.target.value)}
+    sx={{ width: "150px" }}
+  />
+  
+  <TextField
+    label="Nivel"
+    type="number"
+    variant="outlined"
+    size="small"
+    value={nivelFilter}
+    onChange={(e) => setNivelFilter(e.target.value)}
+    marginLeft= "200px"
+  />
+</Box>
 
-        <DataGrid
-          rows={insumos}
-          columns={columns}
-          pageSize={pageSize}
-          onPageSizeChange={handlePageSizeChange}
-          rowsPerPageOptions={[5, 10, 20]}
-          loading={loading}
-          pagination
-          paginationMode="client"
-          getRowId={(row) => row.id}
-          style={{ height: 800, width: "100%" }} // Establecer una altura fija
-          getRowClassName={(params) => {
-            if (params.row.cant_stock === 0) {
-              return "stock-cero";
-            }
-            if (!params.row.cant_stock) {
-              return "stock-vacio";
-            }
-            return "";
-          }}
-        />
+
+<DataGrid
+  rows={insumos}  // Ahora renderiza la lista filtrada
+  columns={columns}
+  pageSize={pageSize}
+  onPageSizeChange={handlePageSizeChange}
+  rowsPerPageOptions={[5, 10, 20]}
+  loading={loading}
+  pagination
+  paginationMode="client"
+  getRowId={(row) => row.id}
+  style={{ height: 800, width: "100%" }}
+  getRowClassName={(params) => {
+    if (params.row.cant_stock === 0) {
+      return "stock-cero";
+    }
+    if (!params.row.cant_stock) {
+      return "stock-vacio";
+    }
+    return "";
+  }}
+/>
+
 
         <div>
           {/* Modal de inserción */}

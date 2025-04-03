@@ -249,7 +249,9 @@ ORDER BY u.ubi ASC
       error: error.message,
     });
   }
-};const updatePeacking = async (req, res) => {
+};
+
+const updatePeacking = async (req, res) => {
   const { id_ubi, code_prod, cant_stock, pasillo, lote, almacen, user_id, ubi } = req.body;
   //console.log("Update Pick:", req.body);
 
@@ -344,24 +346,25 @@ const obtenerUbiAlma = async (req, res) => {
   try {
     // Realizar la consulta para obtener todos los registros
     const [rows] = await pool.query(`
-      SELECT 
-        id_ubi, 
-        ubi, 
-        code_prod, 
-        cant_stock, 
-        pasillo, 
-        lote, 
-        almacen, 
-        codigo_ubi, 
-        ingreso, 
-        estado, 
-        codigo_ingreso,
+     SELECT 
+        u.id_ubi,
+        prod.des,
+        u.ubi, 
+        u.code_prod, 
+        u.cant_stock, 
+        u.pasillo, 
+        u.lote, 
+        u.almacen, 
+        u.codigo_ubi, 
+        u.ingreso, 
+        u.nivel,
         CASE 
-          WHEN pasillo REGEXP '^[0-9]+$' THEN 'Almacen' 
-          WHEN pasillo REGEXP 'AV' THEN 'Picking'
+          WHEN u.pasillo REGEXP '^[0-9]+$' THEN 'Almacen' 
+          WHEN u.pasillo REGEXP 'AV' THEN 'Picking'
           ELSE 'Otro'
-        END AS area
-      FROM ubi_alma
+        END AS AREA
+      FROM ubi_alma u
+      LEFT JOIN productos prod ON u.code_prod = prod.codigo_pro
     `);
 
     // Estructura de la respuesta
@@ -429,7 +432,7 @@ const deleteTarea = async (req, res) => {
 const getUbicacionesImpares = async (req, res) => {
   try {
     const [result] = await pool.query(`
-      SELECT ubi , code_prod, cant_stock, pasillo, lote, almacen, estado
+      SELECT ubi , code_prod, cant_stock, pasillo, lote, almacen, estado, nivel, ingreso
       FROM ubi_alma
       WHERE CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(ubi, '-', 2), '-', -1) AS UNSIGNED) % 2 = 1;
     `);
@@ -444,7 +447,7 @@ const getUbicacionesImpares = async (req, res) => {
 const getUbicacionesPares = async (req, res) => {
   try {
     const [result] = await pool.query(`
-      SELECT ubi, code_prod, cant_stock, pasillo, lote, almacen, estado
+      SELECT ubi, code_prod, cant_stock, pasillo, lote, almacen, estado, nivel, ingreso
       FROM ubi_alma
       WHERE CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(ubi, '-', 2), '-', -1) AS UNSIGNED) % 2 = 0;
     `);

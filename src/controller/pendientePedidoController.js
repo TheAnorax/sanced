@@ -198,14 +198,14 @@ const savePedidoSurtido = async (req, res) => {
                       7021,7016,6974,7023,7018,7068,7020,7069,8091,8088,8090,8093,8089,7024,7027,
                       6976,6970,7099,3211,3212,3221,9771,9772,9773,7314,7315,7316,7317,7318,7319,5524,5525]
     const codigoEm =[3451,3498,5712,5708,5706,5705,5703,5713,5702,5506,5520,5513,5508,5514,5517,5522,5521,
-                     5523,5509,5515,5518,2498,4294,2461,2451,2452,8307,2468,2464,2459,2460,4307,2470,2465,
+                     5523,5509,5515,5518,2498,4294,2461,2451,2452,8307,2464,2459,2460,4307,2470,2465,
                      2455,2487,2454,4315,8368,8369,2490,1520,1521,1513,1523,4295,2482,8563,5691,5763,5709,
                      5762,5694,2471,8300,4298,4303,4308,4300,2466,2469,2462,2458,2492,2478,2477,2499,2488,
                      2479,2456,8367,2484,4316,1574,5761,2457,1501,5692,5760,5693,2463,2467,2473,1508,2472,
                      2475,5719,5720,5721,5722,5695,8499,8811,8812,8815,9226,9227,9228,8564,8561,8562,5696,
-                     5697,5716,5717,8009,8008,8751,8753,8989,8030,5916,8530,7862,7863,8531,8817,8813,8570,
+                     5697,5716,5717,8751,8753,8989,8030,5916,8530,7862,7863,8531,8817,8813,8570,
                      9232,9233,8810,8816,9225,9229,9230,9231,8752,8843,5915,8814,8818,5718,1506,7984,7981,
-                     4650,4653,4654,9765,9766,9767,9774,6801,6802,6803,6804,6805,6806,6808,6810,6830,6832,
+                     4650,4653,4654,9765,9766,9767,6801,6802,6803,6804,6805,6806,6808,6810,6830,6832,
                      9211,2704,2705,2706,2707,8572,9309,9310,9311,9141,9597,9596,9599,9598
  ]
     const codigoJg =[ 5987,7135,6999,8045,8978,8114,8095,8716,7113,8094,8161,7483,7484,7488,7659,7665,7660,
@@ -311,8 +311,8 @@ const mergePedidos = async (req, res) => {
     await connection.beginTransaction();
 
     const insertPedidoSurtidoQuery = `
-      INSERT INTO pedido_surtido (pedido, tipo, codigo_ped, cantidad, registro, ubi_bahia, estado, um, clave, unido, id_usuario, cant_no_env, inicio_surtido, fin_surtido, registro_surtido, unificado, motivo)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO pedido_surtido (pedido, tipo, codigo_ped, cantidad, registro, ubi_bahia, estado, um, clave, unido, id_usuario, cant_no_env, inicio_surtido, fin_surtido, registro_surtido, unificado, motivo, fusion)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     
@@ -346,7 +346,7 @@ const mergePedidos = async (req, res) => {
 
           console.log(`Insertando item UNI: ${JSON.stringify(item)}`);
           await connection.query(insertPedidoSurtidoQuery, [
-            pedido, tipo, item.codigo_ped, item.cantidad, now, bahias.join(','), item_estado, um, item.clave, unido, usuarioId || null, cant_no_env, inicio_surtido, fin_surtido, now, item.unificado, motivo
+            pedido, tipo, item.codigo_ped, item.cantidad, now, bahias.join(','), item_estado, um, item.clave, unido, usuarioId || null, cant_no_env, inicio_surtido, fin_surtido, now, item.unificado, motivo, pedido
           ]); // Se inserta "item.unificado" individualmente por cada código de pedido
         }
       }

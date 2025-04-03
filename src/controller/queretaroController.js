@@ -1,47 +1,81 @@
+const { csCZ } = require('@mui/x-date-pickers/locales');
 const pool = require('../config/database');
+
+
 
 // Obtener proyectos con filtros dinámicos
 const getProyectoQueretaro = async (req, res) => {
-  const { zona, ruta, dia_visita } = req.query;
-  console.log("Parámetros recibidos - Zona:", zona, "Ruta:", ruta, "Día de visita:", dia_visita);
+  const { zona, ruta, dia_visita, status } = req.query;
 
   try {
-    let query = 'SELECT * FROM savawms.proyectoqueretaro WHERE 1=1';
+    let query = `
+      SELECT DISTINCT p.*, e.ID AS exhibidor_id, e.Descripción, e.Medidas, e.Material
+      FROM savawms.proyectoqueretaro p
+      LEFT JOIN savawms.exibidores e 
+      ON FIND_IN_SET(e.id, p.exibido) > 0
+      WHERE e.id IS NOT NULL`;
+
     let params = [];
 
     if (zona) {
-      query += ' AND zona = ?';
+      query += ' AND p.zona = ?';
       params.push(zona);
     }
 
     if (ruta) {
-      query += ' AND ruta = ?';
+      query += ' AND p.ruta = ?';
       params.push(ruta);
     }
 
     if (dia_visita) {
-      query += ' AND dia_visita = ?';
+      query += ' AND p.dia_visita = ?';
       params.push(dia_visita);
     }
 
-    // console.log("Consulta generada:", query, "Parámetros:", params);
+    if (status) {
+      query += ' AND p.status = ?';
+      params.push(status);
+    }
+
+    query += ' ORDER BY p.id';
 
     const [rows] = await pool.query(query, params);
-    res.json(rows);
+
+    const proyectos = {};
+    rows.forEach(row => {
+      if (!proyectos[row.id]) {
+        proyectos[row.id] = { ...row, exhibidores: [] };
+      }
+      if (row.exhibidor_id) {
+        // Evitar duplicados en exhibidores
+        const exists = proyectos[row.id].exhibidores.some(ex => ex.id === row.exhibidor_id);
+        if (!exists) {
+          proyectos[row.id].exhibidores.push({
+            id: row.exhibidor_id,
+            imagen: `/imagenes/${row.exhibidor_id}.png`, // La imagen ahora apunta a public/imagenes
+            descripcion: row.Descripción,
+            medidas: row.Medidas,
+            material: row.Material
+          });
+        }
+      }
+    });
+
+    res.json(Object.values(proyectos));
   } catch (error) {
     console.error("Error al obtener los datos:", error.message);
     res.status(500).json({ message: 'Error al obtener los datos', error: error.message });
   }
 };
 
+
+
 // Obtener datos filtrados por categoría, portafolio y segmento
 const getCategoryData = async (req, res) => {
   const { giro, portafolio, segmento } = req.params;
-  // console.log("giro:", giro, "portafolio:", portafolio, "segmento:", segmento);
 
   try {
     const tableName = mapGiroToTable(giro);
-    // console.log("Consultando tabla:", tableName);
 
     // Determinar la columna del segmento
     let segmentColumn = "";
@@ -64,7 +98,6 @@ const getCategoryData = async (req, res) => {
       `;
 
     const [categoryRows] = await pool.query(query, [portafolio]);
-    // console.log("Datos obtenidos de la base de datos (categoría):", categoryRows);
 
     // Si no hay productos base, retornar los resultados vacíos
     if (categoryRows.length === 0) {
@@ -82,7 +115,6 @@ const getCategoryData = async (req, res) => {
       `;
 
     const [priceRows] = await pool.query(queryPrices, [codigos]);
-    // console.log("Datos obtenidos de la base de datos (precios):", priceRows);
 
     const normalizeCode = (code) => code.toString().trim();
 
@@ -106,8 +138,6 @@ const getCategoryData = async (req, res) => {
     res.status(500).json({ message: `Error al obtener los datos de ${giro}`, error: error.message });
   }
 };
-
-
 
 // Mapeo de giros a tablas específicas
 const mapGiroToTable = (giro) => {
@@ -156,6 +186,7 @@ const getFilteredProyectoQueretaro = async (req, res) => {
     res.status(500).json({ message: 'Error al obtener los datos filtrados', error: error.message });
   }
 };
+
 
 
 module.exports = { getProyectoQueretaro, getCategoryData, getFilteredProyectoQueretaro };

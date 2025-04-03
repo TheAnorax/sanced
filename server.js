@@ -12,7 +12,7 @@ app.use(express.json());
 
 const connectToDatabase = async () => {
   return mysql.createPool({
-    host: 'localhost',
+    host: '66.232.105.87',
     user: 'root',
     password: '',
     database: 'savawms',

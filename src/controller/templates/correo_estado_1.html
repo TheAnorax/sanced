@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Confirmación de Pedido</title>
+</head>
+
+<body style="margin: 0; padding: 0; background-color: #f6f6f6; font-family: Arial, sans-serif;">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f6f6f6;">
+        <tr>
+            <td align="center">
+                <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width: 600px;">
+                    <!-- ENCABEZADO -->
+                    <tr>
+                        <td width="60%" style="background-color: #EA0029; padding: 20px;">
+                            <table width="100%">
+                                <tr>
+                                    <td style="font-size: 25px; color: #fff; font-weight: bold;">RASTREO Y SEGUIMIENTO
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="font-size: 13px; color: #fff; padding-top: 8px;">
+                                        Cuidamos cada detalle para<br />entregarte lo que esperas,<br />justo a tiempo
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                        <td width="40%" align="right" style="background-color: #fff; padding: 15px;">
+                            <img src="cid:logo_santul" alt="Santul" width="250" />
+                        </td>
+                    </tr>
+
+                    <!-- DATOS DE PEDIDO -->
+                    <tr>
+                        <td colspan="2" style="background-color: #EDEDED; padding: 15px;">
+                            <table width="100%">
+                                <tr>
+                                    <td style="font-size: 14px; font-weight: bold; color: #333;">
+                                        Salida del centro de distribución de Santul
+                                        <div style="font-size: 12px; font-weight: normal;">Hora local {{fechaSalida}}
+                                        </div>
+                                    </td>
+                                    <td align="right" style="font-size: 14px; font-weight: bold; color: #333;">
+                                        Pedido No.:<div style="font-size: 12px; font-weight: normal;">{{noOrden}}</div>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- CUERPO VISUAL -->
+                    <tr>
+                        <td colspan="2" style="background-color: #ffffff;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="padding: 30px 0;">
+                                <tr>
+                                    <!-- ICONOS -->
+                                    <td width="70" align="center" valign="top">
+                                        <table height="500">
+                                            <tr style="height: 33%;">
+                                                <td align="center"><img src="cid:icon_documento" width="45" /></td>
+                                            </tr>
+                                            <tr style="height: 33%;">
+                                                <td align="center"><img src="cid:icon_camion" width="45"
+                                                        style="opacity: 0.3;" /></td>
+                                            </tr>
+                                            <tr style="height: 33%;">
+                                                <td align="center"><img src="cid:icon_entregado" width="45"
+                                                        style="opacity: 0.3;" /></td>
+                                            </tr>
+                                        </table>
+                                    </td>
+
+                                    <!-- LÍNEA -->
+                                    <td width="30" align="center" valign="top">
+                                        <img src="cid:barra_1er_paso" height="500" alt="Barra" />
+                                    </td>
+
+                                    <!-- TEXTO DE ESTADOS -->
+                                    <td valign="top" style="padding-right: 20px;">
+                                        <table height="500">
+                                            <tr style="height: 33%;">
+                                                <td>
+                                                    <div style="font-weight: bold; font-size: 15px;">Recepción del
+                                                        pedido</div>
+                                                    <div style="font-size: 13px;">Se está ingresando la solicitud</div>
+                                                </td>
+                                            </tr>
+                                            <tr style="height: 33%;">
+                                                <td>
+                                                    <div style="font-weight: bold; font-size: 15px;">Salida para entrega
+                                                    </div>
+                                                    <div style="color: #999; font-size: 10px;">Tu pedido está en viaje
+                                                    </div>
+                                                    <div style="color: #999; font-size: 10px;">( NOTA. Espacio para
+                                                        poner avisos)</div>
+                                                    <div style="color: #999; font-size: 10px;">- Tu pedido tiene una
+                                                        demora de 30 min</div>
+                                                    <div style="color: #999; font-size: 10px;">- Tu pedido está próximo
+                                                        a la entrega</div>
+                                                </td>
+                                            </tr>
+                                            <tr style="height: 33%;">
+                                                <td>
+                                                    <div style="font-weight: bold; font-size: 15px;">Pedido entregado
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+
+                                    <!-- DESCARGAS -->
+                                    <!-- FILA de “Salida para entrega” con botones al lado -->
+                                <tr style="height: 33%;">
+                                    <td valign="top" style="padding-top: 20px;">
+                                        <div style="font-weight: bold; font-size: 15px;">Salida para entrega</div>
+                                        <div style="color: #999; font-size: 10px;">Tu pedido está en viaje</div>
+                                        <div style="color: #999; font-size: 10px;">( NOTA. Espacio para poner avisos)
+                                        </div>
+                                        <div style="color: #999; font-size: 10px;">- Tu pedido tiene una demora de 30
+                                            min</div>
+                                        <div style="color: #999; font-size: 10px;">- Tu pedido está próximo a la entrega
+                                        </div>
+                                    </td>
+
+                                    <!-- BOTONES DE DESCARGA (al lado derecho de "Salida para entrega") -->
+                                    <td valign="top" style="padding-top: 20px; padding-left: 20px;">
+                                        <table cellpadding="0" cellspacing="10" border="0">
+                                            <tr>
+                                                <td align="center">
+                                                    <img src="cid:download_packing" width="55"
+                                                        alt="Packing List" /><br />
+                                                    <div style="font-size: 13px; font-weight: bold;">Packing List</div>
+                                                </td>
+                                                <td align="center">
+                                                    <img src="cid:download_factura" width="55" alt="Factura" /><br />
+                                                    <div style="font-size: 13px; font-weight: bold;">Factura</div>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+
+
+
+                    </tr>
+                </table>
+            </td>
+        </tr>
+
+        <!-- FECHA Y DESTINO DENTRO DE CONTENEDOR DE 600PX -->
+        <tr>
+            <td colspan="2">
+                <table width="600" cellpadding="0" cellspacing="0" border="0"
+                    style="background-color: #EDEDED; padding: 15px 20px; font-family: Arial, sans-serif;">
+                    <tr>
+                        <td style="font-size: 13px; color: #000;">
+                            <div style="color: #999; font-size: 15px; font-family: Kohinoor Telugu Light;">
+                                Fecha de entrega estimada</div>
+                            <div style="font-weight: bold; font-size: 15px; font-family: Kohinoor Telugu Bold;">
+                                {{fechaEntrega}} - en el trascurso del dia</div>
+                            <div style="color: #999; font-size: 15px; font-family: Kohinoor Telugu Light;">
+                                Destino, {{direccion}}</div>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+
+        <!-- MARCAS (BARRA COMPLETA) -->
+        <tr>
+            <td colspan="2" align="center" style="padding: 0; margin: 0;">
+                <img src="cid:barra_logos" alt="Marcas"
+                    style="display: block; width: 100%; max-width: 600px; height: auto; border: 0; margin: 0; padding: 0;" />
+            </td>
+        </tr>
+
+
+        <!-- PIE DE PÁGINA -->
+        <tr>
+            <td colspan="2" align="center" style="font-size: 12px; color: #999; padding: 20px;">
+                Este correo fue generado automáticamente. No respondas a este mensaje.
+            </td>
+        </tr>
+    </table>
+    </td>
+    </tr>
+    </table>
+</body>
+
+</html>

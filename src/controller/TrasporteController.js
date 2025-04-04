@@ -1,7 +1,11 @@
 const pool = require("../config/database");
-const moment = require("moment");
+const moment = require('moment');
+require('moment/locale/es');
+moment.locale('es');
 const multer = require("multer");
 const xlsx = require("xlsx");
+
+
 
 const getObservacionesPorClientes = async (req, res) => {
   const { clientes } = req.body; // Recibe un array con los números de clientes
@@ -178,16 +182,108 @@ const insertarRutas = async (req, res) => {
   }
 };
 
+
+
+
 const obtenerRutasDePaqueteria = async (req, res) => {
   try {
-    const { page = 1, limit = 10000, tipo = "", guia = "" } = req.query;
+    const {
+      page = 1,
+      limit = 10000,
+      tipo = "",
+      guia = "",
+      numeroFacturaLT = "",
+      expandir = false,
+      desde = "",
+      hasta = "",
+      mes = "",
+    } = req.query;
+
     const offset = (page - 1) * limit;
+    let query = `
+      SELECT routeName, FECHA, \`NO ORDEN\`, NO_FACTURA, FECHA_DE_FACTURA, 
+             \`NUM. CLIENTE\`, \`NOMBRE DEL CLIENTE\`, ZONA, MUNICIPIO, ESTADO, 
+             OBSERVACIONES, TOTAL, PARTIDAS, PIEZAS, TARIMAS, TRANSPORTE, 
+             PAQUETERIA, GUIA, FECHA_DE_ENTREGA_CLIENTE, DIAS_DE_ENTREGA,
+             TIPO, DIRECCION, TELEFONO, TOTAL_FACTURA_LT, ENTREGA_SATISFACTORIA_O_NO_SATISFACTORIA,
+             created_at, MOTIVO, NUMERO_DE_FACTURA_LT, FECHA_DE_ENTREGA_CLIENTE, CORREO
+      FROM paqueteria
+      WHERE 1 = 1
+    `;
 
-    const now = new Date();
-    const currentMonth = now.getMonth() + 1;
-    const currentYear = now.getFullYear();
-    const today = now.toISOString().split("T")[0]; // YYYY-MM-DD
+    const params = [];
 
+    // 🚨 Si no hay búsqueda por guía ni factura, aplicar filtro por fechas para no sobrecargar
+    const estaFiltrandoPorGuia = guia && guia.trim() !== "";
+    const estaFiltrandoPorFactura = numeroFacturaLT && numeroFacturaLT.trim() !== "";
+
+    if (!estaFiltrandoPorGuia && !estaFiltrandoPorFactura) {
+      if (mes) {
+        const anioActual = new Date().getFullYear();
+        query += " AND MONTH(created_at) = ? AND YEAR(created_at) = ?";
+        params.push(mes, anioActual);
+      } else {
+        const fechaLimite = new Date();
+        fechaLimite.setDate(fechaLimite.getDate() - 3);
+        const fechaLimiteStr = fechaLimite.toISOString().slice(0, 10);
+        query += " AND created_at >= ?";
+        params.push(fechaLimiteStr);
+      }
+    }
+
+    // 🧠 Filtrar por tipo de ruta (si aplica)
+    if (tipo) {
+      query += " AND TIPO = ?";
+      params.push(tipo);
+    }
+
+    // ✅ Buscar por guía O por número de factura LT
+    if (estaFiltrandoPorGuia || estaFiltrandoPorFactura) {
+      query += " AND (";
+      const condiciones = [];
+
+      if (estaFiltrandoPorGuia) {
+        condiciones.push("GUIA = ?");
+        params.push(guia.trim());
+      }
+
+      if (numeroFacturaLT) {
+        query += " OR TRIM(NUMERO_DE_FACTURA_LT) = ?";
+        params.push(numeroFacturaLT.trim());
+      }
+
+
+      query += condiciones.join(" OR ") + ")";
+    }
+
+    // 🧾 Paginación y orden
+    query += " ORDER BY created_at DESC LIMIT ? OFFSET ?";
+    params.push(parseInt(limit), parseInt(offset));
+
+    const [rows] = await pool.query(query, params);
+    res.json(rows);
+  } catch (error) {
+    console.error("Error al obtener rutas de paquetería:", error.message);
+    res.status(500).json({ message: "Error al obtener las rutas de paquetería" });
+  }
+};
+
+
+
+
+const obtenerRutasParaPDF = async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 10000,
+      tipo = "",
+      guia = "",
+      expandir = false,
+      desde = "",
+      hasta = ""
+    } = req.query;
+
+    const offset = (page - 1) * limit;
     let query = `
       SELECT routeName, FECHA, \`NO ORDEN\`, NO_FACTURA, FECHA_DE_FACTURA, 
              \`NUM. CLIENTE\`, \`NOMBRE DEL CLIENTE\`, ZONA, MUNICIPIO, ESTADO, 
@@ -196,11 +292,34 @@ const obtenerRutasDePaqueteria = async (req, res) => {
              TIPO, DIRECCION, TELEFONO, TOTAL_FACTURA_LT, ENTREGA_SATISFACTORIA_O_NO_SATISFACTORIA,
              created_at, MOTIVO, NUMERO_DE_FACTURA_LT, FECHA_DE_ENTREGA_CLIENTE
       FROM paqueteria
-      WHERE MONTH(FECHA) = ? AND YEAR(FECHA) = ?
+      WHERE 1 = 1
     `;
 
-    const params = [currentMonth, currentYear];
+    const params = [];
 
+    // 🔍 Si se pasan fechas personalizadas, usar ese rango
+    if (desde && hasta) {
+      query += " AND created_at BETWEEN ? AND ?";
+      params.push(desde, hasta);
+    }
+    // 🗓 Si no hay fechas, tipo, ni guía, y no se pide expandir, mostrar solo últimos 3 días
+    else if (!expandir && !tipo && !guia) {
+      // const fechaLimite = new Date();
+      // fechaLimite.setDate(fechaLimite.getDate() - 3);
+      // const fechaLimiteStr = fechaLimite.toISOString().slice(0, 10);
+      // query += " AND created_at >= ?";
+      // params.push(fechaLimiteStr);
+    }
+    // 🗓 Si hay filtros o se activa expandir, mostrar datos del mes actual
+    else {
+      const now = new Date();
+      const currentMonth = now.getMonth() + 1;
+      const currentYear = now.getFullYear();
+      query += " AND MONTH(created_at) = ? AND YEAR(created_at) = ?";
+      params.push(currentMonth, currentYear);
+    }
+
+    // 🔧 Filtros adicionales
     if (tipo) {
       query += " AND TIPO = ?";
       params.push(tipo);
@@ -211,22 +330,19 @@ const obtenerRutasDePaqueteria = async (req, res) => {
       params.push(guia);
     }
 
-    // 🔹 Ordenamiento: primero los del día de hoy, luego por TRANSPORTE A-Z
-    query += `
-      ORDER BY 
-        (DATE(created_at) = ?) DESC,  -- Primero pedidos de hoy
-        TRANSPORTE ASC                -- Luego ordenar alfabéticamente por transporte
-      LIMIT ? OFFSET ?
-    `;
+    // 🔄 Orden y paginación
+    query += " ORDER BY created_at DESC LIMIT ? OFFSET ?";
+    params.push(parseInt(limit), parseInt(offset));
 
-    params.push(today, parseInt(limit), parseInt(offset));
-
+    // 🧪 Ejecutar consulta
     const [rows] = await pool.query(query, params);
 
     res.json(rows);
   } catch (error) {
     console.error("Error al obtener rutas de paquetería:", error.message);
-    res.status(500).json({ message: "Error al obtener las rutas de paquetería" });
+    res
+      .status(500)
+      .json({ message: "Error al obtener las rutas de paquetería" });
   }
 };
 
@@ -1344,6 +1460,140 @@ const obtenerResumenDelDia = async (req, res) => {
 };
 
 
+
+// funcion para mandar correro 
+
+
+const path = require("path");
+const fs = require("fs/promises");
+const nodemailer = require("nodemailer");
+
+
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: "j72525264@gmail.com",
+    pass: "cnaa haoa izwh lerm", // App password de Gmail
+  },
+});
+
+const enviarCorreo = async (req, res) => {
+  const { noOrden } = req.body;
+
+  if (!noOrden) {
+    return res.status(400).json({ success: false, message: "Falta el número de orden" });
+  }
+
+  try {
+    // Buscar pedido
+    const [rows] = await pool.query(
+      `SELECT CORREO, \`NOMBRE DEL CLIENTE\`, TOTAL, \`NO ORDEN\`, intentos, created_at,DIRECCION
+       FROM paqueteria 
+       WHERE \`NO ORDEN\` = ? 
+       LIMIT 1`,
+      [noOrden]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, message: "Orden no encontrada" });
+    }
+
+    const pedido = rows[0];
+
+    if (!pedido.CORREO) {
+      return res.status(400).json({ success: false, message: "El pedido no tiene correo registrado" });
+    }
+
+    if (pedido.intentos >= 3) {
+      return res.status(400).json({ success: false, message: "Ya se alcanzaron los 3 intentos de envío." });
+    }
+
+    const estado = 1; // O 2 o 3 según lo que quieras probar
+    const nombreArchivoHTML = `correo_estado_${estado}.html`;
+    const rutaHTML = path.join(__dirname, "templates", nombreArchivoHTML);
+    const rutaLogo = path.join(__dirname, "templates", "LOGO TRACKING SANTUL.png");
+    const fechaEntrega = moment(pedido.created_at).add(2, 'days').format("D [de] MMMM [de] YYYY");
+    const fechaSalida = moment(pedido.created_at).format('D [de] MMMM [de] YYYY, HH:mm [hrs]');
+
+
+    // Leer HTML
+    let html = await fs.readFile(rutaHTML, "utf8");
+
+    // Reemplazo de variables
+    html = html
+      .replace(/{{nombreCliente}}/g, pedido["NOMBRE DEL CLIENTE"])
+      .replace(/{{noOrden}}/g, pedido["NO ORDEN"])
+      .replace(/{{total}}/g, parseFloat(pedido.TOTAL).toFixed(2))
+      .replace(/{{fechaSalida}}/g, fechaSalida)
+      .replace(/{{fechaEntrega}}/g, fechaEntrega)
+      .replace(/{{direccion}}/g, pedido.DIRECCION);
+
+
+    // Enviar correo con imagen incrustada
+    await transporter.sendMail({
+      from: `"Logística Sanced" <j72525264@gmail.com>`,
+      to: pedido.CORREO,
+      subject: `Seguimiento de pedido #${pedido["NO ORDEN"]}`,
+      html,
+      attachments: [
+        {
+          filename: "logo_santul.png",
+          path: path.join(__dirname, "templates", "LOGO TRACKING SANTUL.png"),
+          cid: "logo_santul"
+        },
+        {
+          filename: "icon_documento.png",
+          path: path.join(__dirname, "templates", "DOCUMENTO ON.png"),
+          cid: "icon_documento"
+        },
+        {
+          filename: "icon_camion.png",
+          path: path.join(__dirname, "templates", "CAMION OFF.png"),
+          cid: "icon_camion"
+        },
+        {
+          filename: "icon_entregado.png",
+          path: path.join(__dirname, "templates", "ENTREGA OFF.png"),
+          cid: "icon_entregado"
+        },
+        {
+          filename: "barra_1er_paso.png",
+          path: path.join(__dirname, "templates", "BARRA 1ER PASO.png"),
+          cid: "barra_1er_paso"
+        },
+        {
+          filename: 'BARRA LOGOS.jpg',
+          path: path.join(__dirname, 'templates', 'BARRA LOGOS.jpg'),
+          cid: 'barra_logos' // debe coincidir con el 'src' en el HTML
+        },
+        {
+          filename: 'DOWNLOAD PACKING LIST.png',
+          path: path.join(__dirname, 'templates', 'DOWNLOAD PACKING LIST.png'),
+          cid: 'download_packing'
+        },
+        {
+          filename: 'DOWNLOAD FACTURA.png',
+          path: path.join(__dirname, 'templates', 'DOWNLOAD FACTURA.png'),
+          cid: 'download_factura'
+        },
+      ]
+      ,
+    });
+
+    // Actualizar intentos
+    // await pool.query(
+    //   "UPDATE paqueteria SET intentos = intentos + 1 WHERE `NO ORDEN` = ?",
+    //   [noOrden]
+    // );
+
+    res.json({ success: true, message: `Correo del estado ${estado} enviado correctamente.` });
+  } catch (error) {
+    console.error("❌ Error al enviar correo:", error);
+    res.status(500).json({ success: false, message: "Error interno al enviar el correo." });
+  }
+};
+
+
 module.exports = {
   getObservacionesPorClientes,
   getUltimaFechaEmbarque,
@@ -1371,4 +1621,6 @@ module.exports = {
   obtenerRutaPorId,
   obtenerResumenDelDia,
   getFusionInfo,
+  obtenerRutasParaPDF,
+  enviarCorreo
 };

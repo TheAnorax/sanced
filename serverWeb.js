@@ -38,6 +38,7 @@ const bodyParser = require('body-parser');
 app.use(bodyParser.json({ limit: '50mb' })); // Aumenta el límite si es necesario
 app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 
+
 app.use(cors());
 app.use(express.json());
 app.use('/api', authRoutes);

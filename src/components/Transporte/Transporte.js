@@ -13,19 +13,53 @@ import Autocomplete from "@mui/material/Autocomplete";
 import { CloudUpload } from "@mui/icons-material";
 import CompareArrowsIcon from "@mui/icons-material/CompareArrows";
 import { Tooltip } from "@mui/material";
-import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
-
+import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
+import EmailIcon from '@mui/icons-material/Email';
+import { NumerosALetras } from "numero-a-letras";
 
 import axios from "axios";
 import {
-  Typography, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Box, Button, Modal, Select, MenuItem, FormControl,
-  InputLabel, AppBar, Tabs, Tab, IconButton, Snackbar, Checkbox, Grid, Dialog, DialogTitle, DialogContent, DialogActions, TablePagination, Card, CircularProgress, CardContent, CardActions,
-
+  Typography,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+  Box,
+  Button,
+  Modal,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  AppBar,
+  Tabs,
+  Tab,
+  IconButton,
+  Snackbar,
+  Checkbox,
+  Grid,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TablePagination,
+  Card,
+  CircularProgress,
+  CardContent,
+  CardActions,
 } from "@mui/material";
 
 import { jsPDF } from "jspdf";
 import "jspdf-autotable";
-import logo from "./logos.jpg";
+import logo from "./Packing.jpg";
+import infoBancaria from "./informacion_bancaria.jpg";
+import barraFooter from "./BARRA.jpg";
+
+// import logo from "./logos.jpg";
 
 const hasExpired = (timestamp) => {
   const now = new Date().getTime();
@@ -313,7 +347,7 @@ function Transporte() {
     }
   };
 
-  //fusion de los pedidos 
+  //fusion de los pedidos
 
   const fetchFusions = async (data) => {
     const orderNumbers = data.map((d) => d["NO ORDEN"]);
@@ -377,7 +411,6 @@ function Transporte() {
     }
   };
 
-
   //estos son lo del estatus
 
   const handleRowClick = (routeData) => {
@@ -409,20 +442,32 @@ function Transporte() {
   }, []);
 
   useEffect(() => {
-    if (
-      data.length > 0 ||
-      Object.keys(groupedData).length > 0 ||
-      sentRoutesData.length > 0
-    ) {
-      localStorage.setItem("transporteData", JSON.stringify(data));
-      localStorage.setItem(
-        "transporteGroupedData",
-        JSON.stringify(groupedData)
-      );
-      localStorage.setItem("sentRoutesData", JSON.stringify(sentRoutesData)); // Guardar los datos de la segunda tabla
-      localStorage.setItem("transporteTimestamp", new Date().getTime());
+    try {
+      if (
+        data.length > 0 ||
+        Object.keys(groupedData).length > 0 ||
+        sentRoutesData.length > 0
+      ) {
+        localStorage.setItem("transporteData", JSON.stringify(data));
+        localStorage.setItem("transporteGroupedData", JSON.stringify(groupedData));
+
+        // Verificar si sentRoutesData cabe en localStorage
+        const strSentRoutes = JSON.stringify(sentRoutesData);
+        const sizeInKB = new Blob([strSentRoutes]).size / 1024;
+
+        if (sizeInKB < 4800) {
+          localStorage.setItem("sentRoutesData", strSentRoutes);
+        } else {
+          console.warn("⚠️ No se guardó 'sentRoutesData': excede los 5MB (~" + sizeInKB.toFixed(2) + "KB)");
+        }
+
+        localStorage.setItem("transporteTimestamp", new Date().getTime());
+      }
+    } catch (error) {
+      console.error("❌ Error guardando en localStorage:", error);
     }
   }, [data, groupedData, sentRoutesData]);
+
 
   useEffect(() => {
     fetchPaqueteriaRoutes(); // Llama a la API para cargar las rutas de paquetería
@@ -563,8 +608,7 @@ function Transporte() {
       } ${row["Codigo Postal"] || ""} ${row["Estado"] || ""}`,
     CORREO: row["E-mail"] || "",
     TELEFONO: row["No. Telefonico"] || "",
-    "EJECUTIVO VTAS": row["Ejecutico Vtas"] || ""
-
+    "EJECUTIVO VTAS": row["Ejecutico Vtas"] || "",
   });
 
   const handleFileUpload = (e) => {
@@ -1194,31 +1238,27 @@ function Transporte() {
     );
   };
 
-  const fetchPaqueteriaRoutes = async () => {
+  const fetchPaqueteriaRoutes = async ({
+    filtro = "",
+    desde = "",
+    hasta = "",
+    mes = "",
+  } = {}) => {
     try {
-      // console.time("Tiempo de carga de rutas");
+      let url = `http://localhost:3007/api/Trasporte/rutas?expandir=true`;
 
-      const response = await fetch(
-        "http://localhost:3007/api/Trasporte/rutas"
-      );
+      if (filtro) url += `&guia=${filtro}`;
+      if (desde && hasta) url += `&desde=${desde}&hasta=${hasta}`;
+      if (mes) url += `&mes=${mes}`;
+
+      const response = await fetch(url);
       const data = await response.json();
 
-      console.timeEnd("Tiempo de carga de rutas");
-
-      // console.log("✅ Datos recibidos desde la API:", data);
-
-      if (Array.isArray(data) && data.length > 0) {
-        console.time("Tiempo de enriquecimiento de datos");
-
-        setSentRoutesData(data); // Guarda directamente los datos en el estado
-
-        console.timeEnd("Tiempo de enriquecimiento de datos");
-        console.log("✅ Estado actualizado con las rutas:", data);
-      } else {
-        console.warn("⚠ No se encontraron rutas de paquetería");
+      if (Array.isArray(data)) {
+        setSentRoutesData(data); // Aquí actualizas la tabla
       }
     } catch (error) {
-      console.error("Error al obtener las rutas de paquetería:", error.message);
+      console.error("Error al obtener rutas:", error);
     }
   };
 
@@ -1375,8 +1415,6 @@ function Transporte() {
                 "Sin observaciones disponibles",
               TIPO: tipoRutaActual, // ✅ Asegurar que se inserta el tipo correcto
               GUIA: guiaEnviar, // ✅ Asignar "NA" si es Directa o Venta Empleado
-
-
             });
           });
         } else {
@@ -1524,7 +1562,9 @@ function Transporte() {
         setDirectaModalOpen(false);
 
         // Actualizar los datos en la tabla sin recargar la página
-        fetchPaqueteriaRoutes();
+        const mesActual =
+          selectedMonth || localStorage.getItem("mesSeleccionado") || "";
+        fetchPaqueteriaRoutes({ mes: mesActual });
       } else {
         const errorData = await response.json();
         console.error("Error al actualizar:", errorData);
@@ -1541,28 +1581,96 @@ function Transporte() {
     const allColumns = [
       {
         name: "NO ORDEN",
-        role: [ "Admin","Master", "Trans", "PQ1", "EB1", "Paquet", "Control", "Rep", "Tran", "Rep", "Embar", ],
+        role: [
+          "Admin",
+          "Master",
+          "Trans",
+          "PQ1",
+          "EB1",
+          "Paquet",
+          "Control",
+          "Rep",
+          "Tran",
+          "Rep",
+          "Embar",
+        ],
       },
       {
         name: "ESTADO",
-        role: [ "Admin", "Master", "Trans", "PQ1", "EB1", "Paquet", "Embar", "Control", "Rep", "Tran", "Rep",],
+        role: [
+          "Admin",
+          "Master",
+          "Trans",
+          "PQ1",
+          "EB1",
+          "Paquet",
+          "Embar",
+          "Control",
+          "Rep",
+          "Tran",
+          "Rep",
+        ],
       },
       {
         name: "FECHA",
-        role: [ "Admin", "Master", "Trans", "PQ1", "EB1", "Paquet", "Embar", "Rep", "Tran", "Rep", ],
+        role: [
+          "Admin",
+          "Master",
+          "Trans",
+          "PQ1",
+          "EB1",
+          "Paquet",
+          "Embar",
+          "Rep",
+          "Tran",
+          "Rep",
+        ],
       },
       {
         name: "NUM CLIENTE",
-        role: [ "Admin", "Master", "Trans", "PQ1", "EB1", "Paquet", "Embar", "Rep", "Tran", "Rep", ],
+        role: [
+          "Admin",
+          "Master",
+          "Trans",
+          "PQ1",
+          "EB1",
+          "Paquet",
+          "Embar",
+          "Rep",
+          "Tran",
+          "Rep",
+        ],
       },
       {
         name: "NOMBRE DEL CLIENTE",
-        role: [ "Admin", "Master", "Trans", "PQ1", "EB1", "Control", "Paquet", "Embar", "Rep", "Tran", "Rep", ],
+        role: [
+          "Admin",
+          "Master",
+          "Trans",
+          "PQ1",
+          "EB1",
+          "Control",
+          "Paquet",
+          "Embar",
+          "Rep",
+          "Tran",
+          "Rep",
+        ],
       },
       {
         name: "MUNICIPIO",
-        role: [ "Admin",
-          "Master", "Trans", "PQ1", "EB1", "Paquet", "Embar", "Rep", "Tran", "Rep",],
+        role: [
+          "Admin",
+          "Master",
+          "Trans",
+          "PQ1",
+          "EB1",
+          "Paquet",
+          "Embar",
+          "Rep",
+          "Tran",
+          "Rep",
+        ],
       },
       {
         name: "ESTADO",
@@ -1581,17 +1689,7 @@ function Transporte() {
       },
       {
         name: "OBSERVACIONES",
-        role: [
-          "Admin",
-          "Master",
-          "Trans",
-          "PQ1",
-          "Paquet",
-          "Embar",
-          "Rep",
-          "Tran",
-          "Rep",
-        ],
+        role: ["Admin", "Master", "Trans", "PQ1", "Rep", "Tran", "Rep"],
       },
       {
         name: "TOTAL",
@@ -1633,7 +1731,16 @@ function Transporte() {
       },
       {
         name: "NUMERO DE FACTURA",
-        role: [ "Admin","Master", "Trans", "Rep", "Control", "Tran", "Rep", "Embar", ],
+        role: [
+          "Admin",
+          "Master",
+          "Trans",
+          "Rep",
+          "Control",
+          "Tran",
+          "Rep",
+          "Embar",
+        ],
       },
       {
         name: "FECHA DE FACTURA",
@@ -1645,15 +1752,42 @@ function Transporte() {
       },
       {
         name: "DIA EN QUE ESTA EN RUTA",
-        role: [ "Admin", "Master", "Trans", "Rep", "EB1", "Embar", "Tran", "Rep", ],
+        role: [
+          "Admin",
+          "Master",
+          "Trans",
+          "Rep",
+          "EB1",
+          "Embar",
+          "Tran",
+          "Rep",
+        ],
       },
       {
         name: "HORA DE SALIDA",
-        role: [ "Admin", "Master", "Trans", "Rep", "EB1", "Embar", "Tran", "Rep", ],
+        role: [
+          "Admin",
+          "Master",
+          "Trans",
+          "Rep",
+          "EB1",
+          "Embar",
+          "Tran",
+          "Rep",
+        ],
       },
       {
         name: "CAJAS",
-        role: [ "Admin", "Master", "Trans", "Rep", "PQ1", "Paquet", "Tran", "Rep", ],
+        role: [
+          "Admin",
+          "Master",
+          "Trans",
+          "Rep",
+          "PQ1",
+          "Paquet",
+          "Tran",
+          "Rep",
+        ],
       },
       {
         name: "TARIMAS",
@@ -1661,7 +1795,18 @@ function Transporte() {
       },
       {
         name: "TRANSPORTE",
-        role: [ "Admin", "Master", "Trans", "Rep", "PQ1", "Paquet", "Control", "Tran", "Rep", "Embar", ],
+        role: [
+          "Admin",
+          "Master",
+          "Trans",
+          "Rep",
+          "PQ1",
+          "Paquet",
+          "Control",
+          "Tran",
+          "Rep",
+          "Embar",
+        ],
       },
       {
         name: "PAQUETERIA",
@@ -1724,6 +1869,7 @@ function Transporte() {
           "Rep",
           "Tran",
           "Rep",
+          "Embar",
         ],
       },
       { name: "MOTIVO", role: ["Admin", "Master", "Trans", "Tran", "Rep"] },
@@ -1850,8 +1996,7 @@ function Transporte() {
 
       console.log(`🔍 Comparando: ${rowDate} === ${today}`);
 
-      return (row["TIPO"]?.toLowerCase?.() === "directa") && rowDate === today;
-
+      return row["TIPO"]?.toLowerCase?.() === "directa" && rowDate === today;
     });
 
     if (filteredData.length === 0) {
@@ -1955,196 +2100,162 @@ function Transporte() {
     console.log("✅ Archivo Excel generado correctamente.");
   };
 
+  // ✅ Versión con tabla de IMPORTE AGREGADA al final (corregida)
+
+  const totalPagesExp = "___total_pages___";
+
+  function addPageNumber(doc) {
+    const pageCount = doc.internal.getNumberOfPages();
+    if (pageCount >= 1) {
+      doc.setPage(1);
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(0, 0, 0);
+      doc.text(`PÁGINA 1 de ${pageCount}`, 200, 55, { align: "right" });
+    }
+
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      const pageHeight = doc.internal.pageSize.height;
+      doc.addImage(barraFooter, "JPEG", 10, pageHeight - 15, 190, 8);
+    }
+  }
+
+  function verificarEspacio(doc, currentY, filas = 10, margenInferior = 20) {
+    const pageHeight = doc.internal.pageSize.height;
+    const alturaEstim = 10 + filas * 6;
+    if (currentY + alturaEstim > pageHeight - margenInferior) {
+      doc.addPage();
+      return 20;
+    }
+    return currentY;
+  }
+
   const generatePDF = async (pedido) => {
     try {
-      // Paso 1: Obtener datos de la API de rutas
       const responseRoutes = await fetch(
-        "http://localhost:3007/api/Trasporte/rutas"
+        "http://localhost:3007/api/Trasporte/ruta-unica"
       );
-
       const routesData = await responseRoutes.json();
-
-      if (!Array.isArray(routesData) || routesData.length === 0) {
-        alert("No se encontraron rutas de paquetería");
-        return;
-      }
-
-      // Paso 2: Buscar la ruta que corresponde al pedido
-      const route = routesData.find((route) => route["NO ORDEN"] === pedido);
-      if (!route) {
-        alert("No se encontró la ruta para este pedido.");
-        return;
-      }
-
-      // Obtener los datos de la ruta (Cliente, Dirección, Factura)
-      const nombreCliente = route["NOMBRE DEL CLIENTE"] || "No disponible";
-      const numeroFactura = route["NO_FACTURA"] || "No disponible";
-      const direccion = cleanAddress(route["DIRECCION"]) || "No disponible";
-      const numero = route["NUM. CLIENTE"] || "No disponible";
-
-      const telefono = route["TELEFONO"] || "Sin numero de Contacto";
+      const route = routesData.find(
+        (r) => String(r["NO ORDEN"]) === String(pedido)
+      );
+      if (!route) return alert("No se encontró la ruta");
 
       const responseEmbarque = await fetch(
         `http://localhost:3007/api/Trasporte/embarque/${pedido}`
       );
       const data = await responseEmbarque.json();
+      if (!data || !Array.isArray(data) || data.length === 0)
+        return alert("No hay productos");
 
-      if (!Array.isArray(data) || data.length === 0) {
-        alert("No hay productos disponibles para este pedido.");
-        return;
+      const doc = new jsPDF();
+      const marginLeft = 10;
+      let currentY = 26;
+
+      doc.setFillColor(240, 36, 44);
+      doc.rect(10, 10, 190, 8, "F");
+      doc.setTextColor(255, 255, 255);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10.5);
+      doc.text("FORMATO PARA RECEPCIÓN DEL PEDIDO", 105, 15.5, {
+        align: "center",
+      });
+
+      doc.addImage(logo, "JPEG", 145, 23, 50, 18);
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.setTextColor(84, 84, 84);
+      doc.text("Santul Herramientas S.A. de C.V.", marginLeft, currentY);
+      currentY += 4;
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "normal");
+      doc.text(
+        "Henry Ford 257 C y D, Col. Bondojito, Gustavo A. Madero,",
+        marginLeft,
+        currentY
+      );
+      currentY += 4;
+      doc.text("Ciudad de México, C.P. 07850, México,", marginLeft, currentY);
+      currentY += 4;
+      doc.text("Tel.: 58727290", marginLeft, currentY);
+      currentY += 4;
+      doc.text("R.F.C. SHE130912866", marginLeft, currentY);
+      currentY += 5;
+      doc.setDrawColor(240, 36, 44);
+      doc.setLineWidth(0.5);
+      doc.line(10, currentY, 200, currentY);
+      currentY += 4;
+
+      const nombreCliente = route["NOMBRE DEL CLIENTE"] || "No disponible";
+      const numeroFactura = route["NO_FACTURA"] || "No disponible";
+      const direccion = cleanAddress(route["DIRECCION"]) || "No disponible";
+      const numero = route["NUM. CLIENTE"] || "No disponible";
+      const telefono = route["TELEFONO"] || "Sin número";
+      const rawTotal = route["TOTAL"];
+      let totalImporte = 0;
+      if (
+        rawTotal &&
+        !isNaN(parseFloat(String(rawTotal).replace(/[^0-9.-]+/g, "")))
+      ) {
+        totalImporte = parseFloat(String(rawTotal).replace(/[^0-9.-]+/g, ""));
       }
 
-      const productosConCaja = data.filter(
-        (item) => item.caja && item.caja > 0
-      );
-
-      const productosSinCaja = data.filter(
-        (item) => !item.caja || item.caja === 0
-      );
-
-      // Crear instancia de jsPDF
-      const doc = new jsPDF();
-
-      // Ajustar logo para que quede a la izquierda, sin sobrepasar el texto
-      doc.addImage(logo, "JPEG", 140, 5, 65, 25); // Mueve el logo más a la derecha y ajusta tamaño
-
-      // Definir márgenes y tamaños de fuente
-      const marginLeft = 15;
-      const marginTop = 20;
-      let currentY = marginTop;
-
-      // Encabezado con formato formal
-      doc.setFont("times", "normal"); // Fuente Arial sin negritas
-      doc.setFontSize(10); // Aumenta tamaño a 12
-
-      doc.text("SANTUL HERRAMIENTAS S.A. DE C.V.", marginLeft, currentY);
-      currentY += 6;
-
-      doc.text(`VT: ${pedido}`, marginLeft, currentY);
-      doc.text(`Fecha: ${new Date().toLocaleDateString()}`, 50, currentY); // Mueve la fecha a la derecha
-      currentY += 7;
-
-      doc.text(
-        `Cliente: ${nombreCliente} Núm. Cliente: ${numero} Núm. Teléfono: ${telefono}`,
-        marginLeft,
-        currentY
-      );
-      currentY += 7; // Baja el cursor para separar
-
-      doc.text(
-        `No Factura: ${numeroFactura} Dirección: ${direccion} `,
-        marginLeft,
-        currentY
-      );
-      currentY += 8;
-      // Definir título del recuadro
-      const titulo = "INSTRUCCIONES DE ENTREGA";
-
-      // Definir las instrucciones con el texto proporcionado
-      const instruccionesIzquierda =
-        "En caso de detectar cualquier irregularidad (daños, faltantes, o manipulaciones),";
-      const instruccionesDerecha =
-        "Favor de comunicarse de inmediato al departamento de atención al cliente al número: 123-456-7890.\nAgradecemos su confianza y preferencia.";
-
-      // Posiciones y dimensiones
-      const cajaX = marginLeft;
-      const cajaY = currentY;
-      const cajaAncho = 180;
-      const padding = 6;
-      const columnaAncho = cajaAncho / 2 - 10; // Ajuste para que el texto no se salga
-
-      // Calcular altura del cuadro en base al texto
-      doc.setFont("times", "normal");
+      doc.setFont("helvetica", "bold");
       doc.setFontSize(9.5);
-
-      const lineasIzquierda = doc.splitTextToSize(
-        instruccionesIzquierda,
-        columnaAncho
-      );
-
-      const lineasDerecha = doc.splitTextToSize(
-        instruccionesDerecha,
-        columnaAncho
-      );
-
-      const lineasTotales = Math.max(
-        lineasIzquierda.length,
-        lineasDerecha.length
-      );
-
-      const cajaAlto = lineasTotales * 5 + padding; // Ajustar altura con espaciado extra
-
-      // Dibujar el borde del recuadro
-      doc.rect(cajaX, cajaY, cajaAncho, cajaAlto, "S");
-
-      // Dibujar el fondo gris para el título
-      doc.setFillColor(200, 200, 200); // Gris claro
-      doc.rect(cajaX, cajaY, cajaAncho, 8, "F"); // Fondo del título
-
-      // Agregar el título centrado
-      doc.setFont("times", "bold");
-      doc.setFontSize(10);
       doc.setTextColor(0, 0, 0);
       doc.text(
-        titulo,
-        cajaX + cajaAncho / 2 - doc.getTextWidth(titulo) / 2,
-        cajaY + 5.5
+        `CLIENTE NO.: ${numero}                      NOMBRE DEL CLIENTE: ${nombreCliente}`,
+        marginLeft,
+        currentY
       );
+      currentY += 4;
+      doc.text(
+        `TELÉFONO: ${telefono}     DIRECCIÓN: ${direccion}`,
+        marginLeft,
+        currentY
+      );
+      currentY += 4;
+      doc.text(`VT: ${pedido}`, marginLeft, currentY);
+      currentY += 4;
+      doc.text(`FACTURA No.: ${numeroFactura}`, marginLeft, currentY);
+      currentY += 4;
 
-      // Agregar el contenido en dos columnas
-      doc.setFont("times", "normal");
-      doc.setFontSize(9.5); // Tamaño correcto
+      const infoY = currentY;
+      doc.setFillColor(255, 255, 0);
+      doc.rect(marginLeft, infoY, 190, 11, "F");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9.5);
       doc.setTextColor(0, 0, 0);
+      doc.text("INFORMACIÓN IMPORTANTE", 105, infoY + 4, { align: "center" });
+      doc.setFontSize(5.3);
+      doc.text(
+        "En caso de detectar cualquier irregularidad (daños, faltantes, o manipulaciones), Favor de comunicarse de inmediato al departamento de atención al cliente al número:(55) 58727290 EXT.: (8815, 8819)",
+        105,
+        infoY + 9,
+        { align: "center", maxWidth: 180 }
+      );
+      currentY = infoY + 15;
 
-      doc.text(lineasIzquierda, cajaX + 5, cajaY + 13);
-      doc.text(lineasDerecha, cajaX + columnaAncho + 15, cajaY + 13);
+      const productosConCaja = data.filter((i) => i.caja && i.caja > 0);
+      const productosSinCaja = data.filter((i) => !i.caja || i.caja === 0);
 
-      // Ajustar la posición después del recuadro
-      currentY += cajaAlto + 5;
-
-      currentY += 10; // Agrega más espacio antes de la tabla
-
-      // Agrupación de productos y tablas sigue igual
-      const cajasAgrupadas = productosConCaja.reduce((groups, item) => {
-        if (!groups[item.caja]) {
-          groups[item.caja] = [];
-        }
-        groups[item.caja].push(item);
-        return groups;
-      }, {});
-
-      let totalPZ = 0;
-      let totalINNER_MASTER = 0;
-      let totalProductos = 0;
-      let totalTarimas = 0;
-      let totalAtados = 0;
-
-      productosConCaja.forEach((item) => {
-        totalPZ += item._pz || 0;
-        totalINNER_MASTER += (item._inner || 0) + (item._master || 0);
-        totalProductos += item.cantidad || 0;
-        totalTarimas += item.tarimas || 0;
-        totalAtados += item.atados || 0;
-      });
-
-      productosSinCaja.forEach((item) => {
-        totalPZ += item._pz || 0;
-        totalINNER_MASTER += (item._inner || 0) + (item._master || 0);
-        totalProductos += item.cantidad || 0;
-        totalTarimas += item.tarimas || 0;
-        totalAtados += item.atados || 0;
-      });
-
-      const ultimasCajas = Object.keys(cajasAgrupadas).sort((a, b) => a - b);
+      const totalINNER_MASTER = productosSinCaja.reduce(
+        (s, i) => s + (i._inner || 0) + (i._master || 0),
+        0
+      );
       const totalCajasArmadas =
-        parseInt(ultimasCajas[ultimasCajas.length - 1]) || 0;
+        parseInt(Math.max(...productosConCaja.map((i) => i.caja))) || 0;
       const totalCajas = totalINNER_MASTER + totalCajasArmadas;
+      const totalTarimas = data.reduce((s, i) => s + (i.tarimas || 0), 0);
+      const totalAtados = data.reduce((s, i) => s + (i.atados || 0), 0);
 
-      // Insertar los totales en una tabla
+      currentY = verificarEspacio(doc, currentY, 2);
       doc.autoTable({
         startY: currentY,
         head: [
-          ["INNER/MASTER", "Tarimas", "Atados", "Cajas Armadas", "Total Cajas"],
+          ["INNER/MASTER", "TARIMAS", "ATADOS", "CAJAS ARMADAS", "TOTAL CAJAS"],
         ],
         body: [
           [
@@ -2156,66 +2267,59 @@ function Transporte() {
           ],
         ],
         theme: "grid",
-        styles: {
-          halign: "center",
-          fontSize: 10,
-          cellPadding: 3,
-          lineColor: [0, 0, 0],
-        },
-        headStyles: {
-          fontStyle: "time",
-          textColor: [0, 0, 0], // Texto negro
-          fillColor: [240, 240, 240], // Fondo gris claro para cabecera
-          lineColor: [0, 0, 0], // Bordes negros
-          lineWidth: 0.5,
-        },
         margin: { left: 10 },
+        tableWidth: 190,
+        styles: { fontSize: 9, halign: "center", cellPadding: 3 },
+        headStyles: { fillColor: [210, 210, 210], textColor: [0, 0, 0] },
       });
-      currentY = doc.lastAutoTable.finalY + 10;
+      currentY = doc.lastAutoTable.finalY + 4;
 
-      // Mostrar las cajas agrupadas
-      Object.keys(cajasAgrupadas).forEach((caja) => {
-        const productosDeCaja = cajasAgrupadas[caja];
+      const cajasAgrupadas = productosConCaja.reduce((acc, item) => {
+        if (!acc[item.caja]) acc[item.caja] = [];
+        acc[item.caja].push(item);
+        return acc;
+      }, {});
+
+      for (const caja in cajasAgrupadas) {
+        const productos = cajasAgrupadas[caja];
+        currentY = verificarEspacio(doc, currentY, 1);
 
         doc.autoTable({
           startY: currentY,
           head: [[`Productos en la Caja ${caja}`]],
           body: [],
           theme: "grid",
-          styles: {
-            halign: "center",
-            fontSize: 10,
-            cellPadding: 3,
-            lineColor: [0, 0, 0],
-          },
+          styles: { halign: "center", fontSize: 9 },
           headStyles: {
-            fontStyle: "time",
-            textColor: [0, 0, 0], // Texto negro
-            fillColor: [240, 240, 240], // Fondo gris claro para cabecera
-            lineColor: [0, 0, 0], // Bordes negros
-            lineWidth: 0.5,
+            fillColor: [255, 255, 255], // Color verde
+            textColor: [0, 0, 0],
+            fontStyle: "bold",
           },
+          margin: { left: 10 },
+          tableWidth: 190,
         });
-        currentY = doc.lastAutoTable.finalY + 10;
+
+        currentY = doc.lastAutoTable.finalY;
+        currentY = verificarEspacio(doc, currentY, productos.length);
 
         doc.autoTable({
           startY: currentY,
           head: [
             [
-              "Sku",
-              "Descripción",
-              "Cantidad",
+              "SKU",
+              "DESCRIPCIÓN",
+              "CANTIDAD",
               "UM",
               "PZ",
               "PQ",
               "INNER",
               "MASTER",
-              "Tarimas",
-              "Atados",
-              "Validar",
+              "TARIMA",
+              "ATADOS",
+              "VALIDA",
             ],
           ],
-          body: productosDeCaja.map((item) => [
+          body: productos.map((item) => [
             item.codigo_ped || "",
             item.des || "",
             item.cantidad || "",
@@ -2226,62 +2330,68 @@ function Transporte() {
             item._master || 0,
             item.tarimas || 0,
             item.atados || 0,
+            "",
           ]),
           theme: "grid",
+          margin: { left: 10 },
+          tableWidth: 190,
           styles: {
-            fontSize: 8,
+            fontSize: 5.5,
             halign: "center",
             cellPadding: 2,
-            lineColor: [0, 0, 0],
+            lineColor: [200, 200, 200],
+            lineWidth: 0.1,
+          },
+          columnStyles: {
+            0: { cellWidth: 15 },
+            1: { cellWidth: 70 },
+            2: { cellWidth: 15 },
+            3: { cellWidth: 10 },
+            4: { cellWidth: 10 },
+            5: { cellWidth: 10 },
+            6: { cellWidth: 12 },
+            7: { cellWidth: 12 },
+            8: { cellWidth: 12 },
+            9: { cellWidth: 12 },
+            10: { cellWidth: 12 },
           },
           headStyles: {
-            fontStyle: "time",
-            textColor: [0, 0, 0], // Texto negro
-            fillColor: [240, 240, 240], // Fondo gris claro para cabecera
-            lineColor: [0, 0, 0], // Bordes negros
-            lineWidth: 0.5,
+            fillColor: [20, 20, 20],
+            textColor: [255, 255, 255],
+            fontSize: 5.5,
           },
-          bodyStyles: { halign: "center" },
         });
-        currentY = doc.lastAutoTable.finalY + 10;
-      });
+        currentY = doc.lastAutoTable.finalY + 4;
+      }
 
-      // Mostrar productos sin caja (igual)
       if (productosSinCaja.length > 0) {
+        currentY = verificarEspacio(doc, currentY, 2);
         doc.autoTable({
           startY: currentY,
           head: [["Productos sin caja"]],
           body: [],
           theme: "grid",
-          styles: {
-            halign: "center",
-            fontSize: 10,
-            cellPadding: 1,
-            lineColor: [0, 0, 0],
-          },
-          headStyles: {
-            fontStyle: "time",
-            textColor: [0, 0, 0], // Texto negro
-            fillColor: [240, 240, 240], // Fondo gris claro para cabecera
-            lineColor: [0, 0, 0], // Bordes negros
-            lineWidth: 0.5,
-          },
+          styles: { halign: "center", fontSize: 9 },
+          margin: { left: 10 },
+          tableWidth: 190,
         });
+        currentY = doc.lastAutoTable.finalY;
+        currentY = verificarEspacio(doc, currentY, productosSinCaja.length);
 
         doc.autoTable({
-          startY: doc.lastAutoTable.finalY + 10,
+          startY: currentY,
           head: [
             [
-              "Sku",
-              "Descripción",
-              "Cantidad",
+              "SKU",
+              "DESCRIPCIÓN",
+              "CANTIDAD",
               "UM",
-              "Piezas",
+              "PZ",
               "INNER",
               "MASTER",
-              "Tarimas",
-              "Atados",
-              "Validar",
+              "TARIMAS",
+              "ATADOS",
+              "VALIDAR",
             ],
           ],
           body: productosSinCaja.map((item) => [
@@ -2294,106 +2404,190 @@ function Transporte() {
             item._master || 0,
             item.tarimas || 0,
             item.atados || 0,
+            "",
           ]),
           theme: "grid",
+          margin: { left: 10 },
+          tableWidth: 190,
           styles: {
             fontSize: 8,
             halign: "center",
             cellPadding: 1.5,
             lineColor: [0, 0, 0],
           },
-          headStyles: {
-            fontStyle: "time",
-            textColor: [0, 0, 0], // Texto negro
-            fillColor: [240, 240, 240], // Fondo gris claro para cabecera
-            lineColor: [0, 0, 0], // Bordes negros
-            lineWidth: 0.5,
+          columnStyles: {
+            0: { cellWidth: 15 },
+            1: { cellWidth: 80 },
+            2: { cellWidth: 15 },
           },
-          bodyStyles: { halign: "center" },
+          headStyles: {
+            fillColor: [20, 20, 20],
+            textColor: [255, 255, 255],
+            fontSize: 8,
+          },
         });
-        currentY = doc.lastAutoTable.finalY + 10;
-      } else {
-        doc.text("No hay productos sin cajas.", marginLeft, currentY);
-        currentY += 10;
       }
 
-      // Obtener la altura de la página
-      const pageHeight = doc.internal.pageSize.height;
-      const marginBottom = 30; // Margen inferior deseado
+      currentY = doc.lastAutoTable.finalY + 5;
+      currentY = verificarEspacio(doc, currentY, 1);
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const tableWidth = 90;
+      const leftMargin = (pageWidth - tableWidth) / 2;
 
-      // Verificar si hay espacio suficiente antes de agregar las firmas y referencias bancarias
-      if (currentY + 60 > pageHeight - marginBottom) {
-        doc.addPage(); // Si no hay espacio suficiente, agregar una nueva página
-        currentY = 20; // Reiniciar la posición Y en la nueva página
-      }
-
-      // 📌 Agregar las firmas
-      const firmaY = currentY + 30;
-      const linea1InicioX = 20;
-      const linea1FinalX = 80;
-      doc.line(linea1InicioX, firmaY - 5, linea1FinalX, firmaY - 5);
-      const textoFirmaCliente = "Firma del Cliente";
-      const textoFirmaClienteX =
-        (linea1InicioX + linea1FinalX) / 2 -
-        doc.getTextWidth(textoFirmaCliente) / 2;
-      doc.text(textoFirmaCliente, textoFirmaClienteX, firmaY);
-
-      const linea2InicioX = 120;
-      const linea2FinalX = 180;
-      doc.line(linea2InicioX, firmaY - 5, linea2FinalX, firmaY - 5);
-      const textoFirmaTransportista = "Firma del Transportista";
-      const textoFirmaTransportistaX =
-        (linea2InicioX + linea2FinalX) / 2 -
-        doc.getTextWidth(textoFirmaTransportista) / 2;
-      doc.text(textoFirmaTransportista, textoFirmaTransportistaX, firmaY);
-
-      currentY += 50; // Mover la posición para la referencia bancaria
-
-      // 📌 Si no hay espacio para la referencia bancaria, agregar nueva página
-      if (currentY + 40 > pageHeight - marginBottom) {
-        doc.addPage();
-        currentY = 20; // Reiniciar Y en la nueva página
-      }
-
-      // 📌 Agregar la referencia bancaria
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(10);
-      doc.text("REFERENCIA BANCARIA:", marginLeft, currentY);
-      currentY += 6; // Espacio para los datos bancarios
-
-      const cuentas = [
-        [
-          "BANAMEX",
-          "Cuenta: 6860432",
-          "Sucursal: 7006",
-          "Clabe: 00218070068604325",
+      doc.autoTable({
+        startY: currentY,
+        head: [
+          [
+            {
+              content: "DETALLES DEL PEDIDO",
+              colSpan: 2,
+              styles: {
+                halign: "center",
+                fillColor: [230, 230, 230],
+                fontSize: 7,
+              },
+            },
+            {
+              content: pedido,
+              styles: {
+                halign: "center",
+                fillColor: [200, 200, 200],
+                fontSize: 9,
+              },
+            },
+          ],
+          [
+            {
+              content: "IMPORTE DEL PEDIDO\n(SIN IVA)",
+              styles: { halign: "center", fontSize: 5 },
+            },
+            {
+              content: "TOTAL A PAGAR\n(SIN IVA)",
+              styles: { halign: "center", fontSize: 5 },
+            },
+            {
+              content: "PORCENTAJE DE ENTREGA",
+              styles: { halign: "center", fontSize: 5 },
+            },
+          ],
         ],
-        [
-          "BANORTE",
-          "Cuenta: 0890771176",
-          "Sucursal: 04",
-          "Clabe: 072180008907711766",
+        body: [
+          [
+            `$${totalImporte.toFixed(2)}`,
+            `$${totalImporte.toFixed(2)}`,
+            "100.00 %",
+          ],
         ],
-        [
-          "BANCOMER",
-          "Cuenta: 0194242696",
-          "Sucursal: 1838",
-          "Clabe: 012580001942426961",
-        ],
-      ];
-
-      // 📌 Dibujar la referencia bancaria en columnas
-      cuentas.forEach((banco, index) => {
-        const startX = marginLeft + index * 65;
-        doc.text(banco[0], startX, currentY);
-        doc.text(banco[1], startX, currentY + 5);
-        doc.text(banco[2], startX, currentY + 10);
-        doc.text(banco[3], startX, currentY + 15);
+        theme: "grid",
+        styles: { fontSize: 8, halign: "center" },
+        margin: { left: leftMargin },
+        tableWidth: tableWidth,
+        headStyles: {
+          fillColor: [245, 245, 245],
+          textColor: [0, 0, 0],
+          fontStyle: "bold",
+          fontSize: 4.5,
+        },
       });
 
-      currentY += 25; // Espacio final
+      currentY = doc.lastAutoTable.finalY + 5;
+      currentY = verificarEspacio(doc, currentY, 1);
+      doc.autoTable({
+        startY: currentY,
+        body: [
+          [
+            {
+              content:
+                "Se confirma que las cajas, atados y/o tarimas listadas en esta lista de empaque fueron recibidas cerradas y en buen estado, y así serán entregadas al cliente. Cualquier anomalía se atenderá según lo establecido en el contrato",
+              styles: { fontSize: 7, halign: "justify", textColor: [0, 0, 0] },
+            },
+            {
+              content: "Firma del Transportista",
+              styles: { fontSize: 7, halign: "center", fontStyle: "bold" },
+            },
+          ],
+        ],
+        theme: "grid",
+        styles: { cellPadding: 3, valign: "top" },
+        columnStyles: {
+          0: { cellWidth: 150 },
+          1: { cellWidth: 40 },
+        },
+        margin: { left: 10 },
+        tableWidth: 190,
+      });
 
-      // Guardar el PDF
+      currentY = doc.lastAutoTable.finalY + 0;
+
+      const instrucciones = [
+        "•Estimado cliente, nuestro transportista cuenta con ruta asignada por lo que agradeceríamos agilizar el tiempo de recepción de su mercancía, el material viaja consignado por lo que solo podrá entregarse en la dirección estipulada en este documento.",
+        "•Cualquier retraso en la recepción generan costos adicionales y pueden afectar la entrega a otros clientes. En casos repetitivos, podrían cancelarse beneficios como descuentos adicionales.",
+        "•El transportista solo entregará en planta baja o *nivel de calle*, si cuenta con alguna política especial de recepción, por favor solicita un esquema de entrega con tu Asesor de ventas.",
+        "•Si Ud. detecta alguna anomalía en el empaque, embalaje, atado de la mercancía, alguna diferencia vs las cajas embarcadas y/o que el transportista retiene mercancía de forma intencional repórtalo en el apartado de observaciones.",
+        "•El transportista no está autorizado a recibir mercancía, todo reporte de devolución, garantía,etc. deberá ser reportado a su asesor de ventas y aplicará de acuerdo a la Política vigente.",
+        "•Con la firma y/o sello en el presente documento, se da por recibida a entera conformidad la mercancía descrita y se acepta el monto a pagar aquí indicado.",
+      ];
+
+      const instruccionesTexto = instrucciones.join("\n");
+      currentY = verificarEspacio(doc, currentY, instrucciones.length);
+
+      doc.autoTable({
+        startY: currentY,
+        body: [[{ content: instruccionesTexto }]],
+        theme: "grid",
+        styles: {
+          fontSize: 7,
+          cellPadding: 3,
+          valign: "top",
+          textColor: [0, 0, 0],
+        },
+        columnStyles: { 0: { cellWidth: 190 } },
+        margin: { left: 10 },
+        tableWidth: 190,
+      });
+
+      currentY = doc.lastAutoTable.finalY + 0;
+
+      const letras = NumerosALetras(totalImporte);
+      const fechaActual = new Date();
+      const fechaHoy = fechaActual.toLocaleDateString("es-MX");
+      const fechaVence = new Date(
+        fechaActual.setMonth(fechaActual.getMonth() + 1)
+      ).toLocaleDateString("es-MX");
+
+      const textoPagare =
+        `En cualquier lugar de este documento donde se estampe la firma por este pagaré debo(emos) y pagaré(mos) ` +
+        `incondicionalmente a la vista y a la orden de SANTUL HERRAMIENTAS S.A. DE C.V., la cantidad de: $${totalImporte.toFixed(
+          2
+        )} ` +
+        `(${letras} M.N.) En el total a pagar en Cuautitlán, Estado de México, o en la que SANTUL HERRAMIENTAS S.A. DE C.V., juzgue necesario. ` +
+        `Este documento causará intereses al 3% mensual si no se paga a su vencimiento. expide el ${fechaHoy}, vence el ${fechaVence}.`;
+
+      currentY = verificarEspacio(doc, currentY, 8);
+
+      doc.autoTable({
+        startY: currentY,
+        body: [[textoPagare, "Firma del Cliente"]],
+        theme: "grid",
+        styles: {
+          fontSize: 7,
+          cellPadding: 3,
+          valign: "top",
+          textColor: [0, 0, 0],
+        },
+        columnStyles: {
+          0: { cellWidth: 150, fillColor: [240, 240, 240] },
+          1: { cellWidth: 40, halign: "center", fontStyle: "bold" },
+        },
+        margin: { left: 10 },
+        tableWidth: 190,
+      });
+
+      currentY = doc.lastAutoTable.finalY + 0;
+      currentY = verificarEspacio(doc, currentY, 5);
+      doc.addImage(infoBancaria, "JPEG", 10, currentY, 190, 35);
+
+      addPageNumber(doc);
       doc.save(`PackingList_de_${pedido}.pdf`);
       alert(`PDF generado con éxito para el pedido ${pedido}`);
     } catch (error) {
@@ -2746,8 +2940,6 @@ function Transporte() {
 
   useEffect(() => { }, [observacionesPorRegistro, groupedData]);
 
-
-
   const getTransportUrl = (transport) => {
     const cleanedTransport = transport
       ?.trim()
@@ -2935,10 +3127,12 @@ function Transporte() {
   const [filtroGeneralAsignacion, setFiltroGeneralAsignacion] = useState("");
   const [filtroEstadoAsignacion, setFiltroEstadoAsignacion] = useState("");
 
-
   const filteredAsignacion = useMemo(() => {
     return sentRoutesData.filter((item) => {
-      if (item.TIPO?.toLowerCase() !== "paqueteria" && item.TIPO?.toLowerCase() !== "directa") {
+      if (
+        item.TIPO?.toLowerCase() !== "paqueteria" &&
+        item.TIPO?.toLowerCase() !== "directa"
+      ) {
         return false;
       }
 
@@ -2946,16 +3140,19 @@ function Transporte() {
         !filtroGeneralAsignacion ||
         item["NO ORDEN"]?.toString().includes(filtroGeneralAsignacion) ||
         item["NUM. CLIENTE"]?.toString().includes(filtroGeneralAsignacion) ||
-        item["NOMBRE DEL CLIENTE"]?.toLowerCase().includes(filtroGeneralAsignacion.toLowerCase());
+        item["NOMBRE DEL CLIENTE"]
+          ?.toLowerCase()
+          .includes(filtroGeneralAsignacion.toLowerCase());
 
       const cumpleEstado =
         !filtroEstadoAsignacion ||
-        item.ESTADO?.toLowerCase().includes(filtroEstadoAsignacion.toLowerCase());
+        item.ESTADO?.toLowerCase().includes(
+          filtroEstadoAsignacion.toLowerCase()
+        );
 
       return cumpleGeneral && cumpleEstado;
     });
   }, [sentRoutesData, filtroGeneralAsignacion, filtroEstadoAsignacion]);
-
 
   const paginatedAsignacion = filteredAsignacion.slice(
     page * rowsPerPage,
@@ -2984,8 +3181,7 @@ function Transporte() {
   const [mostrarSinGuia, setMostrarSinGuia] = useState(false);
 
   const [filtroGeneral, setFiltroGeneral] = useState(""); // para No Orden y Num Cliente
-  const [filtroEstado, setFiltroEstado] = useState("");   // separado
-
+  const [filtroEstado, setFiltroEstado] = useState(""); // separado
 
   const toggleMostrarSinGuia = () => {
     setMostrarSinGuia((prev) => !prev);
@@ -2996,7 +3192,10 @@ function Transporte() {
       const coincideGeneral =
         !filtroGeneral ||
         routeData["NO ORDEN"]?.toString().includes(filtroGeneral) ||
-        routeData["NUM. CLIENTE"]?.toString().toLowerCase().includes(filtroGeneral.toLowerCase());
+        routeData["NUM. CLIENTE"]
+          ?.toString()
+          .toLowerCase()
+          .includes(filtroGeneral.toLowerCase());
 
       const coincideEstado =
         !filtroEstado ||
@@ -3012,7 +3211,13 @@ function Transporte() {
       const coincideGuia =
         !mostrarSinGuia || !routeData.GUIA || routeData.GUIA.trim() === "";
 
-      return coincideGeneral && coincideEstado && coincidePaqueteria && coincideEstatus && coincideGuia;
+      return (
+        coincideGeneral &&
+        coincideEstado &&
+        coincidePaqueteria &&
+        coincideEstatus &&
+        coincideGuia
+      );
     });
   }, [
     filtroGeneral,
@@ -3022,7 +3227,6 @@ function Transporte() {
     estatusSeleccionado,
     mostrarSinGuia,
   ]);
-
 
   const [facturaSeleccionada, setFacturaSeleccionada] = useState(""); // Filtro por factura
   const [fechaEntregaSeleccionada, setFechaEntregaSeleccionada] = useState(""); // Filtro por fecha
@@ -3055,40 +3259,50 @@ function Transporte() {
     return directaData.filter((item) => {
       const cumpleGeneral =
         !filtroGeneral ||
-        item["NUM. CLIENTE"]?.toLowerCase().includes(filtroGeneral.toLowerCase()) ||
+        item["NUM. CLIENTE"]
+          ?.toLowerCase()
+          .includes(filtroGeneral.toLowerCase()) ||
         item["NO ORDEN"]?.toString().includes(filtroGeneral);
 
       const cumpleEstado =
-        !filtroEstado || item.ESTADO?.toLowerCase().includes(filtroEstado.toLowerCase());
+        !filtroEstado ||
+        item.ESTADO?.toLowerCase().includes(filtroEstado.toLowerCase());
 
       const cumpleEstatus =
         !estatusSeleccionado || item.statusText === estatusSeleccionado;
 
       const cumpleFechaEntrega =
-        !fechaEntregaSeleccionada || item.FECHA_DE_ENTREGA_CLIENTE === fechaEntregaSeleccionada;
+        !fechaEntregaSeleccionada ||
+        item.FECHA_DE_ENTREGA_CLIENTE === fechaEntregaSeleccionada;
 
-      return cumpleGeneral && cumpleEstado && cumpleEstatus && cumpleFechaEntrega;
+      return (
+        cumpleGeneral && cumpleEstado && cumpleEstatus && cumpleFechaEntrega
+      );
     });
-  }, [filtroGeneral, filtroEstado, directaData, estatusSeleccionado, fechaEntregaSeleccionada]);
-
-
+  }, [
+    filtroGeneral,
+    filtroEstado,
+    directaData,
+    estatusSeleccionado,
+    fechaEntregaSeleccionada,
+  ]);
 
   const ventaEmpleadoFiltrada = useMemo(() => {
     return ventaEmpleadoData.filter((item) => {
       const cumpleGeneral =
         !filtroGeneral ||
-        item["NUM. CLIENTE"]?.toLowerCase().includes(filtroGeneral.toLowerCase()) ||
+        item["NUM. CLIENTE"]
+          ?.toLowerCase()
+          .includes(filtroGeneral.toLowerCase()) ||
         item["NO ORDEN"]?.toString().includes(filtroGeneral);
 
       const cumpleEstado =
-        !filtroEstado || item.ESTADO?.toLowerCase().includes(filtroEstado.toLowerCase());
+        !filtroEstado ||
+        item.ESTADO?.toLowerCase().includes(filtroEstado.toLowerCase());
 
       return cumpleGeneral && cumpleEstado;
     });
   }, [filtroGeneral, filtroEstado, ventaEmpleadoData]);
-
-
-
 
   const calcularDiasEntrega = (fechaInicio, fechaFin) => {
     if (!fechaInicio || !fechaFin) return 0;
@@ -3295,50 +3509,59 @@ function Transporte() {
   const [modalGuiaOpen, setModalGuiaOpen] = useState(false);
   const [pedidos, setPedidos] = useState([]);
 
+  const [sumaTotalPedidos, setSumaTotalPedidos] = useState(0);
+  const [porcentajeRelacion, setPorcentajeRelacion] = useState(0);
+
+
 
   const buscarPedidosPorGuia = async () => {
     try {
-      if (!guia) {
-        alert("⚠ Debes ingresar un número de guía.");
+      if (!guia && !numeroFacturaLT) {
+        alert("⚠ Debes ingresar una guía o un número de factura LT.");
         return;
       }
 
-      const response = await fetch(
-        `http://localhost:3007/api/Trasporte/rutas?guia=${guia}`
-      );
+      const guiaNormalizada = guia ? guia.trim().toUpperCase() : "";
+      const facturaNormalizada = numeroFacturaLT ? numeroFacturaLT.trim().toUpperCase() : "";
+
+      const queryParams = new URLSearchParams();
+      if (guiaNormalizada) queryParams.append("guia", guiaNormalizada);
+      if (facturaNormalizada) queryParams.append("numeroFacturaLT", facturaNormalizada);
+
+      const response = await fetch(`http://localhost:3007/api/Trasporte/rutas?${queryParams.toString()}`);
       const data = await response.json();
+
+      console.log("🧪 DATA recibida:", data); // ✅ DEBUG VISUAL
 
       if (Array.isArray(data) && data.length > 0) {
         setPedidos(data);
-
-        // ✅ Calcular la suma total de los pedidos de inmediato
         const sumaTotal = data.reduce((sum, pedido) => {
-          const totalLimpio = parseFloat(
-            String(pedido.TOTAL).replace(/[^0-9.-]+/g, "")
-          );
+          const totalLimpio = parseFloat(String(pedido.TOTAL).replace(/[^0-9.-]+/g, ""));
           return sum + (isNaN(totalLimpio) ? 0 : totalLimpio);
         }, 0);
 
         setSumaTotalPedidos(sumaTotal);
-        // También puedes limpiar el % de relación si no hay Factura LT aún
         if (totalFacturaLT > 0) {
-          const relacion = (sumaTotal / totalFacturaLT) * 100;
-          setPorcentajeRelacion(relacion);
+          setPorcentajeRelacion((sumaTotal / totalFacturaLT) * 100);
         } else {
           setPorcentajeRelacion(0);
         }
-
       } else {
-        alert("⚠ No se encontraron pedidos para esta guía.");
+        alert("⚠ No se encontraron pedidos con los datos ingresados.");
         setPedidos([]);
-        setSumaTotalPedidos(0); // Reiniciar si no hay datos
+        setSumaTotalPedidos(0);
         setPorcentajeRelacion(0);
       }
     } catch (error) {
       console.error("❌ Error al buscar pedidos:", error);
-      alert("Hubo un error al buscar los pedidos.");
+      alert("❌ Hubo un error al buscar los pedidos.");
     }
   };
+
+
+
+
+
 
   const handleTotalFacturaLTChange = (e) => {
     const value = parseFloat(e.target.value) || 0;
@@ -3352,7 +3575,8 @@ function Transporte() {
     setSumaTotalPedidos(sumaTotal);
 
     const nuevosPedidos = pedidos.map((pedido) => {
-      const totalPedido = parseFloat(String(pedido.TOTAL).replace(/[^0-9.-]+/g, "")) || 0;
+      const totalPedido =
+        parseFloat(String(pedido.TOTAL).replace(/[^0-9.-]+/g, "")) || 0;
 
       // Calcular el porcentaje prorrateado del total
       const porcentaje = sumaTotal > 0 ? totalPedido / sumaTotal : 0;
@@ -3362,7 +3586,8 @@ function Transporte() {
 
       // Calcular valores iniciales (sin gastos)
       const sumaFlete = prorrateoFacturaLT; // Se duplica solo si no hay gastos luego
-      const porcentajePaqueteria = totalPedido > 0 ? (prorrateoFacturaLT / totalPedido) * 100 : 0;
+      const porcentajePaqueteria =
+        totalPedido > 0 ? (prorrateoFacturaLT / totalPedido) * 100 : 0;
 
       return {
         ...pedido,
@@ -3378,14 +3603,14 @@ function Transporte() {
     setPedidos(nuevosPedidos);
   };
 
-
   const handleGastosExtrasChange = (index, value) => {
     const nuevosPedidos = [...pedidos];
     const pedido = nuevosPedidos[index];
 
     const gastosExtras = parseFloat(value) || 0;
     const prorrateo = parseFloat(pedido.prorrateoFacturaLT) || 0;
-    const totalPedido = parseFloat(String(pedido.TOTAL).replace(/[^0-9.-]+/g, "")) || 0;
+    const totalPedido =
+      parseFloat(String(pedido.TOTAL).replace(/[^0-9.-]+/g, "")) || 0;
 
     pedido.gastosExtras = gastosExtras;
 
@@ -3394,16 +3619,17 @@ function Transporte() {
     pedido.sumaFlete = sumaFlete.toFixed(2);
 
     // % Envío = prorrateo / total pedido
-    const porcentajeEnvio = totalPedido > 0 ? (prorrateo / totalPedido) * 100 : 0;
+    const porcentajeEnvio =
+      totalPedido > 0 ? (prorrateo / totalPedido) * 100 : 0;
     pedido.porcentajeEnvio = porcentajeEnvio.toFixed(2) + " %";
 
     // % Global = (suma flete + gastos) / total pedido
-    const porcentajeGlobal = totalPedido > 0 ? (sumaFlete / totalPedido) * 100 : 0;
+    const porcentajeGlobal =
+      totalPedido > 0 ? (sumaFlete / totalPedido) * 100 : 0;
     pedido.porcentajeGlobal = porcentajeGlobal.toFixed(2) + " %";
 
     setPedidos(nuevosPedidos);
   };
-
 
   const guardarPorGuia = async () => {
     if (!guia || guia.trim() === "") {
@@ -3423,25 +3649,26 @@ function Transporte() {
         prorrateoFacturaPaqueteria: 0,
         sumaFlete: parseFloat(pedido.sumaFlete) || 0,
         gastosExtras: parseFloat(pedido.gastosExtras) || 0,
-        porcentajeEnvio: parseFloat(
-          typeof pedido.porcentajeEnvio === "string"
-            ? pedido.porcentajeEnvio.replace(" %", "")
-            : pedido.porcentajeEnvio
-        ) || 0,
-        porcentajePaqueteria: parseFloat(
-          typeof pedido.porcentajePaqueteria === "string"
-            ? pedido.porcentajePaqueteria.replace(" %", "")
-            : pedido.porcentajePaqueteria
-        ) || 0,
-        porcentajeGlobal: parseFloat(
-          typeof pedido.porcentajeGlobal === "string"
-            ? pedido.porcentajeGlobal.replace(" %", "")
-            : pedido.porcentajeGlobal
-        ) || 0,
+        porcentajeEnvio:
+          parseFloat(
+            typeof pedido.porcentajeEnvio === "string"
+              ? pedido.porcentajeEnvio.replace(" %", "")
+              : pedido.porcentajeEnvio
+          ) || 0,
+        porcentajePaqueteria:
+          parseFloat(
+            typeof pedido.porcentajePaqueteria === "string"
+              ? pedido.porcentajePaqueteria.replace(" %", "")
+              : pedido.porcentajePaqueteria
+          ) || 0,
+        porcentajeGlobal:
+          parseFloat(
+            typeof pedido.porcentajeGlobal === "string"
+              ? pedido.porcentajeGlobal.replace(" %", "")
+              : pedido.porcentajeGlobal
+          ) || 0,
       })),
     };
-
-
 
     console.log("📤 Enviando datos a la API:", datosAGuardar);
 
@@ -3468,15 +3695,12 @@ function Transporte() {
     }
   };
 
-
   const limpiarPorcentaje = (valor) => {
     if (typeof valor === "string") {
       return parseFloat(valor.replace(" %", "")) || 0;
     }
     return typeof valor === "number" ? valor : 0;
   };
-
-
 
   const handleOpenModalGuia = () => {
     setModalGuiaOpen(true);
@@ -3486,8 +3710,6 @@ function Transporte() {
     setModalGuiaOpen(false);
   };
 
-
-
   //sincronisar rutas y toda la informacion
 
   const [loadingSync, setLoadingSync] = useState(false);
@@ -3496,10 +3718,6 @@ function Transporte() {
   const [rutasConPedidos, setRutasConPedidos] = useState([]);
   const [selectedRuta, setSelectedRuta] = useState(null);
   const [lastSync, setLastSync] = useState(null);
-
-  const [sumaTotalPedidos, setSumaTotalPedidos] = useState(0);
-  const [porcentajeRelacion, setPorcentajeRelacion] = useState(0);
-
 
   const syncRoutesToDB = async () => {
     if (loadingSync) return; // ✅ Evita que se ejecute si ya está en proceso
@@ -3586,7 +3804,10 @@ function Transporte() {
 
   const getTotalRuta = (ruta) => {
     if (!ruta?.pedidos || ruta.pedidos.length === 0) return 0;
-    return ruta.pedidos.reduce((acc, pedido) => acc + (Number(pedido.total) || 0), 0);
+    return ruta.pedidos.reduce(
+      (acc, pedido) => acc + (Number(pedido.total) || 0),
+      0
+    );
   };
 
   useEffect(() => {
@@ -3643,18 +3864,18 @@ function Transporte() {
     fetchResumenDelDia();
   }, []);
 
-  //Funcionamiento para poder mover los pedidos 
+  //Funcionamiento para poder mover los pedidos
 
   const moverPedido = (ruta, index, direccion) => {
     setGroupedData((prev) => {
       const nuevaRuta = { ...prev[ruta] };
       const items = [...nuevaRuta.rows];
 
-      if (direccion === 'arriba' && index > 0) {
+      if (direccion === "arriba" && index > 0) {
         [items[index - 1], items[index]] = [items[index], items[index - 1]];
       }
 
-      if (direccion === 'abajo' && index < items.length - 1) {
+      if (direccion === "abajo" && index < items.length - 1) {
         [items[index], items[index + 1]] = [items[index + 1], items[index]];
       }
 
@@ -3668,7 +3889,7 @@ function Transporte() {
     });
   };
 
-  //AGREGAR MASIVAMENTE A UNA RUTA VARIOS PEDIDOS 
+  //AGREGAR MASIVAMENTE A UNA RUTA VARIOS PEDIDOS
 
   const [selectedOrders, setSelectedOrders] = useState([]);
   const [selectedMassRoute, setSelectedMassRoute] = useState("");
@@ -3681,7 +3902,6 @@ function Transporte() {
         : [...prev, pedido["NO ORDEN"]];
     });
   };
-
 
   const handleAssignMultipleToRoute = () => {
     if (!selectedMassRoute) {
@@ -3701,7 +3921,6 @@ function Transporte() {
     setSelectedOrders([]);
     setSelectedMassRoute("");
   };
-
 
   const handleBuscarPorOrden = () => {
     const noOrdenBuscado = filterOrderValue.trim();
@@ -3728,9 +3947,7 @@ function Transporte() {
     }
   };
 
-
   //ocultar las rutas
-
   const [hiddenRoutes, setHiddenRoutes] = useState(() => {
     const saved = localStorage.getItem("hiddenRoutes");
     return saved ? JSON.parse(saved) : [];
@@ -3751,8 +3968,7 @@ function Transporte() {
     localStorage.setItem("hiddenRoutes", JSON.stringify(hiddenRoutes));
   }, [hiddenRoutes]);
 
-
-  //actualizar las guias de directas 
+  //actualizar las guias de directas
 
   const [bulkGuiaModalOpen, setBulkGuiaModalOpen] = useState(false);
   const [bulkNoOrdenes, setBulkNoOrdenes] = useState("");
@@ -3773,17 +3989,20 @@ function Transporte() {
 
     for (const orden of ordenes) {
       try {
-        const response = await fetch(`http://localhost:3007/api/Trasporte/paqueteria/actualizar-guia/${orden}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            guia: bulkGuiaValue,
-            paqueteria,
-            transporte: paqueteria,
-          }),
-        });
+        const response = await fetch(
+          `http://localhost:3007/api/Trasporte/paqueteria/actualizar-guia/${orden}`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              guia: bulkGuiaValue,
+              paqueteria,
+              transporte: paqueteria,
+            }),
+          }
+        );
 
         if (!response.ok) {
           const data = await response.json();
@@ -3806,33 +4025,62 @@ function Transporte() {
     setBulkNoOrdenes("");
   };
 
+  //filtar por mes
+
+  const [mesSeleccionado, setMesSeleccionado] = useState("");
+
+  useEffect(() => {
+    fetchPaqueteriaRoutes(); // Al inicio carga últimos 3 días por defecto
+  }, []);
+
+  const handleChangeMes = (e) => {
+    const nuevoMes = e.target.value;
+    setMesSeleccionado(nuevoMes);
+    fetchPaqueteriaRoutes({ mes: nuevoMes });
+  };
+
+
+  // mandar correo 
+
+  const handleEnviarCorreo = async (noOrden) => {
+    try {
+      const response = await axios.post("http://localhost:3007/api/Trasporte/enviar", {
+        noOrden,
+      });
+
+      if (response.data.success) {
+        alert(`✅ Correo enviado para la orden ${noOrden}`);
+      } else {
+        alert(`⚠️ Error: ${response.data.message}`);
+      }
+    } catch (error) {
+      console.error("❌ Error al enviar correo:", error);
+      alert("❌ No se pudo enviar el correo.");
+    }
+  };
 
 
   return (
-
-
     <Paper elevation={3} style={{ padding: "20px" }}>
       {/* Pestañas */}
       <AppBar
         position="static"
-        sx={{ backgroundColor: "white", boxShadow: "none" }}>
-
+        sx={{ backgroundColor: "white", boxShadow: "none" }}
+      >
         <Tabs
           value={tabIndex}
           onChange={handleChangeTab}
           textColor="primary"
           indicatorColor="primary"
-          centered>
-
+          centered
+        >
           <Tab label="OVR y Rutas" />
           <Tab label="Embarques" />
-
         </Tabs>
-
       </AppBar>
 
       {/* Primer Tab: Mostrar rutas y detalles */}
-      {tabIndex === 0 && (user?.role === "Admin" || user?.role === "Master" || user?.role === "Trans" || user?.role === "Control") && (
+      {tabIndex === 0 && (user?.role === "Admin" || user?.role === "Master" || user?.role === "Trans" || user?.role === "Control" || user?.role === "Embar") && (
         <Box marginTop={2}>
           <Typography variant="h5">Cargar Archivo Excel</Typography>
 
@@ -3851,6 +4099,29 @@ function Transporte() {
           />
           <Button variant="contained" onClick={handleBuscarPorOrden}>
             Buscar Orden
+          </Button>
+
+          <Button
+            variant="contained"
+            color="error"
+            onClick={() => {
+              const keysToClear = [
+
+                "sentRoutesData",
+                "transporteTimestamp",
+                "observacionesPorRegistro",
+                "totalClientes",
+                "totalPedidos",
+                "totalGeneral",
+              ];
+
+              keysToClear.forEach((key) => localStorage.removeItem(key));
+
+              alert("🧹 Se limpiaron todos los datos de localStorage utilizados.");
+              window.location.reload(); // Opcional para forzar recarga del componente
+            }}
+          >
+            Limpiar LocalStorage
           </Button>
 
 
@@ -4173,27 +4444,38 @@ function Transporte() {
             />
           </Box>
 
-          {(user?.role === "Admin" || user?.role === "Control") && (
-            <Box>
-              <Grid container spacing={2} wrap="nowrap">
+          {(user?.role === "Admin" ||
+            user?.role === "Control" ||
+            user?.role === "Embar") && (
+              <Box>
                 {/* Modal para ver las rutas ya creadas */}
                 <Typography variant="h6" gutterBottom>
                   Rutas Disponibles
                 </Typography>
-
                 <Grid container spacing={2}>
                   {rutasConPedidos.length > 0 ? (
                     rutasConPedidos.map((ruta) => {
-                      const totalRuta = ruta.pedidos?.reduce((acc, pedido) => acc + pedido.total, 0) || 0; // Calcula el total de la ruta
+                      const totalRuta =
+                        ruta.pedidos?.reduce(
+                          (acc, pedido) => acc + pedido.total,
+                          0
+                        ) || 0; // Calcula el total de la ruta
                       return (
                         <Grid item key={ruta.id} xs={12} sm={6} md={4}>
-                          <Card sx={{ bgcolor: "#f5f5f5", borderRadius: "8px", p: 2 }}>
+                          <Card
+                            sx={{
+                              bgcolor: "#f5f5f5",
+                              borderRadius: "8px",
+                              p: 2,
+                            }}
+                          >
                             <CardContent>
                               <Typography variant="h6" textAlign="center">
                                 {ruta.nombre}
                               </Typography>
                               <Typography variant="body2" color="textSecondary">
-                                Pedidos: {ruta.pedidos ? ruta.pedidos.length : 0}
+                                Pedidos:{" "}
+                                {ruta.pedidos ? ruta.pedidos.length : 0}
                               </Typography>
                             </CardContent>
                             <CardActions sx={{ justifyContent: "center" }}>
@@ -4213,9 +4495,11 @@ function Transporte() {
                     <Typography>No hay rutas disponibles.</Typography>
                   )}
                 </Grid>
-
                 {/* Modal para mostrar pedidos de la ruta seleccionada */}
-                <Modal open={!!selectedRuta} onClose={() => setSelectedRuta(null)}>
+                <Modal
+                  open={!!selectedRuta}
+                  onClose={() => setSelectedRuta(null)}
+                >
                   <Box
                     sx={{
                       position: "absolute",
@@ -4233,7 +4517,8 @@ function Transporte() {
                   >
                     {/* ✅ Muestra correctamente el total al lado del nombre */}
                     <Typography variant="h6" gutterBottom>
-                      Pedidos de la Ruta: {selectedRuta?.nombre} - {formatCurrency(getTotalRuta(selectedRuta))}
+                      Pedidos de la Ruta: {selectedRuta?.nombre} -{" "}
+                      {formatCurrency(getTotalRuta(selectedRuta))}
                     </Typography>
 
                     {selectedRuta?.pedidos?.length > 0 ? (
@@ -4260,7 +4545,9 @@ function Transporte() {
                                 <TableCell>{pedido.municipio}</TableCell>
                                 <TableCell>{pedido.estado}</TableCell>
                                 {/* ✅ Asegura que el total de cada pedido esté bien formateado */}
-                                <TableCell>{formatCurrency(Number(pedido.total) || 0)}</TableCell>
+                                <TableCell>
+                                  {formatCurrency(Number(pedido.total) || 0)}
+                                </TableCell>
                                 <TableCell>{pedido.partidas}</TableCell>
                                 <TableCell>{pedido.piezas}</TableCell>
                                 <TableCell>{pedido.fecha_emision}</TableCell>
@@ -4271,14 +4558,14 @@ function Transporte() {
                         </Table>
                       </TableContainer>
                     ) : (
-                      <Typography color="textSecondary">No hay pedidos en esta ruta.</Typography>
+                      <Typography color="textSecondary">
+                        No hay pedidos en esta ruta.
+                      </Typography>
                     )}
                   </Box>
                 </Modal>
-              </Grid>
-            </Box>
-          )}
-
+              </Box>
+            )}
 
           <center>
             <div
@@ -4402,9 +4689,6 @@ function Transporte() {
             </div>
           </center>
 
-
-
-
           {Object.keys(groupedData).length <= MAX_VISIBLE_ROUTES ? (
             <>
               <Box
@@ -4421,14 +4705,25 @@ function Transporte() {
                   .filter((route) => !hiddenRoutes.includes(route)) // 👈 filtra rutas ocultas
                   .map((route) => {
                     const totals = calculateTotals(route);
-                    const pedidosOrdenes = groupedData[route].rows.map((pedido) => pedido["NO ORDEN"]).join(", ");
+                    const pedidosOrdenes = groupedData[route].rows
+                      .map((pedido) => pedido["NO ORDEN"])
+                      .join(", ");
 
                     return (
                       <Tooltip
                         key={route}
                         title={
-                          <Typography sx={{ fontSize: "16px", fontWeight: "bold", p: 1 }}>
-                            Órdenes: {pedidosOrdenes.length > 0 ? pedidosOrdenes : "Sin pedidos"}
+                          <Typography
+                            sx={{
+                              fontSize: "16px",
+                              fontWeight: "bold",
+                              p: 1,
+                            }}
+                          >
+                            Órdenes:{" "}
+                            {pedidosOrdenes.length > 0
+                              ? pedidosOrdenes
+                              : "Sin pedidos"}
                           </Typography>
                         }
                         arrow
@@ -4464,14 +4759,16 @@ function Transporte() {
                               right: "5px",
                               display: "flex",
                               flexDirection: "row",
-                              gap: "4px"
+                              gap: "4px",
                             }}
                           >
                             {/* Ocultar */}
                             <IconButton
                               size="small"
                               color="warning"
-                              onClick={() => setHiddenRoutes((prev) => [...prev, route])}
+                              onClick={() =>
+                                setHiddenRoutes((prev) => [...prev, route])
+                              }
                             >
                               <VisibilityOffIcon />
                             </IconButton>
@@ -4486,8 +4783,6 @@ function Transporte() {
                             </IconButton>
                           </Box>
 
-
-
                           <Checkbox
                             checked={selectedRoutes.includes(route)}
                             onChange={() => handleSelectRoute(route)}
@@ -4496,7 +4791,8 @@ function Transporte() {
                             Ruta: {route}
                           </Typography>
                           <Typography variant="body2">
-                            <strong>Total:</strong> {formatCurrency(totals.TOTAL)}
+                            <strong>Total:</strong>{" "}
+                            {formatCurrency(totals.TOTAL)}
                           </Typography>
                           <Typography variant="body2">
                             <strong>Partidas:</strong> {totals.PARTIDAS}
@@ -4522,13 +4818,21 @@ function Transporte() {
                 <Box mt={2}>
                   <Typography fontWeight="bold">Rutas ocultas:</Typography>
                   {hiddenRoutes.map((route) => (
-                    <Box key={route} display="flex" alignItems="center" gap={1} mt={1}>
+                    <Box
+                      key={route}
+                      display="flex"
+                      alignItems="center"
+                      gap={1}
+                      mt={1}
+                    >
                       <Typography>{route}</Typography>
                       <Button
                         size="small"
                         variant="outlined"
                         onClick={() =>
-                          setHiddenRoutes((prev) => prev.filter((r) => r !== route))
+                          setHiddenRoutes((prev) =>
+                            prev.filter((r) => r !== route)
+                          )
                         }
                       >
                         Mostrar
@@ -4557,8 +4861,6 @@ function Transporte() {
             </FormControl>
           )}
 
-
-
           {/* Modal para mandar a paqueteria */}
           <Modal
             open={confirmSendModalOpen}
@@ -4575,7 +4877,7 @@ function Transporte() {
               borderRadius="8px"
             >
               <Typography variant="h6" id="confirm-send-modal-title">
-                ¿Está seguro de mandar estas rutas a paquetería?
+                ¿Está seguro de mandar estas rutas?
               </Typography>
 
               <Typography variant="body1" style={{ marginTop: 20 }}>
@@ -4637,7 +4939,9 @@ function Transporte() {
                       autoFocus
                       size="small"
                     />
-                    <Button onClick={() => renameRoute(selectedRoute, newRouteName)}>
+                    <Button
+                      onClick={() => renameRoute(selectedRoute, newRouteName)}
+                    >
                       Guardar
                     </Button>
                   </>
@@ -4658,12 +4962,37 @@ function Transporte() {
                 )}
               </Box>
 
-              {selectedRoute && groupedData[selectedRoute]?.rows?.length > 0 ? (
+              {selectedRoute &&
+                groupedData[selectedRoute]?.rows?.length > 0 ? (
                 <>
                   <TableContainer>
+                    <Grid
+                      item
+                      xs={12}
+                      sm={4}
+                      style={{ marginBottom: "20px" }}
+                    >
+                      <TextField
+                        label="Buscar por No Orden"
+                        variant="outlined"
+                        value={filterOrderValue}
+                        onChange={handleOrderFilterChange}
+                        fullWidth
+                        size="small"
+                        style={{ maxWidth: "300px" }}
+                      />
+                    </Grid>
 
-                    <Table size="small" sx={{ '& td, & th': { padding: '4px 8px', fontSize: '12px' }, '& tr': { height: '36px' } }}>
-
+                    <Table
+                      size="small"
+                      sx={{
+                        "& td, & th": {
+                          padding: "4px 8px",
+                          fontSize: "12px",
+                        },
+                        "& tr": { height: "36px" },
+                      }}
+                    >
                       <TableHead>
                         <TableRow>
                           <TableCell>Movimientos</TableCell>
@@ -4689,50 +5018,99 @@ function Transporte() {
                             key={row["NO ORDEN"]}
                             style={{
                               backgroundColor:
-                                highlightedRow === row["NO ORDEN"] ? "#fff59d" : "transparent",
+                                highlightedRow === row["NO ORDEN"]
+                                  ? "#fff59d"
+                                  : "transparent",
                             }}
                           >
-
                             <TableCell>
                               {index !== 0 && (
-                                <IconButton onClick={() => moverPedido(selectedRoute, index, 'arriba')}>
-                                  <ArrowUpwardIcon color="primary" fontSize="small" />
+                                <IconButton
+                                  onClick={() =>
+                                    moverPedido(
+                                      selectedRoute,
+                                      index,
+                                      "arriba"
+                                    )
+                                  }
+                                >
+                                  <ArrowUpwardIcon
+                                    color="primary"
+                                    fontSize="small"
+                                  />
                                 </IconButton>
                               )}
-                              {index !== groupedData[selectedRoute].rows.length - 1 && (
-                                <IconButton onClick={() => moverPedido(selectedRoute, index, 'abajo')}>
-                                  <ArrowDownwardIcon color="primary" fontSize="small" />
-                                </IconButton>
-                              )}
+                              {index !==
+                                groupedData[selectedRoute].rows.length -
+                                1 && (
+                                  <IconButton
+                                    onClick={() =>
+                                      moverPedido(selectedRoute, index, "abajo")
+                                    }
+                                  >
+                                    <ArrowDownwardIcon
+                                      color="primary"
+                                      fontSize="small"
+                                    />
+                                  </IconButton>
+                                )}
                             </TableCell>
 
                             <TableCell>{row["FECHA"]}</TableCell>
-                            <TableCell>{row["NO ORDEN"]}</TableCell>
+                            <TableCell>
+                              {row["NO ORDEN"] || row.no_orden}
+                            </TableCell>
                             <TableCell>{row["NO FACTURA"]}</TableCell>
-                            <TableCell>{row["NUM. CLIENTE"]}</TableCell>
-                            <TableCell>{row["NOMBRE DEL CLIENTE"]}</TableCell>
+                            <TableCell>
+                              {row["NUM. CLIENTE"] || row.num_cliente}
+                            </TableCell>
+                            <TableCell>
+                              {row["NOMBRE DEL CLIENTE"] ||
+                                row.nombre_cliente}
+                            </TableCell>
                             <TableCell>{row["ZONA"]}</TableCell>
-                            <TableCell>{row["MUNICIPIO"]}</TableCell>
-                            <TableCell>{row["ESTADO"]}</TableCell>
+                            <TableCell>
+                              {row["MUNICIPIO"] || row.municipio}
+                            </TableCell>
+                            <TableCell>
+                              {row["ESTADO"] || row.estado}
+                            </TableCell>
 
                             <TableCell>
-                              {editingObservationId === row["NUM. CLIENTE"] ? (
+                              {editingObservationId ===
+                                row["NUM. CLIENTE"] ? (
                                 <TextField
-                                  value={modalObservaciones[row["NUM. CLIENTE"]] || row["OBSERVACIONES"] || ""}
-                                  onChange={(e) => handleSaveModalObservation(row["NUM. CLIENTE"], e.target.value)}
+                                  value={
+                                    modalObservaciones[row["NUM. CLIENTE"]] ||
+                                    row["OBSERVACIONES"] ||
+                                    ""
+                                  }
+                                  onChange={(e) =>
+                                    handleSaveModalObservation(
+                                      row["NUM. CLIENTE"],
+                                      e.target.value
+                                    )
+                                  }
                                   variant="outlined"
                                   size="small"
                                   autoFocus
                                   onKeyDown={(e) => {
-                                    if (e.key === "Enter") setEditingObservationId(null);
+                                    if (e.key === "Enter")
+                                      setEditingObservationId(null);
                                   }}
                                 />
                               ) : (
                                 <span
-                                  onDoubleClick={() => handleEditModalObservation(row["NUM. CLIENTE"])}
+                                  onDoubleClick={() =>
+                                    handleEditModalObservation(
+                                      row["NUM. CLIENTE"]
+                                    )
+                                  }
                                   style={{ cursor: "pointer" }}
                                 >
-                                  {modalObservaciones[row["NUM. CLIENTE"]] || row["OBSERVACIONES"] || "Sin observaciones"}
+                                  {modalObservaciones[row["NUM. CLIENTE"]] ||
+                                    row["OBSERVACIONES"] ||
+                                    "Sin observaciones"}
                                 </span>
                               )}
                             </TableCell>
@@ -4753,7 +5131,9 @@ function Transporte() {
                                     }}
                                     displayEmpty
                                   >
-                                    <MenuItem disabled value="">Seleccionar Ruta</MenuItem>
+                                    <MenuItem disabled value="">
+                                      Seleccionar Ruta
+                                    </MenuItem>
                                     {Object.keys(groupedData).map((route) => (
                                       <MenuItem key={route} value={route}>
                                         {route}
@@ -4762,11 +5142,18 @@ function Transporte() {
                                   </Select>
                                 </FormControl>
                               ) : (
-                                <IconButton onClick={() => setEditRouteIndex(index)}>
+                                <IconButton
+                                  onClick={() => setEditRouteIndex(index)}
+                                >
                                   <CompareArrowsIcon />
                                 </IconButton>
                               )}
-                              <IconButton color="error" onClick={() => removeFromRoute(row, selectedRoute)}>
+                              <IconButton
+                                color="error"
+                                onClick={() =>
+                                  removeFromRoute(row, selectedRoute)
+                                }
+                              >
                                 <DeleteIcon />
                               </IconButton>
                             </TableCell>
@@ -4777,19 +5164,18 @@ function Transporte() {
                   </TableContainer>
                 </>
               ) : (
-                <Typography>No hay datos disponibles para esta ruta.</Typography>
+                <Typography>
+                  No hay datos disponibles para esta ruta.
+                </Typography>
               )}
 
               <Box textAlign="right" marginTop={2}>
                 <Button onClick={closeModal} variant="contained" size="small">
                   Cerrar
                 </Button>
-
               </Box>
             </Box>
           </Modal>
-
-
 
           {/* Tabla de datos cargados */}
           <TableContainer component={Paper} style={{ marginTop: "20px" }}>
@@ -4840,35 +5226,39 @@ function Transporte() {
               </Grid>
             </Grid>
 
-            {tabIndex === 0 && selectedOrders.length > 0 && ["Admin", "Master", "Trans"].includes(user?.role) && (
-              <Box display="flex" alignItems="center" gap={2} mb={2}>
-                <FormControl variant="outlined" size="small" style={{ minWidth: 200 }}>
-                  <InputLabel>Seleccionar Ruta</InputLabel>
-                  <Select
-                    value={selectedMassRoute}
-                    onChange={(e) => setSelectedMassRoute(e.target.value)}
-                    label="Seleccionar Ruta"
+            {tabIndex === 0 &&
+              selectedOrders.length > 0 &&
+              ["Admin", "Master", "Trans"].includes(user?.role) && (
+                <Box display="flex" alignItems="center" gap={2} mb={2}>
+                  <FormControl
+                    variant="outlined"
+                    size="small"
+                    style={{ minWidth: 200 }}
                   >
-                    {Object.keys(groupedData).map((ruta) => (
-                      <MenuItem key={ruta} value={ruta}>
-                        {ruta}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                    <InputLabel>Seleccionar Ruta</InputLabel>
+                    <Select
+                      value={selectedMassRoute}
+                      onChange={(e) => setSelectedMassRoute(e.target.value)}
+                      label="Seleccionar Ruta"
+                    >
+                      {Object.keys(groupedData).map((ruta) => (
+                        <MenuItem key={ruta} value={ruta}>
+                          {ruta}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
 
-                <Button
-                  variant="contained"
-                  color="primary"
-                  disabled={!selectedMassRoute}
-                  onClick={handleAssignMultipleToRoute}
-                >
-                  Asignar
-                </Button>
-              </Box>
-            )}
-
-
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    disabled={!selectedMassRoute}
+                    onClick={handleAssignMultipleToRoute}
+                  >
+                    Asignar
+                  </Button>
+                </Box>
+              )}
 
             <TablePagination
               component="div"
@@ -4912,14 +5302,12 @@ function Transporte() {
                 ) : (
                   paginatedData.map((row, index) => (
                     <TableRow key={index}>
-
                       <TableCell padding="checkbox">
                         <Checkbox
                           checked={selectedOrders.includes(row["NO ORDEN"])}
                           onChange={() => handleToggleOrderSelection(row)}
                         />
                       </TableCell>
-
                       <TableCell>{row.FECHA}</TableCell>
                       <TableCell>{row["NO ORDEN"]}</TableCell>
                       <TableCell>{row["NUM. CLIENTE"]}</TableCell>
@@ -4988,14 +5376,11 @@ function Transporte() {
               </TableBody>
             </Table>
           </TableContainer>
-
-
         </Box>
       )}
 
       {/* Segundo Tab: Otra información o tabla */}
       {tabIndex === 1 && (user?.role === "Admin" || user?.role === "Master" || user?.role === "Trans" || user?.role === "PQ1" || user?.role === "Control" || user?.role === "EB1" || user?.role === "Paquet" || user?.role === "Embar" || user?.role === "Rep" || user?.role === "Tran", "Rep") && (
-
         <Box marginTop={2}>
           <Typography variant="h5" style={{ textAlign: "center" }}>
             Tipos de rutas
@@ -5135,7 +5520,7 @@ function Transporte() {
             </Card>
           )}
 
-          {["Admin", "Master", "Control"].includes(user?.role) && (
+          {["Admin", "Master", "Tran", "Trans", "Rep"].includes(user?.role) && (
             <Box display="flex" gap={2} mb={2}>
               <Button
                 variant="contained"
@@ -5154,13 +5539,70 @@ function Transporte() {
               >
                 Actualizar Guías
               </Button>
+
+              {/* <select
+                  value={mesSeleccionado}
+                  onChange={(e) => setMesSeleccionado(e.target.value)}
+                  style={{
+                    padding: "6px 12px",
+                    borderRadius: "4px",
+                    border: "1px solid #ccc",
+                    fontWeight: "bold",
+                    color: "#333",
+                    backgroundColor: "#fff",
+                    cursor: "pointer",
+                    boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                    outline: "none",
+                    transition: "border-color 0.3s ease",
+                  }}
+                  onFocus={(e) => (e.target.style.borderColor = "#ff6600")}
+                  onBlur={(e) => (e.target.style.borderColor = "#ccc")}
+                >
+                  <option value="">Últimos 3 días</option>
+                  <option value="1">Enero</option>
+                  <option value="2">Febrero</option>
+                  <option value="3">Marzo</option>
+                  <option value="4">Abril</option>
+                  <option value="5">Mayo</option>
+                  <option value="6">Junio</option>
+                  <option value="7">Julio</option>
+                  <option value="8">Agosto</option>
+                  <option value="9">Septiembre</option>
+                  <option value="10">Octubre</option>
+                  <option value="11">Noviembre</option>
+                  <option value="12">Diciembre</option>
+                </select> */}
             </Box>
           )}
 
+          <select
+            value={mesSeleccionado}
+            onChange={handleChangeMes}
+            className="form-select"
+          >
+            <option value="">Últimos 3 días</option>
+            <option value="1">Enero</option>
+            <option value="2">Febrero</option>
+            <option value="3">Marzo</option>
+            <option value="4">Abril</option>
+            {/* <option value="5">Mayo</option>
+                <option value="6">Junio</option>
+                <option value="7">Julio</option>
+                <option value="8">Agosto</option>
+                <option value="9">Septiembre</option>
+                <option value="10">Octubre</option>
+                <option value="11">Noviembre</option>
+                <option value="12">Diciembre</option> */}
+          </select>
 
           {/* Modal para actualizar las guias */}
 
-          <Dialog open={bulkGuiaModalOpen} onClose={() => setBulkGuiaModalOpen(false)} maxWidth="sm" fullWidth>
+          <Dialog
+            open={bulkGuiaModalOpen}
+            onClose={() => setBulkGuiaModalOpen(false)}
+            maxWidth="sm"
+            fullWidth
+          >
             <DialogTitle>Actualizar Guía en Pedidos</DialogTitle>
             <DialogContent>
               <TextField
@@ -5181,13 +5623,18 @@ function Transporte() {
               />
             </DialogContent>
             <DialogActions>
-              <Button onClick={() => setBulkGuiaModalOpen(false)}>Cancelar</Button>
-              <Button variant="contained" color="primary" onClick={handleBulkGuiaUpdate}>
+              <Button onClick={() => setBulkGuiaModalOpen(false)}>
+                Cancelar
+              </Button>
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={handleBulkGuiaUpdate}
+              >
                 Actualizar Guía
               </Button>
             </DialogActions>
           </Dialog>
-
 
           {/* Modal dentro de Transporte.js */}
 
@@ -5256,117 +5703,112 @@ function Transporte() {
                       sx={{ fontSize: "1rem", textAlign: "right" }}
                     />
                   </Grid>
-
                 </Grid>
 
-
-
-
                 {/* Mostrando los pedidos en tarjetas organizadas */}
-                {pedidos.length > 0 && pedidos.map((pedido, index) => (
-                  <Grid
-                    container
-                    spacing={3}
-                    key={pedido["NO ORDEN"]}
-                    sx={{
-                      padding: 3,
-                      border: "2px solid #ddd",
-                      borderRadius: "8px",
-                      marginBottom: "20px",
-                      backgroundColor: "#f9f9f9",
-                    }}
-                  >
-                    {/* Fila 1: Pedido, Total y Prorrateo Factura LT */}
-                    <Grid item xs={12} sm={4}>
-                      <TextField
-                        label="Pedido"
-                        value={pedido["NO ORDEN"]}
-                        fullWidth
-                        disabled
-                        sx={{ fontSize: "1rem" }}
-                      />
+                {pedidos.length > 0 &&
+                  pedidos.map((pedido, index) => (
+                    <Grid
+                      container
+                      spacing={3}
+                      key={pedido["NO ORDEN"]}
+                      sx={{
+                        padding: 3,
+                        border: "2px solid #ddd",
+                        borderRadius: "8px",
+                        marginBottom: "20px",
+                        backgroundColor: "#f9f9f9",
+                      }}
+                    >
+                      {/* Fila 1: Pedido, Total y Prorrateo Factura LT */}
+                      <Grid item xs={12} sm={4}>
+                        <TextField
+                          label="Pedido"
+                          value={pedido["NO ORDEN"]}
+                          fullWidth
+                          disabled
+                          sx={{ fontSize: "1rem" }}
+                        />
+                      </Grid>
+
+                      <Grid item xs={12} sm={4}>
+                        <TextField
+                          label="Total Pedido"
+                          value={`$${pedido.TOTAL}`}
+                          fullWidth
+                          disabled
+                          sx={{ fontSize: "1rem", textAlign: "right" }}
+                        />
+                      </Grid>
+
+                      <Grid item xs={12} sm={4}>
+                        <TextField
+                          label="Prorrateo Factura LT"
+                          value={pedido.prorrateoFacturaLT}
+                          fullWidth
+                          onChange={(e) => {
+                            const newPedidos = [...pedidos];
+                            newPedidos[index].prorrateoFacturaLT =
+                              e.target.value;
+                            setPedidos(newPedidos);
+                          }}
+                          sx={{ fontSize: "1rem" }}
+                        />
+                      </Grid>
+
+                      {/* Fila 2: Prorrateo Factura Paquetería, Suma Flete y Gastos Extras */}
+
+                      <Grid item xs={12} sm={4}>
+                        <TextField
+                          label="Suma Flete"
+                          value={`$${pedido.sumaFlete}`}
+                          fullWidth
+                          disabled
+                          sx={{ fontSize: "1rem", textAlign: "right" }}
+                        />
+                      </Grid>
+
+                      <Grid item xs={12} sm={4}>
+                        <TextField
+                          label="Gastos Extras"
+                          value={pedido.gastosExtras || ""}
+                          onChange={(e) =>
+                            handleGastosExtrasChange(index, e.target.value)
+                          }
+                          fullWidth
+                        />
+                      </Grid>
+
+                      {/* Fila 3: Porcentajes organizados correctamente */}
+                      <Grid item xs={12} sm={4}>
+                        <TextField
+                          label="% Envío"
+                          value={pedido.porcentajeEnvio || ""}
+                          fullWidth
+                          disabled
+                          sx={{ fontSize: "1rem", textAlign: "right" }}
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={4}>
+                        <TextField
+                          label="% Paquetería"
+                          value={pedido.porcentajePaqueteria}
+                          fullWidth
+                          disabled
+                          sx={{ fontSize: "1rem", textAlign: "right" }}
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={4}>
+                        <TextField
+                          label="% Global"
+                          value={pedido.porcentajeGlobal}
+                          fullWidth
+                          disabled
+                          sx={{ fontSize: "1rem", textAlign: "right" }}
+                        />
+                      </Grid>
                     </Grid>
-
-                    <Grid item xs={12} sm={4}>
-                      <TextField
-                        label="Total Pedido"
-                        value={`$${pedido.TOTAL}`}
-                        fullWidth
-                        disabled
-                        sx={{ fontSize: "1rem", textAlign: "right" }}
-                      />
-                    </Grid>
-
-                    <Grid item xs={12} sm={4}>
-                      <TextField
-                        label="Prorrateo Factura LT"
-                        value={pedido.prorrateoFacturaLT}
-                        fullWidth
-                        onChange={(e) => {
-                          const newPedidos = [...pedidos];
-                          newPedidos[index].prorrateoFacturaLT =
-                            e.target.value;
-                          setPedidos(newPedidos);
-                        }}
-                        sx={{ fontSize: "1rem" }}
-                      />
-                    </Grid>
-
-                    {/* Fila 2: Prorrateo Factura Paquetería, Suma Flete y Gastos Extras */}
-
-                    <Grid item xs={12} sm={4}>
-                      <TextField
-                        label="Suma Flete"
-                        value={`$${pedido.sumaFlete}`}
-                        fullWidth
-                        disabled
-                        sx={{ fontSize: "1rem", textAlign: "right" }}
-                      />
-                    </Grid>
-
-                    <Grid item xs={12} sm={4}>
-                      <TextField
-                        label="Gastos Extras"
-                        value={pedido.gastosExtras || ""}
-                        onChange={(e) => handleGastosExtrasChange(index, e.target.value)}
-                        fullWidth
-                      />
-
-
-
-                    </Grid>
-
-                    {/* Fila 3: Porcentajes organizados correctamente */}
-                    <Grid item xs={12} sm={4}>
-                      <TextField
-                        label="% Envío"
-                        value={pedido.porcentajeEnvio || ""}
-                        fullWidth
-                        disabled
-                        sx={{ fontSize: "1rem", textAlign: "right" }}
-                      />
-
-                    </Grid>
-                    <Grid item xs={12} sm={4}>
-                      <TextField
-                        label="% Paquetería"
-                        value={pedido.porcentajePaqueteria}
-                        fullWidth
-                        disabled
-                        sx={{ fontSize: "1rem", textAlign: "right" }}
-                      />
-                    </Grid>
-                    <Grid item xs={12} sm={4}>
-                      <TextField
-                        label="% Global"
-                        value={pedido.porcentajeGlobal}
-                        fullWidth
-                        disabled
-                        sx={{ fontSize: "1rem", textAlign: "right" }}
-                      />
-                    </Grid>
-                  </Grid>
-                ))}
+                  ))}
               </Grid>
             </DialogContent>
 
@@ -5406,7 +5848,6 @@ function Transporte() {
 
           <br />
 
-
           {/* Pestañas internas para Paquetería, Directa, Venta Empleado */}
           <Tabs value={subTabIndex} onChange={handleChangeSubTab} centered>
             <Tab label="Paquetería" />
@@ -5414,7 +5855,6 @@ function Transporte() {
             <Tab label="Recoge" />
             <Tab label="Asignacion" />
           </Tabs>
-
 
           {/* Sub-tab de PAQUETERIA */}
           {subTabIndex === 0 && (
@@ -5436,7 +5876,6 @@ function Transporte() {
                 variant="outlined"
                 size="small"
               />
-
 
               <FormControl
                 variant="outlined"
@@ -5499,25 +5938,63 @@ function Transporte() {
               <Table>
                 <TableBody>
                   <TableRow>
-                    {visibleColumns.includes("NO ORDEN") && (<TableCell>NO ORDEN</TableCell>)}
-                    {visibleColumns.includes("NO ORDEN") && (<TableCell>Estado del Pedido</TableCell>)}
-                    {visibleColumns.includes("FECHA") && (<TableCell>FECHA</TableCell>)}
-                    {visibleColumns.includes("NUM CLIENTE") && (<TableCell>NUM CLIENTE</TableCell>)}
-                    {visibleColumns.includes("NOMBRE DEL CLIENTE") && (<TableCell>NOMBRE DEL CLIENTE</TableCell>)}
-                    {visibleColumns.includes("MUNICIPIO") && (<TableCell>MUNICIPIO</TableCell>)}
-                    {visibleColumns.includes("ESTADO") && (<TableCell>ESTADO</TableCell>)}
-                    {visibleColumns.includes("OBSERVACIONES") && (<TableCell>OBSERVACIONES</TableCell>)}
-                    {visibleColumns.includes("TOTAL") && (<TableCell>TOTAL</TableCell>)}
-                    {visibleColumns.includes("TOTAL FACTURA LT") && (<TableCell>TOTAL FACTURA LT</TableCell>)}
-                    {visibleColumns.includes("NUMERO DE FACTURA") && (<TableCell>NUMERO DE FACTURA</TableCell>)}
-                    {visibleColumns.includes("PARTIDAS") && (<TableCell>PARTIDAS</TableCell>)}
-                    {visibleColumns.includes("PIEZAS") && (<TableCell>PIEZAS</TableCell>)}
-                    {visibleColumns.includes("FECHA DE FACTURA") && (<TableCell>FECHA DE FACTURA</TableCell>)}
-                    {visibleColumns.includes("TRANSPORTE") && (<TableCell>TRANSPORTE</TableCell>)}
-                    {visibleColumns.includes("PAQUETERIA") && (<TableCell>PAQUETERIA</TableCell>)}
-                    {visibleColumns.includes("GUIA") && (<TableCell>GUIA</TableCell>)}
-                    {visibleColumns.includes("FECHA DE ENTREGA (CLIENTE)") && <TableCell>FECHA DE ENTREGA</TableCell>}
-                    {visibleColumns.includes("Acciones") && (<TableCell>Acciones</TableCell>)}
+                    {visibleColumns.includes("NO ORDEN") && (
+                      <TableCell>NO ORDEN</TableCell>
+                    )}
+                    {visibleColumns.includes("NO ORDEN") && (
+                      <TableCell>Estado del Pedido</TableCell>
+                    )}
+                    {visibleColumns.includes("FECHA") && (
+                      <TableCell>FECHA</TableCell>
+                    )}
+                    {visibleColumns.includes("NUM CLIENTE") && (
+                      <TableCell>NUM CLIENTE</TableCell>
+                    )}
+                    {visibleColumns.includes("NOMBRE DEL CLIENTE") && (
+                      <TableCell>NOMBRE DEL CLIENTE</TableCell>
+                    )}
+                    {visibleColumns.includes("MUNICIPIO") && (
+                      <TableCell>MUNICIPIO</TableCell>
+                    )}
+                    {visibleColumns.includes("ESTADO") && (
+                      <TableCell>ESTADO</TableCell>
+                    )}
+                    {visibleColumns.includes("OBSERVACIONES") && (
+                      <TableCell>OBSERVACIONES</TableCell>
+                    )}
+                    {visibleColumns.includes("TOTAL") && (
+                      <TableCell>TOTAL</TableCell>
+                    )}
+                    {visibleColumns.includes("TOTAL FACTURA LT") && (
+                      <TableCell>TOTAL FACTURA LT</TableCell>
+                    )}
+                    {visibleColumns.includes("NUMERO DE FACTURA") && (
+                      <TableCell>NUMERO DE FACTURA</TableCell>
+                    )}
+                    {visibleColumns.includes("PARTIDAS") && (
+                      <TableCell>PARTIDAS</TableCell>
+                    )}
+                    {visibleColumns.includes("PIEZAS") && (
+                      <TableCell>PIEZAS</TableCell>
+                    )}
+                    {visibleColumns.includes("FECHA DE FACTURA") && (
+                      <TableCell>FECHA DE FACTURA</TableCell>
+                    )}
+                    {visibleColumns.includes("TRANSPORTE") && (
+                      <TableCell>TRANSPORTE</TableCell>
+                    )}
+                    {visibleColumns.includes("PAQUETERIA") && (
+                      <TableCell>PAQUETERIA</TableCell>
+                    )}
+                    {visibleColumns.includes("GUIA") && (
+                      <TableCell>GUIA</TableCell>
+                    )}
+                    {visibleColumns.includes(
+                      "FECHA DE ENTREGA (CLIENTE)"
+                    ) && <TableCell>FECHA DE ENTREGA</TableCell>}
+                    {visibleColumns.includes("Acciones") && (
+                      <TableCell>Acciones</TableCell>
+                    )}
                   </TableRow>
                   {paqueteriaData.length === 0 ? (
                     <TableRow>
@@ -5539,7 +6016,9 @@ function Transporte() {
                           key={index}
                           onClick={() => handleRowClick(routeData)}
                         >
-                          {visibleColumns.includes("NO ORDEN") && (<TableCell>{routeData["NO ORDEN"]}</TableCell>)}
+                          {visibleColumns.includes("NO ORDEN") && (
+                            <TableCell>{routeData["NO ORDEN"]}</TableCell>
+                          )}
 
                           <TableCell>
                             {/* Estado del pedido con color */}
@@ -5564,13 +6043,35 @@ function Transporte() {
                             )}
                           </TableCell>
 
-                          {visibleColumns.includes("FECHA") && (<TableCell>{formatDate(routeData.FECHA)}</TableCell>)}
-                          {visibleColumns.includes("NUM CLIENTE") && (<TableCell>{routeData["NUM. CLIENTE"]}</TableCell>)}
-                          {visibleColumns.includes("NOMBRE DEL CLIENTE") && (<TableCell>{" "}{routeData["NOMBRE DEL CLIENTE"]}{" "}</TableCell>)}
-                          {visibleColumns.includes("MUNICIPIO") && (<TableCell>{routeData.MUNICIPIO}</TableCell>)}
-                          {visibleColumns.includes("ESTADO") && (<TableCell>{routeData.ESTADO}</TableCell>)}
-                          {visibleColumns.includes("OBSERVACIONES") && (<TableCell>{routeData.OBSERVACIONES}</TableCell>)}
-                          {visibleColumns.includes("TOTAL") && (<TableCell>{" "}{formatCurrency(routeData.TOTAL)}{" "}</TableCell>)}
+                          {visibleColumns.includes("FECHA") && (
+                            <TableCell>
+                              {formatDate(routeData.FECHA)}
+                            </TableCell>
+                          )}
+                          {visibleColumns.includes("NUM CLIENTE") && (
+                            <TableCell>{routeData["NUM. CLIENTE"]}</TableCell>
+                          )}
+                          {visibleColumns.includes("NOMBRE DEL CLIENTE") && (
+                            <TableCell>
+                              {" "}
+                              {routeData["NOMBRE DEL CLIENTE"]}{" "}
+                            </TableCell>
+                          )}
+                          {visibleColumns.includes("MUNICIPIO") && (
+                            <TableCell>{routeData.MUNICIPIO}</TableCell>
+                          )}
+                          {visibleColumns.includes("ESTADO") && (
+                            <TableCell>{routeData.ESTADO}</TableCell>
+                          )}
+                          {visibleColumns.includes("OBSERVACIONES") && (
+                            <TableCell>{routeData.OBSERVACIONES}</TableCell>
+                          )}
+                          {visibleColumns.includes("TOTAL") && (
+                            <TableCell>
+                              {" "}
+                              {formatCurrency(routeData.TOTAL)}{" "}
+                            </TableCell>
+                          )}
                           {visibleColumns.includes("TOTAL FACTURA LT") && (
                             <TableCell>
                               {routeData.TOTAL_FACTURA_LT &&
@@ -5582,14 +6083,39 @@ function Transporte() {
                             </TableCell>
                           )}
 
-                          {visibleColumns.includes("NUMERO DE FACTURA") && (<TableCell>{routeData["NO_FACTURA"]}</TableCell>)}
-                          {visibleColumns.includes("PARTIDAS") && (<TableCell>{routeData.PARTIDAS}</TableCell>)}
-                          {visibleColumns.includes("PIEZAS") && (<TableCell>{routeData.PIEZAS}</TableCell>)}
-                          {visibleColumns.includes("FECHA DE FACTURA") && (<TableCell>{formatDate(routeData.FECHA_DE_FACTURA)}</TableCell>)}
-                          {visibleColumns.includes("TRANSPORTE") && (<TableCell>{routeData.TRANSPORTE}</TableCell>)}
-                          {visibleColumns.includes("PAQUETERIA") && (<TableCell>{routeData.PAQUETERIA}</TableCell>)}
-                          {visibleColumns.includes("GUIA") && (<TableCell>{routeData.GUIA}</TableCell>)}
-                          {visibleColumns.includes("FECHA DE ENTREGA (CLIENTE)") && (<TableCell>{" "}{formatDate(routeData.FECHA_DE_ENTREGA_CLIENTE)}{" "}</TableCell>)}
+                          {visibleColumns.includes("NUMERO DE FACTURA") && (
+                            <TableCell>{routeData["NO_FACTURA"]}</TableCell>
+                          )}
+                          {visibleColumns.includes("PARTIDAS") && (
+                            <TableCell>{routeData.PARTIDAS}</TableCell>
+                          )}
+                          {visibleColumns.includes("PIEZAS") && (
+                            <TableCell>{routeData.PIEZAS}</TableCell>
+                          )}
+                          {visibleColumns.includes("FECHA DE FACTURA") && (
+                            <TableCell>
+                              {formatDate(routeData.FECHA_DE_FACTURA)}
+                            </TableCell>
+                          )}
+                          {visibleColumns.includes("TRANSPORTE") && (
+                            <TableCell>{routeData.TRANSPORTE}</TableCell>
+                          )}
+                          {visibleColumns.includes("PAQUETERIA") && (
+                            <TableCell>{routeData.PAQUETERIA}</TableCell>
+                          )}
+                          {visibleColumns.includes("GUIA") && (
+                            <TableCell>{routeData.GUIA}</TableCell>
+                          )}
+                          {visibleColumns.includes(
+                            "FECHA DE ENTREGA (CLIENTE)"
+                          ) && (
+                              <TableCell>
+                                {" "}
+                                {formatDate(
+                                  routeData.FECHA_DE_ENTREGA_CLIENTE
+                                )}{" "}
+                              </TableCell>
+                            )}
 
                           <TableCell>
                             <Grid
@@ -5663,12 +6189,10 @@ function Transporte() {
             </TableContainer>
           )}
 
-
           {/* Sub-tab de Directa */}
           {subTabIndex === 1 && (
             <TableContainer component={Paper} style={{ marginTop: "20px" }}>
               <Typography variant="h6">Directa</Typography>
-
 
               <TextField
                 label="Buscar por No Orden o Nombre del Cliente"
@@ -5686,7 +6210,6 @@ function Transporte() {
                 variant="outlined"
                 size="small"
               />
-
 
               <FormControl
                 variant="outlined"
@@ -5751,23 +6274,57 @@ function Transporte() {
               <Table>
                 <TableHead>
                   <TableRow>
-                    {visibleColumns.includes("NO ORDEN") && (<TableCell>NO ORDEN</TableCell>)}
-                    {visibleColumns.includes("ESTADO") && (<TableCell>Estado del Pedido</TableCell>)}
-                    {visibleColumns.includes("FECHA") && (<TableCell>FECHA</TableCell>)}
-                    {visibleColumns.includes("NUM CLIENTE") && (<TableCell>NUM CLIENTE</TableCell>)}
-                    {visibleColumns.includes("NOMBRE DEL CLIENTE") && (<TableCell>NOMBRE DEL CLIENTE</TableCell>)}
-                    {visibleColumns.includes("MUNICIPIO") && (<TableCell>MUNICIPIO</TableCell>)}
-                    {visibleColumns.includes("ESTADO") && (<TableCell>ESTADO</TableCell>)}
-                    {visibleColumns.includes("OBSERVACIONES") && (<TableCell>OBSERVACIONES</TableCell>)}
-                    {visibleColumns.includes("TOTAL") && (<TableCell>TOTAL</TableCell>)}
-                    {visibleColumns.includes("NUMERO DE FACTURA") && (<TableCell>NUMERO DE FACTURA</TableCell>)}
-                    {visibleColumns.includes("FECHA DE FACTURA") && (<TableCell>FECHA DE FACTURA</TableCell>)}
-                    {visibleColumns.includes("PARTIDAS") && (<TableCell>PARTIDAS</TableCell>)}
-                    {visibleColumns.includes("PIEZAS") && (<TableCell>PIEZAS</TableCell>)}
-                    {visibleColumns.includes("TRANSPORTE") && (<TableCell>TRANSPORTE</TableCell>)}
-                    {visibleColumns.includes("PAQUETERIA") && (<TableCell>TIPO DE RUTA</TableCell>)}
-                    {visibleColumns.includes("FECHA DE ENTREGA (CLIENTE)") && <TableCell>FECHA DE ENTREGA (CLIENTE)</TableCell>}
-                    {visibleColumns.includes("Acciones") && (<TableCell>Acciones</TableCell>)}
+                    {visibleColumns.includes("NO ORDEN") && (
+                      <TableCell>NO ORDEN</TableCell>
+                    )}
+                    {visibleColumns.includes("ESTADO") && (
+                      <TableCell>Estado del Pedido</TableCell>
+                    )}
+                    {visibleColumns.includes("FECHA") && (
+                      <TableCell>FECHA</TableCell>
+                    )}
+                    {visibleColumns.includes("NUM CLIENTE") && (
+                      <TableCell>NUM CLIENTE</TableCell>
+                    )}
+                    {visibleColumns.includes("NOMBRE DEL CLIENTE") && (
+                      <TableCell>NOMBRE DEL CLIENTE</TableCell>
+                    )}
+                    {visibleColumns.includes("MUNICIPIO") && (
+                      <TableCell>MUNICIPIO</TableCell>
+                    )}
+                    {visibleColumns.includes("ESTADO") && (
+                      <TableCell>ESTADO</TableCell>
+                    )}
+                    {visibleColumns.includes("OBSERVACIONES") && (
+                      <TableCell>OBSERVACIONES</TableCell>
+                    )}
+                    {visibleColumns.includes("TOTAL") && (
+                      <TableCell>TOTAL</TableCell>
+                    )}
+                    {visibleColumns.includes("NUMERO DE FACTURA") && (
+                      <TableCell>NUMERO DE FACTURA</TableCell>
+                    )}
+                    {visibleColumns.includes("FECHA DE FACTURA") && (
+                      <TableCell>FECHA DE FACTURA</TableCell>
+                    )}
+                    {visibleColumns.includes("PARTIDAS") && (
+                      <TableCell>PARTIDAS</TableCell>
+                    )}
+                    {visibleColumns.includes("PIEZAS") && (
+                      <TableCell>PIEZAS</TableCell>
+                    )}
+                    {visibleColumns.includes("TRANSPORTE") && (
+                      <TableCell>TRANSPORTE</TableCell>
+                    )}
+                    {visibleColumns.includes("PAQUETERIA") && (
+                      <TableCell>TIPO DE RUTA</TableCell>
+                    )}
+                    {visibleColumns.includes(
+                      "FECHA DE ENTREGA (CLIENTE)"
+                    ) && <TableCell>FECHA DE ENTREGA (CLIENTE)</TableCell>}
+                    {visibleColumns.includes("Acciones") && (
+                      <TableCell>Acciones</TableCell>
+                    )}
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -5788,7 +6345,9 @@ function Transporte() {
                       ) // ✅ PAGINACIÓN SIN AFECTAR FILTROS
                       .map((routeData, index) => (
                         <TableRow key={index}>
-                          {visibleColumns.includes("NO ORDEN") && (<TableCell>{routeData["NO ORDEN"]}</TableCell>)}
+                          {visibleColumns.includes("NO ORDEN") && (
+                            <TableCell>{routeData["NO ORDEN"]}</TableCell>
+                          )}
 
                           <TableCell>
                             {/* Estado del pedido con color */}
@@ -5813,20 +6372,60 @@ function Transporte() {
                             )}
                           </TableCell>
 
-                          {visibleColumns.includes("FECHA") && (<TableCell>{formatDate(routeData.FECHA)}</TableCell>)}
-                          {visibleColumns.includes("NUM CLIENTE") && (<TableCell>{routeData["NUM. CLIENTE"]}</TableCell>)}
-                          {visibleColumns.includes("NOMBRE DEL CLIENTE") && (<TableCell>{routeData["NOMBRE DEL CLIENTE"]}</TableCell>)}
-                          {visibleColumns.includes("MUNICIPIO") && (<TableCell>{routeData.MUNICIPIO}</TableCell>)}
-                          {visibleColumns.includes("ESTADO") && (<TableCell>{routeData.ESTADO}</TableCell>)}
-                          {visibleColumns.includes("OBSERVACIONES") && (<TableCell>{routeData.OBSERVACIONES}</TableCell>)}
-                          {visibleColumns.includes("TOTAL") && (<TableCell>{formatCurrency(routeData.TOTAL)}</TableCell>)}
-                          {visibleColumns.includes("NUMERO DE FACTURA") && (<TableCell>{routeData["NO_FACTURA"]}</TableCell>)}
-                          {visibleColumns.includes("FECHA DE FACTURA") && (<TableCell>{formatDate(routeData.FECHA_DE_FACTURA)}</TableCell>)}
-                          {visibleColumns.includes("PARTIDAS") && (<TableCell>{routeData.PARTIDAS}</TableCell>)}
-                          {visibleColumns.includes("PIEZAS") && (<TableCell>{routeData.PIEZAS}</TableCell>)}
-                          {visibleColumns.includes("TRANSPORTE") && (<TableCell>{routeData.TRANSPORTE}</TableCell>)}
-                          {visibleColumns.includes("PAQUETERIA") && (<TableCell>{routeData.PAQUETERIA}</TableCell>)}
-                          {visibleColumns.includes("FECHA DE ENTREGA (CLIENTE)") && (<TableCell>{formatDate(routeData.FECHA_DE_ENTREGA_CLIENTE)}</TableCell>)}
+                          {visibleColumns.includes("FECHA") && (
+                            <TableCell>
+                              {formatDate(routeData.FECHA)}
+                            </TableCell>
+                          )}
+                          {visibleColumns.includes("NUM CLIENTE") && (
+                            <TableCell>{routeData["NUM. CLIENTE"]}</TableCell>
+                          )}
+                          {visibleColumns.includes("NOMBRE DEL CLIENTE") && (
+                            <TableCell>
+                              {routeData["NOMBRE DEL CLIENTE"]}
+                            </TableCell>
+                          )}
+                          {visibleColumns.includes("MUNICIPIO") && (
+                            <TableCell>{routeData.MUNICIPIO}</TableCell>
+                          )}
+                          {visibleColumns.includes("ESTADO") && (
+                            <TableCell>{routeData.ESTADO}</TableCell>
+                          )}
+                          {visibleColumns.includes("OBSERVACIONES") && (
+                            <TableCell>{routeData.OBSERVACIONES}</TableCell>
+                          )}
+                          {visibleColumns.includes("TOTAL") && (
+                            <TableCell>
+                              {formatCurrency(routeData.TOTAL)}
+                            </TableCell>
+                          )}
+                          {visibleColumns.includes("NUMERO DE FACTURA") && (
+                            <TableCell>{routeData["NO_FACTURA"]}</TableCell>
+                          )}
+                          {visibleColumns.includes("FECHA DE FACTURA") && (
+                            <TableCell>
+                              {formatDate(routeData.FECHA_DE_FACTURA)}
+                            </TableCell>
+                          )}
+                          {visibleColumns.includes("PARTIDAS") && (
+                            <TableCell>{routeData.PARTIDAS}</TableCell>
+                          )}
+                          {visibleColumns.includes("PIEZAS") && (
+                            <TableCell>{routeData.PIEZAS}</TableCell>
+                          )}
+                          {visibleColumns.includes("TRANSPORTE") && (
+                            <TableCell>{routeData.TRANSPORTE}</TableCell>
+                          )}
+                          {visibleColumns.includes("PAQUETERIA") && (
+                            <TableCell>{routeData.PAQUETERIA}</TableCell>
+                          )}
+                          {visibleColumns.includes(
+                            "FECHA DE ENTREGA (CLIENTE)"
+                          ) && (
+                              <TableCell>
+                                {formatDate(routeData.FECHA_DE_ENTREGA_CLIENTE)}
+                              </TableCell>
+                            )}
                           {visibleColumns.includes("Acciones") && (
                             <TableCell>
                               <Grid
@@ -5902,7 +6501,6 @@ function Transporte() {
             </TableContainer>
           )}
 
-
           {/* Sub-tab de Venta Empleado */}
           {subTabIndex === 2 && (
             <TableContainer component={Paper} style={{ marginTop: "20px" }}>
@@ -5925,7 +6523,6 @@ function Transporte() {
                 variant="outlined"
                 size="small"
               />
-
 
               <TablePagination
                 component="div"
@@ -6019,10 +6616,6 @@ function Transporte() {
                           {visibleColumns.includes("PIEZAS") && (
                             <TableCell>{routeData.PIEZAS}</TableCell>
                           )}
-                          {visibleColumns.includes("PIEZAS") && (
-                            <TableCell>{routeData.PIEZAS}</TableCell>
-                          )}
-
                           {visibleColumns.includes(
                             "FECHA DE ENTREGA (CLIENTE)"
                           ) && (
@@ -6091,7 +6684,6 @@ function Transporte() {
             </TableContainer>
           )}
 
-
           {/* Sub-tab de Asignación */}
           {tabIndex === 1 && (user?.role === "Admin" || user?.role === "Master" || user?.role === "Trans" || user?.role === "Rep" || user?.role === "Tran", "Rep") && subTabIndex === 3 && (
             <TableContainer
@@ -6119,32 +6711,79 @@ function Transporte() {
                 size="small"
               />
 
-
               <Table>
                 <TableHead>
                   <TableRow>
-                    {visibleColumns.includes("ESTADO") && (<TableCell>Estado del Pedido</TableCell>)}
-                    {visibleColumns.includes("FECHA") && (<TableCell>FECHA</TableCell>)}
-                    {visibleColumns.includes("NO ORDEN") && (<TableCell>NO ORDEN</TableCell>)}
-                    {visibleColumns.includes("GUIA") && (<TableCell>GUIA</TableCell>)}
-                    {visibleColumns.includes("NUMERO DE FACTURA") && (<TableCell>NUMERO DE FACTURA</TableCell>)}
-                    {visibleColumns.includes("NUM CLIENTE") && (<TableCell>NUM CLIENTE</TableCell>)}
-                    {visibleColumns.includes("NOMBRE DEL CLIENTE") && (<TableCell>NOMBRE DEL CLIENTE</TableCell>)}
-                    {visibleColumns.includes("TRANSPORTE") && (<TableCell>TRANSPORTE / RUTA</TableCell>)}
-                    {visibleColumns.includes("TOTAL") && (<TableCell>TOTAL</TableCell>)}
-                    {visibleColumns.includes("TOTAL FACTURA LT") && (<TableCell>COSTO DEL FLETE</TableCell>)}
-                    {visibleColumns.includes("FECHA DE FACTURA") && (<TableCell>FECHA DE FACTURA</TableCell>)}
-                    {visibleColumns.includes("FECHA DE EMBARQUE") && (<TableCell>FECHA DE EMBARQUE</TableCell>)}
-                    {visibleColumns.includes("FECHA DE ENTREGA (CLIENTE)") && <TableCell>FECHA DE ENTREGA CLIENTE</TableCell>}
-                    {visibleColumns.includes("PARTIDAS") && (<TableCell>PARTIDAS</TableCell>)}
-                    {visibleColumns.includes("PIEZAS") && (<TableCell>PIEZAS</TableCell>)}
-                    {visibleColumns.includes("CAJAS") && (<TableCell>CAJAS</TableCell>)}
-                    {visibleColumns.includes("DIA EN QUE ESTA EN RUTA") && (<TableCell>DIA EN QUE ESTA EN RUTA</TableCell>)}
-                    {visibleColumns.includes("DIAS DE ENTREGA") && (<TableCell>DIAS DE ENTREGA</TableCell>)}
-                    {visibleColumns.includes("ENTREGA SATISFACTORIA O NO SATISFACTORIA") && (<TableCell>ENTREGA SATISFACTORIA O NO SATISFACTORIA</TableCell>)}
-                    {visibleColumns.includes("MOTIVO") && (<TableCell>MOTIVO</TableCell>)}
-                    {visibleColumns.includes("DIFERENCIA") && (<TableCell>DIFERENCIA</TableCell>)}
-                    {visibleColumns.includes("Acciones") && (<TableCell>Acciones</TableCell>)}
+                    {visibleColumns.includes("ESTADO") && (
+                      <TableCell>Estado del Pedido</TableCell>
+                    )}
+                    {visibleColumns.includes("FECHA") && (
+                      <TableCell>FECHA</TableCell>
+                    )}
+                    {visibleColumns.includes("NO ORDEN") && (
+                      <TableCell>NO ORDEN</TableCell>
+                    )}
+                    {visibleColumns.includes("NUM CLIENTE") && (
+                      <TableCell>NUM CLIENTE</TableCell>
+                    )}
+                    {visibleColumns.includes("NOMBRE DEL CLIENTE") && (
+                      <TableCell>NOMBRE DEL CLIENTE</TableCell>
+                    )}
+                    {visibleColumns.includes("NUMERO DE FACTURA") && (
+                      <TableCell>NUMERO DE FACTURA</TableCell>
+                    )}
+                    {visibleColumns.includes("GUIA") && (
+                      <TableCell>GUIA</TableCell>
+                    )}
+                    {visibleColumns.includes("TRANSPORTE") && (
+                      <TableCell>TRANSPORTE / RUTA</TableCell>
+                    )}
+                    {visibleColumns.includes("TOTAL") && (
+                      <TableCell>TOTAL</TableCell>
+                    )}
+                    {visibleColumns.includes("TOTAL FACTURA LT") && (
+                      <TableCell>COSTO DEL FLETE</TableCell>
+                    )}
+                    {visibleColumns.includes("FECHA DE FACTURA") && (
+                      <TableCell>FECHA DE FACTURA</TableCell>
+                    )}
+                    {visibleColumns.includes("FECHA DE EMBARQUE") && (
+                      <TableCell>FECHA DE EMBARQUE</TableCell>
+                    )}
+                    {visibleColumns.includes(
+                      "FECHA DE ENTREGA (CLIENTE)"
+                    ) && <TableCell>FECHA DE ENTREGA CLIENTE</TableCell>}
+                    {visibleColumns.includes("PARTIDAS") && (
+                      <TableCell>PARTIDAS</TableCell>
+                    )}
+                    {visibleColumns.includes("PIEZAS") && (
+                      <TableCell>PIEZAS</TableCell>
+                    )}
+                    {visibleColumns.includes("CAJAS") && (
+                      <TableCell>CAJAS</TableCell>
+                    )}
+                    {visibleColumns.includes("DIA EN QUE ESTA EN RUTA") && (
+                      <TableCell>DIA EN QUE ESTA EN RUTA</TableCell>
+                    )}
+                    {visibleColumns.includes("DIAS DE ENTREGA") && (
+                      <TableCell>DIAS DE ENTREGA</TableCell>
+                    )}
+                    {visibleColumns.includes(
+                      "ENTREGA SATISFACTORIA O NO SATISFACTORIA"
+                    ) && (
+                        <TableCell>
+                          ENTREGA SATISFACTORIA O NO SATISFACTORIA
+                        </TableCell>
+                      )}
+                    {visibleColumns.includes("MOTIVO") && (
+                      <TableCell>MOTIVO</TableCell>
+                    )}
+                    {visibleColumns.includes("DIFERENCIA") && (
+                      <TableCell>DIFERENCIA</TableCell>
+                    )}
+                    {visibleColumns.includes("Acciones") && (
+                      <TableCell>Acciones</TableCell>
+                    )}
                   </TableRow>
                 </TableHead>
 
@@ -6189,13 +6828,31 @@ function Transporte() {
                             {formatDate(routeData.FECHA)}
                           </TableCell>
                         )}
-                        {visibleColumns.includes("NO ORDEN") && (<TableCell>{routeData["NO ORDEN"]}</TableCell>)}
-                        {visibleColumns.includes("GUIA") && (<TableCell>{routeData.GUIA}</TableCell>)}
-                        {visibleColumns.includes("NUMERO DE FACTURA") && (<TableCell>{routeData["NO_FACTURA"]}</TableCell>)}
-                        {visibleColumns.includes("NUM CLIENTE") && (<TableCell>{routeData["NUM. CLIENTE"]}</TableCell>)}
-                        {visibleColumns.includes("NOMBRE DEL CLIENTE") && (<TableCell>{routeData["NOMBRE DEL CLIENTE"]}</TableCell>)}
-                        {visibleColumns.includes("PAQUETERIA") && (<TableCell>{routeData.PAQUETERIA}</TableCell>)}
-                        {visibleColumns.includes("TOTAL") && (<TableCell>{formatCurrency(routeData.TOTAL)}</TableCell>)}
+                        {visibleColumns.includes("NO ORDEN") && (
+                          <TableCell>{routeData["NO ORDEN"]}</TableCell>
+                        )}
+                        {visibleColumns.includes("NUM CLIENTE") && (
+                          <TableCell>{routeData["NUM. CLIENTE"]}</TableCell>
+                        )}
+                        {visibleColumns.includes("NOMBRE DEL CLIENTE") && (
+                          <TableCell>
+                            {routeData["NOMBRE DEL CLIENTE"]}
+                          </TableCell>
+                        )}
+                        {visibleColumns.includes("NUMERO DE FACTURA") && (
+                          <TableCell>{routeData["NO_FACTURA"]}</TableCell>
+                        )}
+                        {visibleColumns.includes("GUIA") && (
+                          <TableCell>{routeData.GUIA}</TableCell>
+                        )}
+                        {visibleColumns.includes("PAQUETERIA") && (
+                          <TableCell>{routeData.PAQUETERIA}</TableCell>
+                        )}
+                        {visibleColumns.includes("TOTAL") && (
+                          <TableCell>
+                            {formatCurrency(routeData.TOTAL)}
+                          </TableCell>
+                        )}
                         {visibleColumns.includes("TOTAL FACTURA LT") && (
                           <TableCell>
                             {routeData.TOTAL_FACTURA_LT &&
@@ -6206,7 +6863,11 @@ function Transporte() {
                               : "$0.00"}
                           </TableCell>
                         )}
-                        {visibleColumns.includes("FECHA DE FACTURA") && (<TableCell>{formatDate(routeData.FECHA_DE_FACTURA)}</TableCell>)}
+                        {visibleColumns.includes("FECHA DE FACTURA") && (
+                          <TableCell>
+                            {formatDate(routeData.FECHA_DE_FACTURA)}
+                          </TableCell>
+                        )}
                         {visibleColumns.includes("FECHA DE EMBARQUE") && (
                           <TableCell>
                             {loading
@@ -6218,15 +6879,47 @@ function Transporte() {
                                 : "Sin fecha"}
                           </TableCell>
                         )}
-                        {visibleColumns.includes("FECHA DE ENTREGA (CLIENTE)") && (<TableCell>{formatDate(routeData.FECHA_DE_ENTREGA_CLIENTE)}</TableCell>)}
-                        {visibleColumns.includes("PARTIDAS") && (<TableCell>{routeData.PARTIDAS}</TableCell>)}
-                        {visibleColumns.includes("PIEZAS") && (<TableCell>{routeData.PIEZAS}</TableCell>)}
-                        {visibleColumns.includes("CAJAS") && (<TableCell>{routeData.totalCajas}</TableCell>)}
-                        {visibleColumns.includes("DIA EN QUE ESTA EN RUTA") && (<TableCell>{formatDate(routeData.ultimaFechaEmbarque)}</TableCell>)}
-                        {visibleColumns.includes("DIAS DE ENTREGA") && (<TableCell>{routeData.DIAS_DE_ENTREGA}</TableCell>)}
-                        {visibleColumns.includes("ENTREGA SATISFACTORIA O NO SATISFACTORIA") && (<TableCell>{routeData.ENTREGA_SATISFACTORIA_O_NO_SATISFACTORIA}</TableCell>)}
-                        {visibleColumns.includes("MOTIVO") && (<TableCell>{routeData.MOTIVO}</TableCell>)}
-                        {visibleColumns.includes("DIFERENCIA") && (<TableCell>{routeData.DIFERENCIA}</TableCell>)}
+                        {visibleColumns.includes(
+                          "FECHA DE ENTREGA (CLIENTE)"
+                        ) && (
+                            <TableCell>
+                              {formatDate(routeData.FECHA_DE_ENTREGA_CLIENTE)}
+                            </TableCell>
+                          )}
+                        {visibleColumns.includes("PARTIDAS") && (
+                          <TableCell>{routeData.PARTIDAS}</TableCell>
+                        )}
+                        {visibleColumns.includes("PIEZAS") && (
+                          <TableCell>{routeData.PIEZAS}</TableCell>
+                        )}
+                        {visibleColumns.includes("CAJAS") && (
+                          <TableCell>{routeData.totalCajas}</TableCell>
+                        )}
+                        {visibleColumns.includes(
+                          "DIA EN QUE ESTA EN RUTA"
+                        ) && (
+                            <TableCell>
+                              {formatDate(routeData.ultimaFechaEmbarque)}
+                            </TableCell>
+                          )}
+                        {visibleColumns.includes("DIAS DE ENTREGA") && (
+                          <TableCell>{routeData.DIAS_DE_ENTREGA}</TableCell>
+                        )}
+                        {visibleColumns.includes(
+                          "ENTREGA SATISFACTORIA O NO SATISFACTORIA"
+                        ) && (
+                            <TableCell>
+                              {
+                                routeData.ENTREGA_SATISFACTORIA_O_NO_SATISFACTORIA
+                              }
+                            </TableCell>
+                          )}
+                        {visibleColumns.includes("MOTIVO") && (
+                          <TableCell>{routeData.MOTIVO}</TableCell>
+                        )}
+                        {visibleColumns.includes("DIFERENCIA") && (
+                          <TableCell>{routeData.DIFERENCIA}</TableCell>
+                        )}
 
                         {visibleColumns.includes("Acciones") && (
                           <TableCell>
@@ -6256,6 +6949,25 @@ function Transporte() {
                                 <ArticleIcon />
                               </IconButton>
                             </Grid>
+
+                            <Grid item>
+                              <Button
+                                variant="outlined"
+                                color="primary"
+                                size="small"
+                                startIcon={<EmailIcon />}
+                                onClick={() => {
+                                  if (!routeData.CORREO) {
+                                    alert("⚠️ Este pedido no tiene correo.");
+                                    return;
+                                  }
+                                  handleEnviarCorreo(routeData["NO ORDEN"]);
+                                }}
+                              >
+                                Enviar Correo
+                              </Button>
+
+                            </Grid>
                           </TableCell>
                         )}
                       </TableRow>
@@ -6277,15 +6989,11 @@ function Transporte() {
               />
             </TableContainer>
           )}
-
-
         </Box>
-
       )}
 
       {/* El Modal para actualizar la guía */}
       <Modal open={directaModalOpen} onClose={closeDirectaModal}>
-
         <Box
           padding="20px"
           backgroundColor="white"
@@ -6298,7 +7006,7 @@ function Transporte() {
 
           <Grid container spacing={2}>
             {/* Fila 1 */}
-            {visibleColumns.includes("NO ORDEN") && (
+            {visibleColumns.includes("GUIA") && (
               <Grid item xs={12} sm={6}>
                 <TextField
                   label="Nueva Guía"
@@ -6310,7 +7018,7 @@ function Transporte() {
               </Grid>
             )}
             {(user?.role === "Admin" ||
-              user?.role === "Master" ||
+              user?.role === "Trans" ||
               user?.role === "Tran") &&
               visibleColumns.includes("NO ORDEN") && (
                 <Grid item xs={12} sm={6}>
@@ -6470,6 +7178,18 @@ function Transporte() {
               </Grid>
             )}
 
+            {visibleColumns.includes("NUMERO DE FACTURA LT") && (
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="Número de Factura LT"
+                  value={numeroFacturaLT}
+                  onChange={(e) => setNumeroFacturaLT(e.target.value)}
+                  variant="outlined"
+                  fullWidth
+                />
+              </Grid>
+            )}
+
             {/* Fila 4 */}
             {visibleColumns.includes("TOTAL FACTURA LT") && (
               <Grid item xs={12} sm={6}>
@@ -6510,8 +7230,6 @@ function Transporte() {
               </Grid>
             )}
 
-
-
             {/* Botón para actualizar */}
             <Grid item xs={12}>
               <Button
@@ -6539,7 +7257,6 @@ function Transporte() {
             </Grid>
           </Grid>
         </Box>
-
       </Modal>
 
       <Snackbar
@@ -6558,8 +7275,6 @@ function Transporte() {
         }
       />
     </Paper>
-
-
   );
 }
 

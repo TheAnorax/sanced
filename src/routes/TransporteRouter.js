@@ -3,8 +3,8 @@ const router = express.Router();
 const { getObservacionesPorClientes, getUltimaFechaEmbarque, insertarRutas, obtenerRutasDePaqueteria,
     getFechaYCajasPorPedido, actualizarGuia, getPedidosEmbarque, getTransportistas, getEmpresasTransportistas,
     insertarVisita, guardarDatos, obtenerDatos, eliminarRuta, getOrderStatus, getHistoricoData, getColumnasHistorico, getClientesHistorico,
-    upload, actualizarFacturasDesdeExcel, actualizarPorGuia, crearRuta, agregarPedidoARuta, obtenerRutasConPedidos, obtenerRutaPorId, obtenerResumenDelDia,
-    getFusionInfo
+    upload, actualizarFacturasDesdeExcel, actualizarPorGuia, crearRuta, agregarPedidoARuta, obtenerRutasConPedidos, obtenerRutaPorId, obtenerResumenDelDia, obtenerRutasParaPDF,
+    getFusionInfo, enviarCorreo
 } = require('../controller/TrasporteController');
 
 router.post('/clientes/observaciones', getObservacionesPorClientes);
@@ -14,6 +14,8 @@ router.get('/pedido/ultimas-fechas-embarque', getUltimaFechaEmbarque);
 router.post('/insertarRutas', insertarRutas);
 
 router.get('/rutas', obtenerRutasDePaqueteria);
+
+router.get('/ruta-unica', obtenerRutasParaPDF);
 
 router.get('/pedido/detalles/:noOrden', getFechaYCajasPorPedido);
 
@@ -59,5 +61,10 @@ router.get("/rutas/:id", obtenerRutaPorId);
 
 
 router.get("/resumen-dia", obtenerResumenDelDia);
+
+//mandar correo 
+
+router.post("/enviar", enviarCorreo);
+
 
 module.exports = router;

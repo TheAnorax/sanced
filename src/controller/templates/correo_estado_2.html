@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Pedido en Ruta</title>
+</head>
+
+<body style="margin: 0; padding: 0; background-color: #ffffff; font-family: Helvetica, Arial, sans-serif;">
+    <table width="600" align="center" cellpadding="0" cellspacing="0"
+        style="border-collapse: collapse; background-color: #F6F6F6;">
+        <tr>
+            <td style="background-color: #EA0029; color: white; padding: 20px; font-size: 20px;">
+                <strong>Tu pedido ya está en camino</strong>
+            </td>
+        </tr>
+        <tr>
+            <td style="padding: 20px;">
+                <p>Hola <strong>{{nombreCliente}}</strong>,</p>
+                <p>Tu pedido número <strong>{{noOrden}}</strong> ya ha salido para entrega.</p>
+                <p>Total del pedido: <strong>${{total}}</strong></p>
+                <br />
+                <p>Muy pronto lo estarás recibiendo en tu dirección.</p>
+            </td>
+        </tr>
+        <tr>
+            <td style="padding: 20px;">
+                <table width="100%" cellpadding="10" cellspacing="0">
+                    <tr>
+                        <td align="center" style="color: #EA0029;">Recepción</td>
+                        <td align="center" style="color: #EA0029; font-weight: bold;">En Ruta</td>
+                        <td align="center" style="color: #A9A9A9;">Entregado</td>
+                    </tr>
+                    <tr>
+                        <td align="center">🟢</td>
+                        <td align="center">🔴</td>
+                        <td align="center">⚪</td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+
+</html>

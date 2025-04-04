@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Pedido Entregado</title>
+</head>
+
+<body style="margin: 0; padding: 0; background-color: #ffffff; font-family: Helvetica, Arial, sans-serif;">
+    <table width="600" align="center" cellpadding="0" cellspacing="0"
+        style="border-collapse: collapse; background-color: #F6F6F6;">
+        <tr>
+            <td style="background-color: #EA0029; color: white; padding: 20px; font-size: 20px;">
+                <strong>¡Pedido Entregado!</strong>
+            </td>
+        </tr>
+        <tr>
+            <td style="padding: 20px;">
+                <p>Hola <strong>{{nombreCliente}}</strong>,</p>
+                <p>Nos complace informarte que tu pedido número <strong>{{noOrden}}</strong> ha sido
+                    <strong>entregado</strong>.</p>
+                <p>Total del pedido: <strong>${{total}}</strong></p>
+                <br />
+                <p>Gracias por confiar en nosotros. ¡Esperamos que tu experiencia haya sido excelente!</p>
+            </td>
+        </tr>
+        <tr>
+            <td style="padding: 20px;">
+                <table width="100%" cellpadding="10" cellspacing="0">
+                    <tr>
+                        <td align="center" style="color: #EA0029;">Recepción</td>
+                        <td align="center" style="color: #EA0029;">En Ruta</td>
+                        <td align="center" style="color: #EA0029; font-weight: bold;">Entregado</td>
+                    </tr>
+                    <tr>
+                        <td align="center">🟢</td>
+                        <td align="center">🟢</td>
+                        <td align="center">🔴</td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+
+</html>

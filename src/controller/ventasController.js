@@ -169,44 +169,79 @@ const insertarRutas = async (req, res) => {
   }
 };
 
+
+
 const obtenerRutasDePaqueteria = async (req, res) => {
   try {
-    const { page = 1, limit = 900, tipo = "" } = req.query;
+    const {
+      page = 1,
+      limit = 10000,
+      tipo = "",
+      guia = "",
+      expandir = false,
+      desde = "",
+      hasta = "",
+      mes = "",
+    } = req.query;
+
     const offset = (page - 1) * limit;
-
-    // Obtener la fecha actual
-    const now = new Date();
-    const currentMonth = now.getMonth() + 1; // getMonth() devuelve 0-11, sumamos 1
-    const currentYear = now.getFullYear();
-
     let query = `
       SELECT routeName, FECHA, \`NO ORDEN\`, NO_FACTURA, FECHA_DE_FACTURA, 
              \`NUM. CLIENTE\`, \`NOMBRE DEL CLIENTE\`, ZONA, MUNICIPIO, ESTADO, 
              OBSERVACIONES, TOTAL, PARTIDAS, PIEZAS, TARIMAS, TRANSPORTE, 
              PAQUETERIA, GUIA, FECHA_DE_ENTREGA_CLIENTE, DIAS_DE_ENTREGA,
-             TIPO, DIRECCION, TELEFONO, TOTAL_FACTURA_LT,\`EJECUTIVO VTAS\`
+             TIPO, DIRECCION, TELEFONO, TOTAL_FACTURA_LT, ENTREGA_SATISFACTORIA_O_NO_SATISFACTORIA,
+             created_at, MOTIVO, NUMERO_DE_FACTURA_LT, FECHA_DE_ENTREGA_CLIENTE,\`EJECUTIVO VTAS\`
       FROM paqueteria
-      WHERE MONTH(FECHA) = ? AND YEAR(FECHA) = ?
+      WHERE 1 = 1
     `;
 
-    const params = [currentMonth, currentYear];
+    const params = [];
 
+    // 👇 Solo aplicamos filtros de fechas si NO estamos buscando por guía
+    const filtrandoPorGuia = guia && guia.trim() !== "";
+
+    if (!filtrandoPorGuia) {
+      if (mes) {
+        const anioActual = new Date().getFullYear();
+        query += " AND MONTH(created_at) = ? AND YEAR(created_at) = ?";
+        params.push(mes, anioActual);
+      } else {
+        const fechaLimite = new Date();
+        fechaLimite.setDate(fechaLimite.getDate() - 3);
+        const fechaLimiteStr = fechaLimite.toISOString().slice(0, 10);
+        query += " AND created_at >= ?";
+        params.push(fechaLimiteStr);
+      }
+    }
+
+    // 👉 Filtro por TIPO si aplica
     if (tipo) {
       query += " AND TIPO = ?";
       params.push(tipo);
     }
 
-    query += " ORDER BY FECHA DESC LIMIT ? OFFSET ?";
+    // 👉 Filtro por GUIA (esto siempre va al final)
+    if (guia) {
+      query += " AND GUIA = ?";
+      params.push(guia);
+    }
+
+    // 👉 Orden y paginación
+    query += " ORDER BY created_at DESC LIMIT ? OFFSET ?";
     params.push(parseInt(limit), parseInt(offset));
 
     const [rows] = await pool.query(query, params);
-
     res.json(rows);
   } catch (error) {
     console.error("Error al obtener rutas de paquetería:", error.message);
     res.status(500).json({ message: "Error al obtener las rutas de paquetería" });
   }
 };
+
+
+
+
 
 const getFechaYCajasPorPedido = async (req, res) => {
   const { noOrden } = req.params;

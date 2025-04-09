@@ -870,6 +870,8 @@ const getColumnasHistorico = async (req, res) => {
   }
 };
 
+//status 
+
 const getOrderStatus = async (req, res) => {
   try {
     let orderNumbers = req.body.orderNumbers || [req.params.orderNumber];
@@ -1343,14 +1345,18 @@ const obtenerRutasConPedidos = async (req, res) => {
         IFNULL(NULLIF(p.fecha_emision, '0000-00-00'), CURRENT_DATE()) AS fecha_emision,
         IFNULL(p.observaciones, 'Sin observaciones') AS observaciones
       FROM rutas r
-      LEFT JOIN pedidos p ON r.id = p.ruta_id
-      WHERE p.no_orden NOT IN (SELECT \`NO ORDEN\` FROM paqueteria)
+      LEFT JOIN pedidos p 
+        ON r.id = p.ruta_id
+      WHERE p.no_orden IS NOT NULL 
+        AND p.no_orden NOT IN (
+          SELECT TRIM(\`NO ORDEN\`) FROM paqueteria WHERE \`NO ORDEN\` IS NOT NULL
+        )
       ORDER BY r.fecha_creacion DESC, p.fecha_emision DESC;
     `;
 
     const [rows] = await pool.query(query);
 
-    // ✅ Agrupar rutas con sus pedidos
+    // Agrupar rutas con sus pedidos válidos
     const rutas = {};
     rows.forEach((row) => {
       if (!rutas[row.ruta_id]) {
@@ -1385,6 +1391,9 @@ const obtenerRutasConPedidos = async (req, res) => {
     res.status(500).json({ message: "Error al obtener rutas y pedidos." });
   }
 };
+
+
+
 
 
 const obtenerRutaPorId = async (req, res) => {
@@ -1481,16 +1490,12 @@ const enviarCorreo = async (req, res) => {
   const { noOrden } = req.body;
 
   if (!noOrden) {
-    return res.status(400).json({ success: false, message: "Falta el número de orden" });
+    return res.status(400).json({ success: false, message: "Falta número de orden" });
   }
 
   try {
-    // Buscar pedido
     const [rows] = await pool.query(
-      `SELECT CORREO, \`NOMBRE DEL CLIENTE\`, TOTAL, \`NO ORDEN\`, intentos, created_at,DIRECCION
-       FROM paqueteria 
-       WHERE \`NO ORDEN\` = ? 
-       LIMIT 1`,
+      "SELECT CORREO, `NOMBRE DEL CLIENTE`, TOTAL, `NO ORDEN`, COALESCE(intentos, 0) as intentos, created_at, DIRECCION FROM paqueteria WHERE `NO ORDEN` = ? LIMIT 1",
       [noOrden]
     );
 
@@ -1508,18 +1513,15 @@ const enviarCorreo = async (req, res) => {
       return res.status(400).json({ success: false, message: "Ya se alcanzaron los 3 intentos de envío." });
     }
 
-    const estado = 1; // O 2 o 3 según lo que quieras probar
+    const estado = pedido.intentos + 1;
+
     const nombreArchivoHTML = `correo_estado_${estado}.html`;
     const rutaHTML = path.join(__dirname, "templates", nombreArchivoHTML);
-    const rutaLogo = path.join(__dirname, "templates", "LOGO TRACKING SANTUL.png");
     const fechaEntrega = moment(pedido.created_at).add(2, 'days').format("D [de] MMMM [de] YYYY");
     const fechaSalida = moment(pedido.created_at).format('D [de] MMMM [de] YYYY, HH:mm [hrs]');
 
-
-    // Leer HTML
     let html = await fs.readFile(rutaHTML, "utf8");
 
-    // Reemplazo de variables
     html = html
       .replace(/{{nombreCliente}}/g, pedido["NOMBRE DEL CLIENTE"])
       .replace(/{{noOrden}}/g, pedido["NO ORDEN"])
@@ -1528,63 +1530,48 @@ const enviarCorreo = async (req, res) => {
       .replace(/{{fechaEntrega}}/g, fechaEntrega)
       .replace(/{{direccion}}/g, pedido.DIRECCION);
 
+    const attachmentsPorEstado = {
+      1: [
+        { filename: "logo_santul.png", path: path.join(__dirname, "templates", "LOGO TRACKING SANTUL.png"), cid: "logo_santul" },
+        { filename: "icon_documento.png", path: path.join(__dirname, "templates", "DOCUMENTO ON.png"), cid: "icon_documento" },
+        { filename: "icon_camion.png", path: path.join(__dirname, "templates", "CAMION OFF.png"), cid: "icon_camion" },
+        { filename: "icon_entregado.png", path: path.join(__dirname, "templates", "ENTREGA OFF.png"), cid: "icon_entregado" },
+        { filename: "barra_1er_paso.png", path: path.join(__dirname, "templates", "BARRA 1ER PASO.png"), cid: "barra_1er_paso" },
+      ],
+      2: [
+        { filename: "logo_santul.png", path: path.join(__dirname, "templates", "LOGO TRACKING SANTUL.png"), cid: "logo_santul" },
+        { filename: "DOCUMENTO OFF.png", path: path.join(__dirname, "templates", "DOCUMENTO OFF.png"), cid: "documento_off_2" },
+        { filename: "CAMION ON.png", path: path.join(__dirname, "templates", "CAMION ON.png"), cid: "icon_camionOM" },
+        { filename: "ENTREGA OFF.png", path: path.join(__dirname, "templates", "ENTREGA OFF.png"), cid: "icon_entregado" },
+        { filename: "BARRA 2DO PASO.png", path: path.join(__dirname, "templates", "BARRA 2DO PASO.png"), cid: "barra_2do_paso" },
+      ],
+      3: [
+        { filename: "logo_santul.png", path: path.join(__dirname, "templates", "LOGO TRACKING SANTUL.png"), cid: "logo_santul" },
+        { filename: "DOCUMENTO OFF.png", path: path.join(__dirname, "templates", "DOCUMENTO OFF.png"), cid: "documento_off_2" },
+        { filename: "icon_camion.png", path: path.join(__dirname, "templates", "CAMION OFF.png"), cid: "icon_camion" },
+        { filename: "PEDIDO OK.png", path: path.join(__dirname, "templates", "PEDIDO OK.png"), cid: "check_ok_3" },
+        { filename: "ENTREGA ON.png", path: path.join(__dirname, "templates", "ENTREGA ON.png"), cid: "entregado_on_3" },
+        { filename: "BARRA 3ER PASO.png", path: path.join(__dirname, "templates", "BARRA 3ER PASO.png"), cid: "barra_3er_paso" },
+      ],
+    };
 
-    // Enviar correo con imagen incrustada
+    const comunes = [
+      { filename: 'BARRA LOGOS.jpg', path: path.join(__dirname, 'templates', 'BARRA LOGOS.jpg'), cid: 'barra_logos' },
+      { filename: 'DOWNLOAD PACKING LIST.png', path: path.join(__dirname, 'templates', 'DOWNLOAD PACKING LIST.png'), cid: 'download_packing' },
+      { filename: 'DOWNLOAD FACTURA.png', path: path.join(__dirname, 'templates', 'DOWNLOAD FACTURA.png'), cid: 'download_factura' },
+    ];
+
+    const attachments = [...(attachmentsPorEstado[estado] || []), ...comunes];
+
     await transporter.sendMail({
       from: `"Logística Sanced" <j72525264@gmail.com>`,
       to: pedido.CORREO,
       subject: `Seguimiento de pedido #${pedido["NO ORDEN"]}`,
       html,
-      attachments: [
-        {
-          filename: "logo_santul.png",
-          path: path.join(__dirname, "templates", "LOGO TRACKING SANTUL.png"),
-          cid: "logo_santul"
-        },
-        {
-          filename: "icon_documento.png",
-          path: path.join(__dirname, "templates", "DOCUMENTO ON.png"),
-          cid: "icon_documento"
-        },
-        {
-          filename: "icon_camion.png",
-          path: path.join(__dirname, "templates", "CAMION OFF.png"),
-          cid: "icon_camion"
-        },
-        {
-          filename: "icon_entregado.png",
-          path: path.join(__dirname, "templates", "ENTREGA OFF.png"),
-          cid: "icon_entregado"
-        },
-        {
-          filename: "barra_1er_paso.png",
-          path: path.join(__dirname, "templates", "BARRA 1ER PASO.png"),
-          cid: "barra_1er_paso"
-        },
-        {
-          filename: 'BARRA LOGOS.jpg',
-          path: path.join(__dirname, 'templates', 'BARRA LOGOS.jpg'),
-          cid: 'barra_logos' // debe coincidir con el 'src' en el HTML
-        },
-        {
-          filename: 'DOWNLOAD PACKING LIST.png',
-          path: path.join(__dirname, 'templates', 'DOWNLOAD PACKING LIST.png'),
-          cid: 'download_packing'
-        },
-        {
-          filename: 'DOWNLOAD FACTURA.png',
-          path: path.join(__dirname, 'templates', 'DOWNLOAD FACTURA.png'),
-          cid: 'download_factura'
-        },
-      ]
-      ,
+      attachments,
     });
 
-    // Actualizar intentos
-    // await pool.query(
-    //   "UPDATE paqueteria SET intentos = intentos + 1 WHERE `NO ORDEN` = ?",
-    //   [noOrden]
-    // );
+    await pool.query("UPDATE paqueteria SET intentos = COALESCE(intentos, 0) + 1 WHERE `NO ORDEN` = ?", [noOrden]);
 
     res.json({ success: true, message: `Correo del estado ${estado} enviado correctamente.` });
   } catch (error) {

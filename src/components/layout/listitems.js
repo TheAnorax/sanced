@@ -33,6 +33,7 @@ import GarageIcon from '@mui/icons-material/Garage';
 import { AdminPanelSettings } from "@mui/icons-material";
 import PlaceIcon from '@mui/icons-material/Place';
 import MapIcon from '@mui/icons-material/Map';
+import NavigationIcon from '@mui/icons-material/Navigation';
 
 // Personalizando el Tooltip
 const CustomTooltip = styled(({ className, ...props }) => (
@@ -78,21 +79,21 @@ export const mainListItems = (user) => {
         "VENT",
         "CON",
         "Vent",
-         "VENT",
-         "Tran","Rep"
+        "VENT",
+        "Tran", "Rep"
       ],
       path: "/dashboard/productos",
       icon: <HandymanIcon />,
       text: "Productos",
     },
     {
-      role: ["Admin", "Master", "Trans", "PQ1", "Control", "EB1", "Paquet", "Embar","Tran","Rep"],
+      role: ["Admin", "Master", "Trans", "PQ1", "Control", "EB1", "Paquet", "Embar", "Tran", "Rep"],
       path: "/dashboard/Trasporte",
       icon: <GarageIcon />,
       text: "Transporte",
     },
     {
-      role: ["Admin", "Master", "Trans", "Rep", "Vent", "VENT","Tran","Audi"],
+      role: ["Admin", "Master", "Trans", "Rep", "Vent", "VENT", "Tran", "Audi"],
       path: "/dashboard/Tracking",
       icon: <PlaceIcon />,
       text: "Tracking",
@@ -229,7 +230,7 @@ export const mainListItems = (user) => {
       text: "Insumos ",
     },
     {
-      role: ["Admin", "Master", "Master2" ,"INV"],
+      role: ["Admin", "Master", "Master2", "INV"],
       path: "/dashboard/inventario",
       icon: <AssessmentIcon />,
       text: "Inventario dia 0",
@@ -265,16 +266,22 @@ export const mainListItems = (user) => {
       text: "Proyectos",
     },
     {
-      role: ["Admin",'POLIA', 'POLIB', 'POLIP', 'POLIAR', 'CONTROL', 'RH', 'TRAFICO', 'Nac'],
+      role: ["Admin", 'POLIA', 'POLIB', 'POLIP', 'POLIAR', 'CONTROL', 'RH', 'TRAFICO', 'Nac'],
       path: "/dashboard/visitas",
-      icon: <PersonPinCircleIcon/>,
+      icon: <PersonPinCircleIcon />,
       text: "Visitas",
     },
     {
       role: ["Admin", 'CONTROL', 'RH'],
       path: "/dashboard/visitas-reporte",
-      icon: <AdminPanelSettings/>,
+      icon: <AdminPanelSettings />,
       text: "Visitas Reporte",
+    },
+    {
+      role: ["Admin", "Master", "Trans", "Tran"],
+      path: "/dashboard/COBERTURA",
+      icon: <NavigationIcon />,
+      text: "COBERTURA",
     },
   ];
 

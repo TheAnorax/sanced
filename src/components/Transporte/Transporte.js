@@ -2596,6 +2596,9 @@ function Transporte() {
     }
   };
 
+
+
+
   useEffect(() => {
     // console.log("Observaciones actuales:", observacionesPorRegistro);
   }, [observacionesPorRegistro, groupedData]);
@@ -2693,12 +2696,9 @@ function Transporte() {
     );
 
     setFechaEntregaCliente(
-      data["FECHA_DE_ENTREGA (CLIENTE)"]
-        ? new Date(data["FECHA_DE_ENTREGA (CLIENTE)"])
-          .toISOString()
-          .split("T")[0]
-        : ""
+      parseFechaEntrega(data["FECHA_DE_ENTREGA_CLIENTE"])
     );
+
 
     setFechaFactura(
       data.FECHA_DE_FACTURA
@@ -2740,6 +2740,17 @@ function Transporte() {
 
     setDirectaModalOpen(true);
   };
+
+  const parseFechaEntrega = (valor) => {
+    if (!valor) return "";
+    if (typeof valor === "string" && valor.includes("/")) {
+      const [dia, mes, anio] = valor.split("/");
+      return `${anio}-${mes.padStart(2, "0")}-${dia.padStart(2, "0")}`;
+    }
+    const fecha = new Date(valor);
+    return isNaN(fecha) ? "" : fecha.toISOString().split("T")[0];
+  };
+
 
   const closeDirectaModal = () => {
     setDirectaModalOpen(false);
@@ -3513,7 +3524,6 @@ function Transporte() {
   const [porcentajeRelacion, setPorcentajeRelacion] = useState(0);
 
 
-
   const buscarPedidosPorGuia = async () => {
     try {
       if (!guia && !numeroFacturaLT) {
@@ -3557,10 +3567,6 @@ function Transporte() {
       alert("❌ Hubo un error al buscar los pedidos.");
     }
   };
-
-
-
-
 
 
   const handleTotalFacturaLTChange = (e) => {
@@ -3837,9 +3843,39 @@ function Transporte() {
     fetchRutasConPedidos();
   }, []);
 
-  const openPedidosDeBDModal = (ruta) => {
-    setSelectedRuta(ruta);
+
+  const openPedidosDeBDModal = async (ruta) => {
+    const pedidos = ruta.pedidos || [];
+    const ordenes = pedidos.map((p) => String(p.no_orden));
+
+    try {
+      const response = await axios.post(
+        `http://localhost:3007/api/Trasporte/status`,
+        { orderNumbers: ordenes }
+      );
+
+      const statusMap = response.data;
+      console.log("✅ StatusMap directo:", statusMap);
+
+      const pedidosActualizados = pedidos.map((pedido) => {
+        const match = statusMap[pedido.no_orden];
+        return {
+          ...pedido,
+          statusText: match?.statusText || "Sin status",
+          color: match?.color || "#000000",
+          fusionWith: match?.fusionWith || null,
+        };
+      });
+
+      setSelectedRuta({
+        ...ruta,
+        pedidos: pedidosActualizados,
+      });
+    } catch (error) {
+      console.error("❌ Error al consultar estados antes del modal:", error);
+    }
   };
+
 
   const closePedidosDeBDModal = () => {
     setSelectedRuta(null);
@@ -4044,9 +4080,11 @@ function Transporte() {
 
   const handleEnviarCorreo = async (noOrden) => {
     try {
-      const response = await axios.post("http://localhost:3007/api/Trasporte/enviar", {
-        noOrden,
-      });
+      // Primero generamos el PDF
+      await generatePDF(noOrden); // asegúrate que `generatePDF` sea accesible aquí
+
+      // Luego enviamos el correo
+      const response = await axios.post("http://localhost:3007/api/Trasporte/enviar", { noOrden });
 
       if (response.data.success) {
         alert(`✅ Correo enviado para la orden ${noOrden}`);
@@ -4054,14 +4092,17 @@ function Transporte() {
         alert(`⚠️ Error: ${response.data.message}`);
       }
     } catch (error) {
-      console.error("❌ Error al enviar correo:", error);
-      alert("❌ No se pudo enviar el correo.");
+      console.error("❌ Error al generar el PDF o enviar correo:", error);
+      alert("❌ Hubo un error al generar el PDF o enviar el correo.");
     }
   };
 
 
+
   return (
+
     <Paper elevation={3} style={{ padding: "20px" }}>
+
       {/* Pestañas */}
       <AppBar
         position="static"
@@ -4444,128 +4485,161 @@ function Transporte() {
             />
           </Box>
 
-          {(user?.role === "Admin" ||
-            user?.role === "Control" ||
-            user?.role === "Embar") && (
-              <Box>
-                {/* Modal para ver las rutas ya creadas */}
-                <Typography variant="h6" gutterBottom>
-                  Rutas Disponibles
-                </Typography>
-                <Grid container spacing={2}>
-                  {rutasConPedidos.length > 0 ? (
-                    rutasConPedidos.map((ruta) => {
-                      const totalRuta =
-                        ruta.pedidos?.reduce(
-                          (acc, pedido) => acc + pedido.total,
-                          0
-                        ) || 0; // Calcula el total de la ruta
-                      return (
-                        <Grid item key={ruta.id} xs={12} sm={6} md={4}>
-                          <Card
-                            sx={{
-                              bgcolor: "#f5f5f5",
-                              borderRadius: "8px",
-                              p: 2,
-                            }}
-                          >
-                            <CardContent>
-                              <Typography variant="h6" textAlign="center">
-                                {ruta.nombre}
-                              </Typography>
-                              <Typography variant="body2" color="textSecondary">
-                                Pedidos:{" "}
-                                {ruta.pedidos ? ruta.pedidos.length : 0}
-                              </Typography>
-                            </CardContent>
-                            <CardActions sx={{ justifyContent: "center" }}>
-                              <Button
-                                variant="contained"
-                                color="primary"
-                                onClick={() => setSelectedRuta(ruta)}
-                              >
-                                Ver Pedidos
-                              </Button>
-                            </CardActions>
-                          </Card>
-                        </Grid>
-                      );
-                    })
-                  ) : (
-                    <Typography>No hay rutas disponibles.</Typography>
-                  )}
-                </Grid>
-                {/* Modal para mostrar pedidos de la ruta seleccionada */}
-                <Modal
-                  open={!!selectedRuta}
-                  onClose={() => setSelectedRuta(null)}
-                >
-                  <Box
-                    sx={{
-                      position: "absolute",
-                      top: "50%",
-                      left: "50%",
-                      transform: "translate(-50%, -50%)",
-                      width: "80%",
-                      maxHeight: "80vh",
-                      overflowY: "auto",
-                      bgcolor: "white",
-                      boxShadow: 24,
-                      p: 4,
-                      borderRadius: "12px",
-                    }}
-                  >
-                    {/* ✅ Muestra correctamente el total al lado del nombre */}
-                    <Typography variant="h6" gutterBottom>
-                      Pedidos de la Ruta: {selectedRuta?.nombre} -{" "}
-                      {formatCurrency(getTotalRuta(selectedRuta))}
-                    </Typography>
 
-                    {selectedRuta?.pedidos?.length > 0 ? (
-                      <TableContainer component={Paper}>
-                        <Table>
-                          <TableHead>
-                            <TableRow>
-                              <TableCell>No. Orden</TableCell>
-                              <TableCell>Cliente</TableCell>
-                              <TableCell>Municipio</TableCell>
-                              <TableCell>Estado</TableCell>
-                              <TableCell>Total</TableCell>
-                              <TableCell>Partidas</TableCell>
-                              <TableCell>Piezas</TableCell>
-                              <TableCell>Fecha Emisión</TableCell>
-                              <TableCell>Observaciones</TableCell>
+
+
+          {(user?.role === "Admin" || user?.role === "Control" || user?.role === "Embar") && (
+            <Box>
+              {/* Modal para ver las rutas ya creadas */}
+              <Typography variant="h6" gutterBottom>
+                Rutas Disponibles
+              </Typography>
+              <Grid container spacing={2}>
+                {rutasConPedidos.length > 0 ? (
+                  rutasConPedidos.map((ruta) => {
+                    const totalRuta =
+                      ruta.pedidos?.reduce(
+                        (acc, pedido) => acc + pedido.total,
+                        0
+                      ) || 0; // Calcula el total de la ruta
+                    return (
+                      <Grid item key={ruta.id} xs={12} sm={6} md={4}>
+                        <Card
+                          sx={{
+                            bgcolor: "#f5f5f5",
+                            borderRadius: "8px",
+                            p: 2,
+                          }}
+                        >
+                          <CardContent>
+                            <Typography variant="h6" textAlign="center">
+                              {ruta.nombre}
+                            </Typography>
+                            <Typography variant="body2" color="textSecondary">
+                              Pedidos:{" "}
+                              {ruta.pedidos ? ruta.pedidos.length : 0}
+                            </Typography>
+                          </CardContent>
+                          <CardActions sx={{ justifyContent: "center" }}>
+
+                            <Button
+                              variant="contained"
+                              color="primary"
+                              onClick={() => openPedidosDeBDModal(ruta)}
+                            >
+                              Ver Pedidos
+                            </Button>
+
+
+
+                          </CardActions>
+                        </Card>
+                      </Grid>
+                    );
+                  })
+                ) : (
+                  <Typography>No hay rutas disponibles.</Typography>
+                )}
+              </Grid>
+
+              {/* Modal para mostrar pedidos de la ruta seleccionada */}
+              <Modal
+                open={!!selectedRuta}
+                onClose={() => setSelectedRuta(null)}
+              >
+                <Box
+                  sx={{
+                    position: "absolute",
+                    top: "50%",
+                    left: "50%",
+                    transform: "translate(-50%, -50%)",
+                    width: "80%",
+                    maxHeight: "80vh",
+                    overflowY: "auto",
+                    bgcolor: "white",
+                    boxShadow: 24,
+                    p: 4,
+                    borderRadius: "12px",
+                  }}
+                >
+                  {/* ✅ Muestra correctamente el total al lado del nombre */}
+                  <Typography variant="h6" gutterBottom>
+                    Pedidos de la Ruta: {selectedRuta?.nombre} -{" "}
+                    {formatCurrency(getTotalRuta(selectedRuta))}
+                  </Typography>
+
+                  {selectedRuta?.pedidos?.length > 0 ? (
+                    <TableContainer component={Paper}>
+                      <Table>
+                        <TableHead>
+                          <TableRow>
+                            <TableCell>No. Orden</TableCell>
+                            <TableCell>Cliente</TableCell>
+                            <TableCell>Municipio</TableCell>
+                            <TableCell>Estado</TableCell>
+                            <TableCell>Total</TableCell>
+                            <TableCell>Partidas</TableCell>
+                            <TableCell>Piezas</TableCell>
+                            <TableCell>Fecha Emisión</TableCell>
+                            <TableCell>Observaciones</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {selectedRuta?.pedidos?.map((pedido) => (
+                            <TableRow key={pedido.id}>
+                              <TableCell>{pedido.no_orden}</TableCell>
+                              <TableCell>{pedido.nombre_cliente}</TableCell>
+                              <TableCell>{pedido.municipio}</TableCell>
+                              <TableCell>{pedido.estado}</TableCell>
+                              <TableCell> {formatCurrency(Number(pedido.total) || 0)} </TableCell>
+                              <TableCell>{pedido.partidas}</TableCell>
+                              <TableCell>{pedido.piezas}</TableCell>
+                              <TableCell>{pedido.fecha_emision}</TableCell>
+                              <TableCell>{pedido.observaciones}</TableCell>
+
+                              <TableCell>
+                                <Typography
+                                  variant="body2"
+                                  style={{ color: pedido.color }}
+                                >
+                                  {pedido.statusText}
+                                </Typography>
+
+                                {pedido.fusionWith && (
+                                  <Typography
+                                    variant="caption"
+                                    style={{
+                                      color: "#800080",
+                                      fontWeight: "bold",
+                                    }}
+                                  >
+                                    (Fusionado con {pedido.fusionWith})
+                                  </Typography>
+                                )}
+                              </TableCell>
+
+
+
+
                             </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            {selectedRuta?.pedidos?.map((pedido) => (
-                              <TableRow key={pedido.id}>
-                                <TableCell>{pedido.no_orden}</TableCell>
-                                <TableCell>{pedido.nombre_cliente}</TableCell>
-                                <TableCell>{pedido.municipio}</TableCell>
-                                <TableCell>{pedido.estado}</TableCell>
-                                {/* ✅ Asegura que el total de cada pedido esté bien formateado */}
-                                <TableCell>
-                                  {formatCurrency(Number(pedido.total) || 0)}
-                                </TableCell>
-                                <TableCell>{pedido.partidas}</TableCell>
-                                <TableCell>{pedido.piezas}</TableCell>
-                                <TableCell>{pedido.fecha_emision}</TableCell>
-                                <TableCell>{pedido.observaciones}</TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </TableContainer>
-                    ) : (
-                      <Typography color="textSecondary">
-                        No hay pedidos en esta ruta.
-                      </Typography>
-                    )}
-                  </Box>
-                </Modal>
-              </Box>
-            )}
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  ) : (
+                    <Typography color="textSecondary">
+                      No hay pedidos en esta ruta.
+                    </Typography>
+                  )}
+                </Box>
+              </Modal>
+
+
+            </Box>
+          )}
+
+
+
 
           <center>
             <div
@@ -6800,6 +6874,7 @@ function Transporte() {
                   ) : (
                     paginatedAsignacion.map((routeData, index) => (
                       <TableRow key={index}>
+
                         <TableCell>
                           {/* Estado del pedido con color */}
                           <Typography
@@ -6966,8 +7041,8 @@ function Transporte() {
                               >
                                 Enviar Correo
                               </Button>
-
                             </Grid>
+
                           </TableCell>
                         )}
                       </TableRow>
@@ -6989,6 +7064,7 @@ function Transporte() {
               />
             </TableContainer>
           )}
+
         </Box>
       )}
 
@@ -7005,6 +7081,7 @@ function Transporte() {
           <Typography variant="h6">Actualizar Guía</Typography>
 
           <Grid container spacing={2}>
+
             {/* Fila 1 */}
             {visibleColumns.includes("GUIA") && (
               <Grid item xs={12} sm={6}>
@@ -7017,25 +7094,23 @@ function Transporte() {
                 />
               </Grid>
             )}
-            {(user?.role === "Admin" ||
-              user?.role === "Trans" ||
-              user?.role === "Tran") &&
-              visibleColumns.includes("NO ORDEN") && (
-                <Grid item xs={12} sm={6}>
-                  <FormControl variant="outlined" fullWidth>
-                    <InputLabel>Tipo</InputLabel>
-                    <Select
-                      value={tipo || ""}
-                      onChange={(e) => setTipo(e.target.value)}
-                      label="Tipo"
-                    >
-                      <MenuItem value="paqueteria">Paquetería</MenuItem>
-                      <MenuItem value="directa">Directa</MenuItem>
-                      <MenuItem value="venta empleado">Venta Empleado</MenuItem>
-                    </Select>
-                  </FormControl>
-                </Grid>
-              )}
+
+            {(user?.role === "Admin" || user?.role === "Trans" || user?.role === "Tran") && visibleColumns.includes("NO ORDEN") && (
+              <Grid item xs={12} sm={6}>
+                <FormControl variant="outlined" fullWidth>
+                  <InputLabel>Tipo</InputLabel>
+                  <Select
+                    value={tipo || ""}
+                    onChange={(e) => setTipo(e.target.value)}
+                    label="Tipo"
+                  >
+                    <MenuItem value="paqueteria">Paquetería</MenuItem>
+                    <MenuItem value="directa">Directa</MenuItem>
+                    <MenuItem value="venta empleado">Venta Empleado</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+            )}
 
             {visibleColumns.includes("TOTAL") && (
               <Grid item xs={12} sm={6}>
@@ -7066,7 +7141,7 @@ function Transporte() {
               <Grid item xs={12} sm={6}>
                 <TextField
                   label="Fecha de Factura"
-                  value={fechaFactura ? formatDate(fechaFactura) : ""}
+                  value={fechaFactura || ""}
                   onChange={(e) => setFechaFactura(e.target.value)}
                   variant="outlined"
                   fullWidth
@@ -7118,12 +7193,12 @@ function Transporte() {
               </Grid>
             )}
 
-            {/* Fila 2 */}
+            {/* Fila 3 */}
             {visibleColumns.includes("FECHA DE ENTREGA (CLIENTE)") && (
               <Grid item xs={12} sm={6}>
                 <TextField
-                  label="Fecha de Entrega Cliente"
-                  value={fechaEntregaCliente}
+                  label="Fecha Entrega Cliente"
+                  value={fechaEntregaCliente || ""}
                   onChange={(e) => setFechaEntregaCliente(e.target.value)}
                   variant="outlined"
                   fullWidth
@@ -7144,27 +7219,25 @@ function Transporte() {
               </Grid>
             )}
 
-            {/* Fila 3 */}
-            {visibleColumns.includes(
-              "ENTREGA SATISFACTORIA O NO SATISFACTORIA"
-            ) && (
-                <Grid item xs={12} sm={6}>
-                  <FormControl variant="outlined" fullWidth>
-                    <InputLabel>Entrega Satisfactoria</InputLabel>
-                    <Select
-                      value={entregaSatisfactoria}
-                      onChange={(e) => setEntregaSatisfactoria(e.target.value)}
-                      label="Entrega Satisfactoria"
-                    >
-                      <MenuItem value="">Selecciona una opción</MenuItem>
-                      <MenuItem value="SATISFACTORIA">SATISFACTORIA</MenuItem>
-                      <MenuItem value="NO SATISFACTORIA">
-                        NO SATISFACTORIA
-                      </MenuItem>
-                    </Select>
-                  </FormControl>
-                </Grid>
-              )}
+            {/* Fila 4 */}
+            {visibleColumns.includes("ENTREGA SATISFACTORIA O NO SATISFACTORIA") && (
+              <Grid item xs={12} sm={6}>
+                <FormControl variant="outlined" fullWidth>
+                  <InputLabel>Entrega Satisfactoria</InputLabel>
+                  <Select
+                    value={entregaSatisfactoria}
+                    onChange={(e) => setEntregaSatisfactoria(e.target.value)}
+                    label="Entrega Satisfactoria"
+                  >
+                    <MenuItem value="">Selecciona una opción</MenuItem>
+                    <MenuItem value="SATISFACTORIA">SATISFACTORIA</MenuItem>
+                    <MenuItem value="NO SATISFACTORIA">
+                      NO SATISFACTORIA
+                    </MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+            )}
 
             {visibleColumns.includes("MOTIVO") && (
               <Grid item xs={12} sm={6}>
@@ -7190,7 +7263,7 @@ function Transporte() {
               </Grid>
             )}
 
-            {/* Fila 4 */}
+            {/* Fila 5 */}
             {visibleColumns.includes("TOTAL FACTURA LT") && (
               <Grid item xs={12} sm={6}>
                 <TextField
@@ -7255,6 +7328,7 @@ function Transporte() {
                 Cancelar
               </Button>
             </Grid>
+
           </Grid>
         </Box>
       </Modal>
@@ -7274,7 +7348,9 @@ function Transporte() {
           </IconButton>
         }
       />
+
     </Paper>
+
   );
 }
 

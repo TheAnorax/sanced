@@ -1,41 +1,214 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 
 <head>
     <meta charset="UTF-8" />
-    <title>Pedido Entregado</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Confirmación de Pedido</title>
 </head>
 
-<body style="margin: 0; padding: 0; background-color: #ffffff; font-family: Helvetica, Arial, sans-serif;">
-    <table width="600" align="center" cellpadding="0" cellspacing="0"
-        style="border-collapse: collapse; background-color: #F6F6F6;">
+<body style="margin: 0; padding: 0; background-color: #f6f6f6; font-family: Arial, sans-serif;">
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f6f6f6;">
         <tr>
-            <td style="background-color: #EA0029; color: white; padding: 20px; font-size: 20px;">
-                <strong>¡Pedido Entregado!</strong>
-            </td>
-        </tr>
-        <tr>
-            <td style="padding: 20px;">
-                <p>Hola <strong>{{nombreCliente}}</strong>,</p>
-                <p>Nos complace informarte que tu pedido número <strong>{{noOrden}}</strong> ha sido
-                    <strong>entregado</strong>.</p>
-                <p>Total del pedido: <strong>${{total}}</strong></p>
-                <br />
-                <p>Gracias por confiar en nosotros. ¡Esperamos que tu experiencia haya sido excelente!</p>
-            </td>
-        </tr>
-        <tr>
-            <td style="padding: 20px;">
-                <table width="100%" cellpadding="10" cellspacing="0">
+            <td align="center">
+                <table width="600" cellpadding="0" cellspacing="0" border="0"
+                    style="max-width: 600px; background-color: #ffffff;">
+                    <!-- ENCABEZADO -->
                     <tr>
-                        <td align="center" style="color: #EA0029;">Recepción</td>
-                        <td align="center" style="color: #EA0029;">En Ruta</td>
-                        <td align="center" style="color: #EA0029; font-weight: bold;">Entregado</td>
+                        <td width="60%" style="background-color: #EA0029; padding: 20px;">
+                            <table width="100%">
+                                <tr>
+                                    <td style="font-size: 25px; color: #fff; font-weight: bold;">RASTREO Y
+                                        SEGUIMIENTO</td>
+                                </tr>
+                                <tr>
+                                    <td style="font-size: 13px; color: #fff; padding-top: 8px;">
+                                        Cuidamos cada detalle para<br />entregarte lo que esperas,<br />justo a tiempo
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                        <td width="40%" align="right" style="background-color: #fff; padding: 15px;">
+                            <img src="cid:logo_santul" alt="Santul" width="250" />
+                        </td>
                     </tr>
+
+                    <!-- DATOS DE PEDIDO -->
                     <tr>
-                        <td align="center">🟢</td>
-                        <td align="center">🟢</td>
-                        <td align="center">🔴</td>
+                        <td colspan="2" style="background-color: #EDEDED; padding: 15px;">
+                            <table width="100%">
+                                <tr>
+                                    <td style="font-size: 14px; font-weight: bold; color: #333;">
+                                        Salida del centro de distribución de Santul
+                                        <div style="font-size: 12px; font-weight: normal;">Hora local {{fechaSalida}}
+                                        </div>
+                                    </td>
+                                    <td align="right" style="font-size: 14px; font-weight: bold; color: #333;">
+                                        Pedido No.: <div style="font-size: 12px; font-weight: normal;">{{noOrden}}</div>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- CUERPO VISUAL -->
+                    <tr>
+                        <td colspan="2" style="background-color: #ffffff;">
+                            <table width="500" cellpadding="0" cellspacing="0" border="0" style="padding: 30px 20px;">
+                                <tr>
+                                    <!-- ICONOS -->
+                                    <td width="70" align="center" valign="top">
+                                        <table height="500">
+                                            <tr>
+                                            <tr>
+                                                <td style="padding-bottom: 150px;">
+                                                <td align="center"><img src="cid:documento_off_2" width="45" /></td>
+                                            </tr>
+                                            <tr>
+                                            <tr>
+                                                <td style="padding-bottom: 150px;">
+                                                <td align="center"><img src="cid:icon_camion" width="45"
+                                                        style="opacity: 0.3;" /></td>
+                                            </tr>
+                                            <tr>
+                                            <tr>
+                                                <td style="padding-bottom: 150px;">
+                                                <td align="center"><img src="cid:entregado_on_3" width="45"
+                                                        style="opacity: 0.3;" /></td>
+                                                <td align="center"><img src="cid:check_ok_3" width="45"
+                                                        style="opacity: 0.3;" /></td>
+                                            </tr>
+                                        </table>
+                                    </td>
+
+                                    <!-- LÍNEA -->
+                                    <td width="30" align="center" valign="top">
+                                        <img src="cid:barra_3er_paso" height="500" alt="Barra" />
+                                    </td>
+
+                                    <!-- TEXTO Y DESCARGAS -->
+                                    <td valign="top">
+                                        <table cellpadding="0" cellspacing="0" border="0">
+                                            <tr>
+                                                <td width="20"></td>
+                                                <td>
+                                                    <table height="500">
+                                                        <tr>
+                                                        <tr>
+                                                            <td style="padding-bottom: 150px;">
+                                                            <td>
+                                                                <div style="font-weight: bold; font-size: 13px;">
+                                                                    Recepción del pedido</div>
+                                                                <div style="font-size: 11px;">Se está ingresando la
+                                                                    solicitud</div>
+                                                            </td>
+                                                        </tr>
+                                                        <tr>
+                                                        <tr>
+                                                            <td style="padding-bottom: 150px;">
+                                                            <td>
+                                                                <table cellpadding="0" cellspacing="0" border="0">
+                                                                    <tr valign="top">
+                                                                        <td width="240" style="vertical-align: top;">
+                                                                            <div
+                                                                                style="font-weight: bold; font-size: 12px;">
+                                                                                Salida para entrega</div>
+                                                                            <div style="color: #999; font-size: 10px;">
+                                                                                Tu pedido está en viaje</div>
+                                                                            <div style="color: #999; font-size: 10px;">(
+                                                                                NOTA. Espacio para poner avisos)</div>
+                                                                            <div style="color: #999; font-size: 10px;">•
+                                                                                Tu pedido tiene una demora de 30 min
+                                                                            </div>
+                                                                            <div style="color: #999; font-size: 10px;">•
+                                                                                Tu pedido está próximo a la entrega
+                                                                            </div>
+                                                                        </td>
+                                                                        <td width="20"></td>
+                                                                        <td width="240" style="vertical-align: top;">
+                                                                            <div
+                                                                                style="font-size: 9px; margin-bottom: 5px; color: #999;">
+                                                                                <strong>Haz clic en los siguientes
+                                                                                    botones para
+                                                                                    descargar:</strong><br />
+                                                                                1. FORMATO DE RECEPCIÓN DEL PEDIDO<br />
+                                                                                2. Factura de tu pedido
+                                                                            </div>
+                                                                            <table cellpadding="0" cellspacing="0"
+                                                                                border="0">
+                                                                                <tr>
+                                                                                    <td align="center"
+                                                                                        style="padding-right: 20px;">
+                                                                                        <img src="cid:download_packing"
+                                                                                            width="35"
+                                                                                            alt="Packing List" /><br />
+                                                                                        <div
+                                                                                            style="font-size: 10px; font-weight: bold;">
+                                                                                            Packing List</div>
+                                                                                    </td>
+                                                                                    <td align="center">
+                                                                                        <img src="cid:download_factura"
+                                                                                            width="35"
+                                                                                            alt="Factura" /><br />
+                                                                                        <div
+                                                                                            style="font-size: 10px; font-weight: bold;">
+                                                                                            Factura</div>
+                                                                                    </td>
+                                                                                </tr>
+                                                                            </table>
+                                                                        </td>
+                                                                    </tr>
+                                                                </table>
+                                                            </td>
+                                                        </tr>
+                                                        <tr>
+                                                        <tr>
+                                                            <td style="padding-bottom: 150px;">
+                                                            <td>
+                                                                <div style="font-weight: bold; font-size: 13px;">Pedido
+                                                                    entregado</div>
+                                                            </td>
+                                                        </tr>
+                                                    </table>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- FECHA Y DESTINO -->
+                    <tr>
+                        <td colspan="2">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0"
+                                style="background-color: #EDEDED; padding: 15px 20px;">
+                                <tr>
+                                    <td style="font-size: 13px; color: #000;">
+                                        <div style="color: #999; font-size: 13px;">Fecha de entrega estimada</div>
+                                        <div style="font-weight: bold; font-size: 13px;">{{fechaEntrega}} - en el
+                                            trascurso del día</div>
+                                        <div style="color: #999; font-size: 13px;">Destino, {{direccion}}</div>
+                                    </td>
+                                </tr>
+                                <!-- BARRA DE MARCAS -->
+                                <tr>
+                                    <td colspan="2" align="center" style="padding: 0; margin: 0;">
+                                        <img src="cid:barra_logos" alt="Marcas"
+                                            style="display: block; width: 100%; max-width: 600px; height: auto;"
+                                            width="600" />
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- PIE DE PÁGINA -->
+                    <tr>
+                        <td colspan="2" align="center" style="font-size: 11px; color: #999; padding: 20px;">
+                            Este correo fue generado automáticamente. No respondas a este mensaje.
+                        </td>
                     </tr>
                 </table>
             </td>

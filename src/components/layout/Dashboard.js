@@ -159,11 +159,19 @@ const getTitle = (pathname) => {
     case "dashboard/visitas-reporte":
       return "Visitas Reporte";
     case "/dashboard/Trasporte":
-      return "Trasporte";
+      return "Transporte";
     case "/dashboard/Tracking":
       return "Tracking";
-      case "/dashboard/kpi":
-        return "kpi";
+    case "/dashboard/kpi":
+      return "kpi";
+    case "/dashboard/Mapa":
+      return "Mapa";
+    case "/dashboard/Plansurtido":
+      return "Plansurtido";
+    case "/dashboard/Catalogo":
+      return "Catalogo";
+    case "/dashboard/COBERTURA":
+      return "Cobertura";
     default:
       return "Dashboard";
   }
@@ -281,14 +289,23 @@ export default function Dashboard() {
             </Menu>
           </Toolbar>
         </AppBar>
-        <Drawer variant="permanent" open={open}>
+        <Drawer
+          variant="permanent"
+          open={open}
+          sx={{
+            display: open ? "block" : "none", // 👈 Esto lo oculta cuando open es false
+          }}
+        >
           <Toolbar />
           <Divider />
-          <List component="nav">
-            {user && mainListItems(user)}
-            <Divider sx={{ my: 1 }} />
-          </List>
+          <Box sx={{ overflowY: "auto", height: "calc(100vh - 64px)" }}>
+            <List component="nav">
+              {user && mainListItems(user)}
+              <Divider sx={{ my: 1 }} />
+            </List>
+          </Box>
         </Drawer>
+
         <Box
           component="main"
           sx={{
@@ -297,13 +314,9 @@ export default function Dashboard() {
                 ? theme.palette.grey[100]
                 : theme.palette.grey[900],
             flexGrow: 1,
-            height: "auto",
-            overflow: "auto",
+            height: "100vh", // ✅ Altura completa de la ventana
+            overflowY: "auto", // ✅ Scroll solo vertical
             marginTop: theme.spacing(8),
-            transition: theme.transitions.create(["margin-left"], {
-              easing: theme.transitions.easing.sharp,
-              duration: theme.transitions.duration.leavingScreen,
-            }),
           }}
         >
           <Container maxWidth={false} sx={{ mb: 4, mx: "auto", px: 2, mt: 1 }}>

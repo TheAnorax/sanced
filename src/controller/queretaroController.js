@@ -5,7 +5,7 @@ const pool = require('../config/database');
 
 // Obtener proyectos con filtros dinámicos
 const getProyectoQueretaro = async (req, res) => {
-  const { zona, ruta, dia_visita , status } = req.query;
+  const { zona, ruta, dia_visita, status } = req.query;
 
   try {
     let query = `
@@ -142,7 +142,7 @@ const mapGiroToTable = (giro) => {
   switch (giro.toLowerCase()) {
     case 'ferretería': return 'Ferreteria';
     case 'papelería': return 'Papelería';
-    case 'mecánica': return 'Mecanica';
+    case 'mecanica': return 'mecanica';
     case 'herrería': return 'Herreria';
     case 'cerrajería': return 'Cerrajería';
     case 'vidrio y aluminio': return 'Vidrio_y_Aluminio';
@@ -185,6 +185,31 @@ const getFilteredProyectoQueretaro = async (req, res) => {
   }
 };
 
- 
+const updateOrdenVisita = async (req, res) => {
+  const { orden } = req.body;
 
-module.exports = { getProyectoQueretaro, getCategoryData, getFilteredProyectoQueretaro };
+  if (!Array.isArray(orden)) {
+    return res.status(400).json({ message: 'Formato de datos incorrecto' });
+  }
+
+  try {
+    const promises = orden.map((id, index) => {
+      return pool.query(
+        'UPDATE proyectoqueretaro SET orden_visita = ? WHERE id = ?',
+        [index + 1, id] // empezamos desde 1
+      );
+    });
+
+    await Promise.all(promises);
+
+    res.json({ message: 'Orden actualizado correctamente' });
+  } catch (error) {
+    console.error('Error al actualizar el orden:', error.message);
+    res.status(500).json({ message: 'Error al actualizar el orden', error: error.message });
+  }
+};
+
+
+
+
+module.exports = { getProyectoQueretaro, getCategoryData, getFilteredProyectoQueretaro, updateOrdenVisita };

@@ -59,6 +59,8 @@ import logo from "./Packing.jpg";
 import infoBancaria from "./informacion_bancaria.jpg";
 import barraFooter from "./BARRA.jpg";
 
+
+
 // import logo from "./logos.jpg";
 
 const hasExpired = (timestamp) => {
@@ -609,6 +611,7 @@ function Transporte() {
     CORREO: row["E-mail"] || "",
     TELEFONO: row["No. Telefonico"] || "",
     "EJECUTIVO VTAS": row["Ejecutico Vtas"] || "",
+    "TIPO ORIGINAL": row["Tipo"] || "",
   });
 
   const handleFileUpload = (e) => {
@@ -624,15 +627,22 @@ function Transporte() {
         range: 6, // Omitir las primeras 6 filas
       });
 
-      // 🔹 Obtener los pedidos que YA están en una ruta (groupedData)
+      // 🔹 Obtener los pedidos que YA están en una ruta activa
       const pedidosEnRuta = new Set();
       Object.values(groupedData).forEach((route) => {
         route.rows.forEach((row) => {
-          pedidosEnRuta.add(row["NO ORDEN"]);
+          const orden = String(row["NO ORDEN"]).trim();
+          if (orden) pedidosEnRuta.add(orden);
         });
       });
 
-      // 🔹 Función para obtener los últimos 3 días hábiles (sin contar fines de semana)
+      // 🔹 Agregar también todos los pedidos ya enviados (directa, paquetería, etc.)
+      sentRoutesData.forEach((row) => {
+        const orden = String(row["NO ORDEN"]).trim();
+        if (orden) pedidosEnRuta.add(orden);
+      });
+
+      // 🔹 Obtener los últimos 5 días hábiles
       const getLastBusinessDays = (numDays) => {
         const businessDays = [];
         let currentDate = new Date();
@@ -647,15 +657,12 @@ function Transporte() {
         return businessDays;
       };
 
-      const lastBusinessDays = getLastBusinessDays(5); // Últimos 5 días hábiles
+      const lastBusinessDays = getLastBusinessDays(5);
 
-      // 🔹 Filtrar datos SOLO de los últimos 3 días hábiles con 'Lista Surtido'
+      // 🔹 Filtrar pedidos con 'Lista Surtido' de los últimos 3 días hábiles
       const filteredData = jsonData
         .map((row) => {
-          if (!row["Fecha Lista Surtido"]) {
-            console.warn("⚠️ Registro sin fecha:", row);
-            return null;
-          }
+          if (!row["Fecha Lista Surtido"]) return null;
 
           let rowDate;
           if (typeof row["Fecha Lista Surtido"] === "number") {
@@ -671,40 +678,37 @@ function Transporte() {
             }
           }
 
-          if (isNaN(rowDate.getTime())) {
-            console.warn(
-              "🚨 Fecha inválida detectada:",
-              row["Fecha Lista Surtido"]
-            );
-            return null;
-          }
+          if (isNaN(rowDate.getTime())) return null;
 
           rowDate.setHours(0, 0, 0, 0);
           row.rowDateObject = rowDate;
 
-          return lastBusinessDays.some(
-            (bd) => bd.toDateString() === rowDate.toDateString()
-          ) && row["Estatus"] === "Lista Surtido"
+          return lastBusinessDays
+            .slice(0, 3)
+            .some((bd) => bd.toDateString() === rowDate.toDateString()) &&
+            row["Estatus"] === "Lista Surtido"
             ? row
             : null;
         })
         .filter(Boolean);
 
-      // 🔹 Ordenar por fecha de manera descendente
+      // 🔹 Ordenar por fecha descendente
       const sortedData = filteredData.sort(
         (a, b) => b.rowDateObject - a.rowDateObject
       );
 
-      // 🔹 Mapea los datos filtrados y FILTRA los pedidos ya asignados
+      // 🔹 Mapea y excluye pedidos ya existentes en rutas o enviados
       const mappedData = sortedData
         .map(mapColumns)
         .filter(
-          (row) => row["NO ORDEN"] && !pedidosEnRuta.has(row["NO ORDEN"])
+          (row) =>
+            row["NO ORDEN"] &&
+            !pedidosEnRuta.has(String(row["NO ORDEN"]).trim())
         );
 
-      console.log("✅ Pedidos filtrados (sin duplicados):", mappedData);
+      console.log("✅ Pedidos nuevos (no duplicados):", mappedData);
 
-      // 🔹 Extraer facturados solo de los últimos 5 días hábiles
+      // 🔹 Buscar pedidos facturados de los últimos 5 días hábiles
       const facturados = jsonData
         .filter((row) => row["Estatus"] === "Factura")
         .map((row) => {
@@ -730,6 +734,7 @@ function Transporte() {
         })
         .filter(Boolean);
 
+      // 🔹 Preguntar si se quieren incluir pedidos facturados
       if (facturados.length > 0) {
         const facturadosCleaned = facturados.map((row) =>
           String(row["No Orden"]).trim()
@@ -748,19 +753,36 @@ function Transporte() {
             ordenesSeleccionadas.includes(String(row["No Orden"]).trim())
           );
 
-          const mappedFacturados = pedidosSeleccionados.map(mapColumns);
+          const mappedFacturados = pedidosSeleccionados
+            .map(mapColumns)
+            .filter(
+              (row) =>
+                row["NO ORDEN"] &&
+                !pedidosEnRuta.has(String(row["NO ORDEN"]).trim())
+            );
 
           setData([...mappedData, ...mappedFacturados]);
         } else {
-          setData([...mappedData, ...facturados.map(mapColumns)]);
+          const allMapped = facturados
+            .map(mapColumns)
+            .filter(
+              (row) =>
+                row["NO ORDEN"] &&
+                !pedidosEnRuta.has(String(row["NO ORDEN"]).trim())
+            );
+          setData([...mappedData, ...allMapped]);
         }
       } else {
         setData(mappedData);
       }
     };
 
+
+
     reader.readAsBinaryString(file);
   };
+
+
 
   // 🔹 Esperar a que `setData()` actualice el estado antes de calcular totales
   useEffect(() => {
@@ -1415,6 +1437,7 @@ function Transporte() {
                 "Sin observaciones disponibles",
               TIPO: tipoRutaActual, // ✅ Asegurar que se inserta el tipo correcto
               GUIA: guiaEnviar, // ✅ Asignar "NA" si es Directa o Venta Empleado
+              tipo_original: row["TIPO ORIGINAL"] || null,
             });
           });
         } else {
@@ -1466,16 +1489,21 @@ function Transporte() {
   };
 
   const formatDate = (dateString) => {
-    if (!dateString) return "Sin fecha"; // Si no hay fecha, muestra "Sin fecha"
+    if (!dateString) return "Sin fecha";
 
-    const date = new Date(dateString); // Convierte el string de fecha a un objeto Date
-    if (isNaN(date)) {
-      return "Fecha inválida"; // Si no se puede convertir a fecha, devuelve 'Fecha inválida'
+    // Si ya viene en formato YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+      const [year, month, day] = dateString.split("-");
+      return `${day}/${month}/${year}`;
     }
 
-    const options = { year: "numeric", month: "numeric", day: "numeric" };
-    return date.toLocaleDateString("es-MX", options); // Devuelve la fecha formateada en formato local
+    // Si no viene en ese formato, usar Date como respaldo
+    const date = new Date(dateString);
+    if (isNaN(date)) return "Fecha inválida";
+
+    return date.toLocaleDateString("es-MX");
   };
+
 
   const handleGenerateRoutes = () => {
     if (!tipoRuta) {
@@ -2100,7 +2128,10 @@ function Transporte() {
     console.log("✅ Archivo Excel generado correctamente.");
   };
 
+
+
   // ✅ Versión con tabla de IMPORTE AGREGADA al final (corregida)
+
 
   const totalPagesExp = "___total_pages___";
 
@@ -2238,16 +2269,31 @@ function Transporte() {
       );
       currentY = infoY + 15;
 
+
       const productosConCaja = data.filter((i) => i.caja && i.caja > 0);
       const productosSinCaja = data.filter((i) => !i.caja || i.caja === 0);
+
+      // ✔️ Primero agrupamos productos por caja original
+
+      const cajasAgrupadasOriginal = productosConCaja.reduce((acc, item) => {
+        if (!acc[item.caja]) acc[item.caja] = [];
+        acc[item.caja].push(item);
+        return acc;
+      }, {});
+
+      const cajasOrdenadas = Object.entries(cajasAgrupadasOriginal).sort(
+        (a, b) => Number(a[0]) - Number(b[0])
+      );
 
       const totalINNER_MASTER = productosSinCaja.reduce(
         (s, i) => s + (i._inner || 0) + (i._master || 0),
         0
       );
-      const totalCajasArmadas =
-        parseInt(Math.max(...productosConCaja.map((i) => i.caja))) || 0;
+      const totalCajasArmadas = cajasOrdenadas.length;
       const totalCajas = totalINNER_MASTER + totalCajasArmadas;
+
+
+
       const totalTarimas = data.reduce((s, i) => s + (i.tarimas || 0), 0);
       const totalAtados = data.reduce((s, i) => s + (i.atados || 0), 0);
 
@@ -2280,18 +2326,20 @@ function Transporte() {
         return acc;
       }, {});
 
-      for (const caja in cajasAgrupadas) {
-        const productos = cajasAgrupadas[caja];
-        currentY = verificarEspacio(doc, currentY, 1);
+      let numeroCajaSecuencial = 1;
 
+      for (const [, productos] of cajasOrdenadas) {
+        const titulo = `Productos en la Caja ${numeroCajaSecuencial}`;
+
+        // Título de la tabla
         doc.autoTable({
           startY: currentY,
-          head: [[`Productos en la Caja ${caja}`]],
+          head: [[titulo]],
           body: [],
           theme: "grid",
           styles: { halign: "center", fontSize: 9 },
           headStyles: {
-            fillColor: [255, 255, 255], // Color verde
+            fillColor: [255, 255, 255],
             textColor: [0, 0, 0],
             fontStyle: "bold",
           },
@@ -2300,26 +2348,16 @@ function Transporte() {
         });
 
         currentY = doc.lastAutoTable.finalY;
-        currentY = verificarEspacio(doc, currentY, productos.length);
+
+        let yaContinua = false;
 
         doc.autoTable({
           startY: currentY,
-          head: [
-            [
-              "SKU",
-              "DESCRIPCIÓN",
-              "CANTIDAD",
-              "UM",
-              "PZ",
-              "PQ",
-              "INNER",
-              "MASTER",
-              "TARIMA",
-              "ATADOS",
-              "VALIDA",
-            ],
-          ],
-          body: productos.map((item) => [
+          head: [[
+            "SKU", "DESCRIPCIÓN", "CANTIDAD", "UM", "PZ", "PQ",
+            "INNER", "MASTER", "TARIMA", "ATADOS", "VALIDA"
+          ]],
+          body: productos.map(item => [
             item.codigo_ped || "",
             item.des || "",
             item.cantidad || "",
@@ -2360,11 +2398,28 @@ function Transporte() {
             textColor: [255, 255, 255],
             fontSize: 5.5,
           },
+          didDrawCell: function (data) {
+            if (
+              data.row.index === 0 &&
+              data.section === "body" &&
+              data.cursor.y < 30 && // Está en una nueva página
+              !yaContinua
+            ) {
+              const text = `Continuación de la Caja ${numeroCajaSecuencial}`;
+              doc.setFontSize(8);
+              doc.text(text, 105, data.cursor.y - 6, { align: "center" });
+              yaContinua = true;
+            }
+          },
         });
+
         currentY = doc.lastAutoTable.finalY + 4;
+        numeroCajaSecuencial++;
       }
 
+
       if (productosSinCaja.length > 0) {
+        // Título principal
         currentY = verificarEspacio(doc, currentY, 2);
         doc.autoTable({
           startY: currentY,
@@ -2374,9 +2429,15 @@ function Transporte() {
           styles: { halign: "center", fontSize: 9 },
           margin: { left: 10 },
           tableWidth: 190,
+          headStyles: {
+            fillColor: [255, 255, 255],
+            textColor: [0, 0, 0],
+            fontStyle: "bold",
+          },
         });
         currentY = doc.lastAutoTable.finalY;
-        currentY = verificarEspacio(doc, currentY, productosSinCaja.length);
+
+        let yaContinua = false;
 
         doc.autoTable({
           startY: currentY,
@@ -2410,23 +2471,47 @@ function Transporte() {
           margin: { left: 10 },
           tableWidth: 190,
           styles: {
-            fontSize: 8,
+            fontSize: 5.5,
             halign: "center",
-            cellPadding: 1.5,
-            lineColor: [0, 0, 0],
+            cellPadding: 2,
+            lineColor: [200, 200, 200],
+            lineWidth: 0.1,
           },
           columnStyles: {
             0: { cellWidth: 15 },
             1: { cellWidth: 80 },
             2: { cellWidth: 15 },
+            3: { cellWidth: 10 },
+            4: { cellWidth: 10 },
+            5: { cellWidth: 12 },
+            6: { cellWidth: 12 },
+            7: { cellWidth: 12 },
+            8: { cellWidth: 12 },
+            9: { cellWidth: 12 },
           },
           headStyles: {
             fillColor: [20, 20, 20],
             textColor: [255, 255, 255],
-            fontSize: 8,
+            fontSize: 5.5,
+          },
+          didDrawCell: function (data) {
+            if (
+              data.row.index === 0 &&
+              data.section === "body" &&
+              data.cursor.y < 30 &&
+              !yaContinua
+            ) {
+              const text = "Continuación de productos sin caja";
+              doc.setFontSize(8);
+              doc.text(text, 105, data.cursor.y - 6, { align: "center" });
+              yaContinua = true;
+            }
           },
         });
+
+        currentY = doc.lastAutoTable.finalY + 4;
       }
+
 
       currentY = doc.lastAutoTable.finalY + 5;
       currentY = verificarEspacio(doc, currentY, 1);
@@ -2597,8 +2682,6 @@ function Transporte() {
   };
 
 
-
-
   useEffect(() => {
     // console.log("Observaciones actuales:", observacionesPorRegistro);
   }, [observacionesPorRegistro, groupedData]);
@@ -2700,11 +2783,13 @@ function Transporte() {
     );
 
 
-    setFechaFactura(
-      data.FECHA_DE_FACTURA
-        ? new Date(data.FECHA_DE_FACTURA).toISOString().split("T")[0]
-        : ""
-    );
+    setFechaFactura(data.FECHA_DE_FACTURA);
+
+    const date = new Date(data.FECHA_DE_FACTURA);
+    const formatted = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    setFechaFactura(formatted);
+
+
 
     setTipo(data.TIPO || "");
 
@@ -3843,6 +3928,7 @@ function Transporte() {
     fetchRutasConPedidos();
   }, []);
 
+  //status e modal de todas las funciones 
 
   const openPedidosDeBDModal = async (ruta) => {
     const pedidos = ruta.pedidos || [];
@@ -3875,6 +3961,30 @@ function Transporte() {
       console.error("❌ Error al consultar estados antes del modal:", error);
     }
   };
+
+  const getStatusCountForRuta = (pedidos = []) => {
+    const statusCounts = {
+      "Por asignar": 0,
+      Surtiendo: 0,
+      Embarcando: 0,
+      "Pedido finalizado": 0,
+      Otro: 0,
+    };
+
+    pedidos.forEach((pedido) => {
+      const status = pedido.statusText || "Otro";
+      if (statusCounts[status] !== undefined) {
+        statusCounts[status]++;
+      } else {
+        statusCounts.Otro++;
+      }
+    });
+
+    return statusCounts;
+  };
+
+
+  // fin del modal 
 
 
   const closePedidosDeBDModal = () => {
@@ -4075,7 +4185,6 @@ function Transporte() {
     fetchPaqueteriaRoutes({ mes: nuevoMes });
   };
 
-
   // mandar correo 
 
   const handleEnviarCorreo = async (noOrden) => {
@@ -4097,6 +4206,239 @@ function Transporte() {
     }
   };
 
+
+
+  //exportar exel 
+
+
+  const handleExportarPorMes = () => {
+    if (!mesSeleccionado) {
+      alert("Selecciona un mes para exportar.");
+      return;
+    }
+
+    // Obtener año actual y armar el mes en formato "YYYY-MM"
+    const anioActual = new Date().getFullYear();
+    const mesFormateado = `${anioActual}-${String(mesSeleccionado).padStart(2, '0')}`;
+
+    const datosFiltrados = sentRoutesData.filter((pedido) => {
+      if (!pedido.created_at) return false;
+
+      const fecha = new Date(pedido.created_at);
+      if (isNaN(fecha)) return false;
+
+      const mesActual = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, "0")}`;
+      return mesActual === mesFormateado;
+    });
+
+    if (datosFiltrados.length === 0) {
+      alert("No hay registros para exportar en ese mes.");
+      return;
+    }
+
+    const datosPaqueteria = datosFiltrados.filter(
+      (pedido) => pedido.TIPO?.trim().toLowerCase() === "paqueteria"
+    );
+    const datosDirecta = datosFiltrados.filter(
+      (pedido) => pedido.TIPO?.trim().toLowerCase() === "directa"
+    );
+
+    const columnas = [
+      "FECHA", "NO ORDEN", "NO_FACTURA", "FECHA_DE_FACTURA", "NUM. CLIENTE", "NOMBRE DEL CLIENTE",
+      "ZONA", "MUNICIPIO", "ESTADO", "OBSERVACIONES", "TOTAL", "PARTIDAS", "PIEZAS",
+      "TARIMAS", "TRANSPORTE", "PAQUETERIA", "GUIA", "FECHA_DE_ENTREGA_CLIENTE", "DIAS_DE_ENTREGA",
+      "ENTREGA_SATISFACTORIA_O_NO_SATISFACTORIA", "MOTIVO", "NUMERO_DE_FACTURA_LT",
+      "TOTAL_FACTURA_LT", "PRORRATEO_FACTURA_LT", "PRORRATEO_FACTURA_PAQUETERIA",
+      "GASTOS_EXTRAS", "SUMA_FLETE", "PORCENTAJE_ENVIO", "PORCENTAJE_PAQUETERIA",
+      "SUMA_GASTOS_EXTRAS", "PORCENTAJE_GLOBAL", "DIFERENCIA"
+    ];
+
+    const transformData = (datos) => {
+      return datos.map((row) => {
+        const exportRow = {};
+        columnas.forEach((col) => {
+          exportRow[col] = row[col] ?? "";
+        });
+        return exportRow;
+      });
+    };
+
+    const datosPaqueteriaExportados = transformData(datosPaqueteria);
+    const datosDirectaExportados = transformData(datosDirecta);
+
+    const workbook = XLSX.utils.book_new();
+    if (datosPaqueteriaExportados.length > 0) {
+      const worksheetPaqueteria = XLSX.utils.json_to_sheet(datosPaqueteriaExportados);
+      XLSX.utils.book_append_sheet(workbook, worksheetPaqueteria, "Paquetería");
+    }
+    if (datosDirectaExportados.length > 0) {
+      const worksheetDirecta = XLSX.utils.json_to_sheet(datosDirectaExportados);
+      XLSX.utils.book_append_sheet(workbook, worksheetDirecta, "Directa");
+    }
+
+    XLSX.writeFile(workbook, `Rutas_Mes_${mesFormateado}.xlsx`);
+  };
+
+
+
+  // calcular por status 
+
+  const [conteoEstatus, setConteoEstatus] = useState({});
+
+  const ordenEstatus = [
+    "Por Asignar",
+    "Surtiendo",
+    "Embarcando",
+    "Pedido Finalizado",
+  ];
+
+  const colorPorEstatus = {
+    "Pedido no encontrado": "#9e9e9e",
+    "Por Asignar": "#e53935",
+    "Surtiendo": "#1e88e5",
+    "Embarcando": "#8e24aa",
+    "Pedido Finalizado": "#43a047",
+  };
+
+
+  const calcularConteoPorEstatus = (data) => {
+    const conteo = {};
+    data.forEach((item) => {
+      const estatus = item.statusText || "Sin Estatus";
+      conteo[estatus] = (conteo[estatus] || 0) + 1;
+    });
+    setConteoEstatus(conteo);
+  };
+
+  useEffect(() => {
+    let dataActual = [];
+
+    switch (subTabIndex) {
+      case 0:
+        dataActual = paqueteriaData;
+        break;
+      case 1:
+        dataActual = directaData;
+        break;
+      case 2:
+        dataActual = ventaEmpleadoData;
+        break;
+      case 3:
+        dataActual = sentRoutesData.filter((d) =>
+          ["paqueteria", "directa"].includes(d.TIPO?.trim().toLowerCase())
+        );
+        break;
+      default:
+        dataActual = [];
+    }
+
+    calcularConteoPorEstatus(dataActual);
+  }, [subTabIndex, paqueteriaData, directaData, ventaEmpleadoData]);
+
+
+  //recuperar las eliminada
+
+
+
+  const reactivarRuta = (nombreRuta, pedidos) => {
+    if (!nombreRuta || !Array.isArray(pedidos) || pedidos.length === 0) {
+      alert("⚠ No hay pedidos disponibles para reactivar esta ruta.");
+      return;
+    }
+
+    if (groupedData[nombreRuta]) {
+      alert("⚠️ Esta ruta ya existe.");
+      return;
+    }
+
+    const nuevaRuta = {
+      TOTAL: 0,
+      PARTIDAS: 0,
+      PIEZAS: 0,
+      rows: [],
+    };
+
+    pedidos.forEach((pedido) => {
+      const total = parseFloat(pedido.total || pedido.TOTAL || 0);
+      const partidas = parseInt(pedido.partidas || pedido.PARTIDAS || 0);
+      const piezas = parseInt(pedido.piezas || pedido.PIEZAS || 0);
+
+      const no_orden = pedido.no_orden || pedido.NO_ORDEN || "";
+      const nombre_cliente = pedido.nombre_cliente || pedido.NOMBRE_CLIENTE || "";
+      const municipio = pedido.municipio || pedido.MUNICIPIO || "";
+      const estado = pedido.estado || pedido.ESTADO || "";
+      const fecha_emision = pedido.fecha_emision || pedido.FECHA_EMISION || "";
+      const observaciones = pedido.observaciones || pedido.OBSERVACIONES || "Sin observaciones";
+
+      const no_factura = pedido.no_factura || pedido.NO_FACTURA || "";
+      const num_cliente = pedido.num_cliente || pedido.NUM_CLIENTE || "";
+      const zona = pedido.zona || pedido.ZONA || "";
+      const fecha = pedido.fecha || pedido.FECHA || "";
+
+      nuevaRuta.TOTAL += total;
+      nuevaRuta.PARTIDAS += partidas;
+      nuevaRuta.PIEZAS += piezas;
+
+      const pedidoNormalizado = {
+        ...pedido,
+        no_orden,
+        nombre_cliente,
+        municipio,
+        estado,
+        fecha_emision,
+        observaciones,
+        total,
+        partidas,
+        piezas,
+        TOTAL: total,
+        PARTIDAS: partidas,
+        PIEZAS: piezas,
+        OBSERVACIONES: observaciones,
+        NO_FACTURA: no_factura,
+        NUM_CLIENTE: num_cliente,
+        ZONA: zona,
+        FECHA: fecha,
+      };
+
+      nuevaRuta.rows.push(pedidoNormalizado);
+    });
+
+    // 👇 Aquí imprimes los pedidos ya normalizados que van al modal
+    console.log("✅ Pedidos normalizados que se están guardando en la ruta:", nuevaRuta.rows);
+
+    console.log("modalPedidos", modalPedidos);
+
+
+    setGroupedData((prev) => {
+      const updated = { ...prev, [nombreRuta]: nuevaRuta };
+      localStorage.setItem("transporteGroupedData", JSON.stringify(updated));
+      return updated;
+    });
+
+    alert("✅ Ruta reactivada correctamente.");
+  };
+
+
+  const openDetallesRuta = (ruta) => {
+    const pedidos = groupedData[ruta]?.rows || [];
+    setModalPedidos(pedidos);
+
+  };
+
+
+  const getPedidosRuta = (nombreRuta) => {
+    if (groupedData[nombreRuta]?.rows?.length > 0) {
+      return groupedData[nombreRuta].rows;
+    }
+
+    const ruta = rutasConPedidos.find((r) => r.nombre === nombreRuta);
+    return ruta?.pedidos || [];
+  };
+
+
+  const [pedidosModal, setPedidosModal] = useState([]);
+  const [modalPedidos, setModalPedidos] = useState([]);
+  const [modalRoute, setModalRoute] = useState("");
 
 
   return (
@@ -4488,50 +4830,53 @@ function Transporte() {
 
 
 
+
           {(user?.role === "Admin" || user?.role === "Control" || user?.role === "Embar") && (
             <Box>
-              {/* Modal para ver las rutas ya creadas */}
               <Typography variant="h6" gutterBottom>
                 Rutas Disponibles
               </Typography>
+
               <Grid container spacing={2}>
                 {rutasConPedidos.length > 0 ? (
                   rutasConPedidos.map((ruta) => {
-                    const totalRuta =
-                      ruta.pedidos?.reduce(
-                        (acc, pedido) => acc + pedido.total,
-                        0
-                      ) || 0; // Calcula el total de la ruta
+                    const totalRuta = ruta.pedidos?.reduce((acc, pedido) => acc + pedido.total, 0) || 0;
+                    const statusCount = getStatusCountForRuta(ruta.pedidos || []);
+
                     return (
                       <Grid item key={ruta.id} xs={12} sm={6} md={4}>
-                        <Card
-                          sx={{
-                            bgcolor: "#f5f5f5",
-                            borderRadius: "8px",
-                            p: 2,
-                          }}
-                        >
+                        <Card sx={{ bgcolor: "#f5f5f5", borderRadius: "8px", p: 2 }}>
                           <CardContent>
                             <Typography variant="h6" textAlign="center">
                               {ruta.nombre}
                             </Typography>
                             <Typography variant="body2" color="textSecondary">
-                              Pedidos:{" "}
-                              {ruta.pedidos ? ruta.pedidos.length : 0}
+                              Pedidos: {ruta.pedidos?.length || 0}
                             </Typography>
-                          </CardContent>
-                          <CardActions sx={{ justifyContent: "center" }}>
 
+                            {/* Resumen de estatus */}
+                            {Object.entries(statusCount).map(([status, count]) =>
+                              count > 0 ? (
+                                <Typography key={status} variant="body2">
+                                  {status}: {count}
+                                </Typography>
+                              ) : null
+                            )}
+                          </CardContent>
+
+                          <CardActions sx={{ justifyContent: "center" }}>
                             <Button
                               variant="contained"
                               color="primary"
-                              onClick={() => openPedidosDeBDModal(ruta)}
+                              onClick={() => {
+                                openDetallesRuta?.(ruta.nombre); // Si la usas
+                                openPedidosDeBDModal?.(ruta);     // Si la usas
+                                setModalRoute(ruta.nombre);
+                                setSelectedRuta(ruta);
+                              }}
                             >
                               Ver Pedidos
                             </Button>
-
-
-
                           </CardActions>
                         </Card>
                       </Grid>
@@ -4543,10 +4888,7 @@ function Transporte() {
               </Grid>
 
               {/* Modal para mostrar pedidos de la ruta seleccionada */}
-              <Modal
-                open={!!selectedRuta}
-                onClose={() => setSelectedRuta(null)}
-              >
+              <Modal open={!!selectedRuta} onClose={() => setSelectedRuta(null)}>
                 <Box
                   sx={{
                     position: "absolute",
@@ -4562,14 +4904,25 @@ function Transporte() {
                     borderRadius: "12px",
                   }}
                 >
-                  {/* ✅ Muestra correctamente el total al lado del nombre */}
                   <Typography variant="h6" gutterBottom>
                     Pedidos de la Ruta: {selectedRuta?.nombre} -{" "}
                     {formatCurrency(getTotalRuta(selectedRuta))}
                   </Typography>
 
-                  {selectedRuta?.pedidos?.length > 0 ? (
+                  {getPedidosRuta(selectedRuta?.nombre).length > 0 ? (
                     <TableContainer component={Paper}>
+                      <Button
+                        onClick={() =>
+                          reactivarRuta(
+                            selectedRuta.nombre,
+                            getPedidosRuta(selectedRuta.nombre)
+                          )
+                        }
+                        sx={{ mb: 2 }}
+                      >
+                        Reactivar como Ruta
+                      </Button>
+
                       <Table>
                         <TableHead>
                           <TableRow>
@@ -4582,21 +4935,24 @@ function Transporte() {
                             <TableCell>Piezas</TableCell>
                             <TableCell>Fecha Emisión</TableCell>
                             <TableCell>Observaciones</TableCell>
+                            <TableCell>Status</TableCell>
                           </TableRow>
                         </TableHead>
+
                         <TableBody>
-                          {selectedRuta?.pedidos?.map((pedido) => (
+                          {getPedidosRuta(selectedRuta?.nombre).map((pedido) => (
                             <TableRow key={pedido.id}>
                               <TableCell>{pedido.no_orden}</TableCell>
                               <TableCell>{pedido.nombre_cliente}</TableCell>
                               <TableCell>{pedido.municipio}</TableCell>
                               <TableCell>{pedido.estado}</TableCell>
-                              <TableCell> {formatCurrency(Number(pedido.total) || 0)} </TableCell>
+                              <TableCell>
+                                {formatCurrency(Number(pedido.total) || 0)}
+                              </TableCell>
                               <TableCell>{pedido.partidas}</TableCell>
                               <TableCell>{pedido.piezas}</TableCell>
                               <TableCell>{pedido.fecha_emision}</TableCell>
                               <TableCell>{pedido.observaciones}</TableCell>
-
                               <TableCell>
                                 <Typography
                                   variant="body2"
@@ -4617,10 +4973,6 @@ function Transporte() {
                                   </Typography>
                                 )}
                               </TableCell>
-
-
-
-
                             </TableRow>
                           ))}
                         </TableBody>
@@ -4633,8 +4985,6 @@ function Transporte() {
                   )}
                 </Box>
               </Modal>
-
-
             </Box>
           )}
 
@@ -5354,6 +5704,7 @@ function Transporte() {
                   <TableCell>Seleccionar</TableCell>
                   <TableCell>FECHA</TableCell>
                   <TableCell>NO ORDEN</TableCell>
+                  <TableCell>TIPO ORDEN</TableCell>
                   <TableCell>NUM. CLIENTE</TableCell>
                   <TableCell>NOMBRE DEL CLIENTE</TableCell>
                   <TableCell>Codigo Postal</TableCell>
@@ -5384,12 +5735,11 @@ function Transporte() {
                       </TableCell>
                       <TableCell>{row.FECHA}</TableCell>
                       <TableCell>{row["NO ORDEN"]}</TableCell>
+                      <TableCell>{row["TIPO ORIGINAL"] || "Sin dato"}</TableCell>
                       <TableCell>{row["NUM. CLIENTE"]}</TableCell>
                       <TableCell>{row["NOMBRE DEL CLIENTE"]}</TableCell>
                       <TableCell>{row["Codigo_Postal"]}</TableCell>
-                      <TableCell>
-                        {row.MUNICIPIO || "Sin Municipio"}
-                      </TableCell>
+                      <TableCell> {row.MUNICIPIO || "Sin Municipio"} </TableCell>
                       <TableCell>{row.ESTADO}</TableCell>
 
                       <TableCell>
@@ -5449,6 +5799,8 @@ function Transporte() {
                 )}
               </TableBody>
             </Table>
+
+
           </TableContainer>
         </Box>
       )}
@@ -5614,38 +5966,15 @@ function Transporte() {
                 Actualizar Guías
               </Button>
 
-              {/* <select
-                  value={mesSeleccionado}
-                  onChange={(e) => setMesSeleccionado(e.target.value)}
-                  style={{
-                    padding: "6px 12px",
-                    borderRadius: "4px",
-                    border: "1px solid #ccc",
-                    fontWeight: "bold",
-                    color: "#333",
-                    backgroundColor: "#fff",
-                    cursor: "pointer",
-                    boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-                    outline: "none",
-                    transition: "border-color 0.3s ease",
-                  }}
-                  onFocus={(e) => (e.target.style.borderColor = "#ff6600")}
-                  onBlur={(e) => (e.target.style.borderColor = "#ccc")}
-                >
-                  <option value="">Últimos 3 días</option>
-                  <option value="1">Enero</option>
-                  <option value="2">Febrero</option>
-                  <option value="3">Marzo</option>
-                  <option value="4">Abril</option>
-                  <option value="5">Mayo</option>
-                  <option value="6">Junio</option>
-                  <option value="7">Julio</option>
-                  <option value="8">Agosto</option>
-                  <option value="9">Septiembre</option>
-                  <option value="10">Octubre</option>
-                  <option value="11">Noviembre</option>
-                  <option value="12">Diciembre</option>
-                </select> */}
+              <Button
+                variant="contained"
+                color="success"
+                onClick={handleExportarPorMes}
+                style={{ marginLeft: 10 }}
+              >
+                EXPORTAR PAQUETERÍA POR MES
+              </Button>
+
             </Box>
           )}
 
@@ -5935,68 +6264,102 @@ function Transporte() {
             <TableContainer component={Paper} style={{ marginTop: "20px" }}>
               <Typography variant="h6">Paquetería</Typography>
 
-              <TextField
-                label="Buscar por No Orden o Num Cliente"
-                value={filtroGeneral}
-                onChange={(e) => setFiltroGeneral(e.target.value)}
-                variant="outlined"
-                size="small"
-              />
-
-              <TextField
-                label="Buscar por Estado"
-                value={filtroEstado}
-                onChange={(e) => setFiltroEstado(e.target.value)}
-                variant="outlined"
-                size="small"
-              />
-
-              <FormControl
-                variant="outlined"
-                style={{ minWidth: 200, marginBottom: 10 }}
+              <Box
+                sx={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 2,
+                  alignItems: "center",
+                  mb: 2,
+                }}
               >
-                <InputLabel>Filtrar por Paquetería</InputLabel>
-                <Select
-                  value={paqueteriaSeleccionada}
-                  onChange={handlePaqueteriaChange}
-                  label="Filtrar por Paquetería"
+                <TextField
+                  label="Buscar por No Orden o Num Cliente"
+                  value={filtroGeneral}
+                  onChange={(e) => setFiltroGeneral(e.target.value)}
+                  variant="outlined"
+                  size="small"
+                />
+
+                <TextField
+                  label="Buscar por Estado"
+                  value={filtroEstado}
+                  onChange={(e) => setFiltroEstado(e.target.value)}
+                  variant="outlined"
+                  size="small"
+                />
+
+                <FormControl size="small" sx={{ minWidth: 200 }}>
+                  <InputLabel>Filtrar por Paquetería</InputLabel>
+                  <Select
+                    value={paqueteriaSeleccionada}
+                    onChange={handlePaqueteriaChange}
+                    label="Filtrar por Paquetería"
+                  >
+                    <MenuItem value="">Todas</MenuItem>
+                    <MenuItem value="PITIC">PITIC</MenuItem>
+                    <MenuItem value="TRESGUERRAS">TRESGUERRAS</MenuItem>
+                    <MenuItem value="EXPRESS">EXPRESS</MenuItem>
+                  </Select>
+                </FormControl>
+
+
+                <FormControl size="small" sx={{ minWidth: 200 }}>
+                  <InputLabel>Filtrar por Estatus</InputLabel>
+                  <Select
+                    value={estatusSeleccionado}
+                    onChange={handleEstatusChange}
+                    label="Filtrar por Estatus"
+                  >
+                    <MenuItem value="">Todos</MenuItem>
+                    <MenuItem value="Por Asignar">Por Asignar</MenuItem>
+                    <MenuItem value="Surtiendo">Surtiendo</MenuItem>
+                    <MenuItem value="Embarcando">Embarcando</MenuItem>
+                    <MenuItem value="Pedido Finalizado">Pedido Finalizado</MenuItem>
+                  </Select>
+                </FormControl>
+
+                <Button
+                  variant="contained"
+                  onClick={toggleMostrarSinGuia}
+                  size="small"
+                  sx={{
+                    backgroundColor: mostrarSinGuia ? "#EA0029" : "#1976d2", // rojo personalizado o azul MUI
+                    color: "#fff",
+                    "&:hover": {
+                      backgroundColor: mostrarSinGuia ? "#c30021" : "#115293", // hover
+                    },
+                  }}
                 >
-                  <MenuItem value="">Todas</MenuItem>
-                  <MenuItem value="PITIC">PITIC</MenuItem>
-                  <MenuItem value="TRESGUERRAS">TRESGUERRAS</MenuItem>
-                  <MenuItem value="EXPRESS">EXPRESS</MenuItem>
-                </Select>
-              </FormControl>
+                  {mostrarSinGuia ? "MOSTRAR TODAS" : "MOSTRAR SIN GUÍA"}
+                </Button>
 
-              {/* 🔹 Botón para mostrar solo las filas sin guía */}
-              <Button
-                variant="contained"
-                color={mostrarSinGuia ? "secondary" : "primary"}
-                onClick={toggleMostrarSinGuia}
-                style={{ marginBottom: 10 }}
-              >
-                {mostrarSinGuia ? "Mostrar Todas" : "Mostrar Sin Guía"}
-              </Button>
+              </Box>
 
-              <FormControl
-                variant="outlined"
-                style={{ minWidth: 200, marginBottom: 10 }}
-              >
-                <InputLabel>Filtrar por Estatus</InputLabel>
-                <Select
-                  value={estatusSeleccionado}
-                  onChange={handleEstatusChange}
-                  label="Filtrar por Estatus"
-                >
-                  <MenuItem value="">Todos</MenuItem>
-                  <MenuItem value="Por Asignar">Por Asignar</MenuItem>
-                  <MenuItem value="Surtiendo">Surtiendo</MenuItem>
-                  <MenuItem value="Embarcando">Embarcando</MenuItem>
-                  <MenuItem value="Pedido Finalizado">
-                    Pedido Finalizado
-                  </MenuItem>
-                </Select>
-              </FormControl>
+              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, mb: 2 }}>
+                {ordenEstatus.map((estatus) => {
+                  const cantidad = conteoEstatus[estatus] || 0;
+
+                  return (
+                    <Box
+                      key={estatus}
+                      sx={{
+                        backgroundColor: colorPorEstatus[estatus] || "#ccc",
+                        color: "#fff",
+                        borderRadius: 2,
+                        padding: "6px 12px",
+                        fontSize: 14,
+                        boxShadow: 1,
+                      }}
+                    >
+                      <strong>{estatus}:</strong> {cantidad}
+                    </Box>
+                  );
+                })}
+              </Box>
+
+
+
 
               <TablePagination
                 component="div"
@@ -6014,6 +6377,9 @@ function Transporte() {
                   <TableRow>
                     {visibleColumns.includes("NO ORDEN") && (
                       <TableCell>NO ORDEN</TableCell>
+                    )}
+                    {visibleColumns.includes("NO ORDEN") && (
+                      <TableCell>TIPO ORDEN</TableCell>
                     )}
                     {visibleColumns.includes("NO ORDEN") && (
                       <TableCell>Estado del Pedido</TableCell>
@@ -6093,6 +6459,9 @@ function Transporte() {
                           {visibleColumns.includes("NO ORDEN") && (
                             <TableCell>{routeData["NO ORDEN"]}</TableCell>
                           )}
+                          {visibleColumns.includes("NO ORDEN") && (
+                            <TableCell>{routeData["tipo_original"]}</TableCell>
+                          )}
 
                           <TableCell>
                             {/* Estado del pedido con color */}
@@ -6167,9 +6536,8 @@ function Transporte() {
                             <TableCell>{routeData.PIEZAS}</TableCell>
                           )}
                           {visibleColumns.includes("FECHA DE FACTURA") && (
-                            <TableCell>
-                              {formatDate(routeData.FECHA_DE_FACTURA)}
-                            </TableCell>
+                            <TableCell>{formatDate(routeData["FECHA_DE_FACTURA"])}</TableCell>
+
                           )}
                           {visibleColumns.includes("TRANSPORTE") && (
                             <TableCell>{routeData.TRANSPORTE}</TableCell>
@@ -6260,6 +6628,7 @@ function Transporte() {
                   )}
                 </TableBody>
               </Table>
+
             </TableContainer>
           )}
 
@@ -6268,36 +6637,60 @@ function Transporte() {
             <TableContainer component={Paper} style={{ marginTop: "20px" }}>
               <Typography variant="h6">Directa</Typography>
 
-              <TextField
-                label="Buscar por No Orden o Nombre del Cliente"
-                value={filtroGeneral}
-                onChange={(e) => setFiltroGeneral(e.target.value)}
-                variant="outlined"
-                size="small"
-                sx={{ mr: 2 }}
-              />
-
-              <TextField
-                label="Buscar por Estado"
-                value={filtroEstado}
-                onChange={(e) => setFiltroEstado(e.target.value)}
-                variant="outlined"
-                size="small"
-              />
-
-              <FormControl
-                variant="outlined"
-                style={{ minWidth: 200, marginRight: 10 }}
+              <Box
+                sx={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 2,
+                  alignItems: "center",
+                  mb: 2,
+                }}
               >
-                <InputLabel>Filtrar por Factura</InputLabel>
+                <TextField
+                  label="Buscar por No Orden o Nombre del Cliente"
+                  value={filtroGeneral}
+                  onChange={(e) => setFiltroGeneral(e.target.value)}
+                  variant="outlined"
+                  size="small"
+                />
+
+                <TextField
+                  label="Buscar por Estado"
+                  value={filtroEstado}
+                  onChange={(e) => setFiltroEstado(e.target.value)}
+                  variant="outlined"
+                  size="small"
+                />
+
                 <TextField
                   label="Filtrar por Factura"
                   variant="outlined"
+                  size="small"
                   value={facturaSeleccionada}
                   onChange={(e) => setFacturaSeleccionada(e.target.value)}
-                  style={{ minWidth: 200, marginRight: 10 }}
                 />
-              </FormControl>
+
+                {(user?.role === "Admin" ||
+                  user?.role === "Master" ||
+                  user?.role === "Trans" ||
+                  user?.role === "Embar") && (
+                    <FormControl sx={{ minWidth: 200 }} size="small">
+                      <InputLabel>Filtrar por Estatus</InputLabel>
+                      <Select
+                        value={estatusSeleccionado}
+                        onChange={handleEstatusChange}
+                        label="Filtrar por Estatus"
+                      >
+                        <MenuItem value="">Todos</MenuItem>
+                        <MenuItem value="Por Asignar">Por Asignar</MenuItem>
+                        <MenuItem value="Surtiendo">Surtiendo</MenuItem>
+                        <MenuItem value="Embarcando">Embarcando</MenuItem>
+                        <MenuItem value="Pedido Finalizado">Pedido Finalizado</MenuItem>
+                      </Select>
+                    </FormControl>
+                  )}
+              </Box>
+
 
               <br />
 
@@ -6320,30 +6713,7 @@ function Transporte() {
                   </Button>
                 )}
 
-              {(user?.role === "Admin" ||
-                user?.role === "Master" ||
-                user?.role === "Trans" ||
-                user?.role === "Embar") && (
-                  <FormControl
-                    variant="outlined"
-                    style={{ minWidth: 200, marginBottom: 10 }}
-                  >
-                    <InputLabel>Filtrar por Estatus</InputLabel>
-                    <Select
-                      value={estatusSeleccionado}
-                      onChange={handleEstatusChange}
-                      label="Filtrar por Estatus"
-                    >
-                      <MenuItem value="">Todos</MenuItem>
-                      <MenuItem value="Por Asignar">Por Asignar</MenuItem>
-                      <MenuItem value="Surtiendo">Surtiendo</MenuItem>
-                      <MenuItem value="Embarcando">Embarcando</MenuItem>
-                      <MenuItem value="Pedido Finalizado">
-                        Pedido Finalizado
-                      </MenuItem>
-                    </Select>
-                  </FormControl>
-                )}
+
 
               <Table>
                 <TableHead>
@@ -6421,6 +6791,9 @@ function Transporte() {
                         <TableRow key={index}>
                           {visibleColumns.includes("NO ORDEN") && (
                             <TableCell>{routeData["NO ORDEN"]}</TableCell>
+                          )}
+                          {visibleColumns.includes("NO ORDEN") && (
+                            <TableCell>{routeData["tipo_original"]}</TableCell>
                           )}
 
                           <TableCell>
@@ -6655,6 +7028,9 @@ function Transporte() {
                         <TableRow key={index}>
                           {visibleColumns.includes("NO ORDEN") && (
                             <TableCell>{routeData["NO ORDEN"]}</TableCell>
+                          )}
+                          {visibleColumns.includes("NO ORDEN") && (
+                            <TableCell>{routeData["tipo_original"]}</TableCell>
                           )}
                           <TableCell>
                             {/* Estado del pedido con color */}
@@ -6906,6 +7282,9 @@ function Transporte() {
                         {visibleColumns.includes("NO ORDEN") && (
                           <TableCell>{routeData["NO ORDEN"]}</TableCell>
                         )}
+                        {visibleColumns.includes("NO ORDEN") && (
+                          <TableCell>{routeData["tipo_original"]}</TableCell>
+                        )}
                         {visibleColumns.includes("NUM CLIENTE") && (
                           <TableCell>{routeData["NUM. CLIENTE"]}</TableCell>
                         )}
@@ -7136,6 +7515,8 @@ function Transporte() {
                 />
               </Grid>
             )}
+
+
 
             {visibleColumns.includes("FECHA DE FACTURA") && (
               <Grid item xs={12} sm={6}>

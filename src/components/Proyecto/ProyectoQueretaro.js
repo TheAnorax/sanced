@@ -2,20 +2,20 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import {
     Card, CardContent, CardMedia, Grid, Typography, Dialog, DialogActions, DialogContent, DialogTitle, Button, IconButton, Box, TextField, TablePagination,
-    Tabs, Tab, MenuItem, Select, InputLabel, FormControl, Table, TableHead, TableRow, TableCell, TableBody, Modal
+    Tabs, Tab, MenuItem, Select, InputLabel, FormControl, Table, TableHead, TableRow, TableCell, TableBody, Modal,
 } from '@mui/material';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import CloseIcon from '@mui/icons-material/Close';
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
+
 
 
 function ProyectoQueretaro() {
 
     const [ciudadSeleccionada, setCiudadSeleccionada] = useState("queretaro");
-
-
-
-
     const [data, setData] = useState([]);
     const [filteredData, setFilteredData] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
@@ -61,19 +61,20 @@ function ProyectoQueretaro() {
     }, [selectedZona, selectedRuta, diaVisita]);
 
     useEffect(() => {
-        if (currentDay) {
-            console.log("Enviando solicitud a la API con dia_visita:", currentDay);  // Verifica el valor de dia_visita
-            axios.get(`http://localhost:3007/api/Queretaro/proyectoqueretaro?dia_visita=${currentDay}`)
+        if (currentDay && selectedRuta) {
+            axios.get(`http://localhost:3007/api/Queretaro/proyectoqueretaro?dia_visita=${currentDay}&ruta=${selectedRuta}`)
                 .then((response) => {
-                    console.log("Respuesta de la API:", response.data);  // Verifica la respuesta de la API
-                    setData(response.data);
-                    setFilteredData(response.data);  // Filtra los datos de acuerdo con el día
+                    const ordenados = response.data.sort((a, b) => (a.orden_visita || 9999) - (b.orden_visita || 9999));
+                    setData(ordenados);
+                    setFilteredData(ordenados);
                 })
                 .catch((error) => {
-                    console.error('Error al obtener los datos:', error);
+                    console.error('Error al obtener los datos filtrados:', error);
                 });
         }
-    }, [currentDay]);
+
+    }, [currentDay, selectedRuta]);
+
 
     const handleRutaRepartoChange = (event) => {
         setRutaReparto(event.target.value);
@@ -270,29 +271,25 @@ function ProyectoQueretaro() {
         setSelectedRoutes(routes);
     };
 
-    const fetchFilteredData = () => {
-        if (!selectedZone || selectedRoutes.length === 0) return;
-
-        axios.get('http://localhost:3007/api/Queretaro/proyectoqueretaro/filtrado', {
-            params: {
-                zona: selectedZone,
-                rutas: selectedRoutes.join(',')
-            }
-        })
-            .then(response => {
-                setData(response.data);
-            })
-            .catch(error => {
-                console.error('Error al obtener los datos filtrados:', error);
+    const enviarOrdenAlServidor = async (nuevoOrdenIds) => {
+        try {
+            await axios.post('http://localhost:3007/api/Queretaro/proyectoqueretaro/ordenar', {
+                orden: nuevoOrdenIds
             });
+            alert('Orden guardado correctamente');
+        } catch (error) {
+            console.error('Error al guardar el orden:', error);
+        }
     };
 
+
     const renderVistaPrincipal = () => (
+
         <>
 
             <Grid container spacing={2} justifyContent="center" alignItems="center">
                 {/* Filtro por Zona */}
-                <Grid item xs={12} sm={6} md={4}>
+                {/* <Grid item xs={12} sm={6} md={4}>
                     <FormControl fullWidth sx={{ maxWidth: '300px' }}>
                         <InputLabel id="zona-label">Zona</InputLabel>
                         <Select
@@ -307,7 +304,7 @@ function ProyectoQueretaro() {
                             <MenuItem value="Zona 3">Zona 3</MenuItem>
                         </Select>
                     </FormControl>
-                </Grid>
+                </Grid> */}
 
                 {/* Filtro por Ruta */}
                 <Grid item xs={12} sm={6} md={4}>
@@ -316,10 +313,9 @@ function ProyectoQueretaro() {
                         <Select
                             labelId="ruta-label"
                             value={selectedRuta}
-                            onChange={handleRutaChange}
                             label="Ruta"
+                            disabled // ← bloqueado
                         >
-                            <MenuItem value="">Todas las rutas</MenuItem>
                             <MenuItem value="1">Ruta 1</MenuItem>
                             <MenuItem value="2">Ruta 2</MenuItem>
                             <MenuItem value="3">Ruta 3</MenuItem>
@@ -328,20 +324,6 @@ function ProyectoQueretaro() {
                         </Select>
                     </FormControl>
 
-
-                    <Button
-                        variant="outlined"
-                        color="secondary"
-                        onClick={() => {
-                            setSelectedPersona('');
-                            setSelectedRuta('');
-                            setDiaVisita('');
-                            setRutaReparto('');
-                            filterData();
-                        }}
-                    >
-                        Reiniciar Filtros
-                    </Button>
 
                 </Grid>
 
@@ -490,6 +472,7 @@ function ProyectoQueretaro() {
 
 
                     <DialogContent>
+
                         <Tabs value={tabIndex} onChange={handleTabChange} aria-label="Información del Proyecto">
                             <Tab label="Información General" />
                             <Tab label="Datos de Compra" />
@@ -745,17 +728,132 @@ function ProyectoQueretaro() {
                             </Box>
                         )}
 
+                        {tabIndex === 4 && (
+                            <Box sx={{ paddingTop: 2 }}>
+                                <Typography variant="h6" gutterBottom>
+                                    Ordena los lugares de visita para el día siguiente ({currentDay})
+                                </Typography>
+
+                                <DragDropContext
+                                    onDragEnd={(result) => {
+                                        const { source, destination } = result;
+                                        if (!destination) return;
+
+                                        const reordered = Array.from(ordenData);
+                                        const [removed] = reordered.splice(source.index, 1);
+                                        reordered.splice(destination.index, 0, removed);
+                                        setOrdenData(reordered);
+                                    }}
+                                >
+                                    <Droppable droppableId="ordenVisita">
+                                        {(provided) => (
+                                            <div {...provided.droppableProps} ref={provided.innerRef}>
+                                                {ordenData.map((item, index) => (
+                                                    <Draggable key={item.id.toString()} draggableId={item.id.toString()} index={index}>
+                                                        {(provided) => (
+                                                            <Box
+                                                                ref={provided.innerRef}
+                                                                {...provided.draggableProps}
+                                                                {...provided.dragHandleProps}
+                                                                sx={{
+                                                                    display: 'flex',
+                                                                    flexDirection: 'row',
+                                                                    alignItems: 'center',
+                                                                    border: '1px solid #ccc',
+                                                                    marginBottom: 2,
+                                                                    backgroundColor: '#fff',
+                                                                    borderRadius: 1,
+                                                                    userSelect: 'none', // 🔒 Evita selección
+                                                                    cursor: 'grab',     // 👆 Muestra manita
+                                                                }}
+                                                            >
+                                                                <Box
+                                                                    sx={{
+                                                                        width: '40px',
+                                                                        height: '100%',
+                                                                        backgroundColor: '#e0e0e0',
+                                                                        display: 'flex',
+                                                                        justifyContent: 'center',
+                                                                        alignItems: 'center',
+                                                                        borderRight: '1px solid #ccc',
+                                                                        userSelect: 'none',
+                                                                        cursor: 'grab',
+                                                                    }}
+                                                                >
+                                                                    <Typography variant="h6">≡</Typography>
+                                                                </Box>
+
+                                                                <CardMedia
+                                                                    component="img"
+                                                                    height="120"
+                                                                    image={item.foto}
+                                                                    alt={item.nombre}
+                                                                    sx={{
+                                                                        objectFit: 'cover',
+                                                                        width: '120px',
+                                                                        height: '120px',
+                                                                        marginLeft: '16px',
+                                                                        borderRadius: '4px',
+                                                                        userSelect: 'none',
+                                                                    }}
+                                                                />
+
+                                                                <CardContent sx={{ display: 'flex', flexDirection: 'column', ml: 2 }}>
+                                                                    <Typography variant="h6">
+                                                                        #{index + 1} - {item.nombre}
+                                                                    </Typography>
+                                                                    <Typography variant="body2" color="text.secondary">{item.zona}</Typography>
+                                                                    <Typography variant="body2" color="text.secondary">Segmento: {item.segmento}</Typography>
+                                                                    <Typography variant="body2" color="text.secondary">Día de Visita: {item.dia_visita}</Typography>
+                                                                    <Typography variant="body2" color="text.secondary">Ruta: {item.ruta}</Typography>
+                                                                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                                                        <Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>Status:</Typography>
+                                                                        <FiberManualRecordIcon sx={{ fontSize: 14, color: item.status === 'ACTIVO' ? 'green' : item.status === 'PROSPECTO' ? 'orange' : 'gray', mr: 0.5 }} />
+                                                                        <Typography variant="body2" color="text.secondary">{item.status}</Typography>
+                                                                    </Box>
+                                                                </CardContent>
+                                                            </Box>
+                                                        )}
+                                                    </Draggable>
+                                                ))}
+                                                {provided.placeholder}
+                                            </div>
+                                        )}
+                                    </Droppable>
+                                </DragDropContext>
+
+                                <Button
+                                    variant="contained"
+                                    color="primary"
+                                    sx={{ marginTop: 2 }}
+                                    onClick={() => {
+                                        const ordenIds = ordenData.map((item) => item.id);
+                                        enviarOrdenAlServidor(ordenIds);
+                                    }}
+                                >
+                                    Guardar orden
+                                </Button>
+                            </Box>
+                        )}
+
+
+
                     </DialogContent >
+
                     <DialogActions>
                         <Button onClick={handleClose} color="primary">
                             Cerrar
                         </Button>
                     </DialogActions>
+
                 </Dialog >
             )}
+
         </>
 
     );
+
+
 
     const renderTable = () => (
         <Table>
@@ -782,31 +880,11 @@ function ProyectoQueretaro() {
         </Table>
     );
 
-    const renderVista1 = () => (
-        <Box sx={{ p: 3 }}>
-            <Typography variant="h5">Vista 1: Formulario Personalizado</Typography>
-
-            <FormControl fullWidth sx={{ mt: 3 }}>
-                <InputLabel>Seleccionar Zona</InputLabel>
-                <Select
-                    value={selectedZone}
-                    onChange={handleZoneChange}
-                    label="Seleccionar Zona"
-                >
-                    <MenuItem value="">Todas las Zonas</MenuItem>
-                    <MenuItem value="Zona 1">Zona 1</MenuItem>
-                    <MenuItem value="Zona 2">Zona 2</MenuItem>
-                    <MenuItem value="Zona 3">Zona 3</MenuItem>
-                </Select>
-            </FormControl>
-
-            {/* Mostrar la tabla con los datos filtrados */}
-            {data.length > 0 ? renderTable() : <Typography variant="body1" sx={{ mt: 2 }}>No hay datos disponibles</Typography>}
-        </Box>
-    );
 
 
     // Mapeo de la informacion
+
+
 
     const convertToEmbedUrl = (url) => {
         if (!url.includes("viewer")) return url; // Si ya es embed, no cambiarlo
@@ -814,6 +892,7 @@ function ProyectoQueretaro() {
     };
 
     const mainMap = "https://www.google.com/maps/d/embed?mid=16AT0b4cYTSNQQVQYHkQKC8Rp4Q1g2VE&ll=20.561320310882667,-100.38615969894488&z=15";
+
 
     const otherMaps = [
         convertToEmbedUrl("https://www.google.com/maps/d/u/0/viewer?mid=1ih6-YP-d1yE3ZviYr5z-ddiPhdwfVCI&femb=1&ll=20.563953977471986%2C-100.39009649543087&z=13"),
@@ -823,6 +902,8 @@ function ProyectoQueretaro() {
         convertToEmbedUrl("https://www.google.com/maps/d/u/0/viewer?mid=16Mxu_WIDcLeIdh3TpdM42BfPEZTS49A&ll=20.562950614267464%2C-100.39048423373035&z=14"),
     ];
 
+
+
     const imagePaths = [
         "/Rutas/Ruta1.jpeg",
         "/Rutas/Ruta2.jpeg",
@@ -830,6 +911,8 @@ function ProyectoQueretaro() {
         "/Rutas/Ruta4.jpeg",
         "/Rutas/Ruta5.jpeg",
     ];
+
+
 
     const MapaRutas = () => {
         const [openModal, setOpenModal] = useState(false);
@@ -965,16 +1048,57 @@ function ProyectoQueretaro() {
         if (ciudadSeleccionada === "queretaro") {
             return (
                 <>
-                    <Grid container spacing={2} justifyContent="center" sx={{ mb: 3 }}>
-                        <Button onClick={() => setCurrentView('view1')}>Mapa</Button>
-                        <Button onClick={() => setCurrentView('default')}>Lugares de visita</Button>
-                    </Grid>
+                    {!selectedRuta ? (
+                        <Grid container spacing={2} justifyContent="center" sx={{ mb: 3 }}>
+                            <Grid item xs={12} sm={6} md={4}>
+                                <FormControl fullWidth>
+                                    <InputLabel id="ruta-select-label">Selecciona una Ruta</InputLabel>
+                                    <Select
+                                        labelId="ruta-select-label"
+                                        value={selectedRuta}
+                                        onChange={(e) => setSelectedRuta(e.target.value)}
+                                        label="Ruta"
+                                    >
+                                        <MenuItem value="">Selecciona una ruta</MenuItem>
+                                        <MenuItem value="1">Ruta 1</MenuItem>
+                                        <MenuItem value="2">Ruta 2</MenuItem>
+                                        <MenuItem value="3">Ruta 3</MenuItem>
+                                        <MenuItem value="4">Ruta 4</MenuItem>
+                                        <MenuItem value="5">Ruta 5</MenuItem>
+                                    </Select>
+                                </FormControl>
+                            </Grid>
+                        </Grid>
+                    ) : (
+                        <>
+                            <Grid container spacing={2} justifyContent="center" sx={{ mb: 3 }}>
+                                <Button onClick={() => setCurrentView('view1')}>Mapa</Button>
+                                <Button onClick={() => setCurrentView('default')}>Lugares de visita</Button>
+                                <Button onClick={() => setCurrentView('orden')}>Orden de Visita</Button>
 
-                    {currentView === 'default' && renderVistaPrincipal()}
-                    {currentView === 'view1' && <MapaRutas />}
+                                <Button
+                                    variant="outlined"
+                                    color="secondary"
+                                    onClick={() => {
+                                        setSelectedRuta('');
+                                        setFilteredData([]);
+                                        setData([]);
+                                    }}
+                                >
+                                    Cambiar Ruta
+                                </Button>
+                            </Grid>
+
+                            {currentView === 'default' && renderVistaPrincipal()}
+                            {currentView === 'view1' && <MapaRutas />}
+                            {currentView === 'orden' && renderOrdenVisita()}
+                        </>
+                    )}
                 </>
             );
-        } else if (ciudadSeleccionada === "guadalajara") {
+        }
+
+        if (ciudadSeleccionada === "guadalajara") {
             return (
                 <>
                     <Grid container spacing={2} justifyContent="center" sx={{ mb: 3 }}>
@@ -987,6 +1111,9 @@ function ProyectoQueretaro() {
             );
         }
     };
+
+
+
 
     //Menu de guadalajara 
 
@@ -1032,10 +1159,154 @@ function ProyectoQueretaro() {
         </Box>
     );
 
+    //ordenar el siguiente dia 
+
+    const [ordenData, setOrdenData] = useState([]);
+
+    useEffect(() => {
+        const getTomorrowName = () => {
+            const days = ['DOMINGO', 'LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SÁBADO'];
+            const tomorrowIndex = (new Date().getDay() + 1) % 7;
+            return days[tomorrowIndex];
+        };
+
+        const diaManana = getTomorrowName();
+
+        if (selectedRuta) {
+            axios.get(`http://localhost:3007/api/Queretaro/proyectoqueretaro?dia_visita=${diaManana}&ruta=${selectedRuta}`)
+                .then((response) => {
+                    const ordenados = response.data.sort((a, b) => (a.orden_visita || 9999) - (b.orden_visita || 9999));
+                    setOrdenData(ordenados); // <- aquí llenas el ordenData correctamente
+                })
+                .catch((error) => {
+                    console.error('Error al obtener datos del día siguiente:', error);
+                });
+        }
+    }, [selectedRuta]);
+
+
+    const renderOrdenVisita = () => {
+        const getTomorrowName = () => {
+            const days = ['DOMINGO', 'LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SÁBADO'];
+            const tomorrowIndex = (new Date().getDay() + 1) % 7;
+            return days[tomorrowIndex];
+        };
+
+        const diaManana = getTomorrowName();
+
+        const moverElemento = (index, direccion) => {
+            const nuevoOrden = [...ordenData];
+            const nuevoIndex = index + direccion;
+            if (nuevoIndex < 0 || nuevoIndex >= ordenData.length) return;
+            const temp = nuevoOrden[index];
+            nuevoOrden[index] = nuevoOrden[nuevoIndex];
+            nuevoOrden[nuevoIndex] = temp;
+            setOrdenData(nuevoOrden);
+        };
+
+        if (!ordenData || ordenData.length === 0) {
+            return (
+                <Box sx={{ padding: 2 }}>
+                    <Typography variant="h6" gutterBottom>
+                        No hay lugares registrados para el día siguiente ({diaManana}).
+                    </Typography>
+                </Box>
+            );
+        }
+
+        return (
+            <Box sx={{ padding: 2 }}>
+                <Typography variant="h6" gutterBottom>
+                    Ordena los lugares de visita para el día siguiente ({diaManana})
+                </Typography>
+
+                {ordenData.map((item, index) => (
+                    <Card
+                        key={item.id}
+                        sx={{
+                            display: 'flex',
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            border: '1px solid #ccc',
+                            marginBottom: 2,
+                            backgroundColor: '#fff',
+                            position: 'relative'
+                        }}
+                    >
+                        <Box sx={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            borderRight: '1px solid #ccc',
+                            padding: 1
+                        }}>
+                            <IconButton onClick={() => moverElemento(index, -1)}>
+                                <ArrowUpwardIcon />
+                            </IconButton>
+                            <IconButton onClick={() => moverElemento(index, 1)}>
+                                <ArrowDownwardIcon />
+                            </IconButton>
+                        </Box>
+
+                        <CardMedia
+                            component="img"
+                            height="120"
+                            image={item.foto}
+                            alt={item.nombre}
+                            sx={{
+                                objectFit: 'cover',
+                                width: '120px',
+                                height: '120px',
+                                marginLeft: '16px',
+                                borderRadius: '4px'
+                            }}
+                        />
+
+                        <CardContent sx={{ display: 'flex', flexDirection: 'column', ml: 2 }}>
+                            <Typography variant="h6">
+                                #{index + 1} - {item.nombre}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">{item.zona}</Typography>
+                            <Typography variant="body2" color="text.secondary">Segmento: {item.segmento}</Typography>
+                            <Typography variant="body2" color="text.secondary">Día de Visita: {item.dia_visita}</Typography>
+                            <Typography variant="body2" color="text.secondary">Ruta: {item.ruta}</Typography>
+                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                <Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>Status:</Typography>
+                                <FiberManualRecordIcon
+                                    sx={{
+                                        fontSize: 14,
+                                        color: item.status === 'ACTIVO' ? 'green' : item.status === 'PROSPECTO' ? 'orange' : 'gray',
+                                        mr: 0.5
+                                    }}
+                                />
+                                <Typography variant="body2" color="text.secondary">{item.status}</Typography>
+                            </Box>
+                        </CardContent>
+                    </Card>
+                ))}
+
+                <Button
+                    variant="contained"
+                    color="primary"
+                    sx={{ marginTop: 2 }}
+                    onClick={() => {
+                        const ordenIds = ordenData.map((item) => item.id);
+                        enviarOrdenAlServidor(ordenIds);
+                    }}
+                >
+                    Guardar orden
+                </Button>
+            </Box>
+        );
+    };
+
+
 
 
     return (
+
         <>
+
             {/* Botones para cambiar la ciudad */}
             <Grid container spacing={2} justifyContent="center" sx={{ mb: 3 }}>
                 <Button onClick={() => setCiudadSeleccionada("guadalajara")} sx={{ color: "red" }}>Ver Guadalajara</Button>
@@ -1077,9 +1348,8 @@ function ProyectoQueretaro() {
                 </Box>
             </Modal>
 
-
-
         </>
+
     );
 
 

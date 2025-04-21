@@ -80,10 +80,10 @@ const insertarRutas = async (req, res) => {
       .json({ message: "No se enviaron rutas para insertar." });
   }
 
-  const connection = await pool.getConnection(); // Obtener conexión
+  const connection = await pool.getConnection();
 
   try {
-    await connection.beginTransaction(); // Iniciar la transacción
+    await connection.beginTransaction();
 
     for (let ruta of rutas) {
       const {
@@ -104,21 +104,21 @@ const insertarRutas = async (req, res) => {
         DIRECCION,
         TELEFONO,
         CORREO,
-        "EJECUTIVO VTAS": ejecutivoVtas, // ✅ aquí está bien
+        "EJECUTIVO VTAS": ejecutivoVtas,
         GUIA,
+        tipo_original // 👈 LO AGREGAMOS AQUÍ
       } = ruta;
-
 
       const formattedDate = moment(FECHA, "DD/MM/YYYY").format("YYYY-MM-DD");
 
-      // ✅ Consulta para insertar sin duplicados
       const insertQuery = `
         INSERT INTO paqueteria (
           routeName, FECHA, \`NO ORDEN\`, \`NO_FACTURA\`, \`NUM. CLIENTE\`,
           \`NOMBRE DEL CLIENTE\`, ZONA, MUNICIPIO, ESTADO, OBSERVACIONES,
-          TOTAL, PARTIDAS, PIEZAS, TRANSPORTE, PAQUETERIA, TIPO, DIRECCION, TELEFONO, CORREO,\`EJECUTIVO VTAS\`, GUIA
+          TOTAL, PARTIDAS, PIEZAS, TRANSPORTE, PAQUETERIA, TIPO,
+          DIRECCION, TELEFONO, CORREO, \`EJECUTIVO VTAS\`, GUIA, tipo_original
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
 
       const values = [
@@ -141,15 +141,14 @@ const insertarRutas = async (req, res) => {
         DIRECCION,
         TELEFONO,
         CORREO,
-        ejecutivoVtas, // ✅ este nombre debe coincidir
+        ejecutivoVtas,
         GUIA,
+        tipo_original || null // 👈 Evita error si viene vacío
       ];
-
 
       await connection.query(insertQuery, values);
     }
 
-    // ✅ Eliminar duplicados dejando solo el primero registrado
     const deleteDuplicatesQuery = `
       DELETE FROM paqueteria 
       WHERE id NOT IN (
@@ -162,23 +161,19 @@ const insertarRutas = async (req, res) => {
     `;
 
     await connection.query(deleteDuplicatesQuery);
-
-    await connection.commit(); // Confirmar la inserción
+    await connection.commit();
 
     res.status(200).json({
       message: "✅ Rutas insertadas y duplicados eliminados correctamente.",
     });
   } catch (error) {
-    await connection.rollback(); // Revertir cambios si hay un error
-    console.error(
-      "❌ Error al insertar rutas o eliminar duplicados:",
-      error.message
-    );
+    await connection.rollback();
+    console.error("❌ Error al insertar rutas:", error.message);
     res
       .status(500)
       .json({ message: "Error al insertar rutas o eliminar duplicados" });
   } finally {
-    connection.release(); // Liberar la conexión
+    connection.release();
   }
 };
 
@@ -200,16 +195,13 @@ const obtenerRutasDePaqueteria = async (req, res) => {
     } = req.query;
 
     const offset = (page - 1) * limit;
-    let query = `
-      SELECT routeName, FECHA, \`NO ORDEN\`, NO_FACTURA, FECHA_DE_FACTURA, 
-             \`NUM. CLIENTE\`, \`NOMBRE DEL CLIENTE\`, ZONA, MUNICIPIO, ESTADO, 
-             OBSERVACIONES, TOTAL, PARTIDAS, PIEZAS, TARIMAS, TRANSPORTE, 
-             PAQUETERIA, GUIA, FECHA_DE_ENTREGA_CLIENTE, DIAS_DE_ENTREGA,
-             TIPO, DIRECCION, TELEFONO, TOTAL_FACTURA_LT, ENTREGA_SATISFACTORIA_O_NO_SATISFACTORIA,
-             created_at, MOTIVO, NUMERO_DE_FACTURA_LT, FECHA_DE_ENTREGA_CLIENTE, CORREO
-      FROM paqueteria
-      WHERE 1 = 1
-    `;
+    let query = `SELECT routeName, FECHA, \`NO ORDEN\`, NO_FACTURA, FECHA_DE_FACTURA, 
+                 \`NUM. CLIENTE\`, \`NOMBRE DEL CLIENTE\`, ZONA, MUNICIPIO, ESTADO, 
+                 OBSERVACIONES, TOTAL, PARTIDAS, PIEZAS, TARIMAS, TRANSPORTE, 
+                 PAQUETERIA, GUIA, FECHA_DE_ENTREGA_CLIENTE, DIAS_DE_ENTREGA,
+                 TIPO, DIRECCION, TELEFONO, TOTAL_FACTURA_LT, ENTREGA_SATISFACTORIA_O_NO_SATISFACTORIA,   
+                 created_at, MOTIVO, NUMERO_DE_FACTURA_LT, FECHA_DE_ENTREGA_CLIENTE, CORREO, tipo_original
+                 FROM paqueteria WHERE 1 = 1`;
 
     const params = [];
 
@@ -220,8 +212,12 @@ const obtenerRutasDePaqueteria = async (req, res) => {
     if (!estaFiltrandoPorGuia && !estaFiltrandoPorFactura) {
       if (mes) {
         const anioActual = new Date().getFullYear();
-        query += " AND MONTH(created_at) = ? AND YEAR(created_at) = ?";
-        params.push(mes, anioActual);
+        // Crear el primer y último día del mes seleccionando
+        const primerDiaDelMes = new Date(anioActual, mes - 1, 1); // Primer día del mes
+        const ultimoDiaDelMes = new Date(anioActual, mes, 0); // Último día del mes
+
+        query += " AND created_at BETWEEN ? AND ?";
+        params.push(primerDiaDelMes.toISOString(), ultimoDiaDelMes.toISOString());
       } else {
         const fechaLimite = new Date();
         fechaLimite.setDate(fechaLimite.getDate() - 3);
@@ -233,8 +229,10 @@ const obtenerRutasDePaqueteria = async (req, res) => {
 
     // 🧠 Filtrar por tipo de ruta (si aplica)
     if (tipo) {
+      // Asegúrate de que 'tipo' esté normalizado (sin espacios y en minúsculas)
+      const tipoNormalizado = tipo.trim().toLowerCase();
       query += " AND TIPO = ?";
-      params.push(tipo);
+      params.push(tipoNormalizado);
     }
 
     // ✅ Buscar por guía O por número de factura LT
@@ -252,13 +250,15 @@ const obtenerRutasDePaqueteria = async (req, res) => {
         params.push(numeroFacturaLT.trim());
       }
 
-
       query += condiciones.join(" OR ") + ")";
     }
 
     // 🧾 Paginación y orden
     query += " ORDER BY created_at DESC LIMIT ? OFFSET ?";
     params.push(parseInt(limit), parseInt(offset));
+
+    // console.log("Consulta SQL generada:", query);  // Aquí mostramos la consulta completa con parámetros
+    // console.log("Parámetros:", params);  // Aquí mostramos los parámetros de la consulta
 
     const [rows] = await pool.query(query, params);
     res.json(rows);
@@ -881,17 +881,14 @@ const getOrderStatus = async (req, res) => {
     }
 
     let statusResults = {};
-    let fusionColor = "#800080"; // Morado para pedidos fusionados
 
-    // Asignamos colores a cada estado
     const statusColors = {
-      pedi: "#FF0000", // Rojo
-      pedido_surtido: "#000000", // Negro
-      pedido_embarque: "#0000FF", // Azul
-      pedido_finalizado: "#008000", // Verde
+      pedi: "#FF0000",
+      pedido_surtido: "#000000",
+      pedido_embarque: "#0000FF",
+      pedido_finalizado: "#008000",
     };
 
-    // Prioridad de estados (Finalizado > Embarque > Surtiendo > Por Asignar)
     const statusPriority = {
       pedi: 1,
       pedido_surtido: 2,
@@ -899,71 +896,95 @@ const getOrderStatus = async (req, res) => {
       pedido_finalizado: 4,
     };
 
+    // 🔍 Obtener tipo_original desde paqueteria para cada NO ORDEN
+    const [tipoResults] = await pool.query(
+      `SELECT \`NO ORDEN\` as pedido, tipo_original 
+       FROM paqueteria 
+       WHERE \`NO ORDEN\` IN (?)`,
+      [orderNumbers]
+    );
+
+    const tipoOriginalMap = {};
+    tipoResults.forEach(({ pedido, tipo_original }) => {
+      tipoOriginalMap[pedido] = (tipo_original || "").toLowerCase();
+    });
+
+    // ✅ Función para validar y asignar estatus solo si tipo_original coincide
     const checkFusionStatus = (rows, tableName, statusText) => {
       rows.forEach((row) => {
         const pedido = row.pedido;
-        const fusion = row.fusion;
-        const baseColor = statusColors[tableName];
+        const tipoDesdeTabla = (row.tipo || "").toLowerCase();
+        const fusion = row.fusion || null;
 
+        const tipoOriginal = tipoOriginalMap[pedido];
+
+        const tipoCoincide = tipoDesdeTabla === tipoOriginal;
+
+        const baseColor = statusColors[tableName];
         const currentPriority = statusPriority[tableName];
         const previous = statusResults[pedido];
         const previousPriority = previous ? statusPriority[previous.table] : 0;
 
-        // Solo actualizar si este estado es más avanzado
-        if (!previous || currentPriority > previousPriority) {
+        // ✅ Solo si tipo_original coincide con el tipo en la tabla
+        if (tipoCoincide && (!previous || currentPriority > previousPriority)) {
           statusResults[pedido] = {
-            statusText, // Mantenemos el estado limpio
-            color: baseColor, // Color según estado
+            statusText,
+            color: baseColor,
             table: tableName,
-            fusionWith: fusion && fusion.trim() !== "" && fusion !== pedido
-              ? fusion
-              : null, // Guardamos solo el número del fusionado
+            fusionWith:
+              fusion && fusion.trim() !== "" && fusion !== pedido
+                ? fusion
+                : null,
+            tipo_original: tipoOriginal,
+            tipo_tabla: tipoDesdeTabla,
           };
         }
       });
     };
 
-
-    // 1. Finalizados
+    // 🔍 1. Finalizados
     let [result] = await pool.query(
-      `SELECT pedido, fusion FROM pedido_finalizado WHERE pedido IN (?)`,
+      `SELECT pedido, tipo, fusion FROM pedido_finalizado WHERE pedido IN (?)`,
       [orderNumbers]
     );
     checkFusionStatus(result, "pedido_finalizado", "Pedido Finalizado");
 
-    // 2. Embarque
+    // 🔍 2. Embarque
     try {
       [result] = await pool.query(
-        `SELECT pedido, fusion FROM pedido_embarque WHERE pedido IN (?)`,
+        `SELECT pedido, tipo, fusion FROM pedido_embarque WHERE pedido IN (?)`,
         [orderNumbers]
       );
       checkFusionStatus(result, "pedido_embarque", "Embarcando");
     } catch (error) {
-      console.warn("⚠️ Tabla `pedido_embarque` no existe o falló la consulta.");
+      console.warn("⚠️ Tabla 'pedido_embarque' no existe o falló.");
     }
 
-    // 3. Surtiendo
+    // 🔍 3. Surtiendo
     [result] = await pool.query(
-      `SELECT pedido, fusion FROM pedido_surtido WHERE pedido IN (?)`,
+      `SELECT pedido, tipo, fusion FROM pedido_surtido WHERE pedido IN (?)`,
       [orderNumbers]
     );
     checkFusionStatus(result, "pedido_surtido", "Surtiendo");
 
-    // 4. Por Asignar (pedi)
+    // 🔍 4. Por Asignar
     [result] = await pool.query(
-      `SELECT pedido FROM pedi WHERE pedido IN (?)`,
+      `SELECT pedido, tipo FROM pedi WHERE pedido IN (?)`,
       [orderNumbers]
     );
-    result = result.map((r) => ({ ...r, fusion: null })); // Aseguramos formato
+    result = result.map((r) => ({ ...r, fusion: null }));
     checkFusionStatus(result, "pedi", "Por Asignar");
 
-    // Pedidos no encontrados
+    // ❗ Pedidos no encontrados o sin coincidencia de tipo
     orderNumbers.forEach((orderNumber) => {
       if (!statusResults[orderNumber]) {
         statusResults[orderNumber] = {
-          statusText: "Pedido no encontrado",
+          statusText: "Sin coincidencia de tipo",
           color: "#808080",
           table: "Desconocido",
+          fusionWith: null,
+          tipo_original: tipoOriginalMap[orderNumber] || "No definido",
+          tipo_tabla: "No encontrado",
         };
       }
     });
@@ -974,6 +995,9 @@ const getOrderStatus = async (req, res) => {
     res.status(500).json({ message: "Error interno del servidor" });
   }
 };
+
+
+
 
 const getFusionInfo = async (req, res) => {
   try {
@@ -1079,9 +1103,9 @@ const actualizarFacturasDesdeExcel = async (req, res) => {
 
     // Recorrer cada fila del archivo Excel
     for (const row of data) {
-      const noOrden = row["Nº de la orden"];
-      const noFactura = row["Nº de doc"];
-      let fechaFactura = row["Fch de fact."];
+      const noOrden = row["Número orden"];
+      const noFactura = row["Número orden"];
+      let fechaFactura = row["Fecha factura"];
 
       // Validar que los datos esenciales existan
       if (!noOrden || !noFactura || !fechaFactura) {
@@ -1481,8 +1505,8 @@ const nodemailer = require("nodemailer");
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: "j72525264@gmail.com",
-    pass: "cnaa haoa izwh lerm", // App password de Gmail
+    user: "seguimiento.traking@gmail.com",
+    pass: "pjqa mivc vbfn hwpb",
   },
 });
 

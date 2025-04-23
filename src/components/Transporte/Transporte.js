@@ -4464,6 +4464,7 @@ function Transporte() {
 
       {/* Primer Tab: Mostrar rutas y detalles */}
       {tabIndex === 0 && (user?.role === "Admin" || user?.role === "Master" || user?.role === "Trans" || user?.role === "Control" || user?.role === "Embar") && (
+
         <Box marginTop={2}>
           <Typography variant="h5">Cargar Archivo Excel</Typography>
 
@@ -5802,7 +5803,9 @@ function Transporte() {
 
 
           </TableContainer>
+
         </Box>
+        
       )}
 
       {/* Segundo Tab: Otra información o tabla */}

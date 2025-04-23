@@ -2,33 +2,8 @@ import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import AddShoppingCartIcon from "@mui/icons-material/AddShoppingCart";
 import {
-  TextField,
-  Button,
-  Grid,
-  Container,
-  Typography,
-  Paper,
-  FormControlLabel,
-  Checkbox,
-  Snackbar,
-  Alert,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Tabs,
-  Tab,
-  Box,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
+  TextField, Button, Grid, Container, Typography, Paper, FormControlLabel, Checkbox, Snackbar, Alert, FormControl, InputLabel, Select, MenuItem, Table, TableBody, TableCell, TableContainer,
+  TableHead, TableRow, Tabs, Tab, Box, Dialog, DialogActions, DialogContent, DialogTitle,
 } from "@mui/material";
 import { pdfTemplate } from "./pdfTemplate";
 import jsPDF from "jspdf";
@@ -37,11 +12,14 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 import IconButton from "@mui/material/IconButton";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddTaskIcon from "@mui/icons-material/AddTask";
-import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline"; // Para aumentar
-import RemoveCircleOutlineIcon from "@mui/icons-material/RemoveCircleOutline"; // Para disminuir
+import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
+import RemoveCircleOutlineIcon from "@mui/icons-material/RemoveCircleOutline";
+import LocalPrintshopIcon from '@mui/icons-material/LocalPrintshop';
+import Swal from 'sweetalert2';
+
 
 function Muestras() {
-  const [currentTab, setCurrentTab] = useState(0); // 0: Formulario/Carrito, 1: Autorizar, 2: Imprimir
+  const [currentTab, setCurrentTab] = useState(0);
   const [vista, setVista] = useState("formulario");
   const [user, setUser] = useState(null);
 
@@ -61,31 +39,17 @@ function Muestras() {
   const [alertaMessage, setAlertaMessage] = useState("");
 
   const [solicitudes, setSolicitudes] = useState([]);
-  const [solicitudesAutorizadas, setSolicitudesAutorizadas] = useState([]); // Al autorizar se moverán aquí
+  const [solicitudesAutorizadas, setSolicitudesAutorizadas] = useState([]);
 
   const [openModal, setOpenModal] = useState(false);
   const [productosModal, setProductosModal] = useState([]);
 
+  const [solicitudModalFolio, setSolicitudModalFolio] = useState(null);
+
+
   let timeoutId = useRef(null);
 
-  useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
 
-    const storedSolicitudes = localStorage.getItem("solicitudes");
-    if (storedSolicitudes) {
-      setSolicitudes(JSON.parse(storedSolicitudes));
-    }
-
-    const storedAutorizadas = localStorage.getItem("solicitudesAutorizadas");
-    if (storedAutorizadas) {
-      setSolicitudesAutorizadas(JSON.parse(storedAutorizadas));
-    }
-
-    obtenerDepartamentos();
-  }, []);
 
   useEffect(() => {
     if (user) {
@@ -109,30 +73,31 @@ function Muestras() {
     setOpenModal(false);
   };
 
-  const guardarSolicitudes = (arr) => {
-    setSolicitudes(arr);
-    localStorage.setItem("solicitudes", JSON.stringify(arr));
-  };
 
-  const guardarAutorizadas = (arr) => {
-    setSolicitudesAutorizadas(arr);
-    localStorage.setItem("solicitudesAutorizadas", JSON.stringify(arr));
-  };
 
   const obtenerDepartamentos = async () => {
     try {
-      const response = await axios.get(
-        "http://localhost:3007/api/muestras/departamentos"
-      );
+      const response = await axios.get("http://localhost:3007/api/muestras/departamentos");
       setDepartamentos(response.data);
     } catch (error) {
       console.error("Error al obtener departamentos:", error);
     }
   };
 
+
   const handleMotivoChange = (event) => {
     setMotivo(event.target.value);
   };
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+    obtenerDepartamentos(); // 👈 ESTA LÍNEA FALTA
+  }, []);
+
+
 
   const manejarEnvio = (e) => {
     e.preventDefault();
@@ -143,17 +108,7 @@ function Muestras() {
       return;
     }
 
-    const depPrefix = departamento.slice(0, 3).toUpperCase();
-    let lastFolioNumber = localStorage.getItem("lastFolioNumber");
-    if (!lastFolioNumber) {
-      lastFolioNumber = 1;
-      localStorage.setItem("lastFolioNumber", lastFolioNumber);
-    }
-
-    const folio = `${depPrefix}-${String(lastFolioNumber).padStart(3, "0")}`;
-
     const nuevaSolicitud = {
-      folio,
       nombre: user.name,
       departamento,
       motivo,
@@ -163,16 +118,17 @@ function Muestras() {
       detalleEnvio: regresaArticulo && requiereEnvio ? detalleEnvio : "",
       carrito: [],
       autorizado: false,
-      enviadoParaAutorizar: false, // Aquí aseguramos que no se mueva a "autorizar" aún
+      enviadoParaAutorizar: false,
     };
 
-    const updatedSolicitudes = [...solicitudes, nuevaSolicitud];
-    guardarSolicitudes(updatedSolicitudes);
-
-    localStorage.setItem("lastFolioNumber", parseInt(lastFolioNumber) + 1);
-
-    setVista("carrito"); // Cambia a la vista de carrito, no a "Autorizar"
+    // ⛔ Ya no guardes en backend aquí
+    setSolicitudes((prev) => [...prev, nuevaSolicitud]);
+    setVista("carrito");
   };
+
+
+
+
 
   const handleCodigoChange = (event) => {
     const value = event.target.value;
@@ -208,34 +164,35 @@ function Muestras() {
     }
   };
 
+
   const agregarAlCarrito = () => {
-    if (!producto || cantidad <= 0) {
+    if (!producto || !producto.codigo || cantidad <= 0) {
       setAlerta(true);
-      setAlertaMessage("Por favor ingrese una cantidad válida.");
+      setAlertaMessage("Producto no válido o cantidad incorrecta");
       return;
     }
+
+    const item = {
+      codigo: producto.codigo,
+      des: producto.des,
+      imagen: `../assets/image/img_pz/${producto.codigo}.jpg`,
+      cantidad,
+      ubi: producto.ubi || "",
+    };
 
     const lastSolicitudIndex = solicitudes.length - 1;
     if (lastSolicitudIndex < 0) {
       setAlerta(true);
-      setAlertaMessage("No hay ninguna solicitud para agregar productos.");
+      setAlertaMessage("No hay ninguna solicitud activa para agregar productos.");
       return;
     }
 
     const currentSolicitud = solicitudes[lastSolicitudIndex];
 
-    const item = {
-      codigo: producto.code_prod,
-      des: producto.des,
-      cant_stock: producto.cant_stock,
-      imagen: `../assets/image/img_pz/${producto.code_prod}.jpg`,
-      cantidad,
-      ubi: producto.ubi,
-    };
-
     const productoExistente = currentSolicitud.carrito.find(
       (p) => p.codigo === item.codigo
     );
+
     let updatedCarrito;
     if (productoExistente) {
       updatedCarrito = currentSolicitud.carrito.map((p) =>
@@ -250,43 +207,76 @@ function Muestras() {
       ...solicitudes.slice(0, lastSolicitudIndex),
       updatedSolicitud,
     ];
-    guardarSolicitudes(updatedSolicitudes);
 
-    setCodigo(""); // Limpiar el código
+    setSolicitudes(updatedSolicitudes);
+
+    setCodigo(""); // limpiar
     setCantidad(1);
     setProducto(null);
   };
+
+
 
   const handleTabChange = (event, newValue) => {
     setCurrentTab(newValue);
   };
 
-  const autorizarSolicitud = (folio) => {
-    const solicitudIndex = solicitudes.findIndex((s) => s.folio === folio);
-    if (solicitudIndex === -1) return;
+  const autorizarSolicitud = async (folio) => {
+    try {
+      // Actualiza en el backend
+      await axios.patch(`http://localhost:3007/api/muestras/solicitudes/${folio}`, {
+        autorizado: true,
+        enviadoParaAutorizar: true,
+      });
 
-    const solicitud = { ...solicitudes[solicitudIndex], autorizado: true };
+      // Actualiza en frontend
+      const solicitudIndex = solicitudes.findIndex((s) => s.folio === folio);
+      if (solicitudIndex === -1) return;
 
-    // Mover a autorizadas
-    const updatedSolicitudes = [...solicitudes];
-    updatedSolicitudes.splice(solicitudIndex, 1);
-    guardarSolicitudes(updatedSolicitudes);
+      const solicitudAutorizada = {
+        ...solicitudes[solicitudIndex],
+        autorizado: true,
+        enviadoParaAutorizar: true,
+      };
 
-    const updatedAutorizadas = [...solicitudesAutorizadas, solicitud];
-    guardarAutorizadas(updatedAutorizadas);
+      const nuevasSolicitudes = [...solicitudes];
+      nuevasSolicitudes.splice(solicitudIndex, 1);
+      setSolicitudes(nuevasSolicitudes);
+
+      setSolicitudesAutorizadas([...solicitudesAutorizadas, solicitudAutorizada]);
+    } catch (error) {
+      console.error("❌ Error al autorizar solicitud:", error);
+      setAlerta(true);
+      setAlertaMessage("No se pudo autorizar la solicitud.");
+    }
+    await obtenerSolicitudesAutorizadas(); // 🔥 Esto actualiza con los datos correctos
   };
 
-  const borrarSolicitud = (folio) => {
-    const updatedSolicitudes = solicitudes.filter((s) => s.folio !== folio);
-    guardarSolicitudes(updatedSolicitudes);
+  const borrarSolicitudAutorizada = async (folio) => {
+    try {
+      const confirmacion = await Swal.fire({
+        title: '¿Estás seguro?',
+        text: `Esta acción eliminará la solicitud ${folio}.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, borrar',
+        cancelButtonText: 'Cancelar',
+      });
+
+      if (confirmacion.isConfirmed) {
+        await axios.delete(`http://localhost:3007/api/muestras/solicitudes/${folio}`);
+
+        // 🔁 ACTUALIZA EL ESTADO PARA QUE LA TABLA SE REFRESQUE
+        setSolicitudesAutorizadas((prev) => prev.filter((sol) => sol.folio !== folio));
+
+        Swal.fire('Eliminado', 'La solicitud fue eliminada correctamente.', 'success');
+      }
+    } catch (error) {
+      console.error("❌ Error al borrar solicitud:", error);
+      Swal.fire('Error', 'No se pudo eliminar la solicitud.', 'error');
+    }
   };
 
-  const borrarSolicitudAutorizada = (folio) => {
-    const updatedAutorizadas = solicitudesAutorizadas.filter(
-      (s) => s.folio !== folio
-    );
-    guardarAutorizadas(updatedAutorizadas);
-  };
 
   const solicitudesAutorizadasFiltradas = solicitudesAutorizadas;
 
@@ -317,67 +307,154 @@ function Muestras() {
     document.body.removeChild(iframe);
   };
 
-  const enviarAAutorizar = () => {
+  const enviarAAutorizar = async () => {
     if (solicitudes.length === 0) {
       setAlerta(true);
       setAlertaMessage("No hay solicitudes para enviar a autorizar.");
       return;
     }
 
-    // Filtramos para obtener la solicitud más reciente que no haya sido enviada a autorizar
     const lastSolicitudIndex = solicitudes.length - 1;
-    const lastSolicitud = solicitudes[lastSolicitudIndex];
+    const lastSolicitud = { ...solicitudes[lastSolicitudIndex] };
 
-    // Solo cambiamos el estado a "enviadoParaAutorizar: true" si aún no se ha enviado
     if (!lastSolicitud.enviadoParaAutorizar) {
       lastSolicitud.enviadoParaAutorizar = true;
 
-      // Actualizamos la lista de solicitudes
-      const updatedSolicitudes = [
-        ...solicitudes.slice(0, lastSolicitudIndex),
-        lastSolicitud,
-      ];
-      guardarSolicitudes(updatedSolicitudes);
-      // Cambiamos a la pestaña de "Autorizar"
-      setCurrentTab(1); // Cambia a la pestaña "Autorizar"
+      try {
+        await axios.post("http://localhost:3007/api/muestras/solicitudes", lastSolicitud);
+        setSolicitudes((prev) => {
+          const copia = [...prev];
+          copia[lastSolicitudIndex] = lastSolicitud;
+          return copia;
+        });
+        setCurrentTab(1);
+      } catch (error) {
+        console.error("❌ Error al enviar a autorizar:", error);
+        setAlerta(true);
+        setAlertaMessage("Error al enviar solicitud.");
+      }
     }
   };
 
-  const removeProduct = (codigo) => {
-    // Filtrar el producto a eliminar
-    const productosActualizados = productosModal.filter(
-      (item) => item.codigo !== codigo
-    );
-    setProductosModal(productosActualizados); // Actualizar los productos en el modal
 
-    const lastSolicitudIndex = solicitudes.length - 1;
-    const currentSolicitud = solicitudes[lastSolicitudIndex];
-
-    // Actualizar el carrito con los productos restantes
-    const updatedSolicitud = {
-      ...currentSolicitud,
-      carrito: productosActualizados,
-    };
-    const updatedSolicitudes = [
-      ...solicitudes.slice(0, lastSolicitudIndex),
-      updatedSolicitud,
-    ];
-    guardarSolicitudes(updatedSolicitudes);
-
-    // También actualizamos el número de artículos en la solicitud
-    const cantidadArticulos = productosActualizados.length;
-    const updatedSolicitudWithCount = {
-      ...updatedSolicitud,
-      cantidadArticulos,
-    };
-    const updatedSolicitudesWithCount = [
-      ...solicitudes.slice(0, lastSolicitudIndex),
-      updatedSolicitudWithCount,
-    ];
-    guardarSolicitudes(updatedSolicitudesWithCount);
+  const guardarSolicitudes = async (arr) => {
+    setSolicitudes(arr);
+    try {
+      await axios.post("http://localhost:3007/api/muestras/solicitudes", arr[arr.length - 1]);
+    } catch (error) {
+      console.error("Error al guardar solicitudes:", error);
+      setAlerta(true);
+      setAlertaMessage("Error al guardar solicitudes en el servidor");
+    }
   };
 
+  const guardarAutorizadas = async (arr) => {
+    setSolicitudesAutorizadas(arr);
+    try {
+      await axios.post("http://localhost:3007/api/muestras/solicitudes", arr);
+    } catch (error) {
+      console.error("Error al guardar autorizadas:", error);
+      setAlerta(true);
+      setAlertaMessage("Error al guardar solicitudes autorizadas en el servidor");
+    }
+  };
+
+
+  const removeProduct = (codigoProducto, folio) => {
+    const solicitudIndex = solicitudes.findIndex((s) => s.folio === folio);
+    if (solicitudIndex === -1) return;
+
+    const solicitud = solicitudes[solicitudIndex];
+    const carritoActualizado = solicitud.carrito.filter((p) => p.codigo !== codigoProducto);
+    const solicitudActualizada = { ...solicitud, carrito: carritoActualizado };
+
+    const nuevasSolicitudes = [...solicitudes];
+    nuevasSolicitudes[solicitudIndex] = solicitudActualizada;
+
+    setSolicitudes(nuevasSolicitudes);
+    guardarSolicitudes(nuevasSolicitudes);
+    setProductosModal(carritoActualizado); // actualiza el modal
+  };
+
+
+  useEffect(() => {
+    obtenerSolicitudes();
+    obtenerSolicitudesAutorizadas();
+  }, []);
+
+
+
+  useEffect(() => {
+    const cargarSolicitudes = async () => {
+      try {
+        const response = await axios.get("http://localhost:3007/api/muestras/solicitudes");
+        setSolicitudes(response.data);
+      } catch (error) {
+        console.error("❌ Error al obtener solicitudes:", error);
+      }
+    };
+
+    cargarSolicitudes();
+  }, []);
+
+
+  const normalizarSolicitudes = (data) =>
+    data.map((s) => ({
+      ...s,
+      requiereEnvio: s.requiere_envio === 1,
+      detalleEnvio: s.detalle_envio,
+      regresaArticulo: s.regresa_articulo === 1,
+    }));
+
+  const obtenerSolicitudes = async () => {
+    try {
+      const response = await axios.get("http://localhost:3007/api/muestras/solicitudes");
+      const normalizadas = normalizarSolicitudes(response.data);
+      setSolicitudes(normalizadas);
+    } catch (error) {
+      console.error("Error al obtener solicitudes:", error);
+    }
+  };
+
+  const obtenerSolicitudesAutorizadas = async () => {
+    try {
+      const response = await axios.get("http://localhost:3007/api/muestras/autorizadas");
+      const normalizadas = normalizarSolicitudes(response.data);
+      setSolicitudesAutorizadas(normalizadas);
+    } catch (error) {
+      console.error("Error al obtener autorizadas:", error);
+    }
+  };
+
+  const borrarSolicitud = async (folio) => {
+    try {
+      const confirmacion = await Swal.fire({
+        title: '¿Estás seguro?',
+        text: `Esta acción eliminará la solicitud ${folio}.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, borrar',
+        cancelButtonText: 'Cancelar',
+      });
+
+      if (confirmacion.isConfirmed) {
+        await axios.delete(`http://localhost:3007/api/muestras/solicitudes/${folio}`);
+
+        // 🔁 ACTUALIZA EL ESTADO PARA QUE LA TABLA SE REFRESQUE
+        setSolicitudesAutorizadas((prev) => prev.filter((sol) => sol.folio !== folio));
+
+        Swal.fire('Eliminado', 'La solicitud fue eliminada correctamente.', 'success');
+      }
+    } catch (error) {
+      console.error("❌ Error al borrar solicitud:", error);
+      Swal.fire('Error', 'No se pudo eliminar la solicitud.', 'error');
+    }
+  };
+
+
+
   return (
+
     <Container component="main" maxWidth="lg">
       <Tabs value={currentTab} onChange={handleTabChange} centered>
         {/* Solo Admin, INV y Master pueden ver "Formulario y Carrito" */}
@@ -406,6 +483,9 @@ function Muestras() {
       </Tabs>
 
       <Box mt={3}>
+
+
+
         {currentTab === 0 && (
           <Paper elevation={3} style={{ padding: "20px" }}>
             {vista === "formulario" && (
@@ -431,6 +511,7 @@ function Muestras() {
                       />
                     </Grid>
                     <Grid item xs={12}>
+
                       <FormControl fullWidth variant="outlined">
                         <InputLabel>Departamento</InputLabel>
                         <Select
@@ -446,6 +527,8 @@ function Muestras() {
                           ))}
                         </Select>
                       </FormControl>
+
+
                     </Grid>
                     <Grid item xs={12}>
                       <FormControl fullWidth variant="outlined" required>
@@ -585,23 +668,27 @@ function Muestras() {
                       <TableBody>
                         <TableRow>
                           <TableCell>
+
                             <img
-                              src={`../assets/image/img_pz/${producto.code_prod}.jpg`}
+                              src={`../assets/image/img_pz/${producto.codigo}.jpg`}
+
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = "/assets/image/img_pz/noimage.png";
+                              }}
                               alt="Producto"
                               style={{
                                 width: "50px",
                                 height: "50px",
                                 objectFit: "cover",
                               }}
-                              onError={(e) => {
-                                e.target.onerror = null;
-                                e.target.src = "https://via.placeholder.com/50"; // Imagen por defecto si no se encuentra
-                              }}
                             />
+
                           </TableCell>
-                          <TableCell>{producto.code_prod}</TableCell>
+                          <TableCell>{producto.codigo}</TableCell>
                           <TableCell>{producto.des}</TableCell>
                           <TableCell>
+
                             <Grid container spacing={2} alignItems="center">
                               <Grid item>
                                 <IconButton
@@ -635,6 +722,7 @@ function Muestras() {
                                 </IconButton>
                               </Grid>
                             </Grid>
+
                           </TableCell>
                           <TableCell>
                             <Button
@@ -687,19 +775,21 @@ function Muestras() {
                                 <TableCell>{item.codigo}</TableCell>
                                 <TableCell>
                                   <img
-                                    src={item.imagen}
+                                    src={`../assets/image/img_pz/${item.codigo}.jpg`}
+
+
+                                    onError={(e) => {
+                                      e.target.onerror = null;
+                                      e.target.src = "/assets/image/img_pz/noimage.png";
+                                    }}
                                     alt="Producto"
                                     style={{
                                       width: "50px",
                                       height: "50px",
-                                      objectFit: "cover",
-                                    }}
-                                    onError={(e) => {
-                                      e.target.onerror = null;
-                                      e.target.src =
-                                        "https://via.placeholder.com/50";
+                                      objectFit: "cover"
                                     }}
                                   />
+
                                 </TableCell>
                                 <TableCell>{item.des}</TableCell>
                                 <TableCell>{item.cantidad}</TableCell>
@@ -723,15 +813,19 @@ function Muestras() {
           </Paper>
         )}
 
+
+
         {currentTab === 1 && (
           <Paper elevation={3} style={{ padding: "20px" }}>
             <Typography variant="h5" align="center" gutterBottom>
               Autorizar Solicitudes
             </Typography>
-            {solicitudes.filter((s) => s.enviadoParaAutorizar).length === 0 && (
+
+            {solicitudes.filter((s) => s.enviadoParaAutorizar || s.enviado_para_autorizar === 1).length === 0 && (
               <Typography>No hay solicitudes para autorizar.</Typography>
             )}
-            {solicitudes.filter((s) => s.enviadoParaAutorizar).length > 0 && (
+
+            {solicitudes.filter((s) => s.enviadoParaAutorizar || s.enviado_para_autorizar === 1).length > 0 && (
               <TableContainer component={Paper} style={{ marginTop: "20px" }}>
                 <Table>
                   <TableHead>
@@ -750,51 +844,50 @@ function Muestras() {
                   </TableHead>
                   <TableBody>
                     {solicitudes
-                      .filter((s) => s.enviadoParaAutorizar)
+                      .filter((s) => s.enviadoParaAutorizar || s.enviado_para_autorizar === 1)
                       .map((sol) => (
                         <TableRow key={sol.folio}>
                           <TableCell>{sol.folio}</TableCell>
                           <TableCell>{sol.nombre}</TableCell>
                           <TableCell>{sol.departamento}</TableCell>
                           <TableCell>{sol.motivo}</TableCell>
-                          <TableCell>{sol.fecha || "N/A"}</TableCell>
                           <TableCell>
-                            {sol.requiereEnvio ? "Sí" : "No"}
+                            {sol.fecha ? new Date(sol.fecha).toLocaleDateString("es-MX") : "N/A"}
                           </TableCell>
-                          <TableCell>{sol.detalleEnvio || "N/A"}</TableCell>
-                          <TableCell>{sol.carrito.length}</TableCell>
+                          <TableCell>{sol.requiere_envio ? "Sí" : "No"}</TableCell>
+                          <TableCell>{sol.detalle_envio || "N/A"}</TableCell>
+                          <TableCell>{sol.carrito?.length || 0}</TableCell>
                           <TableCell>{sol.autorizado ? "Sí" : "No"}</TableCell>
+
                           <TableCell>
-                            <Box
-                              display="flex"
-                              justifyContent="flex-start"
-                              alignItems="center"
-                            >
+                            <Box display="flex" justifyContent="flex-start" alignItems="center">
                               {!sol.autorizado && (
                                 <IconButton
                                   onClick={() => autorizarSolicitud(sol.folio)}
                                   color="success"
-                                  title="Autorizar"
-                                  style={{ marginRight: "10px" }} // Espacio entre los botones
+                                  title="Autorizar y Generar PDF"
+                                  style={{ marginRight: "10px" }}
                                 >
                                   <AddTaskIcon />
                                 </IconButton>
                               )}
                               <IconButton
-                                onClick={() => handleOpenModal(sol.carrito)} // Abre el modal con los productos de la solicitud
-                                sx={{ color: "orange" }} // Color personalizable: naranja
+                                onClick={() => handleOpenModal(sol.carrito)}
+                                sx={{ color: "orange" }}
                                 title="Ver productos"
-                                style={{ marginRight: "10px" }} // Espacio entre los botones
+                                style={{ marginRight: "10px" }}
                               >
                                 <VisibilityIcon />
                               </IconButton>
-                              <IconButton
-                                onClick={() => borrarSolicitud(sol.folio)}
-                                color="error"
-                                title="Borrar solicitud"
-                              >
-                                <DeleteIcon />
-                              </IconButton>
+                              {!sol.autorizado && (
+                                <IconButton
+                                  onClick={() => borrarSolicitud(sol.folio)}
+                                  color="error"
+                                  title="Eliminar solicitud"
+                                >
+                                  <DeleteIcon />
+                                </IconButton>
+                              )}
                             </Box>
                           </TableCell>
                         </TableRow>
@@ -806,55 +899,7 @@ function Muestras() {
           </Paper>
         )}
 
-        <Dialog open={openModal} onClose={handleCloseModal}>
-          <DialogTitle>Productos de la Solicitud</DialogTitle>
-          <DialogContent>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Imagen</TableCell>
-                  <TableCell>Código</TableCell>
-                  <TableCell>Descripción</TableCell>
-                  <TableCell>Cantidad</TableCell>
-                  <TableCell>Acciones</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {productosModal.map((item, index) => (
-                  <TableRow key={index}>
-                    <TableCell>
-                      <img
-                        src={item.imagen}
-                        alt="Producto"
-                        style={{
-                          width: "50px",
-                          height: "50px",
-                          objectFit: "cover",
-                        }}
-                      />
-                    </TableCell>
-                    <TableCell>{item.codigo}</TableCell>
-                    <TableCell>{item.des}</TableCell>
-                    <TableCell>{item.cantidad}</TableCell>
-                    <TableCell>
-                      <IconButton
-                        onClick={() => removeProduct(item.codigo)} // Abre el modal con los productos de la solicitud
-                        color="error"
-                      >
-                        <DeleteIcon />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleCloseModal} color="primary">
-              Cerrar
-            </Button>
-          </DialogActions>
-        </Dialog>
+
 
         {currentTab === 2 && (
           <Paper elevation={3} style={{ padding: "20px" }}>
@@ -885,28 +930,34 @@ function Muestras() {
                         <TableCell>{sol.nombre}</TableCell>
                         <TableCell>{sol.departamento}</TableCell>
                         <TableCell>{sol.motivo}</TableCell>
-                        <TableCell>{sol.fecha || "N/A"}</TableCell>
+                        <TableCell>
+                          {sol.fecha ? new Date(sol.fecha).toLocaleDateString("es-MX") : "N/A"}
+                        </TableCell>
+
                         <TableCell>{sol.requiereEnvio ? "Sí" : "No"}</TableCell>
                         <TableCell>{sol.detalleEnvio || "N/A"}</TableCell>
+
+
                         <TableCell>{sol.carrito.length}</TableCell>
                         <TableCell>{sol.autorizado ? "Sí" : "No"}</TableCell>
+
                         <TableCell>
-                          <Button
-                            variant="contained"
-                            color="primary"
+                          <IconButton
                             onClick={() => generarPDF(sol)}
+                            sx={{ color: 'black' }}
                           >
-                            Imprimir PDF
-                          </Button>
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            variant="contained"
-                            color="secondary"
-                            onClick={() => borrarSolicitudAutorizada(sol.folio)}
+                            <LocalPrintshopIcon />
+                          </IconButton>
+
+                          <IconButton
+                            onClick={() => borrarSolicitud(sol.folio)}
+                            color="error"
+                            title="Eliminar solicitud"
                           >
-                            Borrar
-                          </Button>
+                            <DeleteIcon />
+                          </IconButton>
+
+
                         </TableCell>
                       </TableRow>
                     ))}
@@ -918,6 +969,63 @@ function Muestras() {
             )}
           </Paper>
         )}
+
+
+
+        <Dialog open={openModal} onClose={handleCloseModal}>
+          <DialogTitle>Productos de la Solicitud</DialogTitle>
+          <DialogContent>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Imagen</TableCell>
+                  <TableCell>Código</TableCell>
+                  <TableCell>Descripción</TableCell>
+                  <TableCell>Cantidad</TableCell>
+                  <TableCell>Acciones</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {productosModal.map((item, index) => (
+                  <TableRow key={index}>
+                    <TableCell>
+                      <img
+                        src={item.imagen}
+                        alt="Producto"
+                        style={{
+                          width: "50px",
+                          height: "50px",
+                          objectFit: "cover",
+                        }}
+                      />
+
+                    </TableCell>
+                    <TableCell>{item.codigo}</TableCell>
+                    <TableCell>{item.descripcion || item.des || "Sin descripción"}</TableCell>
+                    <TableCell>{item.cantidad}</TableCell>
+                    <TableCell>
+
+                      <IconButton
+                        onClick={() => removeProduct(item.codigo, solicitudModalFolio)}
+                        color="error"
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+
+
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCloseModal} color="primary">
+              Cerrar
+            </Button>
+          </DialogActions>
+        </Dialog>
+
       </Box>
 
       <Snackbar
@@ -933,7 +1041,9 @@ function Muestras() {
           {alertaMessage}
         </Alert>
       </Snackbar>
+
     </Container>
+
   );
 }
 

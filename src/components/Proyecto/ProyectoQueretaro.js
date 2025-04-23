@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import {
-    Card, CardContent, CardMedia, Grid, Typography, Dialog, DialogActions, DialogContent, DialogTitle, Button, IconButton, Box, TextField, TablePagination,
-    Tabs, Tab, MenuItem, Select, InputLabel, FormControl, Table, TableHead, TableRow, TableCell, TableBody, Modal,
+    Card, CardContent, CardMedia, Grid, Typography, Dialog, DialogActions, DialogContent, DialogTitle, Button, IconButton, Box, TextField, TablePagination, Tabs, Tab, MenuItem, Select, InputLabel, FormControl, Table, TableHead, TableRow, TableCell, TableBody, Modal,
 } from '@mui/material';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import CloseIcon from '@mui/icons-material/Close';
@@ -853,8 +852,6 @@ function ProyectoQueretaro() {
 
     );
 
-
-
     const renderTable = () => (
         <Table>
             <TableHead>
@@ -880,11 +877,7 @@ function ProyectoQueretaro() {
         </Table>
     );
 
-
-
     // Mapeo de la informacion
-
-
 
     const convertToEmbedUrl = (url) => {
         if (!url.includes("viewer")) return url; // Si ya es embed, no cambiarlo
@@ -892,7 +885,6 @@ function ProyectoQueretaro() {
     };
 
     const mainMap = "https://www.google.com/maps/d/embed?mid=16AT0b4cYTSNQQVQYHkQKC8Rp4Q1g2VE&ll=20.561320310882667,-100.38615969894488&z=15";
-
 
     const otherMaps = [
         convertToEmbedUrl("https://www.google.com/maps/d/u/0/viewer?mid=1ih6-YP-d1yE3ZviYr5z-ddiPhdwfVCI&femb=1&ll=20.563953977471986%2C-100.39009649543087&z=13"),
@@ -902,8 +894,6 @@ function ProyectoQueretaro() {
         convertToEmbedUrl("https://www.google.com/maps/d/u/0/viewer?mid=16Mxu_WIDcLeIdh3TpdM42BfPEZTS49A&ll=20.562950614267464%2C-100.39048423373035&z=14"),
     ];
 
-
-
     const imagePaths = [
         "/Rutas/Ruta1.jpeg",
         "/Rutas/Ruta2.jpeg",
@@ -911,8 +901,6 @@ function ProyectoQueretaro() {
         "/Rutas/Ruta4.jpeg",
         "/Rutas/Ruta5.jpeg",
     ];
-
-
 
     const MapaRutas = () => {
         const [openModal, setOpenModal] = useState(false);
@@ -1112,9 +1100,6 @@ function ProyectoQueretaro() {
         }
     };
 
-
-
-
     //Menu de guadalajara 
 
     const mainMapGuadalajara = "https://www.google.com/maps/d/embed?mid=12F4jYMqNRKzfA-yKLT103arH_z6-O20&usp=sharing";
@@ -1184,7 +1169,6 @@ function ProyectoQueretaro() {
         }
     }, [selectedRuta]);
 
-
     const renderOrdenVisita = () => {
         const getTomorrowName = () => {
             const days = ['DOMINGO', 'LUNES', 'MARTES', 'MIERCOLES', 'JUEVES', 'VIERNES', 'SÁBADO'];
@@ -1215,6 +1199,7 @@ function ProyectoQueretaro() {
         }
 
         return (
+            
             <Box sx={{ padding: 2 }}>
                 <Typography variant="h6" gutterBottom>
                     Ordena los lugares de visita para el día siguiente ({diaManana})
@@ -1299,7 +1284,6 @@ function ProyectoQueretaro() {
             </Box>
         );
     };
-
 
 
 

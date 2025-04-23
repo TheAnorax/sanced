@@ -1,9 +1,23 @@
 const express = require('express');
 const router = express.Router();
-const { Departamentos,  buscarProducto } = require('../controller/muestrasController');
+const { Departamentos, buscarProducto, guardarSolicitudes, obtenerSolicitudes, obtenerAutorizadas, actualizarSolicitud, eliminarSolicitud } = require('../controller/muestrasController');
 
 router.get('/departamentos', Departamentos);
+
 router.get('/producto/:codigo', buscarProducto);
+
+// Ruta para obtener solicitudes no autorizadas
+router.get('/solicitudes', obtenerSolicitudes);
+
+// Ruta para obtener solicitudes autorizadas
+router.get('/autorizadas', obtenerAutorizadas);
+
+// Ruta para guardar solicitudes (puede recibir un array de 1 o más)
+router.post('/solicitudes', guardarSolicitudes);
+
+router.patch('/solicitudes/:folio', actualizarSolicitud);
+
+router.delete('/solicitudes/:folio', eliminarSolicitud); // ✅ esta es la nueva ruta
 
 
 module.exports = router;

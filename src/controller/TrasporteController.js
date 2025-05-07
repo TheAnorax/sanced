@@ -1,11 +1,7 @@
 const pool = require("../config/database");
-const moment = require('moment');
-require('moment/locale/es');
-moment.locale('es');
+const moment = require("moment");
 const multer = require("multer");
 const xlsx = require("xlsx");
-
-
 
 const getObservacionesPorClientes = async (req, res) => {
   const { clientes } = req.body; // Recibe un array con los números de clientes
@@ -106,10 +102,21 @@ const insertarRutas = async (req, res) => {
         CORREO,
         "EJECUTIVO VTAS": ejecutivoVtas,
         GUIA,
-        tipo_original // 👈 LO AGREGAMOS AQUÍ
+        tipo_original,
       } = ruta;
 
       const formattedDate = moment(FECHA, "DD/MM/YYYY").format("YYYY-MM-DD");
+
+      // 👉 Validación: si ya existe ese NO ORDEN con ese tipo_original, no lo insertes
+      const [existe] = await connection.query(
+        `SELECT 1 FROM paqueteria WHERE \`NO ORDEN\` = ? AND tipo_original = ? LIMIT 1`,
+        [noOrden, tipo_original || null]
+      );
+
+      if (existe.length > 0) {
+        console.log(`⏭️ Ya existe NO ORDEN ${noOrden} con tipo_original ${tipo_original}, no se insertará.`);
+        continue; // Saltar este registro
+      }
 
       const insertQuery = `
         INSERT INTO paqueteria (
@@ -143,43 +150,28 @@ const insertarRutas = async (req, res) => {
         CORREO,
         ejecutivoVtas,
         GUIA,
-        tipo_original || null // 👈 Evita error si viene vacío
+        tipo_original || null,
       ];
 
       await connection.query(insertQuery, values);
     }
 
-    const deleteDuplicatesQuery = `
-      DELETE FROM paqueteria 
-      WHERE id NOT IN (
-        SELECT id FROM (
-          SELECT MIN(id) AS id
-          FROM paqueteria
-          GROUP BY \`NO ORDEN\`
-        ) AS temp
-      )
-    `;
-
-    await connection.query(deleteDuplicatesQuery);
     await connection.commit();
 
     res.status(200).json({
-      message: "✅ Rutas insertadas y duplicados eliminados correctamente.",
+      message: "✅ Rutas insertadas correctamente (sin duplicados por NO ORDEN y tipo_original).",
     });
   } catch (error) {
     await connection.rollback();
     console.error("❌ Error al insertar rutas:", error.message);
-    res
-      .status(500)
-      .json({ message: "Error al insertar rutas o eliminar duplicados" });
+    res.status(500).json({ message: "Error al insertar rutas" });
   } finally {
     connection.release();
   }
 };
 
 
-
-
+// Controlador: obtenerRutasDePaqueteria
 const obtenerRutasDePaqueteria = async (req, res) => {
   try {
     const {
@@ -187,7 +179,6 @@ const obtenerRutasDePaqueteria = async (req, res) => {
       limit = 10000,
       tipo = "",
       guia = "",
-      numeroFacturaLT = "",
       expandir = false,
       desde = "",
       hasta = "",
@@ -195,29 +186,27 @@ const obtenerRutasDePaqueteria = async (req, res) => {
     } = req.query;
 
     const offset = (page - 1) * limit;
-    let query = `SELECT routeName, FECHA, \`NO ORDEN\`, NO_FACTURA, FECHA_DE_FACTURA, 
-                 \`NUM. CLIENTE\`, \`NOMBRE DEL CLIENTE\`, ZONA, MUNICIPIO, ESTADO, 
-                 OBSERVACIONES, TOTAL, PARTIDAS, PIEZAS, TARIMAS, TRANSPORTE, 
-                 PAQUETERIA, GUIA, FECHA_DE_ENTREGA_CLIENTE, DIAS_DE_ENTREGA,
-                 TIPO, DIRECCION, TELEFONO, TOTAL_FACTURA_LT, ENTREGA_SATISFACTORIA_O_NO_SATISFACTORIA,   
-                 created_at, MOTIVO, NUMERO_DE_FACTURA_LT, FECHA_DE_ENTREGA_CLIENTE, CORREO, tipo_original
-                 FROM paqueteria WHERE 1 = 1`;
+    let query = `
+      SELECT routeName, FECHA, \`NO ORDEN\`, NO_FACTURA, FECHA_DE_FACTURA, 
+             \`NUM. CLIENTE\`, \`NOMBRE DEL CLIENTE\`, ZONA, MUNICIPIO, ESTADO, 
+             OBSERVACIONES, TOTAL, PARTIDAS, PIEZAS, TARIMAS, TRANSPORTE, 
+             PAQUETERIA, GUIA, FECHA_DE_ENTREGA_CLIENTE, DIAS_DE_ENTREGA,
+             TIPO, DIRECCION, TELEFONO, TOTAL_FACTURA_LT, ENTREGA_SATISFACTORIA_O_NO_SATISFACTORIA,
+             created_at, MOTIVO, NUMERO_DE_FACTURA_LT, FECHA_DE_ENTREGA_CLIENTE,tipo_original
+      FROM paqueteria
+      WHERE 1 = 1
+    `;
 
     const params = [];
 
-    // 🚨 Si no hay búsqueda por guía ni factura, aplicar filtro por fechas para no sobrecargar
-    const estaFiltrandoPorGuia = guia && guia.trim() !== "";
-    const estaFiltrandoPorFactura = numeroFacturaLT && numeroFacturaLT.trim() !== "";
+    // 👇 Solo aplicamos filtros de fechas si NO estamos buscando por guía
+    const filtrandoPorGuia = guia && guia.trim() !== "";
 
-    if (!estaFiltrandoPorGuia && !estaFiltrandoPorFactura) {
+    if (!filtrandoPorGuia) {
       if (mes) {
         const anioActual = new Date().getFullYear();
-        // Crear el primer y último día del mes seleccionando
-        const primerDiaDelMes = new Date(anioActual, mes - 1, 1); // Primer día del mes
-        const ultimoDiaDelMes = new Date(anioActual, mes, 0); // Último día del mes
-
-        query += " AND created_at BETWEEN ? AND ?";
-        params.push(primerDiaDelMes.toISOString(), ultimoDiaDelMes.toISOString());
+        query += " AND MONTH(created_at) = ? AND YEAR(created_at) = ?";
+        params.push(mes, anioActual);
       } else {
         const fechaLimite = new Date();
         fechaLimite.setDate(fechaLimite.getDate() - 3);
@@ -227,49 +216,31 @@ const obtenerRutasDePaqueteria = async (req, res) => {
       }
     }
 
-    // 🧠 Filtrar por tipo de ruta (si aplica)
+    // 👉 Filtro por TIPO si aplica
     if (tipo) {
-      // Asegúrate de que 'tipo' esté normalizado (sin espacios y en minúsculas)
-      const tipoNormalizado = tipo.trim().toLowerCase();
       query += " AND TIPO = ?";
-      params.push(tipoNormalizado);
+      params.push(tipo);
     }
 
-    // ✅ Buscar por guía O por número de factura LT
-    if (estaFiltrandoPorGuia || estaFiltrandoPorFactura) {
-      query += " AND (";
-      const condiciones = [];
-
-      if (estaFiltrandoPorGuia) {
-        condiciones.push("GUIA = ?");
-        params.push(guia.trim());
-      }
-
-      if (numeroFacturaLT) {
-        query += " OR TRIM(NUMERO_DE_FACTURA_LT) = ?";
-        params.push(numeroFacturaLT.trim());
-      }
-
-      query += condiciones.join(" OR ") + ")";
+    // 👉 Filtro por GUIA (esto siempre va al final)
+    if (guia) {
+      query += " AND GUIA = ?";
+      params.push(guia);
     }
 
-    // 🧾 Paginación y orden
+    // 👉 Orden y paginación
     query += " ORDER BY created_at DESC LIMIT ? OFFSET ?";
     params.push(parseInt(limit), parseInt(offset));
-
-    // console.log("Consulta SQL generada:", query);  // Aquí mostramos la consulta completa con parámetros
-    // console.log("Parámetros:", params);  // Aquí mostramos los parámetros de la consulta
 
     const [rows] = await pool.query(query, params);
     res.json(rows);
   } catch (error) {
     console.error("Error al obtener rutas de paquetería:", error.message);
-    res.status(500).json({ message: "Error al obtener las rutas de paquetería" });
+    res
+      .status(500)
+      .json({ message: "Error al obtener las rutas de paquetería" });
   }
 };
-
-
-
 
 const obtenerRutasParaPDF = async (req, res) => {
   try {
@@ -280,7 +251,7 @@ const obtenerRutasParaPDF = async (req, res) => {
       guia = "",
       expandir = false,
       desde = "",
-      hasta = ""
+      hasta = "",
     } = req.query;
 
     const offset = (page - 1) * limit;
@@ -346,7 +317,6 @@ const obtenerRutasParaPDF = async (req, res) => {
   }
 };
 
-
 const getFechaYCajasPorPedido = async (req, res) => {
   const { noOrden } = req.params;
 
@@ -379,14 +349,15 @@ const getFechaYCajasPorPedido = async (req, res) => {
       "Error al obtener la fecha de embarque y la última caja:",
       error.message
     );
-    res
-      .status(500)
-      .json({ message: "Error al obtener la fecha de embarque y la última caja" });
+    res.status(500).json({
+      message: "Error al obtener la fecha de embarque y la última caja",
+    });
   }
 };
 
 
 const actualizarGuia = async (req, res) => {
+  
   const {
     guia,
     paqueteria,
@@ -411,60 +382,65 @@ const actualizarGuia = async (req, res) => {
     numeroFacturaLT,
     observaciones,
     tipo,
+    nuevoNoOrden,
+    nuevoTipoOriginal,
+    tipo_original_actual // 👈 valor actual para ubicar el registro
   } = req.body;
 
+  const noOrden = req.params.noOrden || null;
+
+  if (!noOrden || guia === undefined || guia.trim() === "") {
+    return res.status(400).json({
+      message: "❌ Faltan datos: NO ORDEN o GUIA no son válidos.",
+    });
+  }
+
   try {
-    const noOrden = req.params.noOrden || null;
-
-    if (!noOrden || guia === undefined || guia.trim() === "") {
-      return res.status(400).json({
-        message: "❌ Faltan datos: NO ORDEN o GUIA no son válidos.",
-      });
-    }
-
-    // Verificar si el NO ORDEN existe
-    const [registroExiste] = await pool.query(
-      "SELECT GUIA FROM paqueteria WHERE `NO ORDEN` = ?",
-      [noOrden]
+    // 1. Buscar el registro exacto por NO ORDEN y tipo_original_actual
+    const [existe] = await pool.query(
+      "SELECT * FROM paqueteria WHERE `NO ORDEN` = ? AND tipo_original <=> ?",
+      [noOrden, tipo_original_actual] // <=> para aceptar NULL como igual
     );
 
-    if (registroExiste.length === 0) {
+    if (existe.length === 0) {
       return res.status(404).json({
-        message: `❌ No se encontró la orden con NO ORDEN ${noOrden}.`,
+        message: "❌ No se encontró el pedido con ese NO ORDEN y tipo_original.",
       });
     }
 
-    // 🔹 Ejecutar actualización incluyendo TRANSPORTE y TIPO
-    const query = `
-      UPDATE paqueteria
-      SET 
-        GUIA = ?, 
-        PAQUETERIA = ?, 
-        TRANSPORTE = ?, 
-        FECHA_DE_ENTREGA_CLIENTE = ?, 
-        DIAS_DE_ENTREGA = ?, 
-        ENTREGA_SATISFACTORIA_O_NO_SATISFACTORIA = ?, 
-        MOTIVO = ?, 
-        TOTAL_FACTURA_LT = ?, 
-        PRORRATEO_FACTURA_LT = ?, 
-        PRORRATEO_FACTURA_PAQUETERIA = ?, 
-        GASTOS_EXTRAS = ?, 
-        SUMA_FLETE = ?, 
-        PORCENTAJE_ENVIO = ?, 
-        PORCENTAJE_PAQUETERIA = ?, 
-        SUMA_GASTOS_EXTRAS = ?, 
-        PORCENTAJE_GLOBAL = ?, 
-        DIFERENCIA = ?, 
-        NO_FACTURA = ?, 
-        FECHA_DE_FACTURA = ?, 
-        TARIMAS = ?, 
-        NUMERO_DE_FACTURA_LT = ?, 
-        OBSERVACIONES = ?, 
-        TIPO = ?
-      WHERE \`NO ORDEN\` = ?;
+    // 2. Verificar si se desea actualizar NO ORDEN o tipo_original
+    const actual = existe[0];
+    const debeActualizarOrden = nuevoNoOrden && nuevoNoOrden !== actual["NO ORDEN"];
+    const debeActualizarTipo = nuevoTipoOriginal !== actual["tipo_original"];
+
+    // 3. Armar SET dinámico
+    let camposSet = `
+      GUIA = ?, 
+      PAQUETERIA = ?, 
+      TRANSPORTE = ?, 
+      FECHA_DE_ENTREGA_CLIENTE = ?, 
+      DIAS_DE_ENTREGA = ?, 
+      ENTREGA_SATISFACTORIA_O_NO_SATISFACTORIA = ?, 
+      MOTIVO = ?, 
+      TOTAL_FACTURA_LT = ?, 
+      PRORRATEO_FACTURA_LT = ?, 
+      PRORRATEO_FACTURA_PAQUETERIA = ?, 
+      GASTOS_EXTRAS = ?, 
+      SUMA_FLETE = ?, 
+      PORCENTAJE_ENVIO = ?, 
+      PORCENTAJE_PAQUETERIA = ?, 
+      SUMA_GASTOS_EXTRAS = ?, 
+      PORCENTAJE_GLOBAL = ?, 
+      DIFERENCIA = ?, 
+      NO_FACTURA = ?, 
+      FECHA_DE_FACTURA = ?, 
+      TARIMAS = ?, 
+      NUMERO_DE_FACTURA_LT = ?, 
+      OBSERVACIONES = ?, 
+      TIPO = ?
     `;
 
-    const [result] = await pool.query(query, [
+    const valores = [
       guia,
       paqueteria,
       transporte,
@@ -487,24 +463,45 @@ const actualizarGuia = async (req, res) => {
       tarimas,
       numeroFacturaLT,
       observaciones,
-      tipo,
-      noOrden,
-    ]);
+      tipo
+    ];
 
-    if (result.affectedRows > 0) {
-      return res
-        .status(200)
-        .json({ message: "✅ Guía y Transporte actualizados correctamente." });
+    if (debeActualizarTipo) {
+      camposSet = "tipo_original = ?, " + camposSet;
+      valores.unshift(nuevoTipoOriginal);
+    }
+
+    if (debeActualizarOrden) {
+      camposSet = "`NO ORDEN` = ?, " + camposSet;
+      valores.unshift(nuevoNoOrden);
+    }
+
+    // 4. Ejecutar el UPDATE usando ambos campos para identificar el registro
+    const query = `
+      UPDATE paqueteria
+      SET ${camposSet}
+      WHERE \`NO ORDEN\` = ? AND tipo_original <=> ?;
+    `;
+
+    valores.push(noOrden, tipo_original_actual); // condición del WHERE
+
+    const [resultado] = await pool.query(query, valores);
+
+    if (resultado.affectedRows > 0) {
+      return res.status(200).json({
+        message: "✅ Actualización realizada correctamente.",
+      });
     } else {
-      return res.status(404).json({
-        message: `⚠ No se pudo actualizar la guía para el NO ORDEN ${noOrden}.`,
+      return res.status(304).json({
+        message: "⚠ No se modificaron campos (ya estaban iguales).",
       });
     }
   } catch (error) {
-    console.error("❌ Error al actualizar la guía:", error.message);
-    return res.status(500).json({ message: "❌ Error al actualizar la guía." });
+    console.error("❌ Error al actualizar:", error.message);
+    return res.status(500).json({ message: "❌ Error al actualizar." });
   }
 };
+
 
 
 const getPedidosEmbarque = async (req, res) => {
@@ -647,6 +644,7 @@ const insertarVisita = async (req, res) => {
   }
 };
 
+
 const guardarDatos = async (req, res) => {
   const datos = req.body;
 
@@ -776,7 +774,7 @@ const getHistoricoData = async (req, res) => {
 
     const columnasFiltradas = columnasArray.filter((col) =>
       columnasPermitidas.includes(col)
-    );
+    ); 
 
     if (columnasFiltradas.length === 0) {
       return res
@@ -870,23 +868,21 @@ const getColumnasHistorico = async (req, res) => {
   }
 };
 
-//status 
-
 const getOrderStatus = async (req, res) => {
   try {
     let orderNumbers = req.body.orderNumbers || [req.params.orderNumber];
-
     if (!orderNumbers || orderNumbers.length === 0) {
       return res.status(400).json({ message: "No se enviaron pedidos" });
     }
 
     let statusResults = {};
+    const fusionMap = {}; // 🔁 Mapa para fusiones bidireccionales
 
     const statusColors = {
-      pedi: "#FF0000",
-      pedido_surtido: "#000000",
-      pedido_embarque: "#0000FF",
-      pedido_finalizado: "#008000",
+      pedi: "#FF0000", // Rojo
+      pedido_surtido: "#000000", // Negro
+      pedido_embarque: "#0000FF", // Azul
+      pedido_finalizado: "#008000", // Verde
     };
 
     const statusPriority = {
@@ -896,63 +892,68 @@ const getOrderStatus = async (req, res) => {
       pedido_finalizado: 4,
     };
 
-    // 🔍 Obtener tipo_original desde paqueteria para cada NO ORDEN
+    // 🔎 Obtener tipo_original de la tabla paquetería
     const [tipoResults] = await pool.query(
       `SELECT \`NO ORDEN\` as pedido, tipo_original 
        FROM paqueteria 
        WHERE \`NO ORDEN\` IN (?)`,
       [orderNumbers]
     );
-
     const tipoOriginalMap = {};
     tipoResults.forEach(({ pedido, tipo_original }) => {
       tipoOriginalMap[pedido] = (tipo_original || "").toLowerCase();
     });
 
-    // ✅ Función para validar y asignar estatus solo si tipo_original coincide
+    // ✅ Función que procesa cada tabla
     const checkFusionStatus = (rows, tableName, statusText) => {
       rows.forEach((row) => {
         const pedido = row.pedido;
         const tipoDesdeTabla = (row.tipo || "").toLowerCase();
         const fusion = row.fusion || null;
-
         const tipoOriginal = tipoOriginalMap[pedido];
 
-        const tipoCoincide = tipoDesdeTabla === tipoOriginal;
+        const tipoCoincide = true;
 
         const baseColor = statusColors[tableName];
         const currentPriority = statusPriority[tableName];
         const previous = statusResults[pedido];
         const previousPriority = previous ? statusPriority[previous.table] : 0;
 
-        // ✅ Solo si tipo_original coincide con el tipo en la tabla
-        if (tipoCoincide && (!previous || currentPriority > previousPriority)) {
-          statusResults[pedido] = {
-            statusText,
-            color: baseColor,
-            table: tableName,
-            fusionWith:
-              fusion && fusion.trim() !== "" && fusion !== pedido
-                ? fusion
-                : null,
-            tipo_original: tipoOriginal,
-            tipo_tabla: tipoDesdeTabla,
-          };
+        if (tipoCoincide) {
+          if (!previous || currentPriority > previousPriority) {
+            // 🧠 Solo actualizamos si es de mayor prioridad
+            statusResults[pedido] = {
+              statusText,
+              color: baseColor,
+              table: tableName,
+              fusionWith:
+                fusion && fusion.trim() !== "" && fusion !== pedido
+                  ? fusion
+                  : null,
+              tipo_original: tipoOriginal,
+              tipo_tabla: tipoDesdeTabla,
+            };
+          }
+        }
+
+        // 🔁 Guardar fusión para sincronizar después
+        if (fusion && fusion.trim() !== "" && fusion !== pedido) {
+          fusionMap[pedido] = fusion;
+          fusionMap[fusion] = pedido;
         }
       });
     };
 
-    // 🔍 1. Finalizados
+    // 🔍 Consultas de las tablas principales
     let [result] = await pool.query(
       `SELECT pedido, tipo, fusion FROM pedido_finalizado WHERE pedido IN (?)`,
       [orderNumbers]
     );
     checkFusionStatus(result, "pedido_finalizado", "Pedido Finalizado");
 
-    // 🔍 2. Embarque
     try {
       [result] = await pool.query(
-        `SELECT pedido, tipo, fusion FROM pedido_embarque WHERE pedido IN (?)`,
+        `SELECT DISTINCT pedido, tipo, fusion FROM pedido_embarque WHERE pedido IN (?)`,
         [orderNumbers]
       );
       checkFusionStatus(result, "pedido_embarque", "Embarcando");
@@ -960,22 +961,32 @@ const getOrderStatus = async (req, res) => {
       console.warn("⚠️ Tabla 'pedido_embarque' no existe o falló.");
     }
 
-    // 🔍 3. Surtiendo
     [result] = await pool.query(
       `SELECT pedido, tipo, fusion FROM pedido_surtido WHERE pedido IN (?)`,
       [orderNumbers]
     );
     checkFusionStatus(result, "pedido_surtido", "Surtiendo");
 
-    // 🔍 4. Por Asignar
     [result] = await pool.query(
-      `SELECT pedido, tipo FROM pedi WHERE pedido IN (?)`,
+      `SELECT DISTINCT pedido, tipo FROM pedi WHERE pedido IN (?)`,
       [orderNumbers]
     );
     result = result.map((r) => ({ ...r, fusion: null }));
-    checkFusionStatus(result, "pedi", "Por Asignar");
 
-    // ❗ Pedidos no encontrados o sin coincidencia de tipo
+    // 🔥 Antes de procesar PEDI, proteger si ya hay un estado mejor
+    const pediFiltrados = result.filter((row) => {
+      const pedido = row.pedido;
+      const previous = statusResults[pedido];
+      if (previous) {
+        // Ya existe en finalizado, embarque o surtido, NO TOCARLO
+        return false;
+      }
+      return true;
+    });
+
+    checkFusionStatus(pediFiltrados, "pedi", "Por Asignar");
+
+    // ❗ Asegurar que todos tengan algún estatus
     orderNumbers.forEach((orderNumber) => {
       if (!statusResults[orderNumber]) {
         statusResults[orderNumber] = {
@@ -989,15 +1000,40 @@ const getOrderStatus = async (req, res) => {
       }
     });
 
+    // 🔁 Segunda pasada: Sincronizar pedidos fusionados
+    Object.entries(statusResults).forEach(([pedido, info]) => {
+      const fusionWith = info.fusionWith;
+      if (fusionWith && statusResults[fusionWith]) {
+        const fusionStatus = statusResults[fusionWith];
+
+        const priorityPedido = statusPriority[info.table] || 0;
+        const priorityFusion = statusPriority[fusionStatus.table] || 0;
+
+        const betterStatus =
+          priorityPedido >= priorityFusion ? info : fusionStatus;
+
+        statusResults[pedido] = {
+          ...betterStatus,
+          fusionWith: `${pedido}-${fusionWith}`,
+          tipo_original: betterStatus.tipo_original, // <- usar del mejor estado
+          tipo_tabla: betterStatus.tipo_tabla,
+        };
+
+        statusResults[fusionWith] = {
+          ...betterStatus,
+          fusionWith: `${fusionWith}-${pedido}`,
+          tipo_original: betterStatus.tipo_original, // <- usar del mejor estado
+          tipo_tabla: betterStatus.tipo_tabla,
+        };
+      }
+    });
+
     res.json(statusResults);
   } catch (error) {
     console.error("❌ Error en la API:", error);
     res.status(500).json({ message: "Error interno del servidor" });
   }
 };
-
-
-
 
 const getFusionInfo = async (req, res) => {
   try {
@@ -1047,7 +1083,10 @@ const getFusionInfo = async (req, res) => {
           }
         });
       } catch (error) {
-        console.warn(`⚠️ Error al consultar tabla ${tabla.nombre}:`, error.message);
+        console.warn(
+          `⚠️ Error al consultar tabla ${tabla.nombre}:`,
+          error.message
+        );
       }
     }
 
@@ -1069,11 +1108,6 @@ const getFusionInfo = async (req, res) => {
     res.status(500).json({ message: "Error interno al consultar fusión" });
   }
 };
-
-
-
-
-
 
 const actualizarFacturasDesdeExcel = async (req, res) => {
   try {
@@ -1104,14 +1138,14 @@ const actualizarFacturasDesdeExcel = async (req, res) => {
     // Recorrer cada fila del archivo Excel
     for (const row of data) {
       const noOrden = row["Número orden"];
-      const noFactura = row["Número orden"];
+      const noFactura = row["Número documento"];
       let fechaFactura = row["Fecha factura"];
 
       // Validar que los datos esenciales existan
       if (!noOrden || !noFactura || !fechaFactura) {
-        console.warn(
-          `⚠ Saltando fila con datos faltantes: ${JSON.stringify(row)}`
-        );
+        // console.warn(
+        //   `⚠ Saltando fila con datos faltantes: ${JSON.stringify(row)}`
+        // );
         continue;
       }
 
@@ -1151,15 +1185,15 @@ const actualizarFacturasDesdeExcel = async (req, res) => {
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
-
 const actualizarPorGuia = async (req, res) => {
   const { guia } = req.params;
-
 
   const { numeroFacturaLT, totalFacturaLT, pedidos } = req.body;
 
   if (!guia || !Array.isArray(pedidos) || pedidos.length === 0) {
-    return res.status(400).json({ message: "❌ Faltan datos o pedidos vacíos." });
+    return res
+      .status(400)
+      .json({ message: "❌ Faltan datos o pedidos vacíos." });
   }
 
   try {
@@ -1214,64 +1248,87 @@ const actualizarPorGuia = async (req, res) => {
     });
   } catch (error) {
     console.error("❌ Error al actualizar por guía:", error.message);
-    return res.status(500).json({ message: "❌ Error interno al actualizar los datos." });
+    return res
+      .status(500)
+      .json({ message: "❌ Error interno al actualizar los datos." });
   }
 };
 
 // Función auxiliar segura
 function limpiarPorcentaje(valor) {
-  if (typeof valor === "string") return parseFloat(valor.replace(" %", "")) || 0;
+  if (typeof valor === "string")
+    return parseFloat(valor.replace(" %", "")) || 0;
   if (typeof valor === "number") return valor;
   return 0;
 }
 
-
-//para que la puedan ver las demas computadora 
+//para que la puedan ver las demas computadora
 
 const crearRuta = async (req, res) => {
-  const { nombre, pedidos } = req.body; // Recibimos también los pedidos
+  const { nombre, pedidos } = req.body;
 
   if (!nombre) {
     return res.status(400).json({ message: "El nombre de la ruta es obligatorio." });
   }
 
   try {
-    // 🔍 Verificar si la ruta ya existe
-    const [rutaExistente] = await pool.query("SELECT id FROM rutas WHERE nombre = ?", [nombre]);
+    // Verificar si la ruta ya existe
+    const [rutaExistente] = await pool.query(
+      "SELECT id FROM rutas WHERE nombre = ?",
+      [nombre]
+    );
 
     let rutaId;
     if (rutaExistente.length > 0) {
-      rutaId = rutaExistente[0].id; // La ruta ya existe, obtenemos su ID
+      rutaId = rutaExistente[0].id;
     } else {
-      // 🚀 Si no existe, la creamos
       const query = `INSERT INTO rutas (nombre) VALUES (?)`;
       const [result] = await pool.query(query, [nombre]);
       rutaId = result.insertId;
     }
 
-    // ✅ Ahora insertamos los pedidos nuevos para esta ruta
+    // Insertar los pedidos para esta ruta
     if (pedidos && pedidos.length > 0) {
       for (const pedido of pedidos) {
         const {
-          no_orden, num_cliente, nombre_cliente, municipio, estado, total,
-          partidas, piezas, fecha_emision, observaciones
+          no_orden,
+          num_cliente,
+          nombre_cliente,
+          municipio,
+          estado,
+          total,
+          partidas,
+          piezas,
+          fecha_emision,
+          observaciones,
+          tipo,
         } = pedido;
 
-        // 🔍 Verificar si el pedido ya existe en la ruta
+        // Verificar si ya existe en la misma ruta
         const [pedidoExistente] = await pool.query(
           "SELECT id FROM pedidos WHERE no_orden = ? AND ruta_id = ?",
           [no_orden, rutaId]
         );
 
         if (pedidoExistente.length === 0) {
-          // 🚀 Si el pedido no existe, lo insertamos
           const insertPedidoQuery = `
-            INSERT INTO pedidos (ruta_id, no_orden, num_cliente, nombre_cliente, municipio, estado, total, partidas, piezas, fecha_emision, observaciones)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO pedidos 
+            (ruta_id, no_orden, num_cliente, nombre_cliente, municipio, estado, total, partidas, piezas, fecha_emision, observaciones, tipo)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `;
           await pool.query(insertPedidoQuery, [
-            rutaId, no_orden, num_cliente, nombre_cliente, municipio, estado,
-            total || 0, partidas || 0, piezas || 0, fecha_emision, observaciones || "Sin observaciones"
+            rutaId,
+            no_orden,
+            num_cliente,
+            nombre_cliente,
+            municipio,
+            estado,
+            total || 0,
+            partidas || 0,
+            piezas || 0,
+            fecha_emision,
+            observaciones || "Sin observaciones",
+            tipo || "", // Se asegura que tipo llegue correctamente
           ]);
         }
       }
@@ -1281,18 +1338,13 @@ const crearRuta = async (req, res) => {
       message: "✅ Ruta creada o actualizada correctamente con pedidos nuevos.",
       ruta_id: rutaId,
     });
-
   } catch (error) {
     console.error("❌ Error al crear o actualizar la ruta:", error);
     res.status(500).json({ message: "Error al procesar la ruta." });
   }
 };
 
-
-
 const agregarPedidoARuta = async (req, res) => {
-  // console.log("📥 Pedido recibido en el backend:", req.body); // 🔹 Verificar qué datos llegan
-
   const {
     ruta_id,
     no_orden,
@@ -1305,26 +1357,27 @@ const agregarPedidoARuta = async (req, res) => {
     piezas,
     fecha_emision,
     observaciones,
+    tipo,
   } = req.body;
 
-  // ✅ Verificar si faltan datos obligatorios
   if (!ruta_id || !no_orden || !num_cliente || !nombre_cliente || !fecha_emision) {
     return res.status(400).json({ message: "Faltan datos obligatorios para el pedido." });
   }
 
   try {
-    // 🔍 Verificar si el pedido ya existe antes de insertarlo
-    const [existingOrder] = await pool.query(`SELECT id FROM pedidos WHERE no_orden = ?`, [no_orden]);
+    const [existingOrder] = await pool.query(
+      `SELECT id FROM pedidos WHERE no_orden = ? AND ruta_id = ?`,
+      [no_orden, ruta_id]
+    );
 
     if (existingOrder.length > 0) {
       return res.status(409).json({ message: "El pedido ya existe en la ruta." });
     }
 
-    // ✅ Insertar el pedido en la base de datos
     const query = `
       INSERT INTO pedidos 
-      (ruta_id, no_orden, num_cliente, nombre_cliente, municipio, estado, total, partidas, piezas, fecha_emision, observaciones) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (ruta_id, no_orden, num_cliente, nombre_cliente, municipio, estado, total, partidas, piezas, fecha_emision, observaciones, tipo)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     await pool.query(query, [
@@ -1334,14 +1387,15 @@ const agregarPedidoARuta = async (req, res) => {
       nombre_cliente,
       municipio,
       estado,
-      total || 0, // 🔹 Si total viene vacío, insertar 0
-      partidas || 0, // 🔹 Si partidas viene vacío, insertar 0
-      piezas || 0, // 🔹 Si piezas viene vacío, insertar 0
+      total || 0,
+      partidas || 0,
+      piezas || 0,
       fecha_emision,
-      observaciones || "Sin observaciones", // 🔹 Si observaciones está vacío, insertar "Sin observaciones"
+      observaciones || "Sin observaciones",
+      tipo || "", // Se asegura que tipo se registre
     ]);
 
-    res.status(201).json({ message: "Pedido agregado correctamente a la ruta." });
+    res.status(201).json({ message: "✅ Pedido agregado correctamente a la ruta." });
   } catch (error) {
     console.error("❌ Error al agregar pedido:", error);
     res.status(500).json({ message: "Error al agregar pedido a la ruta." });
@@ -1367,20 +1421,22 @@ const obtenerRutasConPedidos = async (req, res) => {
         IFNULL(p.partidas, 0) AS partidas, 
         IFNULL(p.piezas, 0) AS piezas, 
         IFNULL(NULLIF(p.fecha_emision, '0000-00-00'), CURRENT_DATE()) AS fecha_emision,
-        IFNULL(p.observaciones, 'Sin observaciones') AS observaciones
+        IFNULL(p.observaciones, 'Sin observaciones') AS observaciones,
+        IFNULL(p.tipo, '') AS tipo
       FROM rutas r
-      LEFT JOIN pedidos p 
-        ON r.id = p.ruta_id
+      LEFT JOIN pedidos p ON r.id = p.ruta_id
       WHERE p.no_orden IS NOT NULL 
-        AND p.no_orden NOT IN (
-          SELECT TRIM(\`NO ORDEN\`) FROM paqueteria WHERE \`NO ORDEN\` IS NOT NULL
+        AND NOT EXISTS (
+          SELECT 1
+          FROM paqueteria paq
+          WHERE TRIM(paq.\`NO ORDEN\`) = p.no_orden
+            AND TRIM(paq.\`TIPO_ORIGINAL\`) = p.tipo
         )
       ORDER BY r.fecha_creacion DESC, p.fecha_emision DESC;
     `;
 
     const [rows] = await pool.query(query);
 
-    // Agrupar rutas con sus pedidos válidos
     const rutas = {};
     rows.forEach((row) => {
       if (!rutas[row.ruta_id]) {
@@ -1405,6 +1461,7 @@ const obtenerRutasConPedidos = async (req, res) => {
           piezas: row.piezas,
           fecha_emision: row.fecha_emision,
           observaciones: row.observaciones,
+          tipo: row.tipo,
         });
       }
     });
@@ -1418,8 +1475,6 @@ const obtenerRutasConPedidos = async (req, res) => {
 
 
 
-
-
 const obtenerRutaPorId = async (req, res) => {
   const { id } = req.params;
 
@@ -1427,11 +1482,12 @@ const obtenerRutaPorId = async (req, res) => {
     const query = `
       SELECT r.id AS ruta_id, r.nombre AS ruta_nombre, r.fecha_creacion,
              p.id AS pedido_id, p.no_orden, p.num_cliente, p.nombre_cliente, 
-             p.municipio, p.estado, p.total, p.partidas, p.piezas, p.fecha_emision, p.observaciones
+             p.municipio, p.estado, p.total, p.partidas, p.piezas, 
+             p.fecha_emision, p.observaciones, p.tipo
       FROM rutas r
       LEFT JOIN pedidos p ON r.id = p.ruta_id
       WHERE r.id = ?
-      ORDER BY p.fecha_emision DESC
+      ORDER BY p.fecha_emision DESC;
     `;
 
     const [rows] = await pool.query(query, [id]);
@@ -1445,8 +1501,8 @@ const obtenerRutaPorId = async (req, res) => {
       nombre: rows[0].ruta_nombre,
       fecha_creacion: rows[0].fecha_creacion,
       pedidos: rows
-        .filter(row => row.pedido_id !== null)
-        .map(row => ({
+        .filter((row) => row.pedido_id !== null)
+        .map((row) => ({
           id: row.pedido_id,
           no_orden: row.no_orden,
           num_cliente: row.num_cliente,
@@ -1458,6 +1514,7 @@ const obtenerRutaPorId = async (req, res) => {
           piezas: row.piezas,
           fecha_emision: row.fecha_emision,
           observaciones: row.observaciones,
+          tipo: row.tipo, // agregado
         })),
     };
 
@@ -1467,6 +1524,11 @@ const obtenerRutaPorId = async (req, res) => {
     res.status(500).json({ message: "Error al obtener la ruta." });
   }
 };
+
+
+
+// Terminacion de la ruras ok 
+
 
 const obtenerResumenDelDia = async (req, res) => {
   try {
@@ -1492,120 +1554,414 @@ const obtenerResumenDelDia = async (req, res) => {
   }
 };
 
-
-
-// funcion para mandar correro 
-
-
-const path = require("path");
-const fs = require("fs/promises");
-const nodemailer = require("nodemailer");
-
-
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: "seguimiento.traking@gmail.com",
-    pass: "pjqa mivc vbfn hwpb",
-  },
-});
-
-const enviarCorreo = async (req, res) => {
-  const { noOrden } = req.body;
-
-  if (!noOrden) {
-    return res.status(400).json({ success: false, message: "Falta número de orden" });
-  }
-
+const getPaqueteriaData = async (req, res) => {
   try {
-    const [rows] = await pool.query(
-      "SELECT CORREO, `NOMBRE DEL CLIENTE`, TOTAL, `NO ORDEN`, COALESCE(intentos, 0) as intentos, created_at, DIRECCION FROM paqueteria WHERE `NO ORDEN` = ? LIMIT 1",
-      [noOrden]
+    const { fecha } = req.query;
+    const getFormattedDate = (date = new Date()) =>
+      new Intl.DateTimeFormat("sv-SE", {
+        timeZone: "America/Mexico_City",
+      }).format(date);
+
+    const selectedDate = fecha || getFormattedDate();
+
+    const [paqueteria] = await pool.query(
+      `SELECT 
+        p.id,
+        p.routeName,
+        p.FECHA,
+        p.\`NO ORDEN\` AS no_orden,
+        p.\`NUM. CLIENTE\` AS num_cliente,
+        p.\`NOMBRE DEL CLIENTE\` AS nombre_cliente,
+        p.ESTADO,
+        p.TOTAL,
+        p.PARTIDAS,
+        p.PIEZAS,
+        p.created_at,
+        p.tipo_original
+      FROM paqueteria p
+      WHERE DATE(p.created_at) = ?`,
+      [selectedDate]
     );
 
-    if (rows.length === 0) {
-      return res.status(404).json({ success: false, message: "Orden no encontrada" });
-    }
+    const pedidosConAvance = await Promise.all(
+      paqueteria.map(async (pedido) => {
+        const pedidoId = pedido.no_orden;
+        const tipo = pedido.tipo_original;
 
-    const pedido = rows[0];
+        // 1. Buscar directamente por pedido
+        let [[embarcado]] = await pool.query(
+          `SELECT pedido, fusion, tipo FROM pedido_embarque 
+       WHERE pedido = ? 
+       AND SUBSTRING_INDEX(tipo, ',', 1) = ?`,
+          [pedidoId, tipo]
+        );
 
-    if (!pedido.CORREO) {
-      return res.status(400).json({ success: false, message: "El pedido no tiene correo registrado" });
-    }
+        if (!embarcado) {
+          // 2. Si no se encontró directo, buscar en fusion
+          [[embarcado]] = await pool.query(
+            `SELECT pedido, fusion, tipo FROM pedido_embarque 
+         WHERE FIND_IN_SET(?, fusion) 
+         AND SUBSTRING_INDEX(tipo, ',', 1) = ?`,
+            [pedidoId, tipo]
+          );
+        }
 
-    if (pedido.intentos >= 3) {
-      return res.status(400).json({ success: false, message: "Ya se alcanzaron los 3 intentos de envío." });
-    }
+        if (embarcado) {
+          return {
+            ...pedido,
+            avance: "100%",
+            tablaOrigen: "EMBARQUES",
+            tipo_encontrado: embarcado.tipo,
+            fusion: embarcado.fusion || null,
+          };
+        }
 
-    const estado = pedido.intentos + 1;
+        // Buscar en finalizado
+        let [[finalizado]] = await pool.query(
+          `SELECT pedido, fusion, tipo FROM pedido_finalizado 
+       WHERE pedido = ? 
+       AND SUBSTRING_INDEX(tipo, ',', 1) = ?`,
+          [pedidoId, tipo]
+        );
 
-    const nombreArchivoHTML = `correo_estado_${estado}.html`;
-    const rutaHTML = path.join(__dirname, "templates", nombreArchivoHTML);
-    const fechaEntrega = moment(pedido.created_at).add(2, 'days').format("D [de] MMMM [de] YYYY");
-    const fechaSalida = moment(pedido.created_at).format('D [de] MMMM [de] YYYY, HH:mm [hrs]');
+        if (!finalizado) {
+          [[finalizado]] = await pool.query(
+            `SELECT pedido, fusion, tipo FROM pedido_finalizado 
+         WHERE FIND_IN_SET(?, fusion) 
+         AND SUBSTRING_INDEX(tipo, ',', 1) = ?`,
+            [pedidoId, tipo]
+          );
+        }
 
-    let html = await fs.readFile(rutaHTML, "utf8");
+        if (finalizado) {
+          return {
+            ...pedido,
+            avance: "100%",
+            tablaOrigen: "FINALIZADO",
+            tipo_encontrado: finalizado.tipo,
+            fusion: finalizado.fusion || null,
+          };
+        }
 
-    html = html
-      .replace(/{{nombreCliente}}/g, pedido["NOMBRE DEL CLIENTE"])
-      .replace(/{{noOrden}}/g, pedido["NO ORDEN"])
-      .replace(/{{total}}/g, parseFloat(pedido.TOTAL).toFixed(2))
-      .replace(/{{fechaSalida}}/g, fechaSalida)
-      .replace(/{{fechaEntrega}}/g, fechaEntrega)
-      .replace(/{{direccion}}/g, pedido.DIRECCION);
+        // Buscar en surtido
+        let [[avanceRow]] = await pool.query(
+          `SELECT 
+          SUM(cant_surti) AS surtido, 
+          SUM(cantidad) AS total,
+          MAX(tipo) AS tipo, 
+          MAX(fusion) AS fusion
+       FROM pedido_surtido 
+       WHERE pedido = ? 
+       AND SUBSTRING_INDEX(tipo, ',', 1) = ?`,
+          [pedidoId, tipo]
+        );
 
-    const attachmentsPorEstado = {
-      1: [
-        { filename: "logo_santul.png", path: path.join(__dirname, "templates", "LOGO TRACKING SANTUL.png"), cid: "logo_santul" },
-        { filename: "icon_documento.png", path: path.join(__dirname, "templates", "DOCUMENTO ON.png"), cid: "icon_documento" },
-        { filename: "icon_camion.png", path: path.join(__dirname, "templates", "CAMION OFF.png"), cid: "icon_camion" },
-        { filename: "icon_entregado.png", path: path.join(__dirname, "templates", "ENTREGA OFF.png"), cid: "icon_entregado" },
-        { filename: "barra_1er_paso.png", path: path.join(__dirname, "templates", "BARRA 1ER PASO.png"), cid: "barra_1er_paso" },
-      ],
-      2: [
-        { filename: "logo_santul.png", path: path.join(__dirname, "templates", "LOGO TRACKING SANTUL.png"), cid: "logo_santul" },
-        { filename: "DOCUMENTO OFF.png", path: path.join(__dirname, "templates", "DOCUMENTO OFF.png"), cid: "documento_off_2" },
-        { filename: "CAMION ON.png", path: path.join(__dirname, "templates", "CAMION ON.png"), cid: "icon_camionOM" },
-        { filename: "ENTREGA OFF.png", path: path.join(__dirname, "templates", "ENTREGA OFF.png"), cid: "icon_entregado" },
-        { filename: "BARRA 2DO PASO.png", path: path.join(__dirname, "templates", "BARRA 2DO PASO.png"), cid: "barra_2do_paso" },
-      ],
-      3: [
-        { filename: "logo_santul.png", path: path.join(__dirname, "templates", "LOGO TRACKING SANTUL.png"), cid: "logo_santul" },
-        { filename: "DOCUMENTO OFF.png", path: path.join(__dirname, "templates", "DOCUMENTO OFF.png"), cid: "documento_off_2" },
-        { filename: "icon_camion.png", path: path.join(__dirname, "templates", "CAMION OFF.png"), cid: "icon_camion" },
-        { filename: "PEDIDO OK.png", path: path.join(__dirname, "templates", "PEDIDO OK.png"), cid: "check_ok_3" },
-        { filename: "ENTREGA ON.png", path: path.join(__dirname, "templates", "ENTREGA ON.png"), cid: "entregado_on_3" },
-        { filename: "BARRA 3ER PASO.png", path: path.join(__dirname, "templates", "BARRA 3ER PASO.png"), cid: "barra_3er_paso" },
-      ],
-    };
+        if (!avanceRow?.total) {
+          [[avanceRow]] = await pool.query(
+            `SELECT 
+            SUM(cant_surti) AS surtido, 
+            SUM(cantidad) AS total,
+            MAX(tipo) AS tipo, 
+            MAX(fusion) AS fusion
+         FROM pedido_surtido 
+         WHERE FIND_IN_SET(?, fusion)
+         AND SUBSTRING_INDEX(tipo, ',', 1) = ?`,
+            [pedidoId, tipo]
+          );
+        }
 
-    const comunes = [
-      { filename: 'BARRA LOGOS.jpg', path: path.join(__dirname, 'templates', 'BARRA LOGOS.jpg'), cid: 'barra_logos' },
-      { filename: 'DOWNLOAD PACKING LIST.png', path: path.join(__dirname, 'templates', 'DOWNLOAD PACKING LIST.png'), cid: 'download_packing' },
-      { filename: 'DOWNLOAD FACTURA.png', path: path.join(__dirname, 'templates', 'DOWNLOAD FACTURA.png'), cid: 'download_factura' },
-    ];
+        if (avanceRow?.total > 0) {
+          const avance = ((avanceRow.surtido / avanceRow.total) * 100).toFixed(
+            0
+          );
+          return {
+            ...pedido,
+            avance: `${avance}%`,
+            tablaOrigen: "SURTIDO",
+            tipo_encontrado: avanceRow.tipo,
+            fusion: avanceRow.fusion || null,
+          };
+        }
 
-    const attachments = [...(attachmentsPorEstado[estado] || []), ...comunes];
+        // No encontrado
+        return {
+          ...pedido,
+          avance: "0",
+          tablaOrigen: "No Asignado",
+          tipo_encontrado: null,
+          fusion: null,
+        };
+      })
+    );
 
-    await transporter.sendMail({
-      from: `"Logística Sanced" <j72525264@gmail.com>`,
-      to: pedido.CORREO,
-      subject: `Seguimiento de pedido #${pedido["NO ORDEN"]}`,
-      html,
-      attachments,
+    const grouped = pedidosConAvance.reduce((acc, row) => {
+      const key = row.routeName || "Sin Ruta";
+      if (!acc[key]) {
+        acc[key] = { routeName: key, pedidos: [] };
+      }
+      acc[key].pedidos.push(row);
+      return acc;
+    }, {});
+
+    const groupedArray = Object.values(grouped).sort((a, b) => {
+      const numA = parseInt(a.routeName.replace(/\D/g, "")) || 0;
+      const numB = parseInt(b.routeName.replace(/\D/g, "")) || 0;
+      return numA - numB;
     });
 
-    await pool.query("UPDATE paqueteria SET intentos = COALESCE(intentos, 0) + 1 WHERE `NO ORDEN` = ?", [noOrden]);
-
-    res.json({ success: true, message: `Correo del estado ${estado} enviado correctamente.` });
+    res.json(groupedArray);
   } catch (error) {
-    console.error("❌ Error al enviar correo:", error);
-    res.status(500).json({ success: false, message: "Error interno al enviar el correo." });
+    console.error("Error al obtener paquetería:", error.message);
+    res.status(500).json({
+      message: "Error al obtener datos de paquetería",
+      error: error.message,
+    });
+  }
+};
+
+const getPedidosDia = async (req, res) => {
+  try {
+    const { fecha } = req.query;
+    const getFormattedDate = (date = new Date()) =>
+      new Intl.DateTimeFormat("sv-SE", {
+        timeZone: "America/Mexico_City",
+      }).format(date);
+    const selectedDate = fecha || getFormattedDate();
+
+    // 1. Pedidos principales
+    const [rows] = await pool.query(
+      `
+      SELECT 
+        p.id, p.routeName, p.\`NO ORDEN\` AS no_orden, p.\`NUM. CLIENTE\` AS num_cliente,
+        p.\`NOMBRE DEL CLIENTE\` AS nombre_cliente, p.ZONA, p.TOTAL, p.PARTIDAS, p.PIEZAS
+      FROM paqueteria p
+      WHERE DATE(p.created_at) = ?
+    `,
+      [selectedDate]
+    );
+
+    const pedidosIds = rows.map((p) => p.no_orden);
+
+    // 2. Embarques y Finalizados
+    const [embarques] = await pool.query(
+      `SELECT pedido FROM pedido_embarque WHERE pedido IN (?)`,
+      [pedidosIds]
+    );
+    const [finalizados] = await pool.query(
+      `SELECT pedido FROM pedido_finalizado WHERE pedido IN (?)`,
+      [pedidosIds]
+    );
+    const [surtidos] = await pool.query(
+      `
+      SELECT pedido, SUM(cant_surti) AS surtido, SUM(cantidad) AS total
+      FROM pedido_surtido WHERE pedido IN (?)
+      GROUP BY pedido
+    `,
+      [pedidosIds]
+    );
+
+    // 3. Indexamos para lookup rápido
+    const embarcadoSet = new Set(embarques.map((e) => String(e.pedido).trim()));
+    const finalizadoSet = new Set(
+      finalizados.map((f) => String(f.pedido).trim())
+    );
+    const surtidoMap = new Map();
+    for (const s of surtidos) {
+      const key = String(s.pedido).trim();
+      surtidoMap.set(key, s);
+    }
+    for (const s of surtidos) surtidoMap.set(s.pedido, s);
+
+    // 4. Procesamiento
+    const resumenPorRuta = {};
+    const clientesGlobales = new Set();
+    let partidasGlobal = 0,
+      piezasGlobal = 0,
+      totalGlobal = 0;
+    let avanceGlobal = 0,
+      totalPedidos = 0;
+
+    for (const row of rows) {
+      const key = row.routeName || "Sin Ruta";
+      //const id = row.no_orden;
+      const id = String(row.no_orden).trim();
+
+      let avance = 0;
+
+      if (embarcadoSet.has(id) || finalizadoSet.has(id)) {
+        avance = 100;
+      } else if (surtidoMap.has(id)) {
+        const { surtido = 0, total = 0 } = surtidoMap.get(id) || {};
+
+        avance = total > 0 ? (surtido / total) * 100 : 0;
+      }
+
+      if (!resumenPorRuta[key]) {
+        resumenPorRuta[key] = {
+          routeName: key,
+          clientesUnicos: new Set(),
+          totalPartidas: 0,
+          totalPiezas: 0,
+          totalTotal: 0,
+          sumaAvance: 0,
+          totalPedidos: 0,
+        };
+      }
+
+      resumenPorRuta[key].clientesUnicos.add(row.num_cliente);
+      resumenPorRuta[key].totalPartidas += Number(row.PARTIDAS) || 0;
+      resumenPorRuta[key].totalPiezas += Number(row.PIEZAS) || 0;
+      resumenPorRuta[key].totalTotal += Number(row.TOTAL) || 0;
+      resumenPorRuta[key].sumaAvance += avance;
+      resumenPorRuta[key].totalPedidos += 1;
+
+      clientesGlobales.add(row.num_cliente);
+      partidasGlobal += Number(row.PARTIDAS) || 0;
+      piezasGlobal += Number(row.PIEZAS) || 0;
+      totalGlobal += Number(row.TOTAL) || 0;
+      avanceGlobal += avance;
+      totalPedidos++;
+    }
+
+    const resumenPorRutas = Object.values(resumenPorRuta).map((ruta) => ({
+      routeName: ruta.routeName,
+      totalClientes: ruta.clientesUnicos.size,
+      totalPartidas: ruta.totalPartidas,
+      totalPiezas: ruta.totalPiezas,
+      total: ruta.totalTotal.toFixed(2),
+      avance: `${(ruta.sumaAvance / ruta.totalPedidos).toFixed(0)}%`,
+    }));
+
+    resumenPorRutas.sort((a, b) => {
+      const numA = parseInt(a.routeName.replace(/\D/g, "")) || 0;
+      const numB = parseInt(b.routeName.replace(/\D/g, "")) || 0;
+      return numA - numB;
+    });
+
+    const resumenGlobal = {
+      routeName: "TOTAL GENERAL",
+      totalClientes: clientesGlobales.size,
+      totalPartidas: partidasGlobal,
+      totalPiezas: piezasGlobal,
+      total: totalGlobal.toFixed(2),
+      avance: `${(avanceGlobal / totalPedidos).toFixed(0)}%`,
+    };
+
+    res.json([...resumenPorRutas, resumenGlobal]);
+  } catch (error) {
+    console.error("Error al obtener paquetería:", error.message);
+    res.status(500).json({
+      message: "Error al obtener datos de paquetería",
+      error: error.message,
+    });
+  }
+};
+
+//funcion de actualisar
+
+const actualizarTipoOriginalDesdeExcel = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "❌ No se ha subido ningún archivo." });
+    }
+
+    const workbook = xlsx.read(req.file.buffer, { type: "buffer" });
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+    const data = xlsx.utils.sheet_to_json(sheet, { defval: "" });
+
+    if (data.length === 0) {
+      return res.status(400).json({ message: "❌ El archivo Excel está vacío." });
+    }
+
+    let actualizaciones = 0;
+
+    for (const row of data) {
+      const noOrden = String(row["Número orden"] || "").trim();
+      const tipoOrd = String(row["Tp ord"] || "").trim();
+
+      if (!noOrden || !tipoOrd) {
+        console.warn(`⚠ Saltando fila con datos faltantes: ${JSON.stringify(row)}`);
+        continue;
+      }
+
+      const query = `
+        UPDATE pedidos
+        SET tipo = ?
+        WHERE no_orden = ?
+      `;
+
+      const [result] = await pool.query(query, [tipoOrd, noOrden]);
+
+      if (result.affectedRows > 0) {
+        actualizaciones++;
+      }
+    }
+
+    return res.status(200).json({
+      message: `✅ Se actualizaron ${actualizaciones} registros correctamente en la tabla pedidos.`,
+    });
+  } catch (error) {
+    console.error("❌ Error al actualizar tipo en pedidos:", error);
+    return res.status(500).json({ message: "❌ Error interno del servidor." });
   }
 };
 
 
+const actualizarGuiaCompleta = async (req, res) => {
+  const { guia, transporte, paqueteria, ordenes } = req.body;
+
+  if (!Array.isArray(ordenes) || ordenes.length === 0) {
+    return res.status(400).json({ message: "❌ Debes enviar al menos una orden válida." });
+  }
+
+  try {
+    const ordenNumericaList = ordenes.map((o) => o.split("_")[0]);
+    const placeholders = ordenNumericaList.map(() => "?").join(", ");
+    const consulta = `SELECT \`NO ORDEN\`, tipo_original FROM paqueteria WHERE \`NO ORDEN\` IN (${placeholders})`;
+    const [resultados] = await pool.query(consulta, ordenNumericaList);
+
+    if (resultados.length === 0) {
+      return res.status(404).json({ message: "❌ Ninguna de las órdenes fue encontrada." });
+    }
+
+    const ordenesEncontradas = new Set(resultados.map((r) => `${r["NO ORDEN"]}_${r.tipo_original}`));
+    let actualizadas = 0;
+    const ordenesActualizadas = [];
+
+    for (const orden of ordenes) {
+      if (ordenesEncontradas.has(orden)) {
+        const numero = orden.split("_")[0];
+        await pool.query(
+          `UPDATE paqueteria SET GUIA = ?, TRANSPORTE = ?, PAQUETERIA = ? WHERE \`NO ORDEN\` = ?`,
+          [guia, transporte, paqueteria, numero]
+        );
+        actualizadas++;
+        ordenesActualizadas.push(orden);
+      }
+    }
+
+    const noEncontradas = ordenes.filter((o) => !ordenesEncontradas.has(o));
+
+    return res.status(200).json({
+      message: `✅ Se actualizaron ${actualizadas} órdenes correctamente.`,
+      ordenesActualizadas,
+      noEncontradas,
+    });
+  } catch (error) {
+    console.error("❌ Error en actualizarGuiaCompleta:", error);
+    return res.status(500).json({ message: "❌ Error interno del servidor." });
+  }
+};
+
+
+
+
+
+
 module.exports = {
+  actualizarTipoOriginalDesdeExcel,
+  getPaqueteriaData,
   getObservacionesPorClientes,
   getUltimaFechaEmbarque,
   insertarRutas,
@@ -1632,6 +1988,7 @@ module.exports = {
   obtenerRutaPorId,
   obtenerResumenDelDia,
   getFusionInfo,
+  getPedidosDia,
   obtenerRutasParaPDF,
-  enviarCorreo
+  actualizarGuiaCompleta,
 };

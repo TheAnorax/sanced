@@ -58,6 +58,12 @@ export const mainListItems = (user) => {
       text: "Dashboard",
     },
     {
+      role: ["Admin", "Master", "Trans", "Tran"],
+      path: "/dashboard/INVENTARIODOS",
+      icon: <NavigationIcon />,
+      text: "Iventario",
+    },
+    {
       role: ["Master", "Admin", "Control", "Embar"],
       path: "/dashboard/usuarios",
       icon: <RememberMeIcon />,

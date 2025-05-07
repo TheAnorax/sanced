@@ -42,7 +42,7 @@ const generarNuevoFolio = async (departamento) => {
     const prefix = departamento.slice(0, 3).toUpperCase();
 
     const [rows] = await pool.query(
-        `SELECT folio FROM solicitudes WHERE folio LIKE ? ORDER BY id DESC LIMIT 1`,
+        `SELECT folio FROM Solicitudes_muestras WHERE folio LIKE ? ORDER BY id DESC LIMIT 1`,
         [`${prefix}-%`]
     );
 
@@ -65,7 +65,7 @@ const guardarSolicitudes = async (req, res) => {
         const folio = await generarNuevoFolio(sol.departamento);
 
         const [result] = await pool.query(
-            `INSERT INTO solicitudes 
+            `INSERT INTO Solicitudes_muestras 
             (folio, nombre, departamento, motivo, regresa_articulo, fecha, requiere_envio, detalle_envio, autorizado, enviado_para_autorizar)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
@@ -86,7 +86,7 @@ const guardarSolicitudes = async (req, res) => {
 
         for (const producto of sol.carrito) {
             await pool.query(
-                `INSERT INTO carrito (solicitud_id, codigo, descripcion, cantidad, imagen, ubicacion) 
+                `INSERT INTO Carrito_muestras (solicitud_id, codigo, descripcion, cantidad, imagen, ubicacion) 
                VALUES (?, ?, ?, ?, ?, ?)`,
                 [
                     solicitudId,
@@ -111,27 +111,32 @@ const guardarSolicitudes = async (req, res) => {
 
 const actualizarSolicitud = async (req, res) => {
     const { folio } = req.params;
-    const { autorizado, enviadoParaAutorizar } = req.body;
+    const { autorizado, enviadoParaAutorizar, autorizado_por } = req.body;
 
     try {
         await pool.query(
-            `UPDATE solicitudes SET autorizado = ?, enviado_para_autorizar = ? WHERE folio = ?`,
-            [autorizado, enviadoParaAutorizar, folio]
+            `UPDATE solicitudes_muestras SET 
+          autorizado = ?, 
+          enviado_para_autorizar = ?, 
+          autorizado_por = ? 
+        WHERE folio = ?`,
+            [autorizado, enviadoParaAutorizar, autorizado_por, folio]
         );
 
-        res.json({ message: "Solicitud actualizada correctamente" });
+        res.json({ message: "Solicitud actualizada correctamente." });
     } catch (error) {
-        console.error("\u274C Error al actualizar solicitud:", error);
-        res.status(500).json({ message: "Error al actualizar solicitud" });
+        console.error("Error al actualizar la solicitud:", error);
+        res.status(500).json({ message: "Error en el servidor" });
     }
 };
 
+
 const obtenerSolicitudes = async (req, res) => {
     try {
-        const [rows] = await pool.query(`SELECT * FROM solicitudes WHERE autorizado = 0`);
+        const [rows] = await pool.query(`SELECT * FROM Solicitudes_muestras WHERE autorizado = 0`);
         for (const row of rows) {
             const [productos] = await pool.query(
-                `SELECT * FROM carrito WHERE solicitud_id = ?`,
+                `SELECT * FROM Carrito_muestras WHERE solicitud_id = ?`,
                 [row.id]
             );
             row.carrito = productos;
@@ -145,10 +150,10 @@ const obtenerSolicitudes = async (req, res) => {
 
 const obtenerAutorizadas = async (req, res) => {
     try {
-        const [rows] = await pool.query(`SELECT * FROM solicitudes WHERE autorizado = 1`);
+        const [rows] = await pool.query(`SELECT * FROM Solicitudes_muestras WHERE autorizado = 1`);
         for (const row of rows) {
             const [productos] = await pool.query(
-                `SELECT * FROM carrito WHERE solicitud_id = ?`,
+                `SELECT * FROM Carrito_muestras WHERE solicitud_id = ?`,
                 [row.id]
             );
             row.carrito = productos;
@@ -162,33 +167,66 @@ const obtenerAutorizadas = async (req, res) => {
 
 const eliminarSolicitud = async (req, res) => {
     const { folio } = req.params;
-  
+
     try {
-      // Obtener el ID de la solicitud desde el folio
-      const [rows] = await pool.query(
-        `SELECT id FROM solicitudes WHERE folio = ?`,
-        [folio]
-      );
-  
-      if (rows.length === 0) {
-        return res.status(404).json({ message: "Solicitud no encontrada" });
-      }
-  
-      const solicitudId = rows[0].id;
-  
-      // Eliminar los productos del carrito relacionados
-      await pool.query(`DELETE FROM carrito WHERE solicitud_id = ?`, [solicitudId]);
-  
-      // Eliminar la solicitud principal
-      await pool.query(`DELETE FROM solicitudes WHERE folio = ?`, [folio]);
-  
-      res.status(200).json({ message: "Solicitud y productos eliminados correctamente" });
+        // Obtener el ID de la solicitud desde el folio
+        const [rows] = await pool.query(
+            `SELECT id FROM Solicitudes_muestras WHERE folio = ?`,
+            [folio]
+        );
+
+        if (rows.length === 0) {
+            return res.status(404).json({ message: "Solicitud no encontrada" });
+        }
+
+        const solicitudId = rows[0].id;
+
+        // Eliminar los productos del carrito relacionados
+        await pool.query(`DELETE FROM Carrito_muestras WHERE solicitud_id = ?`, [solicitudId]);
+
+        // Eliminar la solicitud principal
+        await pool.query(`DELETE FROM Solicitudes_muestras WHERE folio = ?`, [folio]);
+
+        res.status(200).json({ message: "Solicitud y productos eliminados correctamente" });
     } catch (error) {
-      console.error("❌ Error al eliminar solicitud:", error);
-      res.status(500).json({ message: "Error al eliminar solicitud" });
+        console.error("❌ Error al eliminar solicitud:", error);
+        res.status(500).json({ message: "Error al eliminar solicitud" });
     }
-  };
-  
+};
+
+const eliminarProductoDeSolicitud = async (req, res) => {
+    const { folio, codigo } = req.params;
+
+    try {
+        // 1. Buscar ID de la solicitud
+        const [rows] = await pool.query(
+            `SELECT id FROM Solicitudes_muestras WHERE folio = ?`,
+            [folio]
+        );
+
+        if (rows.length === 0) {
+            return res.status(404).json({ message: "Solicitud no encontrada" });
+        }
+
+        const solicitudId = rows[0].id;
+
+        // 2. Eliminar solo ese producto en esa solicitud
+        const [result] = await pool.query(
+            `DELETE FROM Carrito_muestras WHERE solicitud_id = ? AND codigo = ?`,
+            [solicitudId, codigo]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: "Producto no encontrado en la solicitud" });
+        }
+
+        res.json({ message: "Producto eliminado correctamente" });
+    } catch (error) {
+        console.error("❌ Error al eliminar producto:", error);
+        res.status(500).json({ message: "Error al eliminar producto" });
+    }
+};
+
 
 module.exports = {
     Departamentos,
@@ -197,5 +235,6 @@ module.exports = {
     obtenerSolicitudes,
     obtenerAutorizadas,
     actualizarSolicitud,
-    eliminarSolicitud 
+    eliminarSolicitud,
+    eliminarProductoDeSolicitud
 };

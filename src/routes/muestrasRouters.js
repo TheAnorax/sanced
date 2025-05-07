@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const { Departamentos, buscarProducto, guardarSolicitudes, obtenerSolicitudes, obtenerAutorizadas, actualizarSolicitud, eliminarSolicitud } = require('../controller/muestrasController');
+const { Departamentos, buscarProducto, guardarSolicitudes, obtenerSolicitudes, obtenerAutorizadas, actualizarSolicitud, eliminarSolicitud,
+    eliminarProductoDeSolicitud
+} = require('../controller/muestrasController');
 
 router.get('/departamentos', Departamentos);
 
@@ -18,6 +20,9 @@ router.post('/solicitudes', guardarSolicitudes);
 router.patch('/solicitudes/:folio', actualizarSolicitud);
 
 router.delete('/solicitudes/:folio', eliminarSolicitud); // ✅ esta es la nueva ruta
+
+router.delete('/solicitudes/:folio/producto/:codigo', eliminarProductoDeSolicitud);
+
 
 
 module.exports = router;

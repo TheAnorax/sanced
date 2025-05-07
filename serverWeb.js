@@ -32,6 +32,7 @@ const Trasporte= require('./src/routes/TransporteRouter')
 const KPi = require('./src/routes/reporteRoutes')
 const Tracking = require('./src/routes/ventasRoutes')
 const COBERTURA = require('./src/routes/coberturaRoutes')
+const INVENTARIODOS = require('./src/routes/inventarioRoutes')
 
 const app = express();
 const port = 3007;
@@ -74,6 +75,7 @@ app.use('/api/Trasporte',Trasporte)
 app.use('/api/kpi', KPi)
 app.use('/api/Ventas', Tracking)
 app.use('/api/cobertura', COBERTURA)
+app.use('/api/Inventario', INVENTARIODOS)
 
 
 app.listen(port, () => {

@@ -1,37 +1,40 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const {getObservacionesPorClientes, getUltimaFechaEmbarque, insertarRutas, obtenerRutasDePaqueteria,
-    getFechaYCajasPorPedido, actualizarGuia, getPedidosEmbarque, getTransportistas, getEmpresasTransportistas,
-    insertarVisita, guardarDatos, obtenerDatos, eliminarRuta, getOrderStatus, getHistoricoData, getColumnasHistorico, getClientesHistorico,
-    upload, actualizarFacturasDesdeExcel } = require('../controller/ventasController');
+const {  getObservacionesPorClientes,  getUltimaFechaEmbarque,  insertarRutas,  obtenerRutasDePaqueteria,  getFechaYCajasPorPedido,  actualizarGuia,  getPedidosEmbarque,  getTransportistas,  getEmpresasTransportistas,  insertarVisita,  guardarDatos,
+  obtenerDatos,  eliminarRuta,  getOrderStatus,  getHistoricoData,  getColumnasHistorico,  getClientesHistorico,  upload,  actualizarFacturasDesdeExcel,  actualizarPorGuia,  crearRuta,  agregarPedidoARuta,  obtenerRutasConPedidos,  obtenerRutaPorId,  obtenerResumenDelDia,
+  getPaqueteriaData,  getPedidosDia,  getFusionInfo,  obtenerRutasParaPDF,actualizarTipoOriginalDesdeExcel, actualizarGuiaCompleta} = require("../controller/TrasporteController");
 
+router.get("/getPaqueteriaData", getPaqueteriaData);
 
+router.get("/getPedidosDia", getPedidosDia);
 
-router.post('/clientes/observaciones', getObservacionesPorClientes);
+router.post("/clientes/observaciones", getObservacionesPorClientes);
 
-router.get('/pedido/ultimas-fechas-embarque', getUltimaFechaEmbarque);
+router.get("/pedido/ultimas-fechas-embarque", getUltimaFechaEmbarque);
 
-router.post('/insertarRutas', insertarRutas);
+router.post("/insertarRutas", insertarRutas);
 
-router.get('/rutas', obtenerRutasDePaqueteria);
+router.get("/rutas", obtenerRutasDePaqueteria);
 
-router.get('/pedido/detalles/:noOrden', getFechaYCajasPorPedido);
+router.get("/ruta-unica", obtenerRutasParaPDF);
 
-router.put('/paqueteria/actualizar-guia/:noOrden', actualizarGuia);
+router.get("/pedido/detalles/:noOrden", getFechaYCajasPorPedido);
 
-router.get('/embarque/:codigo_ped', getPedidosEmbarque);
+router.put("/paqueteria/actualizar-guia/:noOrden", actualizarGuia);
 
-router.get('/transportistas', getTransportistas);
+router.get("/embarque/:codigo_ped", getPedidosEmbarque);
 
-router.get('/transportistas/empresas', getEmpresasTransportistas);
+router.get("/transportistas", getTransportistas);
 
-router.post('/insertar-visita', insertarVisita);
+router.get("/transportistas/empresas", getEmpresasTransportistas);
 
-router.post('/guardar-datos', guardarDatos);
+router.post("/insertar-visita", insertarVisita);
 
-router.get('/obtener-datos', obtenerDatos);
+router.post("/guardar-datos", guardarDatos);
 
-router.delete('/ruta/eliminar/:noOrden', eliminarRuta);
+router.get("/obtener-datos", obtenerDatos);
+
+router.delete("/ruta/eliminar/:noOrden", eliminarRuta);
 
 router.get("/historico_clientes", getClientesHistorico);
 
@@ -39,10 +42,34 @@ router.get("/historico_columnas", getColumnasHistorico);
 
 router.get("/historico", getHistoricoData);
 
-router.post('/status', getOrderStatus);
+router.post("/status", getOrderStatus);
 
-router.post("/subir-excel", upload.single("archivo"), actualizarFacturasDesdeExcel);
+router.post("/fusion", getFusionInfo);
+
+router.post(
+  "/subir-excel",
+  upload.single("archivo"),
+  actualizarFacturasDesdeExcel
+);
+
+router.post("/actualizar-tipo-original", upload.single("archivo"), actualizarTipoOriginalDesdeExcel);
+
+router.post("/actualizar-por-guia/:guia", actualizarPorGuia);
+
+//para que la vean otras computadoras
+
+router.post("/rutas", crearRuta);
+
+router.post("/rutas/pedidos", agregarPedidoARuta);
+
+router.get("/Rutasconpedido", obtenerRutasConPedidos);
+
+router.get("/rutas/:id", obtenerRutaPorId);
+
+router.get("/resumen-dia", obtenerResumenDelDia);
+
+router.post("/actualizar-multiples", actualizarGuiaCompleta); // ✅ NUEVA RUTA para múltiples
 
 
 module.exports = router;
-
+ 

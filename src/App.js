@@ -35,8 +35,9 @@ import Visitantes from './components/visitas/visitantes';
 import VisitasReporte from './components/visitas/visitasReporte';
 import Trasporte from './components/Transporte/Transporte';
 import Tracking from './components/ventas/ventas';
-import KPi from './components/reporte/kpi'
-import COBERTURA from './components/COBERTURA/COBERTURA'
+import KPi from './components/reporte/kpi';
+import COBERTURA from './components/COBERTURA/COBERTURA';
+import INVENTARIODOS from './components/Inventario/inventariodos';
 
 function App() {
   return (
@@ -77,6 +78,7 @@ function App() {
             <Route path="Tracking" element={<ProtectedRoute><Tracking /></ProtectedRoute>} />
             <Route path="kpi" element={<ProtectedRoute><KPi /></ProtectedRoute>} />
             <Route path="COBERTURA" element={<ProtectedRoute><COBERTURA /></ProtectedRoute>} />
+            <Route path="INVENTARIODOS" element={<ProtectedRoute><INVENTARIODOS /></ProtectedRoute>} />
           </Route>
         </Routes>
       </Router>

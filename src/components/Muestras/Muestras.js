@@ -45,6 +45,7 @@ function Muestras() {
   const [productosModal, setProductosModal] = useState([]);
 
   const [solicitudModalFolio, setSolicitudModalFolio] = useState(null);
+  const [solicitudSeleccionada, setSolicitudSeleccionada] = useState(null);
 
 
   let timeoutId = useRef(null);
@@ -64,15 +65,21 @@ function Muestras() {
     }
   }, [user]);
 
-  const handleOpenModal = (productos) => {
+  const handleOpenModal = (productos, folio) => {
     setProductosModal(productos);
+    setSolicitudModalFolio(folio); // ✅ Aquí se guarda el folio actual
     setOpenModal(true);
   };
 
+  const [reabrirModal, setReabrirModal] = useState(false);
+
+
+
   const handleCloseModal = () => {
     setOpenModal(false);
+    setProductosModal([]); // Limpiar datos si quieres
+    setSolicitudSeleccionada(null); // o setOpenParentModal(false) si es otro estado
   };
-
 
 
   const obtenerDepartamentos = async () => {
@@ -227,6 +234,7 @@ function Muestras() {
       await axios.patch(`http://localhost:3007/api/muestras/solicitudes/${folio}`, {
         autorizado: true,
         enviadoParaAutorizar: true,
+        autorizado_por: user.name
       });
 
       // Actualiza en frontend
@@ -237,6 +245,7 @@ function Muestras() {
         ...solicitudes[solicitudIndex],
         autorizado: true,
         enviadoParaAutorizar: true,
+        autorizado_por: user.name // ✅ AÑADIDO AL ESTADO
       };
 
       const nuevasSolicitudes = [...solicitudes];
@@ -360,21 +369,57 @@ function Muestras() {
   };
 
 
-  const removeProduct = (codigoProducto, folio) => {
-    const solicitudIndex = solicitudes.findIndex((s) => s.folio === folio);
-    if (solicitudIndex === -1) return;
+  const removeProduct = async (codigo, folio) => {
+    setOpenModal(false); // 🔒 Cierra temporalmente el modal para evitar superposición visual
+    setReabrirModal(true); // 🔁 Indica que debe reabrirse si se cancela
 
-    const solicitud = solicitudes[solicitudIndex];
-    const carritoActualizado = solicitud.carrito.filter((p) => p.codigo !== codigoProducto);
-    const solicitudActualizada = { ...solicitud, carrito: carritoActualizado };
+    const confirmacion = await Swal.fire({
+      title: "¿Eliminar producto?",
+      text: "Este producto será removido de la solicitud.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#aaa",
+      confirmButtonText: "Sí, eliminar",
+      cancelButtonText: "Cancelar",
+    });
 
-    const nuevasSolicitudes = [...solicitudes];
-    nuevasSolicitudes[solicitudIndex] = solicitudActualizada;
+    if (!confirmacion.isConfirmed) {
+      setOpenModal(true);  // ❌ No se eliminó, vuelve a mostrar el modal
+      setReabrirModal(false);
+      return;
+    }
 
-    setSolicitudes(nuevasSolicitudes);
-    guardarSolicitudes(nuevasSolicitudes);
-    setProductosModal(carritoActualizado); // actualiza el modal
+    try {
+      // 🔥 Eliminar del backend solo si ya fue guardado
+      if (folio) {
+        await axios.delete(`http://localhost:3007/api/muestras/solicitudes/${folio}/producto/${codigo}`);
+      }
+
+      const nuevasSolicitudes = [...solicitudes];
+      const index = nuevasSolicitudes.findIndex((s) => s.folio === folio);
+      if (index !== -1) {
+        const productosActualizados = nuevasSolicitudes[index].carrito.filter((p) => p.codigo !== codigo);
+        nuevasSolicitudes[index].carrito = productosActualizados;
+
+        setSolicitudes(nuevasSolicitudes);
+        guardarSolicitudes(nuevasSolicitudes);
+        setProductosModal(productosActualizados);
+      }
+
+      Swal.fire("Eliminado", "Producto eliminado correctamente.", "success");
+      setReabrirModal(false);
+
+    } catch (error) {
+      console.error("❌ Error al eliminar el producto:", error);
+      Swal.fire("Error", "No se pudo eliminar el producto.", "error");
+      if (reabrirModal) setOpenModal(true); // Reabre si hubo error
+      setReabrirModal(false);
+    }
   };
+
+
+
 
 
   useEffect(() => {
@@ -766,37 +811,47 @@ function Muestras() {
                             <TableCell>Imagen</TableCell>
                             <TableCell>Descripción</TableCell>
                             <TableCell>Cantidad</TableCell>
+                            <TableCell>Acciones</TableCell>
                           </TableRow>
                         </TableHead>
+
                         <TableBody>
-                          {solicitudes[solicitudes.length - 1].carrito.map(
-                            (item, index) => (
-                              <TableRow key={index}>
-                                <TableCell>{item.codigo}</TableCell>
-                                <TableCell>
-                                  <img
-                                    src={`../assets/image/img_pz/${item.codigo}.jpg`}
-
-
-                                    onError={(e) => {
-                                      e.target.onerror = null;
-                                      e.target.src = "/assets/image/img_pz/noimage.png";
-                                    }}
-                                    alt="Producto"
-                                    style={{
-                                      width: "50px",
-                                      height: "50px",
-                                      objectFit: "cover"
-                                    }}
-                                  />
-
-                                </TableCell>
-                                <TableCell>{item.des}</TableCell>
-                                <TableCell>{item.cantidad}</TableCell>
-                              </TableRow>
-                            )
-                          )}
+                          {solicitudes[solicitudes.length - 1].carrito.map((item, index) => (
+                            <TableRow key={index}>
+                              <TableCell>{item.codigo}</TableCell>
+                              <TableCell>
+                                <img
+                                  src={`../assets/image/img_pz/${item.codigo}.jpg`}
+                                  onError={(e) => {
+                                    e.target.onerror = null;
+                                    e.target.src = "/assets/image/img_pz/noimage.png";
+                                  }}
+                                  alt="Producto"
+                                  style={{
+                                    width: "50px",
+                                    height: "50px",
+                                    objectFit: "cover",
+                                  }}
+                                />
+                              </TableCell>
+                              <TableCell>{item.des}</TableCell>
+                              <TableCell>{item.cantidad}</TableCell>
+                              <TableCell>
+                                <IconButton
+                                  onClick={() => {
+                                    const folio = solicitudes[solicitudes.length - 1].folio;
+                                    removeProduct(item.codigo, folio);
+                                  }}
+                                  color="error"
+                                >
+                                  <DeleteIcon />
+                                </IconButton>
+                              </TableCell>
+                            </TableRow>
+                          ))}
                         </TableBody>
+
+
                       </Table>
                       <Button
                         variant="contained"
@@ -871,14 +926,16 @@ function Muestras() {
                                   <AddTaskIcon />
                                 </IconButton>
                               )}
+
                               <IconButton
-                                onClick={() => handleOpenModal(sol.carrito)}
+                                onClick={() => handleOpenModal(sol.carrito, sol.folio)}
                                 sx={{ color: "orange" }}
                                 title="Ver productos"
-                                style={{ marginRight: "10px" }}
                               >
                                 <VisibilityIcon />
                               </IconButton>
+
+
                               {!sol.autorizado && (
                                 <IconButton
                                   onClick={() => borrarSolicitud(sol.folio)}
@@ -1006,11 +1063,14 @@ function Muestras() {
                     <TableCell>
 
                       <IconButton
-                        onClick={() => removeProduct(item.codigo, solicitudModalFolio)}
                         color="error"
+                        onClick={() => removeProduct(item.codigo, solicitudModalFolio)}
                       >
                         <DeleteIcon />
                       </IconButton>
+
+
+
 
 
                     </TableCell>

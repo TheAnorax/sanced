@@ -3,7 +3,6 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import CloseIcon from "@mui/icons-material/Close";
 import * as XLSX from "xlsx";
 import html2canvas from "html2canvas";
-import DownloadIcon from "@mui/icons-material/Download";
 import BorderColorIcon from "@mui/icons-material/BorderColor";
 import AirportShuttleIcon from "@mui/icons-material/AirportShuttle";
 import { UserContext } from "../context/UserContext";
@@ -11,7 +10,13 @@ import ArticleIcon from "@mui/icons-material/Article";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
 import Autocomplete from "@mui/material/Autocomplete";
-import Article from "@mui/icons-material";
+import { CloudUpload } from "@mui/icons-material";
+import CompareArrowsIcon from "@mui/icons-material/CompareArrows";
+import { Tooltip } from "@mui/material";
+import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
+import moment from "moment";
+
+import { NumerosALetras } from "numero-a-letras";
 
 import axios from "axios";
 import {
@@ -44,11 +49,16 @@ import {
     DialogActions,
     TablePagination,
     Card,
+    CircularProgress,
+    CardContent,
+    CardActions,
 } from "@mui/material";
 
 import { jsPDF } from "jspdf";
 import "jspdf-autotable";
-import logo from "./logos.jpg";
+import logo from "./Packing.jpg";
+import infoBancaria from "./informacion_bancaria.jpg";
+import barraFooter from "./BARRA.jpg";
 
 const hasExpired = (timestamp) => {
     const now = new Date().getTime();
@@ -122,6 +132,8 @@ function Tracking() {
     const [directaModalOpen, setDirectaModalOpen] = useState(false);
     const [selectedDirectaData, setSelectedDirectaData] = useState(null);
 
+    const [editRouteIndex, setEditRouteIndex] = useState(null);
+
     const [fecha, setFecha] = useState("");
     const [numCliente, setNumCliente] = useState("");
     const [nombreCliente, setNombreCliente] = useState("");
@@ -165,7 +177,7 @@ function Tracking() {
 
     const [filtro, setFiltro] = useState("");
 
-    //estos son
+    //estos son de los status
     const isFetchingRef = useRef(false);
 
     useEffect(() => {
@@ -220,7 +232,8 @@ function Tracking() {
         isFetchingRef.current = true;
 
         console.log(`🔍 Se ejecutará fetchStatuses para la pestaña: ${tabName}`);
-        fetchStatuses(filteredData, tabName)
+        fetchFusions(filteredData)
+            .then(() => fetchStatuses(filteredData, tabName))
             .catch((error) => console.error(error))
             .finally(() => {
                 isFetchingRef.current = false;
@@ -234,76 +247,81 @@ function Tracking() {
         const orderNumbers = data.map((d) => d["NO ORDEN"]);
         console.log("📌 Enviando estos números de orden:", orderNumbers);
 
+        // 🔥 Prioridad de estados
+        const statusPriority = {
+            "Sin coincidencia de tipo": 0,
+            "Por Asignar": 1,
+            Surtiendo: 2,
+            Embarcando: 3,
+            "Pedido Finalizado": 4,
+        };
+
         try {
             const response = await axios.post(
                 `http://localhost:3007/api/Ventas/status`,
                 { orderNumbers }
             );
+
             console.log(`✅ Respuesta recibida para ${tabName}:`, response.data);
 
             const statusMap = response.data;
 
-            // Actualiza el estado de Paquetería
-            setPaqueteriaData((prevData) =>
-                prevData.map((route) =>
-                    statusMap[route["NO ORDEN"]]
-                        ? {
-                            ...route,
-                            // Si la API trae un statusText, lo usamos. Si no, conservamos el que ya tenía.
-                            statusText:
-                                statusMap[route["NO ORDEN"]].statusText || route.statusText,
-                            // Asigna el color devuelto por la API. Si no hay color, conserva el anterior.
-                            color: statusMap[route["NO ORDEN"]].color || route.color,
-                        }
-                        : route
-                )
-            );
+            setSentRoutesData((prevData) => {
+                const updatedData = prevData.map((route) => {
+                    const currentStatus = statusMap[route["NO ORDEN"]];
+                    if (!currentStatus) return route; // 🚫 Si no hay actualización, deja igual
 
-            // Actualiza el estado de Directa
-            setDirectaData((prevData) =>
-                prevData.map((route) =>
-                    statusMap[route["NO ORDEN"]]
-                        ? {
-                            ...route,
-                            statusText:
-                                statusMap[route["NO ORDEN"]].statusText || route.statusText,
-                            color: statusMap[route["NO ORDEN"]].color || route.color,
-                        }
-                        : route
-                )
-            );
+                    const prevPriority = statusPriority[route.statusText] || 0;
+                    const newPriority = statusPriority[currentStatus.statusText] || 0;
 
-            // Actualiza el estado de Venta Empleado
-            setVentaEmpleadoData((prevData) =>
-                prevData.map((route) =>
-                    statusMap[route["NO ORDEN"]]
-                        ? {
-                            ...route,
-                            statusText:
-                                statusMap[route["NO ORDEN"]].statusText || route.statusText,
-                            color: statusMap[route["NO ORDEN"]].color || route.color,
-                        }
-                        : route
-                )
-            );
+                    let updatedRoute = { ...route };
 
-            // Actualiza también el arreglo original (sentRoutesData) para que el próximo filtrado ya tenga el color
-            setSentRoutesData((prevData) =>
-                prevData.map((route) =>
-                    statusMap[route["NO ORDEN"]]
-                        ? {
-                            ...route,
-                            statusText:
-                                statusMap[route["NO ORDEN"]].statusText || route.statusText,
-                            color: statusMap[route["NO ORDEN"]].color || route.color,
+                    // 🔥 Solo actualizar si el nuevo status es mejor o igual
+                    if (newPriority >= prevPriority) {
+                        updatedRoute.statusText =
+                            currentStatus.statusText || route.statusText;
+                        updatedRoute.color = currentStatus.color || route.color;
+                        updatedRoute.fusionWith =
+                            currentStatus.fusionWith || route.fusionWith || null;
+                    }
+
+                    // 🔥 Si es un pedido fusionado, también sincronizar
+                    if (currentStatus.fusionWith) {
+                        const fusionOrders = currentStatus.fusionWith.split("-");
+                        if (fusionOrders.includes(String(route["NO ORDEN"]))) {
+                            updatedRoute.statusText = currentStatus.statusText;
+                            updatedRoute.color = currentStatus.color;
+                            updatedRoute.fusionWith = currentStatus.fusionWith;
                         }
-                        : route
-                )
-            );
+                    }
+
+                    return updatedRoute;
+                });
+
+                // 🔥 Actualizar filtrados
+                const finalUpdatedData = actualizarEstadosFusionados(updatedData);
+
+                const paqueteria = finalUpdatedData.filter(
+                    (route) => route.TIPO?.trim().toLowerCase() === "paqueteria"
+                );
+                const directa = finalUpdatedData.filter(
+                    (route) => route.TIPO?.trim().toLowerCase() === "directa"
+                );
+                const ventaEmpleado = finalUpdatedData.filter(
+                    (route) => route.TIPO?.trim().toLowerCase() === "venta empleado"
+                );
+
+                setPaqueteriaData(paqueteria);
+                setDirectaData(directa);
+                setVentaEmpleadoData(ventaEmpleado);
+
+                return finalUpdatedData;
+            });
+
         } catch (error) {
             console.error(`❌ Error en la API para ${tabName}:`, error);
 
-            // En caso de error, asigna "Error en estado" a los registros
+            // 🔥 Si hubo error, asignar "Error en estado"
             setPaqueteriaData((prevData) =>
                 prevData.map((route) => ({
                     ...route,
@@ -331,7 +349,127 @@ function Tracking() {
         }
     };
 
-    //estos son lo del estatus
+    const fetchFusions = async (data) => {
+        const orderNumbers = data.map((d) => d["NO ORDEN"]);
+        console.log("🔄 Consultando fusión para pedidos:", orderNumbers);
+
+        try {
+            const response = await axios.post(
+                `http://localhost:3007/api/Ventas/fusion`,
+                { orderNumbers }
+            );
+
+            const fusionMap = response.data;
+
+            // Actualiza el estado con la info de fusión
+            setSentRoutesData((prevData) =>
+                prevData.map((route) =>
+                    fusionMap[route["NO ORDEN"]]
+                        ? {
+                            ...route,
+                            fusionWith: fusionMap[route["NO ORDEN"]].fusionWith || null,
+                            fusionState: fusionMap[route["NO ORDEN"]].estado,
+                            fusionTable: fusionMap[route["NO ORDEN"]].tabla,
+                        }
+                        : route
+                )
+            );
+
+            // Si también quieres reflejarlo en los tabs específicos
+            setPaqueteriaData((prevData) =>
+                prevData.map((route) =>
+                    fusionMap[route["NO ORDEN"]]
+                        ? {
+                            ...route,
+                            fusionWith: fusionMap[route["NO ORDEN"]].fusionWith || null,
+                        }
+                        : route
+                )
+            );
+            setDirectaData((prevData) =>
+                prevData.map((route) =>
+                    fusionMap[route["NO ORDEN"]]
+                        ? {
+                            ...route,
+                            fusionWith: fusionMap[route["NO ORDEN"]].fusionWith || null,
+                        }
+                        : route
+                )
+            );
+            setVentaEmpleadoData((prevData) =>
+                prevData.map((route) =>
+                    fusionMap[route["NO ORDEN"]]
+                        ? {
+                            ...route,
+                            fusionWith: fusionMap[route["NO ORDEN"]].fusionWith || null,
+                        }
+                        : route
+                )
+            );
+        } catch (error) {
+            console.error("❌ Error al consultar fusión:", error);
+        }
+    };
+
+    //estos son lo del estatus de las fuciones
+
+    // 🔥 Ranking de estados
+    const statusRanking = {
+        "Pedido Finalizado": 3,
+        "Salida de Almacén": 2,
+        "Por Asignar": 1,
+        "Error en estado": 0, // Si quieres agregar más estados, ponlos aquí
+    };
+
+    // 🔥 Función para actualizar estados fusionados
+
+    const actualizarEstadosFusionados = (data) => {
+        const pedidosMap = {};
+
+        // 🔵 Mapeamos todos los pedidos por NO ORDEN
+        data.forEach((pedido) => {
+            pedidosMap[pedido["NO ORDEN"]] = pedido;
+        });
+
+        // 🔥 Ranking de estados
+        const statusRanking = {
+            "Pedido Finalizado": 4,
+            Embarcando: 3,
+            Surtiendo: 2,
+            "Por Asignar": 1,
+            "Sin coincidencia de tipo": 0,
+            "Error en estado": 0,
+        };
+
+        // 🔥 Primera pasada: actualizar según fusión
+        data.forEach((pedido) => {
+            if (pedido.fusionWith) {
+                const partes = pedido.fusionWith.split("-");
+                const otroPedido = partes.find((p) => p !== String(pedido["NO ORDEN"]));
+
+                const fusionado = pedidosMap[otroPedido];
+
+                if (fusionado) {
+                    const rankPedido = statusRanking[pedido.statusText] || 0;
+                    const rankFusionado = statusRanking[fusionado.statusText] || 0;
+
+                    // 🔥 Escoger el mejor estado entre los dos
+                    const mejorStatus = rankPedido >= rankFusionado ? pedido : fusionado;
+
+                    // 🔥 Aplicar el mejor estado a ambos
+                    pedido.statusText = mejorStatus.statusText;
+                    pedido.color = mejorStatus.color;
+
+                    fusionado.statusText = mejorStatus.statusText;
+                    fusionado.color = mejorStatus.color;
+                }
+            }
+        });
+
+        return data;
+    };
+
+    // fin de las fuciones
 
     const handleRowClick = (routeData) => {
         // console.log("Route Data:", routeData); // Esto te ayudará a verificar qué datos están siendo pasados
@@ -362,46 +500,62 @@ function Tracking() {
     }, []);
 
     useEffect(() => {
-        if (
-            data.length > 0 ||
-            Object.keys(groupedData).length > 0 ||
-            sentRoutesData.length > 0
-        ) {
-            localStorage.setItem("transporteData", JSON.stringify(data));
-            localStorage.setItem(
-                "transporteGroupedData",
-                JSON.stringify(groupedData)
-            );
-            localStorage.setItem("sentRoutesData", JSON.stringify(sentRoutesData)); // Guardar los datos de la segunda tabla
-            localStorage.setItem("transporteTimestamp", new Date().getTime());
+        try {
+            if (
+                data.length > 0 ||
+                Object.keys(groupedData).length > 0 ||
+                sentRoutesData.length > 0
+            ) {
+                localStorage.setItem("transporteData", JSON.stringify(data));
+                localStorage.setItem(
+                    "transporteGroupedData",
+                    JSON.stringify(groupedData)
+                );
+
+                // Verificar si sentRoutesData cabe en localStorage
+                const strSentRoutes = JSON.stringify(sentRoutesData);
+                const sizeInKB = new Blob([strSentRoutes]).size / 1024;
+
+                if (sizeInKB < 4800) {
+                    localStorage.setItem("sentRoutesData", strSentRoutes);
+                } else {
+                    console.warn(
+                        "⚠️ No se guardó 'sentRoutesData': excede los 5MB (~" +
+                        sizeInKB.toFixed(2) +
+                        "KB)"
+                    );
+                }
+
+                localStorage.setItem("transporteTimestamp", new Date().getTime());
+            }
+        } catch (error) {
+            console.error("❌ Error guardando en localStorage:", error);
         }
     }, [data, groupedData, sentRoutesData]);
 
     useEffect(() => {
-        fetchPaqueteriaRoutes();
+        fetchPaqueteriaRoutes(); // Llama a la API para cargar las rutas de paquetería
     }, []);
 
-    const [asignacionData, setAsignacionData] = useState([]);
-
     useEffect(() => {
+        const getTipo = (item) =>
+            (item.TIPO || item.tipo_original || "").toLowerCase().trim();
+
         const paqueteria = sentRoutesData.filter(
-            (routeData) => routeData.TIPO?.trim().toLowerCase() === "paqueteria"
+            (item) => getTipo(item) === "paqueteria"
         );
         const directa = sentRoutesData.filter(
-            (routeData) => routeData.TIPO?.trim().toLowerCase() === "directa"
+            (item) => getTipo(item) === "directa"
         );
         const ventaEmpleado = sentRoutesData.filter(
-            (routeData) => routeData.TIPO?.trim().toLowerCase() === "venta empleado"
-        );
-        const asignacion = sentRoutesData.filter(
-            (routeData) => routeData.TIPO?.trim().toLowerCase() === "asignacion"
+            (item) => getTipo(item) === "venta empleado"
         );
 
         setPaqueteriaData(paqueteria);
         setDirectaData(directa);
         setVentaEmpleadoData(ventaEmpleado);
-        setAsignacionData(asignacion); // ✅ Agregado
     }, [sentRoutesData]);
+
 
     useEffect(() => {
         if (total && prorateoFacturaLT) {
@@ -461,9 +615,12 @@ function Tracking() {
 
     useEffect(() => {
         data.forEach((row) => {
-            const clienteKey = row["NUM. CLIENTE"].toString().trim();
-            if (!observacionesPorRegistro[clienteKey]) {
-                fetchObservacionPorRegistro(clienteKey);
+            const numCliente = row["NUM. CLIENTE"];
+            if (numCliente !== undefined && numCliente !== null) {
+                const clienteKey = String(numCliente).trim(); // más seguro
+                if (!observacionesPorRegistro[clienteKey]) {
+                    fetchObservacionPorRegistro(clienteKey);
+                }
             }
         });
     }, [data]);
@@ -494,6 +651,8 @@ function Tracking() {
         }).format(value);
     };
 
+
+
     const mapColumns = (row) => ({
         RUTA: "Sin Ruta",
         FECHA: row["Fecha Lista Surtido"],
@@ -522,7 +681,11 @@ function Tracking() {
             } ${row["Codigo Postal"] || ""} ${row["Estado"] || ""}`,
         CORREO: row["E-mail"] || "",
         TELEFONO: row["No. Telefonico"] || "",
+        "EJECUTIVO VTAS": row["Ejecutico Vtas"] || "",
+        "TIPO ORIGINAL": row["Tipo"] || "",
     });
+
+
 
     const handleFileUpload = (e) => {
         const file = e.target.files[0];
@@ -537,15 +700,26 @@ function Tracking() {
                 range: 6, // Omitir las primeras 6 filas
             });
 
-            // 🔹 Obtener los pedidos que YA están en una ruta (groupedData)
-            const pedidosEnRuta = new Set();
+            // 🔹 Pedidos ya registrados
+            const pedidosRegistrados = new Set();
+
+            // Pedidos ya enviados
+            sentRoutesData.forEach((r) => {
+                const orden = String(r["NO ORDEN"]).trim();
+                const tipo = String(r["TIPO ORIGINAL"] || r["tipo_original"]).trim().toUpperCase();
+                pedidosRegistrados.add(`${orden}_${tipo}`);
+            });
+
+            // Pedidos ya asignados a rutas
             Object.values(groupedData).forEach((route) => {
-                route.rows.forEach((row) => {
-                    pedidosEnRuta.add(row["NO ORDEN"]);
+                route.rows.forEach((r) => {
+                    const orden = String(r["NO ORDEN"]).trim();
+                    const tipo = String(r["TIPO ORIGINAL"] || r["tipo_original"]).trim().toUpperCase();
+                    pedidosRegistrados.add(`${orden}_${tipo}`);
                 });
             });
 
-            // 🔹 Función para obtener los últimos 3 días hábiles (sin contar fines de semana)
+            // 🔹 Obtener los últimos 5 días hábiles
             const getLastBusinessDays = (numDays) => {
                 const businessDays = [];
                 let currentDate = new Date();
@@ -560,21 +734,16 @@ function Tracking() {
                 return businessDays;
             };
 
-            const lastBusinessDays = getLastBusinessDays(5); // Últimos 5 días hábiles
+            const lastBusinessDays = getLastBusinessDays(5);
 
-            // 🔹 Filtrar datos SOLO de los últimos 3 días hábiles con 'Lista Surtido'
+            // 🔹 Pedidos con 'Lista Surtido' recientes
             const filteredData = jsonData
                 .map((row) => {
-                    if (!row["Fecha Lista Surtido"]) {
-                        console.warn("⚠️ Registro sin fecha:", row);
-                        return null;
-                    }
+                    if (!row["Fecha Lista Surtido"]) return null;
 
                     let rowDate;
                     if (typeof row["Fecha Lista Surtido"] === "number") {
-                        rowDate = new Date(
-                            (row["Fecha Lista Surtido"] - 25569) * 86400 * 1000
-                        );
+                        rowDate = new Date((row["Fecha Lista Surtido"] - 25569) * 86400 * 1000);
                     } else {
                         const dateParts = row["Fecha Lista Surtido"].split("/");
                         if (dateParts.length === 3) {
@@ -584,48 +753,33 @@ function Tracking() {
                         }
                     }
 
-                    if (isNaN(rowDate.getTime())) {
-                        console.warn(
-                            "🚨 Fecha inválida detectada:",
-                            row["Fecha Lista Surtido"]
-                        );
-                        return null;
-                    }
+                    if (isNaN(rowDate.getTime())) return null;
 
-                    rowDate.setHours(0, 0, 0, 0);
-                    row.rowDateObject = rowDate;
+                    row.rowDateObject = new Date(rowDate.setHours(0, 0, 0, 0));
 
-                    return lastBusinessDays.some(
-                        (bd) => bd.toDateString() === rowDate.toDateString()
-                    ) && row["Estatus"] === "Lista Surtido"
+                    return lastBusinessDays
+                        .slice(0, 3)
+                        .some((bd) => bd.toDateString() === rowDate.toDateString()) &&
+                        row["Estatus"] === "Lista Surtido"
                         ? row
                         : null;
                 })
-                .filter(Boolean);
-
-            // 🔹 Ordenar por fecha de manera descendente
-            const sortedData = filteredData.sort(
-                (a, b) => b.rowDateObject - a.rowDateObject
-            );
-
-            // 🔹 Mapea los datos filtrados y FILTRA los pedidos ya asignados
-            const mappedData = sortedData
+                .filter(Boolean)
+                .sort((a, b) => b.rowDateObject - a.rowDateObject)
                 .map(mapColumns)
-                .filter(
-                    (row) => row["NO ORDEN"] && !pedidosEnRuta.has(row["NO ORDEN"])
-                );
+                .filter((row) => {
+                    const orden = String(row["NO ORDEN"]).trim();
+                    const tipo = String(row["TIPO ORIGINAL"] || row["tipo_original"]).trim().toUpperCase();
+                    return orden && tipo && !pedidosRegistrados.has(`${orden}_${tipo}`);
+                });
 
-            console.log("✅ Pedidos filtrados (sin duplicados):", mappedData);
-
-            // 🔹 Extraer facturados solo de los últimos 5 días hábiles
+            // 🔹 Pedidos Facturados
             const facturados = jsonData
                 .filter((row) => row["Estatus"] === "Factura")
                 .map((row) => {
                     let rowDate;
                     if (typeof row["Fecha Lista Surtido"] === "number") {
-                        rowDate = new Date(
-                            (row["Fecha Lista Surtido"] - 25569) * 86400 * 1000
-                        );
+                        rowDate = new Date((row["Fecha Lista Surtido"] - 25569) * 86400 * 1000);
                     } else {
                         const dateParts = row["Fecha Lista Surtido"].split("/");
                         if (dateParts.length === 3) {
@@ -644,35 +798,118 @@ function Tracking() {
                 .filter(Boolean);
 
             if (facturados.length > 0) {
-                const facturadosCleaned = facturados.map((row) =>
-                    String(row["No Orden"]).trim()
-                );
+                const facturadosCleaned = facturados.map((row) => String(row["No Orden"]).trim());
                 const pedidoIds = facturadosCleaned.join(", ");
                 const userInput = prompt(
                     `Se encontraron pedidos facturados: ${pedidoIds}\nIngrese los números de orden que desea insertar, separados por comas o deje vacío para insertarlos todos:`
                 );
 
-                if (userInput) {
-                    const ordenesSeleccionadas = userInput
-                        .split(",")
-                        .map((num) => num.trim());
+                let pedidosSeleccionados = [];
 
-                    const pedidosSeleccionados = facturados.filter((row) =>
+                if (userInput) {
+                    const ordenesSeleccionadas = userInput.split(",").map((num) => num.trim());
+                    pedidosSeleccionados = facturados.filter((row) =>
                         ordenesSeleccionadas.includes(String(row["No Orden"]).trim())
                     );
-
-                    const mappedFacturados = pedidosSeleccionados.map(mapColumns);
-
-                    setData([...mappedData, ...mappedFacturados]);
                 } else {
-                    setData([...mappedData, ...facturados.map(mapColumns)]);
+                    pedidosSeleccionados = facturados;
                 }
+
+                const mappedFacturados = pedidosSeleccionados
+                    .map(mapColumns)
+                    .filter((row) => {
+                        const orden = String(row["NO ORDEN"]).trim();
+                        const tipo = String(row["TIPO ORIGINAL"] || row["tipo_original"]).trim().toUpperCase();
+                        return orden && tipo && !pedidosRegistrados.has(`${orden}_${tipo}`);
+                    });
+
+                setData([...filteredData, ...mappedFacturados]);
             } else {
-                setData(mappedData);
+                setData(filteredData);
             }
         };
 
         reader.readAsBinaryString(file);
+    };
+
+
+
+
+
+
+    // 🔹 Esperar a que `setData()` actualice el estado antes de calcular totales
+    useEffect(() => {
+        if (data.length > 0) {
+            console.log("🟢 Ejecutando cálculo de totales con data:", data);
+            calcularTotales(data);
+        }
+    }, [data]);
+
+    // 🔹 Función corregida `calcularTotales`
+    const calcularTotales = (data) => {
+        let totalClientes = 0;
+        let totalPedidos = 0;
+        let totalGeneral = 0;
+        const clientesProcesados = new Set();
+        const today = new Date();
+
+        const isSameDay = (d1, d2) =>
+            d1.getDate() === d2.getDate() &&
+            d1.getMonth() === d2.getMonth() &&
+            d1.getFullYear() === d2.getFullYear();
+
+        console.log("📊 Iniciando cálculo de totales...");
+
+        data.forEach((row) => {
+            console.log("🔍 Registro:", row);
+
+            if (!row["Fecha Lista Surtido"]) {
+                console.warn("⚠️ Registro sin 'Fecha Lista Surtido':", row);
+                return;
+            }
+
+            let fechaSurtido = row["Fecha Lista Surtido"];
+            let fechaSurtidoObj = null;
+
+            if (typeof fechaSurtido === "string" && fechaSurtido.includes("/")) {
+                const partes = fechaSurtido.split("/");
+                fechaSurtidoObj = new Date(partes[2], partes[1] - 1, partes[0]);
+            } else if (typeof fechaSurtido === "number") {
+                fechaSurtidoObj = new Date((fechaSurtido - 25569) * 86400 * 1000);
+            }
+
+            if (!fechaSurtidoObj || isNaN(fechaSurtidoObj.getTime())) {
+                console.warn("🚨 Fecha inválida en fila:", row["Fecha Lista Surtido"]);
+                return;
+            }
+
+            console.log(`📅 Pedido con fecha: ${fechaSurtidoObj.toDateString()}`);
+
+            if (isSameDay(fechaSurtidoObj, today)) {
+                let orderTotal = row["Total"] || "0"; // Asegurar que no sea undefined
+                orderTotal =
+                    parseFloat(orderTotal.toString().replace(/[$,]/g, "")) || 0;
+
+                console.log(`📝 Pedido ${row["NO ORDEN"]} → Total: ${orderTotal}`);
+
+                if (row["Cliente"]) {
+                    if (!clientesProcesados.has(row["Cliente"])) {
+                        clientesProcesados.add(row["Cliente"]);
+                        totalClientes++;
+                    }
+                    totalPedidos++;
+                    totalGeneral += orderTotal;
+                }
+            }
+        });
+
+        console.log("✅ Total Clientes:", totalClientes);
+        console.log("✅ Total Pedidos:", totalPedidos);
+        console.log("✅ Total General:", totalGeneral);
+
+        setTotalClientes(totalClientes || 0);
+        setTotalPedidos(totalPedidos || 0);
+        setTotalGeneral(totalGeneral || 0);
     };
 
     const cleanAddress = (address) => {
@@ -714,38 +951,104 @@ function Tracking() {
         setNewRoute("");
     };
 
-    const assignToRoute = (item, route) => {
+    const assignToRoute = (item, newRoute) => {
         setGroupedData((prev) => {
-            const updatedRoute = prev[route] || {
-                TOTAL: 0,
-                PARTIDAS: 0,
-                PIEZAS: 0,
-                rows: [],
-            };
+            let oldRoute = null;
 
-            // Verificar si el pedido ya está en la ruta antes de agregarlo
-            const pedidoExiste = updatedRoute.rows.some(
-                (row) => row["NO ORDEN"] === item["NO ORDEN"]
-            );
-
-            if (!pedidoExiste) {
-                updatedRoute.rows.push({
-                    ...item,
-                    OBSERVACIONES:
-                        observacionesPorRegistro[item["NUM. CLIENTE"]] ||
-                        item.OBSERVACIONES ||
-                        "Sin observaciones disponibles",
-                });
-
-                updatedRoute.TOTAL += item.TOTAL;
-                updatedRoute.PARTIDAS += item.PARTIDAS;
-                updatedRoute.PIEZAS += item.PIEZAS;
+            // 🔍 Buscar en qué ruta está actualmente el pedido
+            for (const route in prev) {
+                if (
+                    prev[route].rows.some((row) => row["NO ORDEN"] === item["NO ORDEN"])
+                ) {
+                    oldRoute = route;
+                    break;
+                }
             }
 
-            return { ...prev, [route]: updatedRoute };
+            // 🔥 Si el pedido ya está en la nueva ruta, no hacemos nada
+            if (oldRoute === newRoute) {
+                console.log(
+                    `⚠ Pedido ${item["NO ORDEN"]} ya está en la ruta ${newRoute}, no se hace nada.`
+                );
+                return prev;
+            }
+
+            // Crear una copia del estado actual de rutas
+            const updatedGroupedData = { ...prev };
+
+            // ⚡ 1. Eliminar el pedido de la ruta actual (oldRoute) si existe
+            if (oldRoute && updatedGroupedData[oldRoute]) {
+                updatedGroupedData[oldRoute].rows = updatedGroupedData[
+                    oldRoute
+                ].rows.filter((row) => row["NO ORDEN"] !== item["NO ORDEN"]);
+                updatedGroupedData[oldRoute].TOTAL = Math.max(
+                    updatedGroupedData[oldRoute].TOTAL - item.TOTAL,
+                    0
+                );
+                updatedGroupedData[oldRoute].PARTIDAS = Math.max(
+                    updatedGroupedData[oldRoute].PARTIDAS - item.PARTIDAS,
+                    0
+                );
+                updatedGroupedData[oldRoute].PIEZAS = Math.max(
+                    updatedGroupedData[oldRoute].PIEZAS - item.PIEZAS,
+                    0
+                );
+            }
+
+            // ⚡ 2. Si la nueva ruta no existe, crearla
+            if (!updatedGroupedData[newRoute]) {
+                updatedGroupedData[newRoute] = {
+                    TOTAL: 0,
+                    PARTIDAS: 0,
+                    PIEZAS: 0,
+                    rows: [],
+                };
+            }
+
+            // ⚡ 3. Eliminar el pedido de la nueva ruta antes de agregarlo (evita que se duplique)
+            updatedGroupedData[newRoute].rows = updatedGroupedData[
+                newRoute
+            ].rows.filter((row) => row["NO ORDEN"] !== item["NO ORDEN"]);
+
+            // 🚀 **Conservar observaciones**
+            const observacionGuardada =
+                observacionesPorRegistro[item["NUM. CLIENTE"]] || "Sin observaciones";
+            const observacionActual = item.OBSERVACIONES || observacionGuardada;
+
+            // ⚡ 4. Agregar el pedido a la nueva ruta, asegurando que conserve las observaciones
+            updatedGroupedData[newRoute].rows.push({
+                ...item,
+                OBSERVACIONES: observacionActual,
+            });
+            updatedGroupedData[newRoute].TOTAL += item.TOTAL;
+            updatedGroupedData[newRoute].PARTIDAS += item.PARTIDAS;
+            updatedGroupedData[newRoute].PIEZAS += item.PIEZAS;
+
+            console.log(
+                `✅ Pedido ${item["NO ORDEN"]} movido de ${oldRoute || "Ninguna"
+                } a ${newRoute}`
+            );
+
+            // ⚡ 5. Guardar cambios en `localStorage`
+            localStorage.setItem(
+                "transporteGroupedData",
+                JSON.stringify(updatedGroupedData)
+            );
+
+            // ⚡ **Guardar las observaciones en localStorage**
+            const updatedObservaciones = {
+                ...observacionesPorRegistro,
+                [item["NUM. CLIENTE"]]: observacionActual,
+            };
+            localStorage.setItem(
+                "observacionesPorRegistro",
+                JSON.stringify(updatedObservaciones)
+            );
+
+            return updatedGroupedData;
         });
 
-        // Filtrar los pedidos asignados para que no se dupliquen
+        // ⚡ 6. Eliminar el pedido de la lista general si no tenía ruta antes
         setData((prevData) =>
             prevData.filter((row) => row["NO ORDEN"] !== item["NO ORDEN"])
         );
@@ -755,8 +1058,9 @@ function Tracking() {
         if (sentRoutesData.length > 0) {
             const uniqueOrders = new Set();
             const cleanedData = sentRoutesData.filter((routeData) => {
-                if (!uniqueOrders.has(routeData["NO ORDEN"])) {
-                    uniqueOrders.add(routeData["NO ORDEN"]);
+                const claveUnica = `${routeData["NO ORDEN"]}_${routeData["tipo_original"]}`;
+                if (!uniqueOrders.has(claveUnica)) {
+                    uniqueOrders.add(claveUnica);
                     return true;
                 }
                 return false;
@@ -765,6 +1069,7 @@ function Tracking() {
             setSentRoutesData(cleanedData);
         }
     }, [sentRoutesData]);
+
 
     const cleanDuplicatedOrders = () => {
         setGroupedData((prev) => {
@@ -1019,17 +1324,12 @@ function Tracking() {
         try {
             let url = `http://localhost:3007/api/Ventas/rutas?expandir=true`;
 
-
-
             if (filtro) url += `&guia=${filtro}`;
             if (desde && hasta) url += `&desde=${desde}&hasta=${hasta}`;
             if (mes) url += `&mes=${mes}`;
 
             const response = await fetch(url);
             const data = await response.json();
-            console.log("📦 Data recibida desde API:", data);
-
-
 
             if (Array.isArray(data)) {
                 setSentRoutesData(data); // Aquí actualizas la tabla
@@ -1040,8 +1340,6 @@ function Tracking() {
     };
 
     useEffect(() => {
-        // console.log("🔍 sentRoutesData antes de filtrar:", sentRoutesData);
-
         if (!Array.isArray(sentRoutesData) || sentRoutesData.length === 0) {
             console.warn(
                 "⚠ No hay datos en sentRoutesData, las tablas estarán vacías"
@@ -1049,24 +1347,24 @@ function Tracking() {
             return;
         }
 
+        const getTipo = (routeData) =>
+            (routeData.TIPO || routeData.tipo_original || "").trim().toLowerCase();
+
         const paqueteria = sentRoutesData.filter(
-            (routeData) => routeData.TIPO?.trim().toLowerCase() === "paqueteria"
+            (routeData) => getTipo(routeData) === "paqueteria"
         );
         const directa = sentRoutesData.filter(
-            (routeData) => routeData.TIPO?.trim().toLowerCase() === "directa"
+            (routeData) => getTipo(routeData) === "directa"
         );
         const ventaEmpleado = sentRoutesData.filter(
-            (routeData) => routeData.TIPO?.trim().toLowerCase() === "venta empleado"
+            (routeData) => getTipo(routeData) === "venta empleado"
         );
-
-        // console.log("✅ Datos filtrados para paquetería:", paqueteria);
-        // console.log("✅ Datos filtrados para directa:", directa);
-        // console.log("✅ Datos filtrados para venta empleado:", ventaEmpleado);
 
         setPaqueteriaData(paqueteria);
         setDirectaData(directa);
         setVentaEmpleadoData(ventaEmpleado);
     }, [sentRoutesData]);
+
 
     useEffect(() => {
         console.log("🔄 Cambio de pestaña activa:", subTabIndex);
@@ -1126,9 +1424,6 @@ function Tracking() {
     };
 
     const handleSelectRoute = (route) => {
-        // console.log("Ruta seleccionada:", route);
-
-        // Actualiza las rutas seleccionadas
         setSelectedRoutes((prevRoutes) => {
             const newSelectedRoutes = prevRoutes.includes(route)
                 ? prevRoutes.filter((r) => r !== route) // Desmarcar ruta
@@ -1195,6 +1490,7 @@ function Tracking() {
                                 "Sin observaciones disponibles",
                             TIPO: tipoRutaActual, // ✅ Asegurar que se inserta el tipo correcto
                             GUIA: guiaEnviar, // ✅ Asignar "NA" si es Directa o Venta Empleado
+                            tipo_original: row["TIPO ORIGINAL"] || row.tipo || row.TIPO || row.tipo_original || null,
                         });
                     });
                 } else {
@@ -1246,15 +1542,19 @@ function Tracking() {
     };
 
     const formatDate = (dateString) => {
-        if (!dateString) return "Sin fecha"; // Si no hay fecha, muestra "Sin fecha"
+        if (!dateString) return "Sin fecha";
 
-        const date = new Date(dateString); // Convierte el string de fecha a un objeto Date
-        if (isNaN(date)) {
-            return "Fecha inválida"; // Si no se puede convertir a fecha, devuelve 'Fecha inválida'
+        // Si ya viene en formato YYYY-MM-DD
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+            const [year, month, day] = dateString.split("-");
+            return `${day}/${month}/${year}`;
         }
 
-        const options = { year: "numeric", month: "numeric", day: "numeric" };
-        return date.toLocaleDateString("es-MX", options); // Devuelve la fecha formateada en formato local
+        // Si no viene en ese formato, usar Date como respaldo
+        const date = new Date(dateString);
+        if (isNaN(date)) return "Fecha inválida";
+
+        return date.toLocaleDateString("es-MX");
     };
 
     const handleGenerateRoutes = () => {
@@ -1302,6 +1602,12 @@ function Tracking() {
             return;
         }
 
+        // ✅ Aquí obtenemos el tipo_original real desde sentRoutesData
+        const tipo_original_actual =
+            sentRoutesData.find(
+                (r) => String(r["NO ORDEN"]).trim() === String(selectedNoOrden).trim()
+            )?.tipo_original || null;
+
         try {
             const url = `http://localhost:3007/api/Ventas/paqueteria/actualizar-guia/${selectedNoOrden}`;
 
@@ -1311,6 +1617,7 @@ function Tracking() {
                 body: JSON.stringify({
                     guia,
                     paqueteria,
+                    transporte: paqueteria,
                     fechaEntregaCliente,
                     diasEntrega,
                     entregaSatisfactoria,
@@ -1330,26 +1637,29 @@ function Tracking() {
                     tarimas,
                     numeroFacturaLT,
                     observaciones,
+                    tipo,
+                    tipo_original_actual, // ✅ se manda correctamente desde sentRoutesData
                 }),
             });
 
             if (response.ok) {
-                console.log("✅ Guía actualizada correctamente.");
-                alert("✅ Guía actualizada correctamente.");
+                alert("✅ Información actualizada correctamente.");
 
                 // Cerrar el modal después de la actualización
                 setDirectaModalOpen(false);
 
-                // Actualizar los datos en la tabla sin recargar la página
-                fetchPaqueteriaRoutes();
+                // Refrescar los datos
+                const mesActual =
+                    selectedMonth || localStorage.getItem("mesSeleccionado") || "";
+                fetchPaqueteriaRoutes({ mes: mesActual });
             } else {
                 const errorData = await response.json();
-                console.error("Error al actualizar:", errorData);
+                console.error("❌ Error al actualizar:", errorData);
                 alert("❌ Error al actualizar la guía: " + errorData.message);
             }
         } catch (error) {
             console.error("❌ Error en la actualización:", error);
-            alert("Error en la actualización de la guía.");
+            alert("❌ Error en la actualización de la guía.");
         }
     };
 
@@ -1367,11 +1677,9 @@ function Tracking() {
                     "Paquet",
                     "Control",
                     "Rep",
-                    "Vent",
-                    "VENT",
                     "Tran",
-                    "Audi",
                     "Rep",
+                    "Embar",
                 ],
             },
             {
@@ -1386,10 +1694,7 @@ function Tracking() {
                     "Embar",
                     "Control",
                     "Rep",
-                    "Vent",
-                    "VENT",
                     "Tran",
-                    "Audi",
                     "Rep",
                 ],
             },
@@ -1404,10 +1709,7 @@ function Tracking() {
                     "Paquet",
                     "Embar",
                     "Rep",
-                    "Vent",
-                    "VENT",
                     "Tran",
-                    "Audi",
                     "Rep",
                 ],
             },
@@ -1422,10 +1724,7 @@ function Tracking() {
                     "Paquet",
                     "Embar",
                     "Rep",
-                    "Vent",
-                    "VENT",
                     "Tran",
-                    "Audi",
                     "Rep",
                 ],
             },
@@ -1441,10 +1740,7 @@ function Tracking() {
                     "Paquet",
                     "Embar",
                     "Rep",
-                    "Vent",
-                    "VENT",
                     "Tran",
-                    "Audi",
                     "Rep",
                 ],
             },
@@ -1459,6 +1755,8 @@ function Tracking() {
                     "Paquet",
                     "Embar",
                     "Rep",
+                    "Tran",
+                    "Rep",
                 ],
             },
             {
@@ -1472,42 +1770,52 @@ function Tracking() {
                     "Paquet",
                     "Embar",
                     "Rep",
-                    "Vent",
-                    "VENT",
                     "Tran",
-                    "Audi",
                     "Rep",
                 ],
             },
             {
                 name: "OBSERVACIONES",
-                role: ["Admin", "Master", "Trans", "PQ1", "Paquet", "Embar", "Rep"],
+                role: ["Admin", "Master", "Trans", "PQ1", "Rep", "Tran", "Rep"],
             },
             {
                 name: "TOTAL",
+                role: ["Admin", "Master", "Trans", "Rep", "PQ1", "Tran", "Rep"],
+            },
+            {
+                name: "PARTIDAS",
                 role: [
                     "Admin",
                     "Master",
                     "Trans",
                     "Rep",
-                    "PQ1",
-                    "Vent",
-                    "VENT",
+                    "Control",
+                    "Embar",
                     "Tran",
-                    "Audi",
                     "Rep",
                 ],
             },
             {
-                name: "PARTIDAS",
-                role: ["Admin", "Master", "Trans", "Rep", "Control", "Embar"],
+                name: "PIEZAS",
+                role: [
+                    "Admin",
+                    "Master",
+                    "Trans",
+                    "Rep",
+                    "Control",
+                    "Embar",
+                    "Tran",
+                    "Rep",
+                ],
             },
             {
-                name: "PIEZAS",
-                role: ["Admin", "Master", "Trans", "Rep", "Control", "Embar"],
+                name: "ZONA",
+                role: ["Admin", "Master", "Rep", "Trans", "Tran", "Rep"],
             },
-            { name: "ZONA", role: ["Admin", "Master", "Rep", "Trans"] },
-            { name: "TIPO DE ZONA", role: ["Admin", "Master", "Rep", "Trans"] },
+            {
+                name: "TIPO DE ZONA",
+                role: ["Admin", "Master", "Rep", "Trans", "Tran", "Rep"],
+            },
             {
                 name: "NUMERO DE FACTURA",
                 role: [
@@ -1516,55 +1824,62 @@ function Tracking() {
                     "Trans",
                     "Rep",
                     "Control",
-                    "Vent",
-                    "VENT",
                     "Tran",
-                    "Audi",
                     "Rep",
+                    "Embar",
                 ],
             },
             {
                 name: "FECHA DE FACTURA",
-                role: [
-                    "Admin",
-                    "Master",
-                    "Trans",
-                    "Rep",
-                    "Control",
-                    "Vent",
-                    "VENT",
-                    "Tran",
-                    "Audi",
-                    "Rep",
-                ],
+                role: ["Admin", "Master", "Trans", "Rep", "Control", "Tran", "Rep"],
             },
             {
                 name: "FECHA DE EMBARQUE",
+                role: ["Admin", "Master", "Rep", "Trans", "Tran", "Rep"],
+            },
+            {
+                name: "DIA EN QUE ESTA EN RUTA",
                 role: [
                     "Admin",
                     "Master",
-                    "Rep",
                     "Trans",
-                    "Vent",
-                    "VENT",
+                    "Rep",
+                    "EB1",
+                    "Embar",
                     "Tran",
-                    "Audi",
                     "Rep",
                 ],
             },
             {
-                name: "DIA EN QUE ESTA EN RUTA",
-                role: ["Admin", "Master", "Trans", "Rep", "EB1", "Embar"],
-            },
-            {
                 name: "HORA DE SALIDA",
-                role: ["Admin", "Master", "Trans", "Rep", "EB1", "Embar"],
+                role: [
+                    "Admin",
+                    "Master",
+                    "Trans",
+                    "Rep",
+                    "EB1",
+                    "Embar",
+                    "Tran",
+                    "Rep",
+                ],
             },
             {
                 name: "CAJAS",
-                role: ["Admin", "Master", "Trans", "Rep", "PQ1", "Paquet"],
+                role: [
+                    "Admin",
+                    "Master",
+                    "Trans",
+                    "Rep",
+                    "PQ1",
+                    "Paquet",
+                    "Tran",
+                    "Rep",
+                ],
             },
-            { name: "TARIMAS", role: ["Admin", "Master", "Trans", "Rep", "Paquet"] },
+            {
+                name: "TARIMAS",
+                role: ["Admin", "Master", "Trans", "Rep", "Paquet", "Tran", "Rep"],
+            },
             {
                 name: "TRANSPORTE",
                 role: [
@@ -1575,11 +1890,9 @@ function Tracking() {
                     "PQ1",
                     "Paquet",
                     "Control",
-                    "Vent",
                     "Tran",
-                    "Audi",
                     "Rep",
-                    "VENT",
+                    "Embar",
                 ],
             },
             {
@@ -1592,12 +1905,9 @@ function Tracking() {
                     "PQ1",
                     "Paquet",
                     "Control",
-                    "Vent",
-                    "VENT",
                     "Tran",
-                    "Audi",
                     "Rep",
-                    "VENT",
+                    "Embar",
                 ],
             },
             {
@@ -1609,10 +1919,7 @@ function Tracking() {
                     "Trans",
                     "PQ1",
                     "Paquet",
-                    "Vent",
-                    "VENT",
                     "Tran",
-                    "Audi",
                     "Rep",
                 ],
             },
@@ -1626,60 +1933,77 @@ function Tracking() {
                     "PQ1",
                     "Paquet",
                     "Embar",
-                    "Vent",
-                    "VENT",
                     "Tran",
-                    "Audi",
                     "Rep",
                 ],
             },
             {
                 name: "FECHA ESTIMADA DE ENTREGA",
-                role: ["Admin", "Master", "Trans", "PQ1", "Rep"],
+                role: ["Admin", "Master", "Trans", "PQ1", "Rep", "Tran", "Rep"],
             },
             {
                 name: "DIAS DE ENTREGA",
-                role: ["Admin", "Master", "Trans", "PQ1", "Rep"],
+                role: ["Admin", "Master", "Trans", "PQ1", "Rep", "Tran", "Rep"],
             },
             {
                 name: "ENTREGA SATISFACTORIA O NO SATISFACTORIA",
-                role: ["Admin", "Master", "Trans", "PQ1", "Paquet", "Rep"],
-            },
-            { name: "MOTIVO", role: ["Admin", "Master", "Trans"] },
-            {
-                name: "NUMERO DE FACTURA LT",
-                role: ["Admin", "Master", "Trans", "Rep"],
-            },
-            {
-                name: "TOTAL FACTURA LT",
                 role: [
                     "Admin",
                     "Master",
                     "Trans",
+                    "PQ1",
                     "Paquet",
                     "Rep",
-                    "Vent",
-                    "VENT",
                     "Tran",
-                    "Audi",
                     "Rep",
+                    "Embar",
                 ],
+            },
+            { name: "MOTIVO", role: ["Admin", "Master", "Trans", "Tran", "Rep"] },
+            {
+                name: "NUMERO DE FACTURA LT",
+                role: ["Admin", "Master", "Trans", "Rep", "Tran", "Rep"],
+            },
+            {
+                name: "TOTAL FACTURA LT",
+                role: ["Admin", "Master", "Trans", "Paquet", "Rep", "Tran", "Rep"],
             },
             {
                 name: "PRORRATEO $ FACTURA LT",
-                role: ["Admin", "Master", "Trans", "Rep"],
+                role: ["Admin", "Master", "Trans", "Rep", "Tran", "Rep"],
             },
             {
                 name: "PRORRATEO $ FACTURA PAQUETERIA",
-                role: ["Admin", "Master", "Trans", "Rep"],
+                role: ["Admin", "Master", "Trans", "Rep", "Tran", "Rep"],
             },
-            { name: "GASTOS EXTRAS", role: ["Admin", "Master", "Trans", "Rep"] },
-            { name: "SUMA FLETE", role: ["Admin", "Master", "Trans", "Rep"] },
-            { name: "% ENVIO", role: ["Admin", "Master", "Trans", "Rep"] },
-            { name: "% PAQUETERIA", role: ["Admin", "Master", "Trans", "Rep"] },
-            { name: "SUMA GASTOS EXTRAS", role: ["Admin", "Master", "Trans", "Rep"] },
-            { name: "% GLOBAL", role: ["Admin", "Master", "Trans", "Rep"] },
-            { name: "DIFERENCIA", role: ["Admin", "Master", "Trans", "Rep"] },
+            {
+                name: "GASTOS EXTRAS",
+                role: ["Admin", "Master", "Trans", "Rep", "Tran", "Rep"],
+            },
+            {
+                name: "SUMA FLETE",
+                role: ["Admin", "Master", "Trans", "Rep", "Tran", "Rep"],
+            },
+            {
+                name: "% ENVIO",
+                role: ["Admin", "Master", "Trans", "Rep", "Tran", "Rep"],
+            },
+            {
+                name: "% PAQUETERIA",
+                role: ["Admin", "Master", "Trans", "Rep", "Tran", "Rep"],
+            },
+            {
+                name: "SUMA GASTOS EXTRAS",
+                role: ["Admin", "Master", "Trans", "Rep", "Tran", "Rep"],
+            },
+            {
+                name: "% GLOBAL",
+                role: ["Admin", "Master", "Trans", "Rep", "Tran", "Rep"],
+            },
+            {
+                name: "DIFERENCIA",
+                role: ["Admin", "Master", "Trans", "Rep", "Tran", "Rep"],
+            },
             {
                 name: "Acciones",
                 role: [
@@ -1691,26 +2015,38 @@ function Tracking() {
                     "Paquet",
                     "Embar",
                     "Rep",
-                    "Vent",
-                    "VENT",
                     "Tran",
-                    "Audi",
                     "Rep",
                 ],
             },
             {
                 name: "TRANSPORTISTA",
-                role: ["Admin", "Master", "Trans", "Control", "Embar", "Rep"],
+                role: [
+                    "Admin",
+                    "Master",
+                    "Trans",
+                    "Control",
+                    "Embar",
+                    "Rep",
+                    "Tran",
+                    "Rep",
+                ],
             },
-            { name: "EMPRESA", role: ["Admin", "Master", "Trans", "Control", "Rep"] },
-            { name: "CLAVE", role: ["Admin", "Master", "Trans", "Control", "Rep"] },
+            {
+                name: "EMPRESA",
+                role: ["Admin", "Master", "Trans", "Control", "Rep", "Tran", "Rep"],
+            },
+            {
+                name: "CLAVE",
+                role: ["Admin", "Master", "Trans", "Control", "Rep", "Tran", "Rep"],
+            },
             {
                 name: "ACCIONES",
-                role: ["Admin", "Master", "Trans", "Control", "Rep"],
+                role: ["Admin", "Master", "Trans", "Control", "Rep", "Tran", "Rep"],
             },
             {
                 name: "REG_ENTRADA",
-                role: ["Admin", "Master", "Trans", "Control", "Rep"],
+                role: ["Admin", "Master", "Trans", "Control", "Rep", "Tran", "Rep"],
             },
         ];
 
@@ -1721,20 +2057,45 @@ function Tracking() {
 
     const visibleColumns = getVisibleColumns(user?.role);
 
-    const handleGenerateExcel = () => {
-        // 🔹 Filtrar solo las rutas con tipo "Directa"
-        const filteredData = sentRoutesData.filter(
-            (row) => row["TIPO"].toLowerCase() === "directa"
-        );
+    const [createdAt, setCreatedAt] = useState(null);
 
-        if (filteredData.length === 0) {
-            alert("No hay datos de tipo 'Directa' para exportar.");
+    const handleGenerateExcel = () => {
+        if (!sentRoutesData || sentRoutesData.length === 0) {
+            console.error("❌ No hay datos en `sentRoutesData`.");
+            alert("Error: No hay datos disponibles para exportar.");
             return;
         }
 
+        // 🔹 Obtener la fecha actual respetando la zona horaria del usuario (Formato YYYY-MM-DD)
+        const today = new Date().toLocaleDateString("fr-CA"); // "YYYY-MM-DD"
+
+        console.log("📅 Fecha de referencia para el filtrado:", today);
+
+        // 🔹 Filtrar solo las rutas con tipo "Directa" y cuya fecha de creación (`created_at`) sea hoy
+        const filteredData = sentRoutesData.filter((row) => {
+            if (!row.created_at) {
+                console.warn("⚠ Registro sin `created_at` encontrado:", row);
+                return false;
+            }
+
+            // Convertir created_at a formato YYYY-MM-DD
+            const rowDate = new Date(row.created_at).toLocaleDateString("fr-CA");
+
+            console.log(`🔍 Comparando: ${rowDate} === ${today}`);
+
+            return row["TIPO"]?.toLowerCase?.() === "directa" && rowDate === today;
+        });
+
+        if (filteredData.length === 0) {
+            alert(`No hay datos de tipo 'Directa' registrados en la fecha ${today}.`);
+            return;
+        }
+
+        console.log("✅ Datos filtrados:", filteredData);
+
         const groupedData = {};
 
-        // 🔹 Solo trabajar con los datos filtrados (filteredData)
+        // 🔹 Agrupar los datos por cliente
         filteredData.forEach((row) => {
             const clientId = row["NUM. CLIENTE"];
 
@@ -1753,14 +2114,13 @@ function Tracking() {
                 groupedData[clientId].referenceIds.push(row["NO ORDEN"]);
             }
 
-            groupedData[clientId].contactInfo.address = cleanAddress(
-                row["DIRECCION"]
-            );
+            groupedData[clientId].contactInfo.address =
+                row["DIRECCION"] || "Dirección no disponible";
             groupedData[clientId].orders.push(row);
         });
 
-        // 🔹 Generar datos para exportación usando SOLO los datos filtrados
-        const exportData = Object.keys(groupedData).map((clientId) => {
+        // 🔹 Preparar los datos para exportación
+        let exportData = Object.keys(groupedData).map((clientId) => {
             const clientData = groupedData[clientId];
 
             return {
@@ -1778,6 +2138,18 @@ function Tracking() {
             };
         });
 
+        // 🔹 Ordenar los datos por "Nombre Vehículo" y "Titulo de la Visita"
+        exportData.sort((a, b) => {
+            if (a["Nombre Vehiculo"] < b["Nombre Vehiculo"]) return -1;
+            if (a["Nombre Vehiculo"] > b["Nombre Vehiculo"]) return 1;
+            if (a["Titulo de la Visita"] < b["Titulo de la Visita"]) return -1;
+            if (a["Titulo de la Visita"] > b["Titulo de la Visita"]) return 1;
+            return 0;
+        });
+
+        console.log("📂 Datos listos para exportar:", exportData);
+
+        // 🔹 Crear hoja de Excel
         const ws = XLSX.utils.json_to_sheet(exportData, {
             header: [
                 "Nombre Vehiculo",
@@ -1792,6 +2164,7 @@ function Tracking() {
             ],
         });
 
+        // 🔹 Ajustar el ancho de columnas para mejor visibilidad
         ws["!cols"] = [
             { wch: 20 },
             { wch: 40 },
@@ -1804,195 +2177,185 @@ function Tracking() {
             { wch: 20 },
         ];
 
+        // 🔹 Crear libro de Excel y agregar la hoja
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Datos Directa");
-        XLSX.writeFile(wb, "Datos_Directa.xlsx");
+        XLSX.utils.book_append_sheet(wb, ws, `Datos_Directa_${today}`);
+
+        // 🔹 Descargar el archivo
+        XLSX.writeFile(wb, `Datos_Directa_${today}.xlsx`);
+
+        console.log("✅ Archivo Excel generado correctamente.");
     };
+
+    // ✅ Versión con tabla de IMPORTE AGREGADA al final (corregida)
+
+    const totalPagesExp = "___total_pages___";
+
+    function addPageNumber(doc) {
+        const pageCount = doc.internal.getNumberOfPages();
+        if (pageCount >= 1) {
+            doc.setPage(1);
+            doc.setFontSize(9);
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(0, 0, 0);
+            doc.text(`PÁGINA 1 de ${pageCount}`, 200, 59, { align: "right" });
+        }
+
+        for (let i = 1; i <= pageCount; i++) {
+            doc.setPage(i);
+            const pageHeight = doc.internal.pageSize.height;
+            doc.addImage(barraFooter, "JPEG", 10, pageHeight - 15, 190, 8);
+        }
+    }
+
+    function verificarEspacio(doc, currentY, filas = 10, margenInferior = 20) {
+        const pageHeight = doc.internal.pageSize.height;
+        const alturaEstim = 10 + filas * 6;
+        if (currentY + alturaEstim > pageHeight - margenInferior) {
+            doc.addPage();
+            return 20;
+        }
+        return currentY;
+    }
 
     const generatePDF = async (pedido) => {
         try {
-            // Paso 1: Obtener datos de la API de rutas
             const responseRoutes = await fetch(
-                "http://localhost:3007/api/Ventas/rutas"
+                "http://localhost:3007/api/Ventas/ruta-unica"
             );
             const routesData = await responseRoutes.json();
-
-            if (!Array.isArray(routesData) || routesData.length === 0) {
-                alert("No se encontraron rutas de paquetería");
-                return;
-            }
-
-            // Paso 2: Buscar la ruta que corresponde al pedido
-            const route = routesData.find((route) => route["NO ORDEN"] === pedido);
-            if (!route) {
-                alert("No se encontró la ruta para este pedido.");
-                return;
-            }
-
-            // Obtener los datos de la ruta (Cliente, Dirección, Factura)
-            const nombreCliente = route["NOMBRE DEL CLIENTE"] || "No disponible";
-            const numeroFactura = route["NO_FACTURA"] || "No disponible";
-            const direccion = cleanAddress(route["DIRECCION"]) || "No disponible";
-            const numero = route["NUM. CLIENTE"] || "No disponible";
-
-            const telefono = route["TELEFONO"] || "Sin numero de Contacto";
+            const route = routesData.find(
+                (r) => String(r["NO ORDEN"]) === String(pedido)
+            );
+            if (!route) return alert("No se encontró la ruta");
 
             const responseEmbarque = await fetch(
                 `http://localhost:3007/api/Ventas/embarque/${pedido}`
             );
             const data = await responseEmbarque.json();
+            if (!data || !Array.isArray(data) || data.length === 0)
+                return alert("No hay productos");
 
-            if (!Array.isArray(data) || data.length === 0) {
-                alert("No hay productos disponibles para este pedido.");
-                return;
+            const doc = new jsPDF();
+            const marginLeft = 10;
+            let currentY = 26;
+
+            doc.setFillColor(240, 36, 44);
+            doc.rect(10, 10, 190, 8, "F");
+            doc.setTextColor(255, 255, 255);
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(10.5);
+            doc.text("FORMATO PARA RECEPCIÓN DEL PEDIDO", 105, 15.5, {
+                align: "center",
+            });
+
+            doc.addImage(logo, "JPEG", 145, 23, 50, 18);
+
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(14);
+            doc.setTextColor(84, 84, 84);
+            doc.text("Santul Herramientas S.A. de C.V.", marginLeft, currentY);
+            currentY += 4;
+            doc.setFontSize(12);
+            doc.setFont("helvetica", "normal");
+            doc.text(
+                "Henry Ford 257 C y D, Col. Bondojito, Gustavo A. Madero,",
+                marginLeft,
+                currentY
+            );
+            currentY += 4;
+            doc.text("Ciudad de México, C.P. 07850, México,", marginLeft, currentY);
+            currentY += 4;
+            doc.text("Tel.: 58727290", marginLeft, currentY);
+            currentY += 4;
+            doc.text("R.F.C. SHE130912866", marginLeft, currentY);
+            currentY += 5;
+            doc.setDrawColor(240, 36, 44);
+            doc.setLineWidth(0.5);
+            doc.line(10, currentY, 200, currentY);
+            currentY += 4;
+
+            const tipo_original = route["tipo_original"] || "No definido";
+            const nombreCliente = route["NOMBRE DEL CLIENTE"] || "No disponible";
+            const numeroFactura = route["NO_FACTURA"] || "No disponible";
+            const direccion = cleanAddress(route["DIRECCION"]) || "No disponible";
+            const numero = route["NUM. CLIENTE"] || "No disponible";
+            const telefono = route["TELEFONO"] || "Sin número";
+            const rawTotal = route["TOTAL"];
+            let totalImporte = 0;
+            if (
+                rawTotal &&
+                !isNaN(parseFloat(String(rawTotal).replace(/[^0-9.-]+/g, "")))
+            ) {
+                totalImporte = parseFloat(String(rawTotal).replace(/[^0-9.-]+/g, ""));
             }
 
-            const productosConCaja = data.filter(
-                (item) => item.caja && item.caja > 0
-            );
-            const productosSinCaja = data.filter(
-                (item) => !item.caja || item.caja === 0
-            );
-
-            // Crear instancia de jsPDF
-            const doc = new jsPDF();
-
-            // Ajustar logo para que quede a la izquierda, sin sobrepasar el texto
-            doc.addImage(logo, "JPEG", 140, 5, 65, 25); // Mueve el logo más a la derecha y ajusta tamaño
-
-            // Definir márgenes y tamaños de fuente
-            const marginLeft = 15;
-            const marginTop = 20;
-            let currentY = marginTop;
-
-            // Encabezado con formato formal
-            doc.setFont("times", "normal"); // Fuente Arial sin negritas
-            doc.setFontSize(10); // Aumenta tamaño a 12
-
-            doc.text("SANTUL HERRAMIENTAS S.A. DE C.V.", marginLeft, currentY);
-            currentY += 6;
-
-            doc.text(`VT: ${pedido}`, marginLeft, currentY);
-            doc.text(`Fecha: ${new Date().toLocaleDateString()}`, 50, currentY); // Mueve la fecha a la derecha
-            currentY += 7;
-
-            doc.text(
-                `Cliente: ${nombreCliente} Núm. Cliente: ${numero} Núm. Teléfono: ${telefono}`,
-                marginLeft,
-                currentY
-            );
-            currentY += 7; // Baja el cursor para separar
-
-            doc.text(
-                `No Factura: ${numeroFactura} Dirección: ${direccion} `,
-                marginLeft,
-                currentY
-            );
-            currentY += 8;
-            // Definir título del recuadro
-            const titulo = "INSTRUCCIONES DE ENTREGA";
-
-            // Definir las instrucciones con el texto proporcionado
-            const instruccionesIzquierda =
-                "En caso de detectar cualquier irregularidad (daños, faltantes, o manipulaciones),";
-            const instruccionesDerecha =
-                "Favor de comunicarse de inmediato al departamento de atención al cliente al número: 123-456-7890.\nAgradecemos su confianza y preferencia.";
-
-            // Posiciones y dimensiones
-            const cajaX = marginLeft;
-            const cajaY = currentY;
-            const cajaAncho = 180;
-            const padding = 6;
-            const columnaAncho = cajaAncho / 2 - 10; // Ajuste para que el texto no se salga
-
-            // Calcular altura del cuadro en base al texto
-            doc.setFont("times", "normal");
+            doc.setFont("helvetica", "bold");
             doc.setFontSize(9.5);
-            const lineasIzquierda = doc.splitTextToSize(
-                instruccionesIzquierda,
-                columnaAncho
-            );
-            const lineasDerecha = doc.splitTextToSize(
-                instruccionesDerecha,
-                columnaAncho
-            );
-            const lineasTotales = Math.max(
-                lineasIzquierda.length,
-                lineasDerecha.length
-            );
-            const cajaAlto = lineasTotales * 5 + padding; // Ajustar altura con espaciado extra
-
-            // Dibujar el borde del recuadro
-            doc.rect(cajaX, cajaY, cajaAncho, cajaAlto, "S");
-
-            // Dibujar el fondo gris para el título
-            doc.setFillColor(200, 200, 200); // Gris claro
-            doc.rect(cajaX, cajaY, cajaAncho, 8, "F"); // Fondo del título
-
-            // Agregar el título centrado
-            doc.setFont("times", "bold");
-            doc.setFontSize(10);
             doc.setTextColor(0, 0, 0);
             doc.text(
-                titulo,
-                cajaX + cajaAncho / 2 - doc.getTextWidth(titulo) / 2,
-                cajaY + 5.5
+                `CLIENTE NO.: ${numero}                      NOMBRE DEL CLIENTE: ${nombreCliente}`,
+                marginLeft,
+                currentY
             );
+            currentY += 4;
+            doc.text(
+                `TELÉFONO: ${telefono}     DIRECCIÓN: ${direccion}`,
+                marginLeft,
+                currentY
+            );
+            currentY += 4;
+            doc.text(`VT: ${pedido}-${tipo_original}`, marginLeft, currentY);
+            currentY += 4;
+            doc.text(`FACTURA No.: ${numeroFactura}`, marginLeft, currentY);
+            currentY += 4;
 
-            // Agregar el contenido en dos columnas
-            doc.setFont("times", "normal");
-            doc.setFontSize(9.5); // Tamaño correcto
+            const infoY = currentY;
+            doc.setFillColor(255, 255, 0);
+            doc.rect(marginLeft, infoY, 190, 11, "F");
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(9.5);
             doc.setTextColor(0, 0, 0);
+            doc.text("INFORMACIÓN IMPORTANTE", 105, infoY + 4, { align: "center" });
+            doc.setFontSize(5.3);
+            doc.text(
+                "En caso de detectar cualquier irregularidad (daños, faltantes, o manipulaciones), Favor de comunicarse de inmediato al departamento de atención al cliente al número:(55) 58727290 EXT.: (8815, 8819)",
+                105,
+                infoY + 9,
+                { align: "center", maxWidth: 180 }
+            );
+            currentY = infoY + 15;
 
-            doc.text(lineasIzquierda, cajaX + 5, cajaY + 13);
-            doc.text(lineasDerecha, cajaX + columnaAncho + 15, cajaY + 13);
+            const productosConCaja = data.filter((i) => i.caja && i.caja > 0);
+            const productosSinCaja = data.filter((i) => !i.caja || i.caja === 0);
 
-            // Ajustar la posición después del recuadro
-            currentY += cajaAlto + 5;
+            // ✔️ Primero agrupamos productos por caja original
 
-            currentY += 10; // Agrega más espacio antes de la tabla
-
-            // Agrupación de productos y tablas sigue igual
-            const cajasAgrupadas = productosConCaja.reduce((groups, item) => {
-                if (!groups[item.caja]) {
-                    groups[item.caja] = [];
-                }
-                groups[item.caja].push(item);
-                return groups;
+            const cajasAgrupadasOriginal = productosConCaja.reduce((acc, item) => {
+                if (!acc[item.caja]) acc[item.caja] = [];
+                acc[item.caja].push(item);
+                return acc;
             }, {});
 
-            let totalPZ = 0;
-            let totalINNER_MASTER = 0;
-            let totalProductos = 0;
-            let totalTarimas = 0;
-            let totalAtados = 0;
+            const cajasOrdenadas = Object.entries(cajasAgrupadasOriginal).sort(
+                (a, b) => Number(a[0]) - Number(b[0])
+            );
 
-            productosConCaja.forEach((item) => {
-                totalPZ += item._pz || 0;
-                totalINNER_MASTER += (item._inner || 0) + (item._master || 0);
-                totalProductos += item.cantidad || 0;
-                totalTarimas += item.tarimas || 0;
-                totalAtados += item.atados || 0;
-            });
-
-            productosSinCaja.forEach((item) => {
-                totalPZ += item._pz || 0;
-                totalINNER_MASTER += (item._inner || 0) + (item._master || 0);
-                totalProductos += item.cantidad || 0;
-                totalTarimas += item.tarimas || 0;
-                totalAtados += item.atados || 0;
-            });
-
-            const ultimasCajas = Object.keys(cajasAgrupadas).sort((a, b) => a - b);
-            const totalCajasArmadas =
-                parseInt(ultimasCajas[ultimasCajas.length - 1]) || 0;
+            const totalINNER_MASTER = productosSinCaja.reduce(
+                (s, i) => s + (i._inner || 0) + (i._master || 0),
+                0
+            );
+            const totalCajasArmadas = cajasOrdenadas.length;
             const totalCajas = totalINNER_MASTER + totalCajasArmadas;
 
-            // Insertar los totales en una tabla
+            const totalTarimas = data.reduce((s, i) => s + (i.tarimas || 0), 0);
+            const totalAtados = data.reduce((s, i) => s + (i.atados || 0), 0);
+
+            currentY = verificarEspacio(doc, currentY, 2);
             doc.autoTable({
                 startY: currentY,
                 head: [
-                    ["INNER/MASTER", "Tarimas", "Atados", "Cajas Armadas", "Total Cajas"],
+                    ["INNER/MASTER", "TARIMAS", "ATADOS", "CAJAS ARMADAS", "TOTAL CAJAS"],
                 ],
                 body: [
                     [
@@ -2004,66 +2367,62 @@ function Tracking() {
                     ],
                 ],
                 theme: "grid",
-                styles: {
-                    halign: "center",
-                    fontSize: 10,
-                    cellPadding: 3,
-                    lineColor: [0, 0, 0],
-                },
-                headStyles: {
-                    fontStyle: "time",
-                    textColor: [0, 0, 0], // Texto negro
-                    fillColor: [240, 240, 240], // Fondo gris claro para cabecera
-                    lineColor: [0, 0, 0], // Bordes negros
-                    lineWidth: 0.5,
-                },
                 margin: { left: 10 },
+                tableWidth: 190,
+                styles: { fontSize: 9, halign: "center", cellPadding: 3 },
+                headStyles: { fillColor: [210, 210, 210], textColor: [0, 0, 0] },
             });
-            currentY = doc.lastAutoTable.finalY + 10;
+            currentY = doc.lastAutoTable.finalY + 4;
 
-            // Mostrar las cajas agrupadas
-            Object.keys(cajasAgrupadas).forEach((caja) => {
-                const productosDeCaja = cajasAgrupadas[caja];
+            const cajasAgrupadas = productosConCaja.reduce((acc, item) => {
+                if (!acc[item.caja]) acc[item.caja] = [];
+                acc[item.caja].push(item);
+                return acc;
+            }, {});
 
+            let numeroCajaSecuencial = 1;
+
+            for (const [, productos] of cajasOrdenadas) {
+                const titulo = `Productos en la Caja ${numeroCajaSecuencial}`;
+
+                // Título de la tabla
                 doc.autoTable({
                     startY: currentY,
-                    head: [[`Productos en la Caja ${caja}`]],
+                    head: [[titulo]],
                     body: [],
                     theme: "grid",
-                    styles: {
-                        halign: "center",
-                        fontSize: 10,
-                        cellPadding: 3,
-                        lineColor: [0, 0, 0],
-                    },
+                    styles: { halign: "center", fontSize: 9 },
                     headStyles: {
-                        fontStyle: "time",
-                        textColor: [0, 0, 0], // Texto negro
-                        fillColor: [240, 240, 240], // Fondo gris claro para cabecera
-                        lineColor: [0, 0, 0], // Bordes negros
-                        lineWidth: 0.5,
+                        fillColor: [255, 255, 255],
+                        textColor: [0, 0, 0],
+                        fontStyle: "bold",
                     },
+                    margin: { left: 10 },
+                    tableWidth: 190,
                 });
-                currentY = doc.lastAutoTable.finalY + 10;
+
+                currentY = doc.lastAutoTable.finalY;
+
+                let yaContinua = false;
 
                 doc.autoTable({
                     startY: currentY,
                     head: [
                         [
-                            "Sku",
-                            "Descripción",
-                            "Cantidad",
+                            "SKU",
+                            "DESCRIPCIÓN",
+                            "CANTIDAD",
                             "UM",
                             "PZ",
                             "PQ",
                             "INNER",
                             "MASTER",
-                            "Tarimas",
-                            "Atados",
-                            "Validar",
+                            "TARIMA",
+                            "ATADOS",
+                            "VALIDA",
                         ],
                     ],
-                    body: productosDeCaja.map((item) => [
+                    body: productos.map((item) => [
                         item.codigo_ped || "",
                         item.des || "",
                         item.cantidad || "",
@@ -2074,62 +2433,90 @@ function Tracking() {
                         item._master || 0,
                         item.tarimas || 0,
                         item.atados || 0,
+                        "",
                     ]),
                     theme: "grid",
+                    margin: { left: 10 },
+                    tableWidth: 190,
                     styles: {
-                        fontSize: 8,
+                        fontSize: 5.5,
                         halign: "center",
                         cellPadding: 2,
-                        lineColor: [0, 0, 0],
+                        lineColor: [200, 200, 200],
+                        lineWidth: 0.1,
+                    },
+                    columnStyles: {
+                        0: { cellWidth: 15 },
+                        1: { cellWidth: 70 },
+                        2: { cellWidth: 15 },
+                        3: { cellWidth: 10 },
+                        4: { cellWidth: 10 },
+                        5: { cellWidth: 10 },
+                        6: { cellWidth: 12 },
+                        7: { cellWidth: 12 },
+                        8: { cellWidth: 12 },
+                        9: { cellWidth: 12 },
+                        10: { cellWidth: 12 },
                     },
                     headStyles: {
-                        fontStyle: "time",
-                        textColor: [0, 0, 0], // Texto negro
-                        fillColor: [240, 240, 240], // Fondo gris claro para cabecera
-                        lineColor: [0, 0, 0], // Bordes negros
-                        lineWidth: 0.5,
+                        fillColor: [20, 20, 20],
+                        textColor: [255, 255, 255],
+                        fontSize: 5.5,
                     },
-                    bodyStyles: { halign: "center" },
+                    didDrawCell: function (data) {
+                        if (
+                            data.row.index === 0 &&
+                            data.section === "body" &&
+                            data.cursor.y < 30 && // Está en una nueva página
+                            !yaContinua
+                        ) {
+                            const text = `Continuación de la Caja ${numeroCajaSecuencial}`;
+                            doc.setFontSize(8);
+                            doc.text(text, 105, data.cursor.y - 6, { align: "center" });
+                            yaContinua = true;
+                        }
+                    },
                 });
-                currentY = doc.lastAutoTable.finalY + 10;
-            });
 
-            // Mostrar productos sin caja (igual)
+                currentY = doc.lastAutoTable.finalY + 4;
+                numeroCajaSecuencial++;
+            }
+
             if (productosSinCaja.length > 0) {
+                // Título principal
+                currentY = verificarEspacio(doc, currentY, 2);
                 doc.autoTable({
                     startY: currentY,
                     head: [["Productos sin caja"]],
                     body: [],
                     theme: "grid",
-                    styles: {
-                        halign: "center",
-                        fontSize: 10,
-                        cellPadding: 1,
-                        lineColor: [0, 0, 0],
-                    },
+                    styles: { halign: "center", fontSize: 9 },
+                    margin: { left: 10 },
+                    tableWidth: 190,
                     headStyles: {
-                        fontStyle: "time",
-                        textColor: [0, 0, 0], // Texto negro
-                        fillColor: [240, 240, 240], // Fondo gris claro para cabecera
-                        lineColor: [0, 0, 0], // Bordes negros
-                        lineWidth: 0.5,
+                        fillColor: [255, 255, 255],
+                        textColor: [0, 0, 0],
+                        fontStyle: "bold",
                     },
                 });
+                currentY = doc.lastAutoTable.finalY;
+
+                let yaContinua = false;
 
                 doc.autoTable({
-                    startY: doc.lastAutoTable.finalY + 10,
+                    startY: currentY,
                     head: [
                         [
-                            "Sku",
-                            "Descripción",
-                            "Cantidad",
+                            "SKU",
+                            "DESCRIPCIÓN",
+                            "CANTIDAD",
                             "UM",
-                            "Piezas",
+                            "PZ",
                             "INNER",
                             "MASTER",
-                            "Tarimas",
-                            "Atados",
-                            "Validar",
+                            "TARIMAS",
+                            "ATADOS",
+                            "VALIDAR",
                         ],
                     ],
                     body: productosSinCaja.map((item) => [
@@ -2142,106 +2529,213 @@ function Tracking() {
                         item._master || 0,
                         item.tarimas || 0,
                         item.atados || 0,
+                        "",
                     ]),
                     theme: "grid",
+                    margin: { left: 10 },
+                    tableWidth: 190,
                     styles: {
-                        fontSize: 8,
+                        fontSize: 5.5,
                         halign: "center",
-                        cellPadding: 1.5,
-                        lineColor: [0, 0, 0],
+                        cellPadding: 2,
+                        lineColor: [200, 200, 200],
+                        lineWidth: 0.1,
+                    },
+                    columnStyles: {
+                        0: { cellWidth: 15 },
+                        1: { cellWidth: 80 },
+                        2: { cellWidth: 15 },
+                        3: { cellWidth: 10 },
+                        4: { cellWidth: 10 },
+                        5: { cellWidth: 12 },
+                        6: { cellWidth: 12 },
+                        7: { cellWidth: 12 },
+                        8: { cellWidth: 12 },
+                        9: { cellWidth: 12 },
                     },
                     headStyles: {
-                        fontStyle: "time",
-                        textColor: [0, 0, 0], // Texto negro
-                        fillColor: [240, 240, 240], // Fondo gris claro para cabecera
-                        lineColor: [0, 0, 0], // Bordes negros
-                        lineWidth: 0.5,
+                        fillColor: [20, 20, 20],
+                        textColor: [255, 255, 255],
+                        fontSize: 5.5,
                     },
-                    bodyStyles: { halign: "center" },
+                    didDrawCell: function (data) {
+                        if (
+                            data.row.index === 0 &&
+                            data.section === "body" &&
+                            data.cursor.y < 30 &&
+                            !yaContinua
+                        ) {
+                            const text = "Continuación de productos sin caja";
+                            doc.setFontSize(8);
+                            doc.text(text, 105, data.cursor.y - 6, { align: "center" });
+                            yaContinua = true;
+                        }
+                    },
                 });
-                currentY = doc.lastAutoTable.finalY + 10;
-            } else {
-                doc.text("No hay productos sin cajas.", marginLeft, currentY);
-                currentY += 10;
+
+                currentY = doc.lastAutoTable.finalY + 4;
             }
 
-            // Obtener la altura de la página
-            const pageHeight = doc.internal.pageSize.height;
-            const marginBottom = 30; // Margen inferior deseado
+            currentY = doc.lastAutoTable.finalY + 5;
+            currentY = verificarEspacio(doc, currentY, 1);
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const tableWidth = 90;
+            const leftMargin = (pageWidth - tableWidth) / 2;
 
-            // Verificar si hay espacio suficiente antes de agregar las firmas y referencias bancarias
-            if (currentY + 60 > pageHeight - marginBottom) {
-                doc.addPage(); // Si no hay espacio suficiente, agregar una nueva página
-                currentY = 20; // Reiniciar la posición Y en la nueva página
-            }
-
-            // 📌 Agregar las firmas
-            const firmaY = currentY + 30;
-            const linea1InicioX = 20;
-            const linea1FinalX = 80;
-            doc.line(linea1InicioX, firmaY - 5, linea1FinalX, firmaY - 5);
-            const textoFirmaCliente = "Firma del Cliente";
-            const textoFirmaClienteX =
-                (linea1InicioX + linea1FinalX) / 2 -
-                doc.getTextWidth(textoFirmaCliente) / 2;
-            doc.text(textoFirmaCliente, textoFirmaClienteX, firmaY);
-
-            const linea2InicioX = 120;
-            const linea2FinalX = 180;
-            doc.line(linea2InicioX, firmaY - 5, linea2FinalX, firmaY - 5);
-            const textoFirmaTransportista = "Firma del Transportista";
-            const textoFirmaTransportistaX =
-                (linea2InicioX + linea2FinalX) / 2 -
-                doc.getTextWidth(textoFirmaTransportista) / 2;
-            doc.text(textoFirmaTransportista, textoFirmaTransportistaX, firmaY);
-
-            currentY += 50; // Mover la posición para la referencia bancaria
-
-            // 📌 Si no hay espacio para la referencia bancaria, agregar nueva página
-            if (currentY + 40 > pageHeight - marginBottom) {
-                doc.addPage();
-                currentY = 20; // Reiniciar Y en la nueva página
-            }
-
-            // 📌 Agregar la referencia bancaria
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(10);
-            doc.text("REFERENCIA BANCARIA:", marginLeft, currentY);
-            currentY += 6; // Espacio para los datos bancarios
-
-            const cuentas = [
-                [
-                    "BANAMEX",
-                    "Cuenta: 6860432",
-                    "Sucursal: 7006",
-                    "Clabe: 00218070068604325",
+            doc.autoTable({
+                startY: currentY,
+                head: [
+                    [
+                        {
+                            content: "DETALLES DEL PEDIDO",
+                            colSpan: 2,
+                            styles: {
+                                halign: "center",
+                                fillColor: [230, 230, 230],
+                                fontSize: 7,
+                            },
+                        },
+                        {
+                            content: pedido,
+                            styles: {
+                                halign: "center",
+                                fillColor: [200, 200, 200],
+                                fontSize: 9,
+                            },
+                        },
+                    ],
+                    [
+                        {
+                            content: "IMPORTE DEL PEDIDO\n(SIN IVA)",
+                            styles: { halign: "center", fontSize: 5 },
+                        },
+                        {
+                            content: "TOTAL A PAGAR\n(SIN IVA)",
+                            styles: { halign: "center", fontSize: 5 },
+                        },
+                        {
+                            content: "PORCENTAJE DE ENTREGA",
+                            styles: { halign: "center", fontSize: 5 },
+                        },
+                    ],
                 ],
-                [
-                    "BANORTE",
-                    "Cuenta: 0890771176",
-                    "Sucursal: 04",
-                    "Clabe: 072180008907711766",
+                body: [
+                    [
+                        `$${totalImporte.toFixed(2)}`,
+                        `$${totalImporte.toFixed(2)}`,
+                        "100.00 %",
+                    ],
                 ],
-                [
-                    "BANCOMER",
-                    "Cuenta: 0194242696",
-                    "Sucursal: 1838",
-                    "Clabe: 012580001942426961",
-                ],
-            ];
-
-            // 📌 Dibujar la referencia bancaria en columnas
-            cuentas.forEach((banco, index) => {
-                const startX = marginLeft + index * 65;
-                doc.text(banco[0], startX, currentY);
-                doc.text(banco[1], startX, currentY + 5);
-                doc.text(banco[2], startX, currentY + 10);
-                doc.text(banco[3], startX, currentY + 15);
+                theme: "grid",
+                styles: { fontSize: 8, halign: "center" },
+                margin: { left: leftMargin },
+                tableWidth: tableWidth,
+                headStyles: {
+                    fillColor: [245, 245, 245],
+                    textColor: [0, 0, 0],
+                    fontStyle: "bold",
+                    fontSize: 4.5,
+                },
             });
 
-            currentY += 25; // Espacio final
+            currentY = doc.lastAutoTable.finalY + 5;
+            currentY = verificarEspacio(doc, currentY, 1);
+            doc.autoTable({
+                startY: currentY,
+                body: [
+                    [
+                        {
+                            content:
+                                "Se confirma que las cajas, atados y/o tarimas listadas en esta lista de empaque fueron recibidas cerradas y en buen estado, y así serán entregadas al cliente. Cualquier anomalía se atenderá según lo establecido en el contrato",
+                            styles: { fontSize: 7, halign: "justify", textColor: [0, 0, 0] },
+                        },
+                        {
+                            content: "Firma del Transportista",
+                            styles: { fontSize: 7, halign: "center", fontStyle: "bold" },
+                        },
+                    ],
+                ],
+                theme: "grid",
+                styles: { cellPadding: 3, valign: "top" },
+                columnStyles: {
+                    0: { cellWidth: 150 },
+                    1: { cellWidth: 40 },
+                },
+                margin: { left: 10 },
+                tableWidth: 190,
+            });
 
-            // Guardar el PDF
+            currentY = doc.lastAutoTable.finalY + 0;
+
+            const instrucciones = [
+                "•Estimado cliente, nuestro transportista cuenta con ruta asignada por lo que agradeceríamos agilizar el tiempo de recepción de su mercancía, el material viaja consignado por lo que solo podrá entregarse en la dirección estipulada en este documento.",
+                "•Cualquier retraso en la recepción generan costos adicionales y pueden afectar la entrega a otros clientes. En casos repetitivos, podrían cancelarse beneficios como descuentos adicionales.",
+                "•El transportista solo entregará en planta baja o *nivel de calle*, si cuenta con alguna política especial de recepción, por favor solicita un esquema de entrega con tu Asesor de ventas.",
+                "•Si Ud. detecta alguna anomalía en el empaque, embalaje, atado de la mercancía, alguna diferencia vs las cajas embarcadas y/o que el transportista retiene mercancía de forma intencional repórtalo en el apartado de observaciones.",
+                "•El transportista no está autorizado a recibir mercancía, todo reporte de devolución, garantía,etc. deberá ser reportado a su asesor de ventas y aplicará de acuerdo a la Política vigente.",
+                "•Con la firma y/o sello en el presente documento, se da por recibida a entera conformidad la mercancía descrita y se acepta el monto a pagar aquí indicado.",
+            ];
+
+            const instruccionesTexto = instrucciones.join("\n");
+            currentY = verificarEspacio(doc, currentY, instrucciones.length);
+
+            doc.autoTable({
+                startY: currentY,
+                body: [[{ content: instruccionesTexto }]],
+                theme: "grid",
+                styles: {
+                    fontSize: 7,
+                    cellPadding: 3,
+                    valign: "top",
+                    textColor: [0, 0, 0],
+                },
+                columnStyles: { 0: { cellWidth: 190 } },
+                margin: { left: 10 },
+                tableWidth: 190,
+            });
+
+            currentY = doc.lastAutoTable.finalY + 0;
+
+            const letras = NumerosALetras(totalImporte);
+            const fechaActual = new Date();
+            const fechaHoy = fechaActual.toLocaleDateString("es-MX");
+            const fechaVence = new Date(
+                fechaActual.setMonth(fechaActual.getMonth() + 1)
+            ).toLocaleDateString("es-MX");
+
+            const textoPagare =
+                `En cualquier lugar de este documento donde se estampe la firma por este pagaré debo(emos) y pagaré(mos) ` +
+                `incondicionalmente a la vista y a la orden de SANTUL HERRAMIENTAS S.A. DE C.V., la cantidad de: $${totalImporte.toFixed(
+                    2
+                )} ` +
+                `(${letras} M.N.) En el total a pagar en Cuautitlán, Estado de México, o en la que SANTUL HERRAMIENTAS S.A. DE C.V., juzgue necesario. ` +
+                `Este documento causará intereses al 3% mensual si no se paga a su vencimiento. expide el ${fechaHoy}, vence el ${fechaVence}.`;
+
+            currentY = verificarEspacio(doc, currentY, 8);
+
+            doc.autoTable({
+                startY: currentY,
+                body: [[textoPagare, "Firma del Cliente"]],
+                theme: "grid",
+                styles: {
+                    fontSize: 7,
+                    cellPadding: 3,
+                    valign: "top",
+                    textColor: [0, 0, 0],
+                },
+                columnStyles: {
+                    0: { cellWidth: 150, fillColor: [240, 240, 240] },
+                    1: { cellWidth: 40, halign: "center", fontStyle: "bold" },
+                },
+                margin: { left: 10 },
+                tableWidth: 190,
+            });
+
+            currentY = doc.lastAutoTable.finalY + 0;
+            currentY = verificarEspacio(doc, currentY, 5);
+            doc.addImage(infoBancaria, "JPEG", 10, currentY, 190, 35);
+
+            addPageNumber(doc);
             doc.save(`PackingList_de_${pedido}.pdf`);
             alert(`PDF generado con éxito para el pedido ${pedido}`);
         } catch (error) {
@@ -2254,7 +2748,7 @@ function Tracking() {
         // console.log("Observaciones actuales:", observacionesPorRegistro);
     }, [observacionesPorRegistro, groupedData]);
 
-    const MAX_VISIBLE_ROUTES = 25;
+    const MAX_VISIBLE_ROUTES = 100;
 
     const removeRoute = (route) => {
         setGroupedData((prevData) => {
@@ -2311,11 +2805,10 @@ function Tracking() {
     };
 
     const openDirectaModal = (data) => {
-        // console.log("Datos en openDirectaModal:", data); // Verifica que el valor correcto se muestre aquí
+        console.log("🔍 Datos recibidos en openDirectaModal:", data);
 
         setSelectedDirectaData(data);
-
-        setGuia(data.GUIA); // Asegurar que no esté vacío
+        setGuia(data.GUIA || "");
         setSelectedNoOrden(data["NO ORDEN"] || "");
         setFecha(data.FECHA || "");
         setNumCliente(data["NUM CLIENTE"] || "");
@@ -2328,7 +2821,7 @@ function Tracking() {
         setPiezas(data.PIEZAS || "");
         setZona(data.ZONA || "");
         setTipoZona(data["TIPO DE ZONA"] || "");
-        setNoFactura(data.noFactura);
+        setNoFactura(data.NO_FACTURA || "");
         setDiaEnRuta(data["DIA EN QUE ESTA EN RUTA"] || "");
         setCajas(data.CAJAS || "");
         setTransporte(data.TRANSPORTE || "");
@@ -2339,30 +2832,63 @@ function Tracking() {
         );
         setMotivo(data.MOTIVO || "");
         setDiferencia(data.DIFERENCIA || "");
+        setTipo(data.TIPO || "");
 
-        setNoFactura(data["NO_FACTURA"] || "");
         setFechaEmbarque(
             data["FECHA_DE_EMBARQUE"]
                 ? new Date(data["FECHA_DE_EMBARQUE"]).toISOString().split("T")[0]
                 : ""
         );
-        setFechaEntregaCliente(
-            data["FECHA_DE_ENTREGA (CLIENTE)"]
-                ? new Date(data["FECHA_DE_ENTREGA (CLIENTE)"])
-                    .toISOString()
-                    .split("T")[0]
-                : ""
+
+        setFechaEntregaCliente(parseFechaEntrega(data["FECHA_DE_ENTREGA_CLIENTE"]));
+
+        setFechaFactura(
+            data.FECHA_DE_FACTURA ? data.FECHA_DE_FACTURA.split(" ")[0] : ""
         );
-        setFechaEstimadaCliente(
-            data["FECHA_DE_ENTREGA (CLIENTE)"]
-                ? new Date(data["FECHA_DE_ENTREGA (CLIENTE)"])
-                    .toISOString()
-                    .split("T")[0]
-                : ""
-        );
+
         setTipo(data.TIPO || "");
 
+        console.log("📌 Estado después de setState:");
+        console.log({
+            guia,
+            selectedNoOrden,
+            fecha,
+            numCliente,
+            nombreCliente,
+            municipio,
+            estado,
+            observaciones,
+            total,
+            partidas,
+            piezas,
+            zona,
+            tipoZona,
+            noFactura,
+            diaEnRuta,
+            cajas,
+            transporte,
+            paqueteria,
+            diasEntrega,
+            entregaSatisfactoria,
+            motivo,
+            diferencia,
+            fechaEmbarque,
+            fechaEntregaCliente,
+            fechaEstimadaCliente,
+            tipo,
+        });
+
         setDirectaModalOpen(true);
+    };
+
+    const parseFechaEntrega = (valor) => {
+        if (!valor) return "";
+        if (typeof valor === "string" && valor.includes("/")) {
+            const [dia, mes, anio] = valor.split("/");
+            return `${anio}-${mes.padStart(2, "0")}-${dia.padStart(2, "0")}`;
+        }
+        const fecha = new Date(valor);
+        return isNaN(fecha) ? "" : fecha.toISOString().split("T")[0];
     };
 
     const closeDirectaModal = () => {
@@ -2564,30 +3090,6 @@ function Tracking() {
 
     useEffect(() => { }, [observacionesPorRegistro, groupedData]);
 
-    const moveRowUp = (route, index) => {
-        setGroupedData((prevData) => {
-            const updatedRoute = { ...prevData[route] };
-            if (index > 0) {
-                const temp = updatedRoute.rows[index - 1];
-                updatedRoute.rows[index - 1] = updatedRoute.rows[index];
-                updatedRoute.rows[index] = temp;
-            }
-            return { ...prevData, [route]: updatedRoute };
-        });
-    };
-
-    const moveRowDown = (route, index) => {
-        setGroupedData((prevData) => {
-            const updatedRoute = { ...prevData[route] };
-            if (index < updatedRoute.rows.length - 1) {
-                const temp = updatedRoute.rows[index + 1];
-                updatedRoute.rows[index + 1] = updatedRoute.rows[index];
-                updatedRoute.rows[index] = temp;
-            }
-            return { ...prevData, [route]: updatedRoute };
-        });
-    };
-
     const getTransportUrl = (transport) => {
         const cleanedTransport = transport
             ?.trim()
@@ -2617,7 +3119,8 @@ function Tracking() {
         "FLECHISA",
         "FEDEX",
         "PITIC",
-    ]); // Opciones iniciales
+    ]);
+
     const [inputValue, setInputValue] = useState("");
 
     const transportUrl = getTransportUrl(transporte);
@@ -2812,20 +3315,34 @@ function Tracking() {
             .includes(searchTerm.toLowerCase())
     );
 
+    const [paqueteriaSeleccionada, setPaqueteriaSeleccionada] = useState(""); // 🔥 Estado para filtrar
+
+    const handlePaqueteriaChange = (event) => {
+        setPaqueteriaSeleccionada(event.target.value);
+    };
+
+    const [estatusSeleccionado, setEstatusSeleccionado] = useState(""); // Estatus vacío por defecto
+
+    // Función para manejar el cambio del filtro de estatus
+    const handleEstatusChange = (event) => {
+        setEstatusSeleccionado(event.target.value);
+    };
+
+    const [mostrarSinGuia, setMostrarSinGuia] = useState(false);
+
     const [filtroGeneral, setFiltroGeneral] = useState(""); // para No Orden y Num Cliente
     const [filtroEstado, setFiltroEstado] = useState(""); // separado
-    const [paqueteriaSeleccionada, setPaqueteriaSeleccionada] = useState(""); // 🔥 Estado para filtrar
-    const [estatusSeleccionado, setEstatusSeleccionado] = useState(""); // Estatus vacío por defecto
-    const [mostrarSinGuia, setMostrarSinGuia] = useState(false);
-    const [facturaSeleccionada, setFacturaSeleccionada] = useState(""); // Filtro por factura
-    const [fechaEntregaSeleccionada, setFechaEntregaSeleccionada] = useState(""); // Filtro por fecha
+
+    const toggleMostrarSinGuia = () => {
+        setMostrarSinGuia((prev) => !prev);
+    };
 
     const paqueteriaFiltrada = useMemo(() => {
         return paqueteriaData.filter((routeData) => {
             const coincideGeneral =
                 !filtroGeneral ||
                 routeData["NO ORDEN"]?.toString().includes(filtroGeneral) ||
-                routeData["NOMBRE DEL CLIENTE"]
+                routeData["NUM. CLIENTE"]
                     ?.toString()
                     .toLowerCase()
                     .includes(filtroGeneral.toLowerCase());
@@ -2861,11 +3378,38 @@ function Tracking() {
         mostrarSinGuia,
     ]);
 
+    const [facturaSeleccionada, setFacturaSeleccionada] = useState(""); // Filtro por factura
+    const [fechaEntregaSeleccionada, setFechaEntregaSeleccionada] = useState(""); // Filtro por fecha
+
+    // Manejo de cambios en los filtros
+    const handleFacturaChange = (event) => {
+        setFacturaSeleccionada(event.target.value);
+    };
+
+    // 🔹 Función para convertir fecha de DD/MM/YYYY a YYYY-MM-DD
+    const formatDateToYYYYMMDD = (fecha) => {
+        if (!fecha) return "";
+        const partes = fecha.split("/"); // Divide por "/"
+        if (partes.length === 3) {
+            return `${partes[2]}-${partes[1].padStart(2, "0")}-${partes[0].padStart(
+                2,
+                "0"
+            )}`;
+        }
+        return fecha; // Si ya está en otro formato, se deja igual
+    };
+
+    // Manejo del cambio en la fecha
+    const handleFechaEntregaChange = (event) => {
+        setFechaEntregaSeleccionada(event.target.value); // Se guarda tal cual el usuario la escribe
+    };
+
+    // Filtrar los datos de "directaData"
     const directaFiltrada = useMemo(() => {
         return directaData.filter((item) => {
             const cumpleGeneral =
                 !filtroGeneral ||
-                item["NOMBRE DEL CLIENTE"]
+                item["NUM. CLIENTE"]
                     ?.toLowerCase()
                     .includes(filtroGeneral.toLowerCase()) ||
                 item["NO ORDEN"]?.toString().includes(filtroGeneral);
@@ -2897,7 +3441,7 @@ function Tracking() {
         return ventaEmpleadoData.filter((item) => {
             const cumpleGeneral =
                 !filtroGeneral ||
-                item["NOMBRE DEL CLIENTE"]
+                item["NUM. CLIENTE"]
                     ?.toLowerCase()
                     .includes(filtroGeneral.toLowerCase()) ||
                 item["NO ORDEN"]?.toString().includes(filtroGeneral);
@@ -2910,24 +3454,49 @@ function Tracking() {
         });
     }, [filtroGeneral, filtroEstado, ventaEmpleadoData]);
 
-    const calcularDiasEntrega = (fechaEstimada) => {
-        if (!fechaEstimada) return;
 
-        const fechaActual = new Date(); // 📆 Fecha actual
-        const fechaEntrega = new Date(fechaEstimada); // 📆 Fecha estimada ingresada
-        let diasHabiles = 0;
 
-        while (fechaActual < fechaEntrega) {
-            fechaActual.setDate(fechaActual.getDate() + 1); // 🔄 Avanza un día
+    const calcularDiasEntrega = (fechaInicio, fechaFin) => {
+        if (!fechaInicio || !fechaFin) return 0;
 
-            // 🔹 Si el día NO es sábado (6) ni domingo (0), lo cuenta
-            if (fechaActual.getDay() !== 6 && fechaActual.getDay() !== 0) {
-                diasHabiles++;
+        let startDate = new Date(fechaInicio);
+        startDate.setDate(startDate.getDate() + 1); // 🔥 SUMA UN DÍA MÁS
+
+        let endDate = new Date(fechaFin);
+        let count = 0;
+
+        while (startDate < endDate) {
+            const day = startDate.getDay();
+            if (day !== 0 && day !== 6) {
+                // Solo contar lunes a viernes (evitar sábado y domingo)
+                count++;
             }
+            startDate.setDate(startDate.getDate() + 1); // Avanza un día
         }
 
-        setDiasEntrega(diasHabiles); // 🔥 Actualiza el estado
+        return count;
     };
+
+    const PaqueteriaAutocomplete = ({
+        visibleColumns,
+        paqueteria,
+        setPaqueteria,
+    }) => {
+        const [options, setOptions] = useState([
+            "EXPRESS",
+            "TRESGUERRAS",
+            "FLECHISA",
+            "FEDEX",
+            "PITIC",
+        ]);
+    };
+
+    useEffect(() => {
+        if (fecha && fechaEntregaCliente) {
+            const dias = calcularDiasEntrega(fecha, fechaEntregaCliente);
+            setDiasEntrega(dias);
+        }
+    }, [fecha, fechaEntregaCliente]);
 
     const [modalObservaciones, setModalObservaciones] = useState({});
     const [editingObservationId, setEditingObservationId] = useState(null);
@@ -3040,7 +3609,7 @@ function Tracking() {
     const [file, setFile] = useState(null);
     const [uploading, setUploading] = useState(false);
     const [uploadMessage, setUploadMessage] = useState("");
-    const [updatedOrders, setUpdatedOrders] = useState([]); // Para mostrar órdenes actualizadas
+    const [updatedOrders, setUpdatedOrders] = useState([]);
 
     const updateFacturas = async () => {
         if (!file) {
@@ -3070,10 +3639,9 @@ function Tracking() {
                 const updatedOrders = data.updatedOrders || []; // Asegurar que es un array
 
                 setUploadMessage(
-                    `✅ Archivo subido correctamente. Se actualizaron ${updatedOrders.length} órdenes.`
+                    `✅ Archivo subido correctamente. Se actualizaron las NO ORDEN.`
                 );
                 setUpdatedOrders(updatedOrders); // Guardar la lista de órdenes actualizadas
-                alert("Archivo subido correctamente.");
                 fetchPaqueteriaRoutes(); // Recargar datos después de la actualización
             } else {
                 setUploadMessage(`❌ Error: ${data.message}`);
@@ -3088,20 +3656,933 @@ function Tracking() {
         }
     };
 
+    //porrateo va aui
+
+    const [modalGuiaOpen, setModalGuiaOpen] = useState(false);
+    const [pedidos, setPedidos] = useState([]);
+
+    const [sumaTotalPedidos, setSumaTotalPedidos] = useState(0);
+    const [porcentajeRelacion, setPorcentajeRelacion] = useState(0);
+
+    const buscarPedidosPorGuia = async () => {
+        try {
+            if (!guia && !numeroFacturaLT) {
+                alert("⚠ Debes ingresar una guía o un número de factura LT.");
+                return;
+            }
+
+            const guiaNormalizada = guia ? guia.trim().toUpperCase() : "";
+            const facturaNormalizada = numeroFacturaLT
+                ? numeroFacturaLT.trim().toUpperCase()
+                : "";
+
+            const queryParams = new URLSearchParams();
+            if (guiaNormalizada) queryParams.append("guia", guiaNormalizada);
+            if (facturaNormalizada)
+                queryParams.append("numeroFacturaLT", facturaNormalizada);
+
+            const response = await fetch(
+                `http://localhost:3007/api/Ventas/rutas?${queryParams.toString()}`
+            );
+            const data = await response.json();
+
+            console.log("🧪 DATA recibida:", data); // ✅ DEBUG VISUAL
+
+            if (Array.isArray(data) && data.length > 0) {
+                setPedidos(data);
+                const sumaTotal = data.reduce((sum, pedido) => {
+                    const totalLimpio = parseFloat(
+                        String(pedido.TOTAL).replace(/[^0-9.-]+/g, "")
+                    );
+                    return sum + (isNaN(totalLimpio) ? 0 : totalLimpio);
+                }, 0);
+
+                setSumaTotalPedidos(sumaTotal);
+                if (totalFacturaLT > 0) {
+                    setPorcentajeRelacion((sumaTotal / totalFacturaLT) * 100);
+                } else {
+                    setPorcentajeRelacion(0);
+                }
+            } else {
+                alert("⚠ No se encontraron pedidos con los datos ingresados.");
+                setPedidos([]);
+                setSumaTotalPedidos(0);
+                setPorcentajeRelacion(0);
+            }
+        } catch (error) {
+            console.error("❌ Error al buscar pedidos:", error);
+            alert("❌ Hubo un error al buscar los pedidos.");
+        }
+    };
+
+    const handleTotalFacturaLTChange = (e) => {
+        const value = parseFloat(e.target.value) || 0;
+        setTotalFacturaLT(value);
+
+        const sumaTotal = pedidos.reduce((sum, pedido) => {
+            const total = parseFloat(String(pedido.TOTAL).replace(/[^0-9.-]+/g, ""));
+            return sum + (isNaN(total) ? 0 : total);
+        }, 0);
+
+        setSumaTotalPedidos(sumaTotal);
+
+        const nuevosPedidos = pedidos.map((pedido) => {
+            const totalPedido =
+                parseFloat(String(pedido.TOTAL).replace(/[^0-9.-]+/g, "")) || 0;
+
+            // Calcular el porcentaje prorrateado del total
+            const porcentaje = sumaTotal > 0 ? totalPedido / sumaTotal : 0;
+
+            // Calcular el valor proporcional para el prorrateo
+            const prorrateoFacturaLT = porcentaje * value;
+
+            // Calcular valores iniciales (sin gastos)
+            const sumaFlete = prorrateoFacturaLT; // Se duplica solo si no hay gastos luego
+            const porcentajePaqueteria =
+                totalPedido > 0 ? (prorrateoFacturaLT / totalPedido) * 100 : 0;
+
+            return {
+                ...pedido,
+                prorrateoFacturaLT: prorrateoFacturaLT.toFixed(2),
+                gastosExtras: 0,
+                sumaFlete: sumaFlete.toFixed(2),
+                porcentajeEnvio: "", // Se actualizará después con gastos
+                porcentajePaqueteria: porcentajePaqueteria.toFixed(2) + " %",
+                porcentajeGlobal: "",
+            };
+        });
+
+        setPedidos(nuevosPedidos);
+    };
+
+    const handleGastosExtrasChange = (index, value) => {
+        const nuevosPedidos = [...pedidos];
+        const pedido = nuevosPedidos[index];
+
+        const gastosExtras = parseFloat(value) || 0;
+        const prorrateo = parseFloat(pedido.prorrateoFacturaLT) || 0;
+        const totalPedido =
+            parseFloat(String(pedido.TOTAL).replace(/[^0-9.-]+/g, "")) || 0;
+
+        pedido.gastosExtras = gastosExtras;
+
+        // Calcular suma flete
+        const sumaFlete = gastosExtras > 0 ? prorrateo + gastosExtras : prorrateo;
+        pedido.sumaFlete = sumaFlete.toFixed(2);
+
+        // % Envío = prorrateo / total pedido
+        const porcentajeEnvio =
+            totalPedido > 0 ? (prorrateo / totalPedido) * 100 : 0;
+        pedido.porcentajeEnvio = porcentajeEnvio.toFixed(2) + " %";
+
+        // % Global = (suma flete + gastos) / total pedido
+        const porcentajeGlobal =
+            totalPedido > 0 ? (sumaFlete / totalPedido) * 100 : 0;
+        pedido.porcentajeGlobal = porcentajeGlobal.toFixed(2) + " %";
+
+        setPedidos(nuevosPedidos);
+    };
+
+    const guardarPorGuia = async () => {
+        if (!guia || guia.trim() === "") {
+            alert("❌ Faltan datos: El número de guía es obligatorio.");
+            return;
+        }
+
+        // Modificación del bloque datosAGuardar dentro de guardarPorGuia
+
+        const datosAGuardar = {
+            numeroFacturaLT,
+            totalFacturaLT,
+            pedidos: pedidos.map((pedido) => ({
+                noOrden: pedido["NO ORDEN"],
+                numeroFacturaLT, // ✅ Aquí lo agregamos dentro de cada pedido
+                prorrateoFacturaLT: parseFloat(pedido.prorrateoFacturaLT) || 0,
+                prorrateoFacturaPaqueteria: 0,
+                sumaFlete: parseFloat(pedido.sumaFlete) || 0,
+                gastosExtras: parseFloat(pedido.gastosExtras) || 0,
+                porcentajeEnvio:
+                    parseFloat(
+                        typeof pedido.porcentajeEnvio === "string"
+                            ? pedido.porcentajeEnvio.replace(" %", "")
+                            : pedido.porcentajeEnvio
+                    ) || 0,
+                porcentajePaqueteria:
+                    parseFloat(
+                        typeof pedido.porcentajePaqueteria === "string"
+                            ? pedido.porcentajePaqueteria.replace(" %", "")
+                            : pedido.porcentajePaqueteria
+                    ) || 0,
+                porcentajeGlobal:
+                    parseFloat(
+                        typeof pedido.porcentajeGlobal === "string"
+                            ? pedido.porcentajeGlobal.replace(" %", "")
+                            : pedido.porcentajeGlobal
+                    ) || 0,
+            })),
+        };
+
+        console.log("📤 Enviando datos a la API:", datosAGuardar);
+
+        try {
+            const response = await fetch(
+                `http://localhost:3007/api/Ventas/actualizar-por-guia/${guia}`,
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(datosAGuardar),
+                }
+            );
+
+            const resultado = await response.json();
+            if (response.ok) {
+                alert("✅ Datos guardados correctamente.");
+                handleCloseModalGuia(); // Cierra el modal después de guardar
+            } else {
+                alert("❌ Error al guardar: " + resultado.message);
+            }
+        } catch (error) {
+            console.error("❌ Error en la solicitud:", error);
+            alert("❌ Error al conectar con el servidor.");
+        }
+    };
+
+    const limpiarPorcentaje = (valor) => {
+        if (typeof valor === "string") {
+            return parseFloat(valor.replace(" %", "")) || 0;
+        }
+        return typeof valor === "number" ? valor : 0;
+    };
+
+    const handleOpenModalGuia = () => {
+        setModalGuiaOpen(true);
+    };
+
+    const handleCloseModalGuia = () => {
+        setModalGuiaOpen(false);
+    };
+
+    //sincronisar rutas y toda la informacion
+
+    const [loadingSync, setLoadingSync] = useState(false);
+
+    const [pedidosDeBDOpen, setPedidosDeBDOpen] = useState(false);
+    const [rutasConPedidos, setRutasConPedidos] = useState([]);
+    const [selectedRuta, setSelectedRuta] = useState(null);
+    const [lastSync, setLastSync] = useState(null);
+
+    const syncRoutesToDB = async () => {
+        if (loadingSync) return; // ✅ Evita que se ejecute si ya está en proceso
+
+        setLoadingSync(true);
+        let rutasMap = {};
+
+        try {
+            console.log("🔄 Iniciando sincronización automática...");
+
+            const rutasArray = Object.keys(groupedData || {});
+
+            if (rutasArray.length === 0) {
+                console.warn("⚠️ No hay rutas para sincronizar.");
+                setLoadingSync(false);
+                return;
+            }
+
+            for (const route of rutasArray) {
+                try {
+                    const response = await axios.post(
+                        "http://localhost:3007/api/Ventas/rutas",
+                        {
+                            nombre: route,
+                        }
+                    );
+
+                    console.log("✅ Ruta sincronizada:", response.data);
+                    rutasMap[route] = response.data.ruta_id;
+                } catch (error) {
+                    console.error(`❌ Error al sincronizar la ruta ${route}:`, error);
+                }
+            }
+
+            for (const route of rutasArray) {
+                const pedidos = groupedData[route]?.rows || [];
+
+                if (pedidos.length === 0) {
+                    console.log(`🔹 No hay pedidos para la ruta ${route}, omitiendo...`);
+                    continue;
+                }
+
+                console.log(
+                    `📤 Enviando ${pedidos.length} pedidos para la ruta ${route}`
+                );
+
+                for (const pedido of pedidos) {
+                    const mappedPedido = {
+                        ruta_id: rutasMap[route],
+                        no_orden: pedido["NO ORDEN"],
+                        num_cliente: pedido["NUM. CLIENTE"],
+                        nombre_cliente: pedido["NOMBRE DEL CLIENTE"],
+                        municipio: pedido["MUNICIPIO"],
+                        estado: pedido["ESTADO"],
+                        total: pedido["TOTAL"],
+                        partidas: pedido["PARTIDAS"],
+                        piezas: pedido["PIEZAS"],
+                        fecha_emision: parseFechaEmision(pedido["FECHA"]),
+                        observaciones: pedido["OBSERVACIONES"] || "Sin observaciones",
+                        tipo: pedido["TIPO ORIGINAL"] || "", // 👈 esta es la línea clave
+                    };
+
+                    console.log("📤 Enviando pedido a la API:", mappedPedido);
+
+                    try {
+                        const response = await axios.post(
+                            "http://localhost:3007/api/Ventas/rutas/pedidos",
+                            mappedPedido
+                        );
+                        console.log("✅ Pedido sincronizado:", response.data);
+                    } catch (error) {
+                        console.error("❌ Error al sincronizar pedido:", error);
+                    }
+                }
+            }
+
+            console.log("✅ Rutas y pedidos sincronizados con éxito.");
+            setLastSync(new Date().toLocaleTimeString()); // ✅ Guardar la hora de la última sincronización
+        } catch (error) {
+            console.error("❌ Error al sincronizar rutas y pedidos:", error);
+        }
+
+        setLoadingSync(false);
+    };
+
+    const parseFechaEmision = (fecha) => {
+        if (!fecha) return null;
+
+        const parsed = new Date(fecha);
+        if (isNaN(parsed)) return null;
+
+        const year = parsed.getFullYear();
+        const month = String(parsed.getMonth() + 1).padStart(2, "0");
+        const day = String(parsed.getDate()).padStart(2, "0");
+
+        return `${year}-${month}-${day}`;
+    };
+
+    const getTotalRuta = (ruta) => {
+        if (!ruta?.pedidos || ruta.pedidos.length === 0) return 0;
+        return ruta.pedidos.reduce(
+            (acc, pedido) => acc + (Number(pedido.total) || 0),
+            0
+        );
+    };
+
+    useEffect(() => {
+        syncRoutesToDB(); // ✅ Se ejecuta una vez al inicio
+
+        const interval = setInterval(() => {
+            console.log("⏳ Ejecutando sincronización automática...");
+            syncRoutesToDB();
+        }, 5 * 60 * 1000); // 🔹 5 minutos en milisegundos
+
+        return () => clearInterval(interval); // 🔹 Limpia el intervalo al desmontar el componente
+    }, []);
+
+    const fetchRutasConPedidos = async () => {
+        try {
+            const response = await axios.get(
+                "http://localhost:3007/api/Ventas/Rutasconpedido"
+            );
+            console.log("✅ Rutas obtenidas:", response.data);
+            setRutasConPedidos(response.data);
+        } catch (error) {
+            console.error("❌ Error al obtener rutas y pedidos:", error);
+        }
+    };
+
+    useEffect(() => {
+        fetchRutasConPedidos();
+    }, []);
+
+    //mostrar en diferentes maquinas
+
+    const openPedidosDeBDModal = async (ruta) => {
+        const pedidos = ruta.pedidos || [];
+        const ordenes = pedidos.map((p) => String(p.no_orden));
+
+        try {
+            const response = await axios.post(
+                `http://localhost:3007/api/Ventas/status`,
+                { orderNumbers: ordenes }
+            );
+
+            const statusMap = response.data;
+            console.log("✅ StatusMap directo:", statusMap);
+
+            const pedidosActualizados = pedidos.map((pedido) => {
+                const match = statusMap[pedido.no_orden];
+                return {
+                    ...pedido,
+                    statusText: match?.statusText || "Sin status",
+                    color: match?.color || "#000000",
+                    fusionWith: match?.fusionWith || null,
+                };
+            });
+
+            // ✅ Actualizar la ruta seleccionada (modal)
+            setSelectedRuta({
+                ...ruta,
+                pedidos: pedidosActualizados,
+            });
+
+            // ✅ Actualizar también la ruta dentro de rutasConPedidos para que los statusText estén en las tarjetas
+            setRutasConPedidos((prev) =>
+                prev.map((r) =>
+                    r.id === ruta.id
+                        ? {
+                            ...r,
+                            pedidos: pedidosActualizados,
+                        }
+                        : r
+                )
+            );
+        } catch (error) {
+            console.error("❌ Error al consultar estados antes del modal:", error);
+        }
+    };
+
+    const closePedidosDeBDModal = () => {
+        setSelectedRuta(null);
+    };
+
+    const getStatusCountForRuta = (pedidos = []) => {
+        const statusCounts = {
+            "Por Asignar": 0,
+            Surtiendo: 0,
+            Embarcando: 0,
+            "Pedido Finalizado": 0,
+            Otro: 0,
+        };
+
+        pedidos.forEach((pedido) => {
+            const status = (pedido.statusText || "").trim();
+
+            switch (status) {
+                case "Por Asignar":
+                    statusCounts["Por Asignar"]++;
+                    break;
+                case "Surtiendo":
+                    statusCounts.Surtiendo++;
+                    break;
+                case "Embarcando":
+                    statusCounts.Embarcando++;
+                    break;
+                case "Pedido Finalizado":
+                    statusCounts["Pedido Finalizado"]++;
+                    break;
+                case "Sin coincidencia de tipo":
+                    console.warn("🚫 Pedido sin coincidencia de tipo:", pedido.no_orden);
+                    break;
+                default:
+                    statusCounts.Otro++;
+            }
+        });
+
+        return statusCounts;
+    };
+
+    //calculo del dia
+
+    const [resumen, setResumen] = useState(null);
+
+    useEffect(() => {
+        const fetchResumenDelDia = async () => {
+            try {
+                const response = await axios.get(
+                    "http://localhost:3007/api/Ventas/resumen-dia"
+                );
+                setResumen(response.data);
+            } catch (error) {
+                console.error("Error al obtener el resumen del día:", error);
+            }
+        };
+
+        fetchResumenDelDia();
+    }, []);
+
+    //Funcionamiento para poder mover los pedidos
+
+    const moverPedido = (ruta, index, direccion) => {
+        setGroupedData((prev) => {
+            const nuevaRuta = { ...prev[ruta] };
+            const items = [...nuevaRuta.rows];
+
+            if (direccion === "arriba" && index > 0) {
+                [items[index - 1], items[index]] = [items[index], items[index - 1]];
+            }
+
+            if (direccion === "abajo" && index < items.length - 1) {
+                [items[index], items[index + 1]] = [items[index + 1], items[index]];
+            }
+
+            return {
+                ...prev,
+                [ruta]: {
+                    ...nuevaRuta,
+                    rows: items,
+                },
+            };
+        });
+    };
+
+    //AGREGAR MASIVAMENTE A UNA RUTA VARIOS PEDIDOS
+
+    const [selectedOrders, setSelectedOrders] = useState([]);
+    const [selectedMassRoute, setSelectedMassRoute] = useState("");
+
+    const handleToggleOrderSelection = (pedido) => {
+        setSelectedOrders((prev) => {
+            const already = prev.includes(pedido["NO ORDEN"]);
+            return already
+                ? prev.filter((id) => id !== pedido["NO ORDEN"])
+                : [...prev, pedido["NO ORDEN"]];
+        });
+    };
+
+    const handleAssignMultipleToRoute = () => {
+        if (!selectedMassRoute) {
+            alert("Selecciona una ruta antes de continuar.");
+            return;
+        }
+
+        const pedidosSeleccionados = data.filter((row) =>
+            selectedOrders.includes(row["NO ORDEN"])
+        );
+
+        pedidosSeleccionados.forEach((pedido) => {
+            assignToRoute(pedido, selectedMassRoute); // ✅ Usa la función existente
+        });
+
+        // Limpiar selección
+        setSelectedOrders([]);
+        setSelectedMassRoute("");
+    };
+
+    const handleBuscarPorOrden = () => {
+        const noOrdenBuscado = filterOrderValue.trim();
+        if (!noOrdenBuscado) return;
+
+        let rutaEncontrada = null;
+
+        for (const ruta in groupedData) {
+            const contieneOrden = groupedData[ruta].rows.some(
+                (row) => String(row["NO ORDEN"]) === noOrdenBuscado
+            );
+
+            if (contieneOrden) {
+                rutaEncontrada = ruta;
+                break;
+            }
+        }
+
+        if (rutaEncontrada) {
+            openModal(rutaEncontrada); // 👈 ya tienes esta función para abrir ruta
+            setHighlightedRow(noOrdenBuscado); // (opcional) para resaltar visualmente
+        } else {
+            alert("No se encontró el número de orden en ninguna ruta.");
+        }
+    };
+
+    //ocultar las rutas
+    const [hiddenRoutes, setHiddenRoutes] = useState(() => {
+        const saved = localStorage.getItem("hiddenRoutes");
+        return saved ? JSON.parse(saved) : [];
+    });
+
+    useEffect(() => {
+        localStorage.setItem("hiddenRoutes", JSON.stringify(hiddenRoutes));
+    }, [hiddenRoutes]);
+
+    useEffect(() => {
+        const storedHidden = localStorage.getItem("hiddenRoutes");
+        if (storedHidden) {
+            setHiddenRoutes(JSON.parse(storedHidden));
+        }
+    }, []);
+
+    useEffect(() => {
+        localStorage.setItem("hiddenRoutes", JSON.stringify(hiddenRoutes));
+    }, [hiddenRoutes]);
+
+    //actualizar las guias de directas
+
+    const [bulkGuiaModalOpen, setBulkGuiaModalOpen] = useState(false);
+    const [bulkNoOrdenes, setBulkNoOrdenes] = useState("");
+    const [bulkGuiaValue, setBulkGuiaValue] = useState("");
+    const [bulkTransporteValue, setBulkTransporteValue] = useState("");
+    const [bulkPaqueteriaValue, setBulkPaqueteriaValue] = useState("");
+
+    const [bulkTransportePaqueteriaValue, setBulkTransportePaqueteriaValue] =
+        useState("");
+
+    const handleBulkGuiaUpdate = async () => {
+        if (!bulkGuiaValue || !bulkNoOrdenes || !bulkTransportePaqueteriaValue) {
+            alert(
+                "Por favor ingresa los pedidos, la guía y el transporte/paquetería."
+            );
+            return;
+        }
+
+        const ordenes = bulkNoOrdenes
+            .split(",")
+            .map((o) => o.trim())
+            .filter((o) => o !== "");
+
+        const errores = [];
+
+        for (const orden of ordenes) {
+            try {
+                const response = await fetch(
+                    `http://localhost:3007/api/Ventas/actualizar-guia-completa/${orden}`, // 🔥 nueva ruta aquí
+                    {
+                        method: "PUT",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                            guia: bulkGuiaValue, // Lo que capturaste en "Guía"
+                            transporte: bulkTransportePaqueteriaValue, // Lo que capturaste en "Transporte/Paquetería"
+                            paqueteria: bulkTransportePaqueteriaValue, // Igual aquí
+                        }),
+                    }
+                );
+
+                if (!response.ok) {
+                    const data = await response.json();
+                    errores.push(`Pedido ${orden}: ${data.message}`);
+                }
+            } catch (err) {
+                errores.push(`Pedido ${orden}: Error de red`);
+            }
+        }
+
+        if (errores.length > 0) {
+            alert("❌ Errores al actualizar:\n" + errores.join("\n"));
+        } else {
+            alert("✅ Actualización exitosa en todos los pedidos.");
+            fetchPaqueteriaRoutes(); // 🔄 Refresca tu tabla
+        }
+
+        // 🔹 Limpia todo
+        setBulkGuiaModalOpen(false);
+        setBulkNoOrdenes("");
+        setBulkGuiaValue("");
+        setBulkTransportePaqueteriaValue("");
+    };
+
     //filtar por mes
 
     const [mesSeleccionado, setMesSeleccionado] = useState("");
 
-    const handleFiltrarMes = () => {
-        fetchPaqueteriaRoutes({ mes: mesSeleccionado });
+    useEffect(() => {
+        fetchPaqueteriaRoutes(); // Al inicio carga últimos 3 días por defecto
+    }, []);
+
+    const handleChangeMes = (e) => {
+        const nuevoMes = e.target.value;
+        setMesSeleccionado(nuevoMes);
+        fetchPaqueteriaRoutes({ mes: nuevoMes });
+    };
+
+    // mandar correo
+
+    const handleEnviarCorreo = async (noOrden) => {
+        try {
+            const response = await axios.post(
+                "http://localhost:3007/api/Ventas/enviar",
+                {
+                    noOrden,
+                }
+            );
+
+            if (response.data.success) {
+                alert(`✅ Correo enviado para la orden ${noOrden}`);
+            } else {
+                alert(`⚠️ Error: ${response.data.message}`);
+            }
+        } catch (error) {
+            console.error("❌ Error al enviar correo:", error);
+            alert("❌ No se pudo enviar el correo.");
+        }
+    };
+
+    // calcular por status
+
+    const [conteoEstatus, setConteoEstatus] = useState({});
+
+    const ordenEstatus = [
+        "Por Asignar",
+        "Surtiendo",
+        "Embarcando",
+        "Pedido Finalizado",
+    ];
+
+    const colorPorEstatus = {
+        "Pedido no encontrado": "#9e9e9e",
+        "Por Asignar": "#e53935",
+        Surtiendo: "#1e88e5",
+        Embarcando: "#8e24aa",
+        "Pedido Finalizado": "#43a047",
+    };
+
+    const calcularConteoPorEstatus = (data) => {
+        const conteo = {};
+        data.forEach((item) => {
+            const estatus = item.statusText || "Sin Estatus";
+            conteo[estatus] = (conteo[estatus] || 0) + 1;
+        });
+        setConteoEstatus(conteo);
     };
 
     useEffect(() => {
-        // Solo ejecuta si el usuario ha seleccionado un mes
-        if (mesSeleccionado !== "") {
-            fetchPaqueteriaRoutes({ mes: mesSeleccionado });
+        let dataActual = [];
+
+        switch (subTabIndex) {
+            case 0:
+                dataActual = paqueteriaData;
+                break;
+            case 1:
+                dataActual = directaData;
+                break;
+            case 2:
+                dataActual = ventaEmpleadoData;
+                break;
+            case 3:
+                dataActual = sentRoutesData.filter((d) =>
+                    ["paqueteria", "directa"].includes(d.TIPO?.trim().toLowerCase())
+                );
+                break;
+            default:
+                dataActual = [];
         }
-    }, [mesSeleccionado]);
+
+        calcularConteoPorEstatus(dataActual);
+    }, [subTabIndex, paqueteriaData, directaData, ventaEmpleadoData]);
+
+    //exportar exel
+
+    const handleExportarPorMes = () => {
+        if (!mesSeleccionado) {
+            alert("Selecciona un mes para exportar.");
+            return;
+        }
+
+        // Obtener año actual y armar el mes en formato "YYYY-MM"
+        const anioActual = new Date().getFullYear();
+        const mesFormateado = `${anioActual}-${String(mesSeleccionado).padStart(
+            2,
+            "0"
+        )}`;
+
+        const datosFiltrados = sentRoutesData.filter((pedido) => {
+            if (!pedido.created_at) return false;
+
+            const fecha = new Date(pedido.created_at);
+            if (isNaN(fecha)) return false;
+
+            const mesActual = `${fecha.getFullYear()}-${String(
+                fecha.getMonth() + 1
+            ).padStart(2, "0")}`;
+            return mesActual === mesFormateado;
+        });
+
+        if (datosFiltrados.length === 0) {
+            alert("No hay registros para exportar en ese mes.");
+            return;
+        }
+
+        const datosPaqueteria = datosFiltrados.filter(
+            (pedido) => pedido.TIPO?.trim().toLowerCase() === "paqueteria"
+        );
+        const datosDirecta = datosFiltrados.filter(
+            (pedido) => pedido.TIPO?.trim().toLowerCase() === "directa"
+        );
+
+        const columnas = [
+            "FECHA",
+            "NO ORDEN",
+            "NO_FACTURA",
+            "FECHA_DE_FACTURA",
+            "NUM. CLIENTE",
+            "NOMBRE DEL CLIENTE",
+            "ZONA",
+            "MUNICIPIO",
+            "ESTADO",
+            "OBSERVACIONES",
+            "TOTAL",
+            "PARTIDAS",
+            "PIEZAS",
+            "TARIMAS",
+            "TRANSPORTE",
+            "PAQUETERIA",
+            "GUIA",
+            "FECHA_DE_ENTREGA_CLIENTE",
+            "DIAS_DE_ENTREGA",
+            "ENTREGA_SATISFACTORIA_O_NO_SATISFACTORIA",
+            "MOTIVO",
+            "NUMERO_DE_FACTURA_LT",
+            "TOTAL_FACTURA_LT",
+            "PRORRATEO_FACTURA_LT",
+            "PRORRATEO_FACTURA_PAQUETERIA",
+            "GASTOS_EXTRAS",
+            "SUMA_FLETE",
+            "PORCENTAJE_ENVIO",
+            "PORCENTAJE_PAQUETERIA",
+            "SUMA_GASTOS_EXTRAS",
+            "PORCENTAJE_GLOBAL",
+            "DIFERENCIA",
+        ];
+
+        const transformData = (datos) => {
+            return datos.map((row) => {
+                const exportRow = {};
+                columnas.forEach((col) => {
+                    exportRow[col] = row[col] ?? "";
+                });
+                return exportRow;
+            });
+        };
+
+        const datosPaqueteriaExportados = transformData(datosPaqueteria);
+        const datosDirectaExportados = transformData(datosDirecta);
+
+        const workbook = XLSX.utils.book_new();
+        if (datosPaqueteriaExportados.length > 0) {
+            const worksheetPaqueteria = XLSX.utils.json_to_sheet(
+                datosPaqueteriaExportados
+            );
+            XLSX.utils.book_append_sheet(workbook, worksheetPaqueteria, "Paquetería");
+        }
+        if (datosDirectaExportados.length > 0) {
+            const worksheetDirecta = XLSX.utils.json_to_sheet(datosDirectaExportados);
+            XLSX.utils.book_append_sheet(workbook, worksheetDirecta, "Directa");
+        }
+
+        XLSX.writeFile(workbook, `Rutas_Mes_${mesFormateado}.xlsx`);
+    };
+
+    //recuperar las eliminada
+
+    const reactivarRuta = (nombreRuta, pedidos) => {
+        if (!nombreRuta || !Array.isArray(pedidos) || pedidos.length === 0) {
+            alert("⚠ No hay pedidos disponibles para reactivar esta ruta.");
+            return;
+        }
+
+        if (groupedData[nombreRuta]) {
+            alert("⚠️ Esta ruta ya existe.");
+            return;
+        }
+
+        const nuevaRuta = {
+            TOTAL: 0,
+            PARTIDAS: 0,
+            PIEZAS: 0,
+            rows: [],
+        };
+
+        pedidos.forEach((pedido) => {
+            const total = parseFloat(pedido.total || pedido.TOTAL || 0);
+            const partidas = parseInt(pedido.partidas || pedido.PARTIDAS || 0);
+            const piezas = parseInt(pedido.piezas || pedido.PIEZAS || 0);
+
+            nuevaRuta.TOTAL += total;
+            nuevaRuta.PARTIDAS += partidas;
+            nuevaRuta.PIEZAS += piezas;
+
+            const pedidoNormalizado = {
+                ...pedido,
+                "NO ORDEN": pedido["NO ORDEN"] || pedido.no_orden || "",
+                "NO FACTURA": pedido["NO FACTURA"] || pedido.no_factura || "",
+                "FECHA DE FACTURA": pedido["FECHA DE FACTURA"] || pedido.fecha_de_factura || "",
+                "NUM. CLIENTE": pedido["NUM. CLIENTE"] || pedido.num_cliente || "",
+                "NOMBRE DEL CLIENTE": pedido["NOMBRE DEL CLIENTE"] || pedido.nombre_cliente || "",
+                MUNICIPIO: pedido.MUNICIPIO || pedido.municipio || "",
+                ESTADO: pedido.ESTADO || pedido.estado || "",
+                ZONA: pedido.ZONA || pedido.zona || "",
+                FECHA: pedido.FECHA || pedido.fecha || moment().format("YYYY-MM-DD"),
+                OBSERVACIONES: pedido.OBSERVACIONES || pedido.observaciones || "Sin observaciones",
+                TOTAL: total,
+                PARTIDAS: partidas,
+                PIEZAS: piezas,
+                tipo_original: pedido.tipo || pedido.TIPO || "",
+                tipo: pedido.tipo || pedido.TIPO || "", // si también lo necesitas con ese nombre
+                "EJECUTIVO VTAS": pedido["EJECUTIVO VTAS"] || "",
+                GUIA: pedido.GUIA || "",
+            };
+
+            console.log("✅ Pedido normalizado:", pedidoNormalizado); // Verifica visualmente
+
+            nuevaRuta.rows.push(pedidoNormalizado);
+        });
+
+        setGroupedData((prev) => {
+            const updated = { ...prev, [nombreRuta]: nuevaRuta };
+            localStorage.setItem("transporteGroupedData", JSON.stringify(updated));
+            return updated;
+        });
+
+        alert("✅ Ruta reactivada correctamente.");
+    };
+
+
+    const openDetallesRuta = (ruta) => {
+        const pedidos = groupedData[ruta]?.rows || [];
+        setModalPedidos(pedidos);
+    };
+
+    const getPedidosRuta = (nombreRuta) => {
+        if (groupedData[nombreRuta]?.rows?.length > 0) {
+            return groupedData[nombreRuta].rows;
+        }
+
+        const ruta = rutasConPedidos.find((r) => r.nombre === nombreRuta);
+        return ruta?.pedidos || [];
+    };
+
+    const [pedidosModal, setPedidosModal] = useState([]);
+    const [modalPedidos, setModalPedidos] = useState([]);
+    const [modalRoute, setModalRoute] = useState("");
+
+    //actualisar el originan el tipo
+
+    const [archivoTipoOriginal, setArchivoTipoOriginal] = useState(null);
+
+    const handleArchivoTipoOriginal = (e) => {
+        setArchivoTipoOriginal(e.target.files[0]);
+    };
+
+    const subirArchivoTipoOriginal = async () => {
+        if (!archivoTipoOriginal) {
+            alert("❌ Selecciona un archivo Excel primero.");
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append("archivo", archivoTipoOriginal);
+
+        try {
+            const response = await axios.post(
+                "http://localhost:3007/api/Ventas/actualizar-tipo-original",
+                formData
+            );
+
+            alert(response.data.message || "✅ Actualización completada.");
+            fetchPaqueteriaRoutes(); // Refrescar tabla si es necesario
+        } catch (error) {
+            console.error("❌ Error al subir archivo:", error);
+            alert("Error al subir el archivo.");
+        }
+    };
 
     return (
         <Paper elevation={3} style={{ padding: "20px" }}>
@@ -3159,13 +4640,13 @@ function Tracking() {
                                 <option value="3">Marzo</option>
                                 <option value="4">Abril</option>
                                 <option value="5">Mayo</option>
-                                <option value="6">Junio</option>
+                                {/* <option value="6">Junio</option>
                                 <option value="7">Julio</option>
                                 <option value="8">Agosto</option>
                                 <option value="9">Septiembre</option>
                                 <option value="10">Octubre</option>
                                 <option value="11">Noviembre</option>
-                                <option value="12">Diciembre</option>
+                                <option value="12">Diciembre</option> */}
                             </select>
 
                             <Typography variant="h5" style={{ textAlign: "center" }}>

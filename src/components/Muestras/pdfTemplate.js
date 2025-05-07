@@ -1,7 +1,7 @@
 import logo from './logob.png';
 
 export const pdfTemplate = (solicitud) => {
-    const { nombre, departamento, motivo, regresaArticulo, requiereEnvio, detalleEnvio, carrito, folio, fecha, des } = solicitud;
+    const { nombre, departamento, motivo, regresaArticulo, requiereEnvio, detalleEnvio, carrito, folio, fecha, autorizado_por } = solicitud;
 
     const fechaFormateada = fecha ? new Date(fecha).toLocaleDateString("es-MX", {
         year: "numeric",
@@ -109,6 +109,7 @@ export const pdfTemplate = (solicitud) => {
                     <div class="details">
                         <div>
                             <p><strong>Solicitante:</strong> ${nombre}</p>
+                            ${autorizado_por ? `<p><strong>Autorizado por:</strong> ${autorizado_por}</p>` : ""}
                             <p><strong>Departamento:</strong> ${departamento}</p>
                             <p><strong>Motivo de la solicitud:</strong> ${motivo}</p>
                             <p><strong>Regresa artículos:</strong> ${regresaArticulo ? "Sí" : "No"}</p>

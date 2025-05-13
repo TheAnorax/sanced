@@ -52,11 +52,13 @@ function Paqueteria() {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
+  const [pedidoLiberarManual, setPedidoLiberarManual] = useState('');
+
 
   useEffect(() => {
     const fetchPedidos = async () => {
       try {
-        const response = await axios.get('http://66.232.105.87:3007/api/paqueterias/paqueteria');
+        const response = await axios.get('http://66.232.105.87:3007/api/paqueterias/paqueteria'); 
         setOriginalPedidos(response.data); // Guardar los datos originales
         setPedidos(response.data);
       } catch (error) {
@@ -108,17 +110,23 @@ function Paqueteria() {
     setPedidos(filteredData);
   };
 
-  const handleUserChange = async (pedidoId, event) => {
+  const handleUserChange = async (pedidoId, tipo, event) => {
     const { value } = event.target;
+    const key = `${pedidoId}-${tipo}`;
+  
     setSelectedUsuarios((prev) => ({
       ...prev,
-      [pedidoId]: value,
+      [key]: value,
     }));
-
+  
     try {
-      await axios.put(`http://66.232.105.87:3007/api/paqueterias/paqueteria/${pedidoId}/usuario-paqueteria`, {
-        id_usuario_paqueteria: value,
-      });
+      await axios.put(
+        `http://66.232.105.87:3007/api/paqueterias/paqueteria/${pedidoId}/usuario-paqueteria`,
+        {
+          id_usuario_paqueteria: value,
+          tipo, // importante
+        }
+      );
       setSnackbarMessage('Usuario de paquetería asignado correctamente');
       setSnackbarSeverity('success');
       setSnackbarOpen(true);
@@ -129,6 +137,33 @@ function Paqueteria() {
       setSnackbarOpen(true);
     }
   };
+  
+
+  const handleResetManual = async () => {
+    if (!pedidoLiberarManual) return;
+  
+    const confirmacion = window.confirm(`¿Estás seguro que deseas deshabilitar el pedido ${pedidoLiberarManual}?`);
+    if (!confirmacion) return;
+  
+    try {
+      await axios.put(`http://66.232.105.87:3007/api/embarque/reset-usuario/${pedidoLiberarManual}`);
+      setSnackbarMessage(`Usuario de paquetería liberado para el pedido ${pedidoLiberarManual}`);
+      setSnackbarSeverity('success');
+      setSnackbarOpen(true);
+      setPedidoLiberarManual('');
+  
+      // Recarga pedidos
+      const response = await axios.get('http://66.232.105.87:3007/api/embarque/embarque');
+      setPedidos(response.data);
+    } catch (error) {
+      console.error('Error al liberar usuario de paquetería:', error);
+      setSnackbarMessage('Error al liberar usuario de paquetería');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+    }
+  };
+  
+
 
   const columns = [
     { field: 'pedido', headerName: 'Pedido', width: 150 },
@@ -145,7 +180,8 @@ function Paqueteria() {
             labelId={`select-label-${params.row.pedido}`}
             value={selectedUsuarios[params.row.pedido] || ''}
             label="Seleccione Usuario"
-            onChange={(event) => handleUserChange(params.row.pedido, event)}
+            onChange={(event) => handleUserChange(params.row.pedido, params.row.tipo, event)}
+
           >
             {usuarios.map((usuario) => (
               <MenuItem key={usuario.id_usu} value={usuario.id_usu}>
@@ -172,17 +208,51 @@ function Paqueteria() {
           onChange={handleSearch}
           sx={{ mt: 2, mb: 2, width: '100%' }}
         />
+
+        <Box
+  display="flex"
+  alignItems="center"
+  justifyContent="center"
+  gap={2}
+  mb={2}
+  sx={{ width: '100%' }}
+>
+  <Box display="flex" alignItems="center" gap={1} sx={{ width: 'auto' }}>
+    <TextField
+      label="Pedido a liberar"
+      variant="outlined"
+      size="small"
+      value={pedidoLiberarManual}
+      onChange={(e) => setPedidoLiberarManual(e.target.value)}
+      sx={{ width: 200 }}
+    />
+    <Fab
+      color="secondary"
+      size="small"
+      onClick={handleResetManual}
+      sx={{ minWidth: 40, height: 40 }}
+    >
+      <Typography variant="button" fontSize="0.75rem">
+        OK
+      </Typography>
+    </Fab>
+  </Box>
+</Box>
+
         <Paper elevation={3} sx={{ p: 3, width: '100%' }}>
           <div style={{ height: '70vh', width: '100%' }}>
             <DataGrid
               rows={pedidos}
               columns={columns}
               pageSize={5}
-              getRowId={(row) => row.pedido || row.id_pedi} // Ensure unique row ID
+              getRowId={(row) => `${row.pedido}-${row.tipo}`}
+              // Ensure unique row ID
             />
           </div>
         </Paper>
       </Box>
+
+      
 
       <Fab color="primary" aria-label="add" sx={{ position: 'fixed', bottom: 16, right: 16 }}>
         <AddIcon />

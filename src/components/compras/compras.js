@@ -2002,7 +2002,7 @@ function Compras() {
                   variant="contained"
                   color="primary"
                   onClick={handleFilesUpload}
-                  startIcon={<UploadFileIcon />}
+                  startIcon={<UploadFileIcon />} 
                 >
                   Subir Archivos
                 </Button>

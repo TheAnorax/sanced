@@ -788,7 +788,7 @@
         {/* Mostrar tablas separadas para cada turno */}
         {usuariosPorTurno.map(
           (turnoData, index) =>
-            user?.role === "Control" && (
+            (user?.role === "Control" || user?.role === "Admin") && (
               <Box key={index} sx={{ mb: 5 }}>
                 <Typography variant="h5" sx={{ mb: 2 }}>
                   Surtido Turno {turnoData.turno}
@@ -854,11 +854,11 @@
                   </Table>
                 </TableContainer>
               </Box>
-            )
+            ) 
         )}
 
         {/* Mostrar tablas separadas para cada turno */}
-        {user?.role === "Embar" && usuariosEmbarques.length > 0 && (
+        {(user?.role === "Embar" || user?.role === "Admin") && usuariosEmbarques.length > 0 && (
           <Box sx={{ mb: 5 }}>
             <Typography variant="h5" sx={{ mb: 2 }}>
               Usuarios de Embarques

@@ -17,7 +17,7 @@ const getCompras = async (req, res) => {
         r.oc,
         r.cant_recibir, 
         r.tipo,
-        r.referencia,
+        r.referencia, 
         r.unidad_medida,   
         r.contenedor,
         r.naviera,

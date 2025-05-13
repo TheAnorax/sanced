@@ -28,6 +28,8 @@ function Embarques() {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
+  const [pedidoLiberarManual, setPedidoLiberarManual] = useState('');
+
 
   useEffect(() => {
     const fetchPedidos = async () => {
@@ -64,21 +66,52 @@ function Embarques() {
     return () => clearInterval(intervalId); // Clear interval on component unmount
   }, []);
 
+  const handleResetManual = async () => {
+    if (!pedidoLiberarManual) return;
+  
+    const confirmacion = window.confirm(`¿Estás seguro que deseas deshabilitar el pedido ${pedidoLiberarManual}?`);
+    if (!confirmacion) return;
+  
+    try {
+      await axios.put(`http://66.232.105.87:3007/api/embarque/reset-usuario/${pedidoLiberarManual}`);
+      setSnackbarMessage(`Usuario de paquetería liberado para el pedido ${pedidoLiberarManual}`);
+      setSnackbarSeverity('success');
+      setSnackbarOpen(true);
+      setPedidoLiberarManual('');
+  
+      // Recarga pedidos
+      const response = await axios.get('http://66.232.105.87:3007/api/embarque/embarque');
+      setPedidos(response.data);
+    } catch (error) {
+      console.error('Error al liberar usuario de paquetería:', error);
+      setSnackbarMessage('Error al liberar usuario de paquetería');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+    }
+  };
+  
+
   const handleSearch = (event) => {
     setSearchTerm(event.target.value.toLowerCase());
   };
 
-  const handleUserChange = async (pedidoId, event) => {
+  const handleUserChange = async (pedidoId, tipo, event) => {
     const { value } = event.target;
+    const key = `${pedidoId}-${tipo}`;
+  
     setSelectedUsuarios((prev) => ({
       ...prev,
-      [pedidoId]: value,
+      [key]: value,
     }));
-
+  
     try {
-      await axios.put(`http://66.232.105.87:3007/api/embarque/embarque/${pedidoId}/usuario-embarque`, {
-        id_usuario_paqueteria: value,
-      });
+      await axios.put(
+        `http://66.232.105.87:3007/api/embarque/embarque/${pedidoId}/usuario-embarque`,
+        {
+          id_usuario_paqueteria: value,
+          tipo,
+        }
+      );
       setSnackbarMessage('Usuario de embarques asignado correctamente');
       setSnackbarSeverity('success');
       setSnackbarOpen(true);
@@ -89,6 +122,7 @@ function Embarques() {
       setSnackbarOpen(true);
     }
   };
+  
 
   // Filtro seguro para evitar errores con valores undefined
   const filteredPedidos = pedidos.filter(pedido => {
@@ -112,7 +146,8 @@ function Embarques() {
             labelId={`select-label-${params.row.pedido}`}
             value={selectedUsuarios[params.row.pedido] || ''}
             label="Seleccione Usuario"
-            onChange={(event) => handleUserChange(params.row.pedido, event)}
+            onChange={(event) => handleUserChange(params.row.pedido, params.row.tipo, event)}
+
           >
             {usuarios.map((usuario) => (
               <MenuItem key={usuario.id_usu} value={usuario.id_usu}>
@@ -139,13 +174,46 @@ function Embarques() {
           onChange={handleSearch}
           sx={{ mt: 2, mb: 2, width: '100%' }}
         />
+
+
+<Box
+  display="flex"
+  alignItems="center"
+  justifyContent="center"
+  gap={2}
+  mb={2}
+  sx={{ width: '100%' }}
+>
+  <Box display="flex" alignItems="center" gap={1} sx={{ width: 'auto' }}>
+    <TextField
+      label="Pedido a liberar"
+      variant="outlined"
+      size="small"
+      value={pedidoLiberarManual}
+      onChange={(e) => setPedidoLiberarManual(e.target.value)}
+      sx={{ width: 200 }}
+    />
+    <Fab
+      color="secondary"
+      size="small"
+      onClick={handleResetManual}
+      sx={{ minWidth: 40, height: 40 }}
+    >
+      <Typography variant="button" fontSize="0.75rem">
+        OK
+      </Typography>
+    </Fab>
+  </Box>
+</Box>
+
         <Paper elevation={3} sx={{ p: 3, width: '100%' }}>
           <div style={{ height: '70vh', width: '100%' }}>
             <DataGrid
               rows={filteredPedidos}
               columns={columns}
               pageSize={5}
-              getRowId={(row) => row.pedido} // El campo "pedido" como ID único
+              getRowId={(row) => `${row.pedido}-${row.tipo}`}
+// El campo "pedido" como ID único
             />
           </div>
         </Paper>

@@ -8,13 +8,15 @@ const getPaqueteria = async (req, res) => {
         p.tipo,
         p.pedido,
         p.id_usuario_paqueteria,
-        (SELECT COUNT(DISTINCT p2.codigo_ped)
-         FROM pedido_embarque p2
-         WHERE p2.pedido = p.pedido) AS partidas
+        (
+          SELECT COUNT(DISTINCT p2.codigo_ped)
+          FROM pedido_embarque p2
+          WHERE p2.pedido = p.pedido AND p2.tipo = p.tipo
+        ) AS partidas
       FROM pedido_embarque p
-      WHERE p.estado ='E'
-      AND p.id_usuario_paqueteria IS NULL
-      GROUP BY pedido;
+      WHERE p.estado = 'E'
+        AND p.id_usuario_paqueteria IS NULL
+      GROUP BY p.pedido, p.tipo;
     `);
 
     const simplifiedPedidos = rows.map((pedido) => ({
@@ -27,23 +29,34 @@ const getPaqueteria = async (req, res) => {
 
     res.json(simplifiedPedidos);
   } catch (error) {
+    console.error("❌ Error al obtener pedidos de paquetería:", error.message);
     res.status(500).json({ message: 'Error al obtener los pedidos', error: error.message });
   }
 };
 
 
+
 const updateUsuarioPaqueteria = async (req, res) => {
   try {
     const { pedidoId } = req.params;
-    const { id_usuario_paqueteria } = req.body;
+    const { id_usuario_paqueteria, tipo } = req.body;
 
-    await pool.query('UPDATE pedido_embarque SET id_usuario_paqueteria = ? WHERE pedido = ?', [id_usuario_paqueteria, pedidoId]);
+    if (!tipo) {
+      return res.status(400).json({ message: "Tipo de pedido requerido" });
+    }
+
+    await pool.query(
+      'UPDATE pedido_embarque SET id_usuario_paqueteria = ? WHERE pedido = ? AND tipo = ?',
+      [id_usuario_paqueteria, pedidoId, tipo]
+    );
 
     res.status(200).json({ message: 'Usuario de paquetería asignado correctamente' });
   } catch (error) {
+    console.error("❌ Error al asignar usuario de paquetería:", error.message);
     res.status(500).json({ message: 'Error al asignar el usuario de paquetería', error: error.message });
   }
 };
+
 
 // Obtener el progreso de validación de los pedidos
 // Obtener el progreso de validación de los pedidos

@@ -23,6 +23,8 @@ const upload = multer({ storage: storage, limits: { files: 5 } });
 
 app.use('/docs', express.static('C:/Users/rodrigo/Desktop/react/docs'));
 app.use('/docsOC', express.static('C:/Users/rodrigo/Desktop/react/docsOC'));
+// En tu app.js o index.js
+app.use("/imagenes", express.static("C:/Users/rodrigo/Desktop/react/imagenes"));
 
 
 app.listen(3011, () => {

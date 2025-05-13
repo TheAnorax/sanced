@@ -12,6 +12,13 @@ import {
   Modal,
   Backdrop,
   Fade,
+  TableContainer,
+  Table,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableBody,
+  Paper
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import WorkIcon from '@mui/icons-material/Work';
@@ -224,38 +231,41 @@ function Empaquetando() {
             <Typography variant="h4" component="h2" gutterBottom>
               Productividad de Empaquetadores
             </Typography>
-            <Grid container spacing={2}> {/* Cambié el `spacing` de 3 a 2 para reducir el espacio entre los elementos */}
-                {productividad.length > 0 ? (
-                  productividad.map((item, index) => (
-                    <Grid item xs={12} sm={4} md={3} key={index}> {/* Ajustado para mostrar 4 en una fila en pantallas grandes */}
-                      <Card variant="outlined" sx={{ height: '100%' }}>
-                        <CardContent>
-                          <Typography variant="h5" sx={{ marginBottom: 1 }}>
-                            {item.usuario}
-                          </Typography>
-                          <Typography variant="subtitle1" color="textSecondary">
-                            {item.role}
-                          </Typography>
-                          <Box sx={{ display: 'flex', alignItems: 'center', marginTop: 2 }}>
-                            <AssignmentIcon sx={{ marginRight: 1 }} />
-                            <Typography variant="body1"><strong>Partidas:</strong> {item.partidas}</Typography>
-                          </Box>
-                          <Box sx={{ display: 'flex', alignItems: 'center', marginTop: 2 }}>
-                            <WorkIcon sx={{ marginRight: 1 }} />
-                            <Typography variant="body1"><strong>Cantidad de piezas:</strong> {item.cantidad_piezas}</Typography>
-                          </Box>
-                          <Box sx={{ display: 'flex', alignItems: 'center', marginTop: 2 }}>
-                            <TimerIcon sx={{ marginRight: 1 }} />
-                            <Typography variant="body1"><strong>Tiempo Total de Trabajo:</strong> {item.tiempo_total_trabajo}</Typography>
-                          </Box>
-                        </CardContent>
-                      </Card>
-                    </Grid>
-                  ))
-                ) : (
-                  <Typography>No hay datos disponibles.</Typography>
-                )}
-              </Grid>
+            <TableContainer component={Paper}>
+  <Table>
+    <TableHead>
+      <TableRow>
+        <TableCell><strong>Usuario</strong></TableCell>
+        <TableCell><strong>Rol</strong></TableCell>
+        <TableCell><strong>Partidas</strong></TableCell>
+        <TableCell><strong>Cantidad de Piezas</strong></TableCell>
+        <TableCell><strong>Tiempo Total de Trabajo</strong></TableCell>
+      </TableRow>
+    </TableHead>
+    <TableBody>
+  {productividad.length > 0 ? (
+    [...productividad] // Clonamos para no mutar el original
+      .sort((a, b) => b.partidas - a.partidas) // Ordenar de mayor a menor
+      .map((item, index) => (
+        <TableRow key={index}>
+          <TableCell>{item.usuario}</TableCell>
+          <TableCell>{item.role}</TableCell>
+          <TableCell>{Number(item.partidas).toLocaleString("es-MX")}</TableCell>
+          <TableCell>{Number(item.cantidad_piezas).toLocaleString("es-MX")}</TableCell>
+          <TableCell>{item.tiempo_total_trabajo}</TableCell>
+        </TableRow>
+      ))
+  ) : (
+    <TableRow>
+      <TableCell colSpan={5}>No hay datos disponibles.</TableCell>
+    </TableRow>
+  )}
+</TableBody>
+
+  </Table>
+</TableContainer>
+
+
 
           </Box>
         </Fade>

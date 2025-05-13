@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const {  getObservacionesPorClientes,  getUltimaFechaEmbarque,  insertarRutas,  obtenerRutasDePaqueteria,  getFechaYCajasPorPedido,  actualizarGuia,  getPedidosEmbarque,  getTransportistas,  getEmpresasTransportistas,  insertarVisita,  guardarDatos,
   obtenerDatos,  eliminarRuta,  getOrderStatus,  getHistoricoData,  getColumnasHistorico,  getClientesHistorico,  upload,  actualizarFacturasDesdeExcel,  actualizarPorGuia,  crearRuta,  agregarPedidoARuta,  obtenerRutasConPedidos,  obtenerRutaPorId,  obtenerResumenDelDia,
-  getPaqueteriaData,  getPedidosDia,  getFusionInfo,  obtenerRutasParaPDF,} = require("../controller/TrasporteController");
+  getPaqueteriaData,  getPedidosDia,  getFusionInfo,  obtenerRutasParaPDF,actualizarTipoOriginalDesdeExcel, actualizarGuiaCompleta} = require("../controller/TrasporteController");
 
 router.get("/getPaqueteriaData", getPaqueteriaData);
 
@@ -20,7 +20,7 @@ router.get("/ruta-unica", obtenerRutasParaPDF);
 
 router.get("/pedido/detalles/:noOrden", getFechaYCajasPorPedido);
 
-router.put("/paqueteria/actualizar-guia/:noOrden", actualizarGuia);
+router.put("/paqueteria/actualizar-guia/:id", actualizarGuia);
 
 router.get("/embarque/:codigo_ped", getPedidosEmbarque);
 
@@ -52,6 +52,8 @@ router.post(
   actualizarFacturasDesdeExcel
 );
 
+router.post("/actualizar-tipo-original", upload.single("archivo"), actualizarTipoOriginalDesdeExcel);
+
 router.post("/actualizar-por-guia/:guia", actualizarPorGuia);
 
 //para que la vean otras computadoras
@@ -65,5 +67,7 @@ router.get("/Rutasconpedido", obtenerRutasConPedidos);
 router.get("/rutas/:id", obtenerRutaPorId);
 
 router.get("/resumen-dia", obtenerResumenDelDia);
+
+router.put("/actualizar-guia-completa/:noOrden", actualizarGuiaCompleta);
 
 module.exports = router;

@@ -459,6 +459,41 @@ const getUbicacionesPares = async (req, res) => {
 };
 
 
+const deletepickUnbi = async (req, res) => {
+  const { id_ubi } = req.body;
+  console.log("DELETE ubicaciones", req.body);
+
+  if (!id_ubi) {
+    return res.status(400).json({
+      success: false,
+      message: "Falta el ID de la ubicación.",
+    });
+  }
+
+  try {
+    const [result] = await pool.query("DELETE FROM ubicaciones WHERE id_ubi = ?", [id_ubi]);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No se encontró la ubicación para eliminar.",
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: "Ubicación eliminada correctamente.",
+    });
+  } catch (error) {
+    console.error("Error al eliminar la ubicación:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error al eliminar la ubicación.",
+    });
+  }
+};
+
+
 module.exports = {
   getInventarios,
   autorizarRecibo,
@@ -472,4 +507,5 @@ module.exports = {
   getUbicacionesImpares,
   getUbicacionesPares,
   insertNuevaUbicacion,
+  deletepickUnbi
 }; 

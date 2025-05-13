@@ -164,10 +164,14 @@ const getTitle = (pathname) => {
       return "Tracking";
     case "/dashboard/kpi":
       return "kpi";
-      case "/dashboard/Mapa":
+    case "/dashboard/Mapa":
       return "Mapa";
-      case "/dashboard/Plansurtido":
-        return "Plansurtido";
+    case "/dashboard/Plansurtido":
+      return "Plansurtido";
+    case "/dashboard/Catalogo":
+      return "Catalogo";
+    case "/dashboard/COBERTURA":
+      return "Cobertura";
     default:
       return "Dashboard";
   }
@@ -286,36 +290,35 @@ export default function Dashboard() {
           </Toolbar>
         </AppBar>
         <Drawer
-  variant="permanent"
-  open={open}
-  sx={{
-    display: open ? 'block' : 'none' // 👈 Esto lo oculta cuando open es false
-  }}
->
-  <Toolbar />
-  <Divider />
-  <Box sx={{ overflowY: "auto", height: "calc(100vh - 64px)" }}>
-    <List component="nav">
-      {user && mainListItems(user)}
-      <Divider sx={{ my: 1 }} />
-    </List>
-  </Box>
-</Drawer>
+          variant="permanent"
+          open={open}
+          sx={{
+            display: open ? "block" : "none", // 👈 Esto lo oculta cuando open es false
+          }}
+        >
+          <Toolbar />
+          <Divider />
+          <Box sx={{ overflowY: "auto", height: "calc(100vh - 64px)" }}>
+            <List component="nav">
+              {user && mainListItems(user)}
+              <Divider sx={{ my: 1 }} />
+            </List>
+          </Box>
+        </Drawer>
 
         <Box
-  component="main"
-  sx={{
-    backgroundColor:
-      theme.palette.mode === "light"
-        ? theme.palette.grey[100]
-        : theme.palette.grey[900],
-    flexGrow: 1,
-    height: "100vh",            // ✅ Altura completa de la ventana
-    overflowY: "auto",          // ✅ Scroll solo vertical
-    marginTop: theme.spacing(8),
-  }}
->
-
+          component="main"
+          sx={{
+            backgroundColor:
+              theme.palette.mode === "light"
+                ? theme.palette.grey[100]
+                : theme.palette.grey[900],
+            flexGrow: 1,
+            height: "100vh", // ✅ Altura completa de la ventana
+            overflowY: "auto", // ✅ Scroll solo vertical
+            marginTop: theme.spacing(8),
+          }}
+        >
           <Container maxWidth={false} sx={{ mb: 4, mx: "auto", px: 2, mt: 1 }}>
             <Grid container spacing={3}>
               <Grid item xs={12}>

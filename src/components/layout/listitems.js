@@ -33,6 +33,8 @@ import GarageIcon from '@mui/icons-material/Garage';
 import { AdminPanelSettings } from "@mui/icons-material";
 import PlaceIcon from '@mui/icons-material/Place';
 import MapIcon from '@mui/icons-material/Map';
+import NavigationIcon from '@mui/icons-material/Navigation';
+
 
 // Personalizando el Tooltip
 const CustomTooltip = styled(({ className, ...props }) => (
@@ -77,12 +79,26 @@ export const mainListItems = (user) => {
         "VENT",
         "CON",
         "Vent",
+        "VentAdmin",
          "VENT",
-         "Tran","Rep","embspb"
+         "Tran","Rep","embspb", "Dep"
       ],
       path: "/dashboard/productos",
       icon: <HandymanIcon />,
       text: "Productos",
+    },
+    {
+      role: [  "Master", "Admin",  "INV"],
+      path: "/dashboard/Catalogo",
+      icon: <AodIcon />,
+      text: "Catalogo",
+    },
+    {
+      role: ["Admin", "Nac", "Nac2","Imp", "Plan", "Master","VentAdmin", ],  // Ajusta los roles que deberían ver esta opción"
+      external: true,
+      path: "http://192.168.3.27:3000/menu/estadisticos",
+      icon: <AnalyticsIcon />,
+      text: "SanPlan",
     },
     {
       role: ["Admin", "Master", "Trans", "PQ1", "Control", "EB1", "Paquet", "Embar","Tran","Rep"],
@@ -91,7 +107,7 @@ export const mainListItems = (user) => {
       text: "Transporte",
     },
     {
-      role: ["Admin", "Master", "Trans", "Rep", "Vent", "VENT","Tran","Audi"],
+      role: ["Admin", "Master", "Trans", "Rep", "Vent","VentAdmin", "VENT","Tran","Audi"],
       path: "/dashboard/Tracking",
       icon: <PlaceIcon />,
       text: "Tracking",
@@ -115,7 +131,7 @@ export const mainListItems = (user) => {
       text: "kpi",
     },
     {
-      role: ["Control", "Admin", "Master", "Master2", "VENT", "INV"],
+      role: ["Control", "Admin", "Master", "Master2", "VENT", "VentAdmin", "INV"],
       path: "/dashboard/pedidos-surtido",
       icon: <ContentPasteIcon />,
       text: "Pedidos",
@@ -131,6 +147,7 @@ export const mainListItems = (user) => {
         "Master2",
         "Audi",
         "VENT",
+        "VentAdmin",
       ],
       path: "/dashboard/finalizados",
       icon: <PlaylistAddCheckIcon />,
@@ -187,7 +204,7 @@ export const mainListItems = (user) => {
       text: "Compras",
     },
     {
-      role: ["Admin", "Master", "Recibo", "INV", "VENT"],
+      role: ["Admin", "Master", "Recibo", "INV", "VENT", "VentAdmin",],
       path: "/dashboard/recibo",
       icon: <ReceiptLongIcon />,
       text: "Producto a Recibir ",
@@ -227,14 +244,14 @@ export const mainListItems = (user) => {
       icon: <AssessmentIcon />,
       text: "Insumos ",
     },
+    // {
+    //   role: ["Admin", "Master", "Master2" ,"INV"],
+    //   path: "/dashboard/inventario",
+    //   icon: <AssessmentIcon />,
+    //   text: "Inventario dia 0",
+    // },
     {
-      role: ["Admin", "Master", "Master2" ,"INV"],
-      path: "/dashboard/inventario",
-      icon: <AssessmentIcon />,
-      text: "Inventario dia 0",
-    },
-    {
-      role: ["Admin", "Master", "Master2"],
+      role: ["Admin", "Master", "Master2","INV"],
       path: "/dashboard/muestras",
       icon: <SummarizeIcon />,
       text: "Muestras",
@@ -264,7 +281,7 @@ export const mainListItems = (user) => {
       text: "Proyectos",
     },
     {
-      role: ["Admin",'POLIA', 'POLIB', 'POLIP', 'POLIAR', 'CONTROL', 'RH', 'TRAFICO', 'Nac'],
+      role: ["Admin",'POLIA', 'POLIB', 'POLIP', 'POLIAR', 'CONTROL', 'RH', 'TRAFICO'],
       path: "/dashboard/visitas",
       icon: <PersonPinCircleIcon/>,
       text: "Visitas",
@@ -287,6 +304,14 @@ export const mainListItems = (user) => {
       icon: <AodIcon />,
       text: "Mapa",
     },
+    {
+      role: ["Admin", "Master", "Trans", "Tran"],
+      path: "/dashboard/COBERTURA",
+      icon: <NavigationIcon />,
+      text: "COBERTURA",
+    },
+    
+    
   ];
 
   return (
@@ -294,21 +319,57 @@ export const mainListItems = (user) => {
       {items
         .filter((item) => item.role.includes(user.role))
         .map((item, index) => (
-          <ListItemButton component={Link} to={item.path} key={index}>
-            <CustomTooltip
-              title={
-                <React.Fragment>
-                  <InfoIcon sx={{ mr: 1, fontSize: "small" }} />{" "}
-                  {/* Icono dentro del tooltip */}
-                  {item.text}
-                </React.Fragment>
-              }
+          // <ListItemButton component={Link} to={item.path} key={index}>
+          //   <CustomTooltip
+          //     title={
+          //       <React.Fragment>
+          //         <InfoIcon sx={{ mr: 1, fontSize: "small" }} />{" "}
+          //         {/* Icono dentro del tooltip */}
+          //         {item.text}
+          //       </React.Fragment>
+          //     }
+          //   >
+          //     <ListItemIcon>{item.icon}</ListItemIcon>{" "}
+          //     {/* Tooltip solo en el ícono */}
+          //   </CustomTooltip>
+          //   <ListItemText primary={item.text} />
+          // </ListItemButton>
+          item.external ? (
+            <ListItemButton
+              component="a"
+              href={item.path}
+              target="_blank"
+              rel="noopener noreferrer"
+              key={index}
             >
-              <ListItemIcon>{item.icon}</ListItemIcon>{" "}
-              {/* Tooltip solo en el ícono */}
-            </CustomTooltip>
-            <ListItemText primary={item.text} />
-          </ListItemButton>
+              <CustomTooltip
+                title={
+                  <React.Fragment>
+                    <InfoIcon sx={{ mr: 1, fontSize: "small" }} />
+                    {item.text}
+                  </React.Fragment>
+                }
+              >
+                <ListItemIcon>{item.icon}</ListItemIcon>
+              </CustomTooltip>
+              <ListItemText primary={item.text} />
+            </ListItemButton>
+          ) : (
+            <ListItemButton component={Link} to={item.path} key={index}>
+              <CustomTooltip
+                title={
+                  <React.Fragment>
+                    <InfoIcon sx={{ mr: 1, fontSize: "small" }} />
+                    {item.text}
+                  </React.Fragment>
+                }
+              >
+                <ListItemIcon>{item.icon}</ListItemIcon>
+              </CustomTooltip>
+              <ListItemText primary={item.text} />
+            </ListItemButton>
+          )
+          
         ))}
     </React.Fragment>
   );

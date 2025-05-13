@@ -38,6 +38,8 @@ import KPi from './components/reporte/kpi'
 import Tracking from './components/ventas/ventas';
 import Plansurtido from './components/Transporte/plan';
 import Mapa from './components/reporte/mapa';
+import Catalogo from './components/productos/catalogo';
+import COBERTURA from './components/COBERTURA/COBERTURA';
 
 function App() {
   return (        
@@ -79,6 +81,8 @@ function App() {
             <Route path="Tracking" element={<ProtectedRoute><Tracking  /></ProtectedRoute>} />
             <Route path="Plansurtido" element={<ProtectedRoute><Plansurtido /></ProtectedRoute>} />
             <Route path="Mapa" element={<ProtectedRoute><Mapa /></ProtectedRoute>} />
+            <Route path="Catalogo" element={<ProtectedRoute><Catalogo /></ProtectedRoute>} />
+            <Route path="COBERTURA" element={<ProtectedRoute><COBERTURA /></ProtectedRoute>} />
 
           </Route>
         </Routes>

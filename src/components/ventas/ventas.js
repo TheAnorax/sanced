@@ -3,15 +3,10 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import CloseIcon from "@mui/icons-material/Close";
 import * as XLSX from "xlsx";
 import html2canvas from "html2canvas";
-import DownloadIcon from "@mui/icons-material/Download";
 import BorderColorIcon from "@mui/icons-material/BorderColor";
 import AirportShuttleIcon from "@mui/icons-material/AirportShuttle";
 import { UserContext } from "../context/UserContext";
 import ArticleIcon from "@mui/icons-material/Article";
-import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
-import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
-import Autocomplete from "@mui/material/Autocomplete";
-import Article from "@mui/icons-material";
 import { NumerosALetras } from "numero-a-letras";
 
 import axios from "axios";
@@ -72,7 +67,6 @@ function Tracking() {
   const [totalPedidos, setTotalPedidos] = useState(0);
   const [totalGeneral, setTotalGeneral] = useState(0);
 
-  const [guiaModalOpen, setGuiaModalOpen] = useState(false);
   const [selectedNoOrden, setSelectedNoOrden] = useState(null);
   const [guia, setGuia] = useState("");
   const [tipoRuta, setTipoRuta] = useState("");
@@ -745,8 +739,9 @@ function Tracking() {
     if (sentRoutesData.length > 0) {
       const uniqueOrders = new Set();
       const cleanedData = sentRoutesData.filter((routeData) => {
-        if (!uniqueOrders.has(routeData["NO ORDEN"])) {
-          uniqueOrders.add(routeData["NO ORDEN"]);
+        const claveUnica = `${routeData["NO ORDEN"]}_${routeData["tipo_original"]}`;
+        if (!uniqueOrders.has(claveUnica)) {
+          uniqueOrders.add(claveUnica);
           return true;
         }
         return false;
@@ -1026,8 +1021,6 @@ function Tracking() {
   };
 
   useEffect(() => {
-    // console.log("🔍 sentRoutesData antes de filtrar:", sentRoutesData);
-
     if (!Array.isArray(sentRoutesData) || sentRoutesData.length === 0) {
       console.warn(
         "⚠ No hay datos en sentRoutesData, las tablas estarán vacías"
@@ -1035,19 +1028,18 @@ function Tracking() {
       return;
     }
 
+    const getTipo = (item) =>
+      (item.TIPO || item.tipo_original || "").toLowerCase().trim();
+
     const paqueteria = sentRoutesData.filter(
-      (routeData) => routeData.TIPO?.trim().toLowerCase() === "paqueteria"
+      (item) => getTipo(item) === "paqueteria"
     );
     const directa = sentRoutesData.filter(
-      (routeData) => routeData.TIPO?.trim().toLowerCase() === "directa"
+      (item) => getTipo(item) === "directa"
     );
     const ventaEmpleado = sentRoutesData.filter(
-      (routeData) => routeData.TIPO?.trim().toLowerCase() === "venta empleado"
+      (item) => getTipo(item) === "venta empleado"
     );
-
-    // console.log("✅ Datos filtrados para paquetería:", paqueteria);
-    // console.log("✅ Datos filtrados para directa:", directa);
-    // console.log("✅ Datos filtrados para venta empleado:", ventaEmpleado);
 
     setPaqueteriaData(paqueteria);
     setDirectaData(directa);
@@ -1232,15 +1224,17 @@ function Tracking() {
   };
 
   const formatDate = (dateString) => {
-    if (!dateString) return "Sin fecha"; // Si no hay fecha, muestra "Sin fecha"
+    if (!dateString) return "Sin fecha";
 
-    const date = new Date(dateString); // Convierte el string de fecha a un objeto Date
-    if (isNaN(date)) {
-      return "Fecha inválida"; // Si no se puede convertir a fecha, devuelve 'Fecha inválida'
-    }
+    const safeDate = dateString.includes(" ")
+      ? dateString.replace(" ", "T")
+      : dateString;
 
-    const options = { year: "numeric", month: "numeric", day: "numeric" };
-    return date.toLocaleDateString("es-MX", options); // Devuelve la fecha formateada en formato local
+    const date = new Date(safeDate);
+    if (isNaN(date)) return "Fecha inválida";
+
+    const options = { year: "numeric", month: "2-digit", day: "2-digit" };
+    return date.toLocaleDateString("es-MX", options);
   };
 
   const handleGenerateRoutes = () => {
@@ -1795,27 +1789,26 @@ function Tracking() {
     XLSX.writeFile(wb, "Datos_Directa.xlsx");
   };
 
-
-
-  
   // ✅ Versión con tabla de IMPORTE AGREGADA al final (corregida)
 
-  const totalPagesExp = '___total_pages___';
+  // ✅ Versión con tabla de IMPORTE AGREGADA al final (corregida)
+
+  const totalPagesExp = "___total_pages___";
 
   function addPageNumber(doc) {
     const pageCount = doc.internal.getNumberOfPages();
     if (pageCount >= 1) {
       doc.setPage(1);
       doc.setFontSize(9);
-      doc.setFont('helvetica', 'bold');
+      doc.setFont("helvetica", "bold");
       doc.setTextColor(0, 0, 0);
-      doc.text(`PÁGINA 1 de ${pageCount}`, 200, 55, { align: 'right' });
+      doc.text(`PÁGINA 1 de ${pageCount}`, 200, 59, { align: "right" });
     }
 
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i);
       const pageHeight = doc.internal.pageSize.height;
-      doc.addImage(barraFooter, 'JPEG', 10, pageHeight - 15, 190, 8);
+      doc.addImage(barraFooter, "JPEG", 10, pageHeight - 15, 190, 8);
     }
   }
 
@@ -1831,93 +1824,156 @@ function Tracking() {
 
   const generatePDF = async (pedido) => {
     try {
-      const responseRoutes = await fetch('http://66.232.105.87:3007/api/Ventas/ruta-unica');
+      const responseRoutes = await fetch(
+        "http://66.232.105.87:3007/api/Trasporte/ruta-unica"
+      );
       const routesData = await responseRoutes.json();
-      const route = routesData.find((r) => String(r['NO ORDEN']) === String(pedido));
-      if (!route) return alert('No se encontró la ruta');
+      const route = routesData.find(
+        (r) => String(r["NO ORDEN"]) === String(pedido)
+      );
+      if (!route) return alert("No se encontró la ruta");
 
-      const responseEmbarque = await fetch(`http://66.232.105.87:3007/api/Ventas/embarque/${pedido}`);
+      const responseEmbarque = await fetch(
+        `http://66.232.105.87:3007/api/Trasporte/embarque/${pedido}`
+      );
       const data = await responseEmbarque.json();
-      if (!data || !Array.isArray(data) || data.length === 0) return alert('No hay productos');
+      if (!data || !Array.isArray(data) || data.length === 0)
+        return alert("No hay productos");
 
       const doc = new jsPDF();
       const marginLeft = 10;
       let currentY = 26;
 
       doc.setFillColor(240, 36, 44);
-      doc.rect(10, 10, 190, 8, 'F');
+      doc.rect(10, 10, 190, 8, "F");
       doc.setTextColor(255, 255, 255);
-      doc.setFont('helvetica', 'bold');
+      doc.setFont("helvetica", "bold");
       doc.setFontSize(10.5);
-      doc.text('FORMATO PARA RECEPCIÓN DEL PEDIDO', 105, 15.5, { align: 'center' });
+      doc.text("FORMATO PARA RECEPCIÓN DEL PEDIDO", 105, 15.5, {
+        align: "center",
+      });
 
-      doc.addImage(logo, 'JPEG', 145, 23, 50, 18);
+      doc.addImage(logo, "JPEG", 145, 23, 50, 18);
 
-      doc.setFont('helvetica', 'bold');
+      doc.setFont("helvetica", "bold");
       doc.setFontSize(14);
       doc.setTextColor(84, 84, 84);
-      doc.text('Santul Herramientas S.A. de C.V.', marginLeft, currentY);
+      doc.text("Santul Herramientas S.A. de C.V.", marginLeft, currentY);
       currentY += 4;
       doc.setFontSize(12);
-      doc.setFont('helvetica', 'normal');
-      doc.text('Henry Ford 257 C y D, Col. Bondojito, Gustavo A. Madero,', marginLeft, currentY); currentY += 4;
-      doc.text('Ciudad de México, C.P. 07850, México,', marginLeft, currentY); currentY += 4;
-      doc.text('Tel.: 58727290', marginLeft, currentY); currentY += 4;
-      doc.text('R.F.C. SHE130912866', marginLeft, currentY); currentY += 5;
-      doc.setDrawColor(240, 36, 44); doc.setLineWidth(0.5);
-      doc.line(10, currentY, 200, currentY); currentY += 4;
+      doc.setFont("helvetica", "normal");
+      doc.text(
+        "Henry Ford 257 C y D, Col. Bondojito, Gustavo A. Madero,",
+        marginLeft,
+        currentY
+      );
+      currentY += 4;
+      doc.text("Ciudad de México, C.P. 07850, México,", marginLeft, currentY);
+      currentY += 4;
+      doc.text("Tel.: 58727290", marginLeft, currentY);
+      currentY += 4;
+      doc.text("R.F.C. SHE130912866", marginLeft, currentY);
+      currentY += 5;
+      doc.setDrawColor(240, 36, 44);
+      doc.setLineWidth(0.5);
+      doc.line(10, currentY, 200, currentY);
+      currentY += 4;
 
-      const nombreCliente = route['NOMBRE DEL CLIENTE'] || 'No disponible';
-      const numeroFactura = route['NO_FACTURA'] || 'No disponible';
-      const direccion = cleanAddress(route['DIRECCION']) || 'No disponible';
-      const numero = route['NUM. CLIENTE'] || 'No disponible';
-      const telefono = route['TELEFONO'] || 'Sin número';
-      const rawTotal = route['TOTAL'];
+      const nombreCliente = route["NOMBRE DEL CLIENTE"] || "No disponible";
+      const numeroFactura = route["NO_FACTURA"] || "No disponible";
+      const direccion = cleanAddress(route["DIRECCION"]) || "No disponible";
+      const numero = route["NUM. CLIENTE"] || "No disponible";
+      const telefono = route["TELEFONO"] || "Sin número";
+      const rawTotal = route["TOTAL"];
       let totalImporte = 0;
-      if (rawTotal && !isNaN(parseFloat(String(rawTotal).replace(/[^0-9.-]+/g, '')))) {
-        totalImporte = parseFloat(String(rawTotal).replace(/[^0-9.-]+/g, ''));
+      if (
+        rawTotal &&
+        !isNaN(parseFloat(String(rawTotal).replace(/[^0-9.-]+/g, "")))
+      ) {
+        totalImporte = parseFloat(String(rawTotal).replace(/[^0-9.-]+/g, ""));
       }
 
-
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(0, 0, 0);
-      doc.text(`CLIENTE NO.: ${numero}                      NOMBRE DEL CLIENTE: ${nombreCliente}`, marginLeft, currentY); currentY += 4;
-      doc.text(`TELÉFONO: ${telefono}     DIRECCIÓN: ${direccion}`, marginLeft, currentY); currentY += 4;
-      doc.text(`VT: ${pedido}`, marginLeft, currentY); currentY += 4;
-      doc.text(`FACTURA No.: ${numeroFactura}`, marginLeft, currentY); currentY += 4;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9.5);
+      doc.setTextColor(0, 0, 0);
+      doc.text(
+        `CLIENTE NO.: ${numero}                      NOMBRE DEL CLIENTE: ${nombreCliente}`,
+        marginLeft,
+        currentY
+      );
+      currentY += 4;
+      doc.text(
+        `TELÉFONO: ${telefono}     DIRECCIÓN: ${direccion}`,
+        marginLeft,
+        currentY
+      );
+      currentY += 4;
+      doc.text(`VT: ${pedido}`, marginLeft, currentY);
+      currentY += 4;
+      doc.text(`FACTURA No.: ${numeroFactura}`, marginLeft, currentY);
+      currentY += 4;
 
       const infoY = currentY;
       doc.setFillColor(255, 255, 0);
-      doc.rect(marginLeft, infoY, 190, 11, 'F');
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(9.5); doc.setTextColor(0, 0, 0);
-      doc.text('INFORMACIÓN IMPORTANTE', 105, infoY + 4, { align: 'center' });
+      doc.rect(marginLeft, infoY, 190, 11, "F");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9.5);
+      doc.setTextColor(0, 0, 0);
+      doc.text("INFORMACIÓN IMPORTANTE", 105, infoY + 4, { align: "center" });
       doc.setFontSize(5.3);
       doc.text(
-        'En caso de detectar cualquier irregularidad (daños, faltantes, o manipulaciones), Favor de comunicarse de inmediato al departamento de atención al cliente al número:(55) 58727290 EXT.: (8815, 8819)',
+        "En caso de detectar cualquier irregularidad (daños, faltantes, o manipulaciones), Favor de comunicarse de inmediato al departamento de atención al cliente al número:(55) 58727290 EXT.: (8815, 8819)",
         105,
         infoY + 9,
-        { align: 'center', maxWidth: 180 }
+        { align: "center", maxWidth: 180 }
       );
       currentY = infoY + 15;
 
       const productosConCaja = data.filter((i) => i.caja && i.caja > 0);
       const productosSinCaja = data.filter((i) => !i.caja || i.caja === 0);
 
-      const totalINNER_MASTER = productosSinCaja.reduce((s, i) => s + (i._inner || 0) + (i._master || 0), 0);
-      const totalCajasArmadas = parseInt(Math.max(...productosConCaja.map(i => i.caja))) || 0;
+      // ✔️ Primero agrupamos productos por caja original
+
+      const cajasAgrupadasOriginal = productosConCaja.reduce((acc, item) => {
+        if (!acc[item.caja]) acc[item.caja] = [];
+        acc[item.caja].push(item);
+        return acc;
+      }, {});
+
+      const cajasOrdenadas = Object.entries(cajasAgrupadasOriginal).sort(
+        (a, b) => Number(a[0]) - Number(b[0])
+      );
+
+      const totalINNER_MASTER = productosSinCaja.reduce(
+        (s, i) => s + (i._inner || 0) + (i._master || 0),
+        0
+      );
+      const totalCajasArmadas = cajasOrdenadas.length;
       const totalCajas = totalINNER_MASTER + totalCajasArmadas;
+
       const totalTarimas = data.reduce((s, i) => s + (i.tarimas || 0), 0);
       const totalAtados = data.reduce((s, i) => s + (i.atados || 0), 0);
 
       currentY = verificarEspacio(doc, currentY, 2);
       doc.autoTable({
         startY: currentY,
-        head: [['INNER/MASTER', 'TARIMAS', 'ATADOS', 'CAJAS ARMADAS', 'TOTAL CAJAS']],
-        body: [[totalINNER_MASTER, totalTarimas, totalAtados, totalCajasArmadas, totalCajas]],
-        theme: 'grid',
+        head: [
+          ["INNER/MASTER", "TARIMAS", "ATADOS", "CAJAS ARMADAS", "TOTAL CAJAS"],
+        ],
+        body: [
+          [
+            totalINNER_MASTER,
+            totalTarimas,
+            totalAtados,
+            totalCajasArmadas,
+            totalCajas,
+          ],
+        ],
+        theme: "grid",
         margin: { left: 10 },
         tableWidth: 190,
-        styles: { fontSize: 9, halign: 'center', cellPadding: 3 },
-        headStyles: { fillColor: [210, 210, 210], textColor: [0, 0, 0] }
+        styles: { fontSize: 9, halign: "center", cellPadding: 3 },
+        headStyles: { fillColor: [210, 210, 210], textColor: [0, 0, 0] },
       });
       currentY = doc.lastAutoTable.finalY + 4;
 
@@ -1927,56 +1983,70 @@ function Tracking() {
         return acc;
       }, {});
 
-      for (const caja in cajasAgrupadas) {
-        const productos = cajasAgrupadas[caja];
-        currentY = verificarEspacio(doc, currentY, 1);
+      let numeroCajaSecuencial = 1;
 
+      for (const [, productos] of cajasOrdenadas) {
+        const titulo = `Productos en la Caja ${numeroCajaSecuencial}`;
+
+        // Título de la tabla
         doc.autoTable({
           startY: currentY,
-          head: [[`Productos en la Caja ${caja}`]],
+          head: [[titulo]],
           body: [],
-          theme: 'grid',
-          styles: { halign: 'center', fontSize: 9 },
+          theme: "grid",
+          styles: { halign: "center", fontSize: 9 },
           headStyles: {
-            fillColor: [255, 255, 255], // Color verde
+            fillColor: [255, 255, 255],
             textColor: [0, 0, 0],
-            fontStyle: 'bold'
+            fontStyle: "bold",
           },
           margin: { left: 10 },
-          tableWidth: 190
+          tableWidth: 190,
         });
 
         currentY = doc.lastAutoTable.finalY;
-        currentY = verificarEspacio(doc, currentY, productos.length);
+
+        let yaContinua = false;
 
         doc.autoTable({
           startY: currentY,
-          head: [[
-            'SKU', 'DESCRIPCIÓN', 'CANTIDAD', 'UM',
-            'PZ', 'PQ', 'INNER', 'MASTER', 'TARIMA', 'ATADOS', 'VALIDAR'
-          ]],
+          head: [
+            [
+              "SKU",
+              "DESCRIPCIÓN",
+              "CANTIDAD",
+              "UM",
+              "PZ",
+              "PQ",
+              "INNER",
+              "MASTER",
+              "TARIMA",
+              "ATADOS",
+              "VALIDA",
+            ],
+          ],
           body: productos.map((item) => [
-            item.codigo_ped || '',
-            item.des || '',
-            item.cantidad || '',
-            item.um || '',
+            item.codigo_ped || "",
+            item.des || "",
+            item.cantidad || "",
+            item.um || "",
             item._pz || 0,
             item._pq || 0,
             item._inner || 0,
             item._master || 0,
             item.tarimas || 0,
             item.atados || 0,
-            ''
+            "",
           ]),
-          theme: 'grid',
+          theme: "grid",
           margin: { left: 10 },
           tableWidth: 190,
           styles: {
-            fontSize: 7.5,
-            halign: 'center',
+            fontSize: 5.5,
+            halign: "center",
             cellPadding: 2,
             lineColor: [200, 200, 200],
-            lineWidth: 0.1
+            lineWidth: 0.1,
           },
           columnStyles: {
             0: { cellWidth: 15 },
@@ -1989,69 +2059,124 @@ function Tracking() {
             7: { cellWidth: 12 },
             8: { cellWidth: 12 },
             9: { cellWidth: 12 },
-            10: { cellWidth: 12 }
+            10: { cellWidth: 12 },
           },
           headStyles: {
             fillColor: [20, 20, 20],
             textColor: [255, 255, 255],
-            fontSize: 5.5
-          }
+            fontSize: 5.5,
+          },
+          didDrawCell: function (data) {
+            if (
+              data.row.index === 0 &&
+              data.section === "body" &&
+              data.cursor.y < 30 && // Está en una nueva página
+              !yaContinua
+            ) {
+              const text = `Continuación de la Caja ${numeroCajaSecuencial}`;
+              doc.setFontSize(8);
+              doc.text(text, 105, data.cursor.y - 6, { align: "center" });
+              yaContinua = true;
+            }
+          },
         });
+
         currentY = doc.lastAutoTable.finalY + 4;
+        numeroCajaSecuencial++;
       }
 
       if (productosSinCaja.length > 0) {
+        // Título principal
         currentY = verificarEspacio(doc, currentY, 2);
         doc.autoTable({
           startY: currentY,
-          head: [['Productos sin caja']],
+          head: [["Productos sin caja"]],
           body: [],
-          theme: 'grid',
-          styles: { halign: 'center', fontSize: 9 },
+          theme: "grid",
+          styles: { halign: "center", fontSize: 9 },
           margin: { left: 10 },
-          tableWidth: 190
+          tableWidth: 190,
+          headStyles: {
+            fillColor: [255, 255, 255],
+            textColor: [0, 0, 0],
+            fontStyle: "bold",
+          },
         });
         currentY = doc.lastAutoTable.finalY;
-        currentY = verificarEspacio(doc, currentY, productosSinCaja.length);
+
+        let yaContinua = false;
 
         doc.autoTable({
           startY: currentY,
-          head: [[
-            'SKU', 'DESCRIPCIÓN', 'CANTIDAD', 'UM', 'PZ', 'INNER',
-            'MASTER', 'TARIMAS', 'ATADOS', 'VALIDAR'
-          ]],
-          body: productosSinCaja.map(item => [
-            item.codigo_ped || '',
-            item.des || '',
-            item.cantidad || '',
-            item.um || '',
+          head: [
+            [
+              "SKU",
+              "DESCRIPCIÓN",
+              "CANTIDAD",
+              "UM",
+              "PZ",
+              "INNER",
+              "MASTER",
+              "TARIMAS",
+              "ATADOS",
+              "VALIDAR",
+            ],
+          ],
+          body: productosSinCaja.map((item) => [
+            item.codigo_ped || "",
+            item.des || "",
+            item.cantidad || "",
+            item.um || "",
             item._pz || 0,
             item._inner || 0,
             item._master || 0,
             item.tarimas || 0,
             item.atados || 0,
-            ''
+            "",
           ]),
-          theme: 'grid',
+          theme: "grid",
           margin: { left: 10 },
           tableWidth: 190,
           styles: {
-            fontSize: 8,
-            halign: 'center',
-            cellPadding: 1.5,
-            lineColor: [0, 0, 0]
+            fontSize: 5.5,
+            halign: "center",
+            cellPadding: 2,
+            lineColor: [200, 200, 200],
+            lineWidth: 0.1,
           },
           columnStyles: {
             0: { cellWidth: 15 },
             1: { cellWidth: 80 },
-            2: { cellWidth: 15 }
+            2: { cellWidth: 15 },
+            3: { cellWidth: 10 },
+            4: { cellWidth: 10 },
+            5: { cellWidth: 12 },
+            6: { cellWidth: 12 },
+            7: { cellWidth: 12 },
+            8: { cellWidth: 12 },
+            9: { cellWidth: 12 },
           },
           headStyles: {
             fillColor: [20, 20, 20],
             textColor: [255, 255, 255],
-            fontSize: 8
-          }
+            fontSize: 5.5,
+          },
+          didDrawCell: function (data) {
+            if (
+              data.row.index === 0 &&
+              data.section === "body" &&
+              data.cursor.y < 30 &&
+              !yaContinua
+            ) {
+              const text = "Continuación de productos sin caja";
+              doc.setFontSize(8);
+              doc.text(text, 105, data.cursor.y - 6, { align: "center" });
+              yaContinua = true;
+            }
+          },
         });
+
+        currentY = doc.lastAutoTable.finalY + 4;
       }
 
       currentY = doc.lastAutoTable.finalY + 5;
@@ -2062,90 +2187,130 @@ function Tracking() {
 
       doc.autoTable({
         startY: currentY,
-        head: [[
-          { content: 'DETALLES DEL PEDIDO', colSpan: 2, styles: { halign: 'center', fillColor: [230, 230, 230], fontSize: 7 } },
-          { content: pedido, styles: { halign: 'center', fillColor: [200, 200, 200], fontSize: 9 } }
-        ], [
-          { content: 'IMPORTE DEL PEDIDO\n(SIN IVA)', styles: { halign: 'center', fontSize: 5 } },
-          { content: 'TOTAL A PAGAR\n(SIN IVA)', styles: { halign: 'center', fontSize: 5 } },
-          { content: 'PORCENTAJE DE ENTREGA', styles: { halign: 'center', fontSize: 5 } }
-        ]],
-        body: [[
-          `$${totalImporte.toFixed(2)}`,
-          `$${totalImporte.toFixed(2)}`,
-          '100.00 %'
-        ]],
-        theme: 'grid',
-        styles: { fontSize: 8, halign: 'center' },
+        head: [
+          [
+            {
+              content: "DETALLES DEL PEDIDO",
+              colSpan: 2,
+              styles: {
+                halign: "center",
+                fillColor: [230, 230, 230],
+                fontSize: 7,
+              },
+            },
+            {
+              content: pedido,
+              styles: {
+                halign: "center",
+                fillColor: [200, 200, 200],
+                fontSize: 9,
+              },
+            },
+          ],
+          [
+            {
+              content: "IMPORTE DEL PEDIDO\n(SIN IVA)",
+              styles: { halign: "center", fontSize: 5 },
+            },
+            {
+              content: "TOTAL A PAGAR\n(SIN IVA)",
+              styles: { halign: "center", fontSize: 5 },
+            },
+            {
+              content: "PORCENTAJE DE ENTREGA",
+              styles: { halign: "center", fontSize: 5 },
+            },
+          ],
+        ],
+        body: [
+          [
+            `$${totalImporte.toFixed(2)}`,
+            `$${totalImporte.toFixed(2)}`,
+            "100.00 %",
+          ],
+        ],
+        theme: "grid",
+        styles: { fontSize: 8, halign: "center" },
         margin: { left: leftMargin },
         tableWidth: tableWidth,
         headStyles: {
           fillColor: [245, 245, 245],
           textColor: [0, 0, 0],
-          fontStyle: 'bold',
+          fontStyle: "bold",
           fontSize: 4.5,
-        }
+        },
       });
 
       currentY = doc.lastAutoTable.finalY + 5;
       currentY = verificarEspacio(doc, currentY, 1);
       doc.autoTable({
         startY: currentY,
-        body: [[
-          {
-            content:
-              'Se confirma que las cajas, atados y/o tarimas listadas en esta lista de empaque fueron recibidas cerradas y en buen estado, y así serán entregadas al cliente. Cualquier anomalía se atenderá según lo establecido en el contrato',
-            styles: { fontSize: 7, halign: 'justify', textColor: [0, 0, 0] }
-          },
-          {
-            content: 'Firma del Transportista',
-            styles: { fontSize: 7, halign: 'center', fontStyle: 'bold' }
-          }
-        ]],
-        theme: 'grid',
-        styles: { cellPadding: 3, valign: 'top' },
+        body: [
+          [
+            {
+              content:
+                "Se confirma que las cajas, atados y/o tarimas listadas en esta lista de empaque fueron recibidas cerradas y en buen estado, y así serán entregadas al cliente. Cualquier anomalía se atenderá según lo establecido en el contrato",
+              styles: { fontSize: 7, halign: "justify", textColor: [0, 0, 0] },
+            },
+            {
+              content: "Firma del Transportista",
+              styles: { fontSize: 7, halign: "center", fontStyle: "bold" },
+            },
+          ],
+        ],
+        theme: "grid",
+        styles: { cellPadding: 3, valign: "top" },
         columnStyles: {
           0: { cellWidth: 150 },
-          1: { cellWidth: 40 }
+          1: { cellWidth: 40 },
         },
         margin: { left: 10 },
-        tableWidth: 190
+        tableWidth: 190,
       });
 
       currentY = doc.lastAutoTable.finalY + 0;
 
       const instrucciones = [
-        '•Estimado cliente, nuestro transportista cuenta con ruta asignada por lo que agradeceríamos agilizar el tiempo de recepción de su mercancía, el material viaja consignado por lo que solo podrá entregarse en la dirección estipulada en este documento.',
-        '•Cualquier retraso en la recepción generan costos adicionales y pueden afectar la entrega a otros clientes. En casos repetitivos, podrían cancelarse beneficios como descuentos adicionales.',
-        '•El transportista solo entregará en planta baja o *nivel de calle*, si cuenta con alguna política especial de recepción, por favor solicita un esquema de entrega con tu Asesor de ventas.',
-        '•Si Ud. detecta alguna anomalía en el empaque, embalaje, atado de la mercancía, alguna diferencia vs las cajas embarcadas y/o que el transportista retiene mercancía de forma intencional repórtalo en el apartado de observaciones.',
-        '•El transportista no está autorizado a recibir mercancía, todo reporte de devolución, garantía,etc. deberá ser reportado a su asesor de ventas y aplicará de acuerdo a la Política vigente.',
-        '•Con la firma y/o sello en el presente documento, se da por recibida a entera conformidad la mercancía descrita y se acepta el monto a pagar aquí indicado.'
+        "•Estimado cliente, nuestro transportista cuenta con ruta asignada por lo que agradeceríamos agilizar el tiempo de recepción de su mercancía, el material viaja consignado por lo que solo podrá entregarse en la dirección estipulada en este documento.",
+        "•Cualquier retraso en la recepción generan costos adicionales y pueden afectar la entrega a otros clientes. En casos repetitivos, podrían cancelarse beneficios como descuentos adicionales.",
+        "•El transportista solo entregará en planta baja o *nivel de calle*, si cuenta con alguna política especial de recepción, por favor solicita un esquema de entrega con tu Asesor de ventas.",
+        "•Si Ud. detecta alguna anomalía en el empaque, embalaje, atado de la mercancía, alguna diferencia vs las cajas embarcadas y/o que el transportista retiene mercancía de forma intencional repórtalo en el apartado de observaciones.",
+        "•El transportista no está autorizado a recibir mercancía, todo reporte de devolución, garantía,etc. deberá ser reportado a su asesor de ventas y aplicará de acuerdo a la Política vigente.",
+        "•Con la firma y/o sello en el presente documento, se da por recibida a entera conformidad la mercancía descrita y se acepta el monto a pagar aquí indicado.",
       ];
 
-      const instruccionesTexto = instrucciones.join('\n');
+      const instruccionesTexto = instrucciones.join("\n");
       currentY = verificarEspacio(doc, currentY, instrucciones.length);
 
       doc.autoTable({
         startY: currentY,
         body: [[{ content: instruccionesTexto }]],
-        theme: 'grid',
-        styles: { fontSize: 7, cellPadding: 3, valign: 'top', textColor: [0, 0, 0] },
+        theme: "grid",
+        styles: {
+          fontSize: 7,
+          cellPadding: 3,
+          valign: "top",
+          textColor: [0, 0, 0],
+        },
         columnStyles: { 0: { cellWidth: 190 } },
         margin: { left: 10 },
-        tableWidth: 190
+        tableWidth: 190,
       });
 
       currentY = doc.lastAutoTable.finalY + 0;
 
       const letras = NumerosALetras(totalImporte);
       const fechaActual = new Date();
-      const fechaHoy = fechaActual.toLocaleDateString('es-MX');
-      const fechaVence = new Date(fechaActual.setMonth(fechaActual.getMonth() + 1)).toLocaleDateString('es-MX');
+      const fechaHoy = fechaActual.toLocaleDateString("es-MX");
+      const fechaVence = new Date(
+        fechaActual.setMonth(fechaActual.getMonth() + 1)
+      ).toLocaleDateString("es-MX");
 
       const textoPagare =
         `En cualquier lugar de este documento donde se estampe la firma por este pagaré debo(emos) y pagaré(mos) ` +
-        `incondicionalmente a la vista y a la orden de SANTUL HERRAMIENTAS S.A. DE C.V., la cantidad de: $${totalImporte.toFixed(2)} ` +
+        `incondicionalmente a la vista y a la orden de SANTUL HERRAMIENTAS S.A. DE C.V., la cantidad de: $${totalImporte.toFixed(
+          2
+        )} ` +
         `(${letras} M.N.) En el total a pagar en Cuautitlán, Estado de México, o en la que SANTUL HERRAMIENTAS S.A. DE C.V., juzgue necesario. ` +
         `Este documento causará intereses al 3% mensual si no se paga a su vencimiento. expide el ${fechaHoy}, vence el ${fechaVence}.`;
 
@@ -2153,38 +2318,34 @@ function Tracking() {
 
       doc.autoTable({
         startY: currentY,
-        body: [[textoPagare, 'Firma del Cliente']],
-        theme: 'grid',
+        body: [[textoPagare, "Firma del Cliente"]],
+        theme: "grid",
         styles: {
           fontSize: 7,
           cellPadding: 3,
-          valign: 'top',
-          textColor: [0, 0, 0]
+          valign: "top",
+          textColor: [0, 0, 0],
         },
         columnStyles: {
           0: { cellWidth: 150, fillColor: [240, 240, 240] },
-          1: { cellWidth: 40, halign: 'center', fontStyle: 'bold' }
+          1: { cellWidth: 40, halign: "center", fontStyle: "bold" },
         },
         margin: { left: 10 },
-        tableWidth: 190
+        tableWidth: 190,
       });
 
       currentY = doc.lastAutoTable.finalY + 0;
       currentY = verificarEspacio(doc, currentY, 5);
-      doc.addImage(infoBancaria, 'JPEG', 10, currentY, 190, 35);
-
+      doc.addImage(infoBancaria, "JPEG", 10, currentY, 190, 35);
 
       addPageNumber(doc);
       doc.save(`PackingList_de_${pedido}.pdf`);
       alert(`PDF generado con éxito para el pedido ${pedido}`);
     } catch (error) {
-      console.error('Error al generar el PDF:', error);
-      alert('Hubo un error al generar el PDF.');
+      console.error("Error al generar el PDF:", error);
+      alert("Hubo un error al generar el PDF.");
     }
   };
-
-
-
 
   useEffect(() => {
     // console.log("Observaciones actuales:", observacionesPorRegistro);
@@ -2761,7 +2922,7 @@ function Tracking() {
       const coincideGeneral =
         !filtroGeneral ||
         routeData["NO ORDEN"]?.toString().includes(filtroGeneral) ||
-        routeData["NUM. CLIENTE"]
+        routeData["NOMBRE DEL CLIENTE"]
           ?.toString()
           .toLowerCase()
           .includes(filtroGeneral.toLowerCase());
@@ -2801,7 +2962,7 @@ function Tracking() {
     return directaData.filter((item) => {
       const cumpleGeneral =
         !filtroGeneral ||
-        item["NUM. CLIENTE"]
+        item["NOMBRE DEL CLIENTE"]
           ?.toLowerCase()
           .includes(filtroGeneral.toLowerCase()) ||
         item["NO ORDEN"]?.toString().includes(filtroGeneral);
@@ -2833,7 +2994,7 @@ function Tracking() {
     return ventaEmpleadoData.filter((item) => {
       const cumpleGeneral =
         !filtroGeneral ||
-        item["NUM. CLIENTE"]
+        item["NOMBRE DEL CLIENTE"]
           ?.toLowerCase()
           .includes(filtroGeneral.toLowerCase()) ||
         item["NO ORDEN"]?.toString().includes(filtroGeneral);
@@ -3090,18 +3251,16 @@ function Tracking() {
                 onBlur={(e) => (e.target.style.borderColor = "#ccc")}
               >
                 <option value="">Últimos 3 días</option>
-                <option value="1">Enero</option>
-                <option value="2">Febrero</option>
                 <option value="3">Marzo</option>
                 <option value="4">Abril</option>
                 <option value="5">Mayo</option>
-                <option value="6">Junio</option>
+                {/* <option value="6">Junio</option>
                 <option value="7">Julio</option>
                 <option value="8">Agosto</option>
                 <option value="9">Septiembre</option>
                 <option value="10">Octubre</option>
                 <option value="11">Noviembre</option>
-                <option value="12">Diciembre</option>
+                <option value="12">Diciembre</option> */}
               </select>
 
               <Typography variant="h5" style={{ textAlign: "center" }}>
@@ -3110,7 +3269,7 @@ function Tracking() {
 
               {/* Caja de texto centrada y más grande */}
               <TextField
-                label="Buscar por No Orden o Num Cliente"
+                label="Buscar por No Orden o Nombre del Cliente"
                 value={filtroGeneral}
                 onChange={(e) => setFiltroGeneral(e.target.value)}
                 variant="outlined"
@@ -3266,7 +3425,7 @@ function Tracking() {
                         {visibleColumns.includes("FECHA DE FACTURA") && (
                           <TableCell>
                             {" "}
-                            {formatDate(routeData["FECHA DE FACTURA"])}{" "}
+                            {formatDate(routeData["FECHA_DE_FACTURA"])}{" "}
                           </TableCell>
                         )}
                         {visibleColumns.includes("TRANSPORTE") && (
@@ -3365,6 +3524,38 @@ function Tracking() {
                 alt="Filtro"
                 style={{ width: "400px", height: "auto" }}
               />
+              <select
+                value={mesSeleccionado}
+                onChange={(e) => setMesSeleccionado(e.target.value)}
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: "4px",
+                  border: "1px solid #ccc",
+                  fontWeight: "bold",
+                  color: "#333",
+                  backgroundColor: "#fff",
+                  cursor: "pointer",
+                  boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                  outline: "none",
+                  transition: "border-color 0.3s ease",
+                }}
+                onFocus={(e) => (e.target.style.borderColor = "#ff6600")}
+                onBlur={(e) => (e.target.style.borderColor = "#ccc")}
+              >
+                <option value="">Últimos 3 días</option>
+                <option value="1">Enero</option>
+                <option value="2">Febrero</option>
+                <option value="3">Marzo</option>
+                <option value="4">Abril</option>
+                <option value="5">Mayo</option>
+                {/*<option value="6">Junio</option>
+                <option value="7">Julio</option>
+                <option value="8">Agosto</option>
+                <option value="9">Septiembre</option>
+                <option value="10">Octubre</option>
+                <option value="11">Noviembre</option>
+                <option value="12">Diciembre</option> */}
+              </select>
               <Typography variant="h5" style={{ textAlign: "center" }}>
                 Transportes
               </Typography>
@@ -3803,6 +3994,38 @@ function Tracking() {
                 alt="Filtro"
                 style={{ width: "400px", height: "auto" }}
               />
+              <select
+                value={mesSeleccionado}
+                onChange={(e) => setMesSeleccionado(e.target.value)}
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: "4px",
+                  border: "1px solid #ccc",
+                  fontWeight: "bold",
+                  color: "#333",
+                  backgroundColor: "#fff",
+                  cursor: "pointer",
+                  boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                  outline: "none",
+                  transition: "border-color 0.3s ease",
+                }}
+                onFocus={(e) => (e.target.style.borderColor = "#ff6600")}
+                onBlur={(e) => (e.target.style.borderColor = "#ccc")}
+              >
+                <option value="">Últimos 3 días</option>
+                <option value="1">Enero</option>
+                <option value="2">Febrero</option>
+                <option value="3">Marzo</option>
+                <option value="4">Abril</option>
+                <option value="5">Mayo</option>
+                {/* <option value="6">Junio</option>
+                <option value="7">Julio</option>
+                <option value="8">Agosto</option>
+                <option value="9">Septiembre</option>
+                <option value="10">Octubre</option>
+                <option value="11">Noviembre</option>
+                <option value="12">Diciembre</option> */}
+              </select>
               <Typography variant="h5" style={{ textAlign: "center" }}>
                 Transportes
               </Typography>
@@ -3948,7 +4171,7 @@ function Tracking() {
                       )}
                       {visibleColumns.includes("FECHA DE FACTURA") && (
                         <TableCell>
-                          {formatDate(routeData["FECHA DE FACTURA"])}
+                          {formatDate(routeData["FECHA_DE_FACTURA"])}
                         </TableCell>
                       )}
                       {visibleColumns.includes("NUM CLIENTE") && (

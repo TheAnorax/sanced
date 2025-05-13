@@ -6,6 +6,14 @@ import {
   Tabs, Tab, Grid, Card, CardContent
 } from '@mui/material';
 
+
+import * as XLSX from 'xlsx';
+import { Button, Modal, Checkbox, FormControlLabel, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+
 function Historial() {
   const [movimientos, setMovimientos] = useState([]);
   const [filteredMovimientos, setFilteredMovimientos] = useState([]);
@@ -16,6 +24,10 @@ function Historial() {
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [searchTerm, setSearchTerm] = useState('');
   const [tabIndex, setTabIndex] = useState(0);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedColumns, setSelectedColumns] = useState(["ubi_origen", "ubi_destino", "code_prod", "cant_stock", "fecha_movimiento", "name"]);
+  const [startDate, setStartDate] = useState(null);
+  const [endDate, setEndDate] = useState(null);
 
   useEffect(() => {
     // Obtener movimientos
@@ -50,6 +62,57 @@ function Historial() {
     fetchMovimientos();
     fetchKpiData();
   }, []);
+
+
+  const handleExportToExcel = () => {
+    let data = [...filteredMovimientos];
+  
+    // Filtrado por fecha
+    if (startDate && endDate) {
+      const from = new Date(startDate).getTime();
+      const to = new Date(endDate).getTime();
+      data = data.filter(m =>
+        new Date(m.fecha_movimiento).getTime() >= from &&
+        new Date(m.fecha_movimiento).getTime() <= to
+      );
+    }
+
+
+  
+    // Mapeo de columnas seleccionadas
+    const exportData = data.map((row) => {
+      const formattedRow = {};
+      selectedColumns.forEach((col) => {
+        let value = row[col];
+    
+        // 👉 Formatear solo si es fecha_movimiento
+        if (col === "fecha_movimiento" && value) {
+          const date = new Date(value);
+          value = date.toLocaleString("es-MX", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true
+          });
+        }
+    
+        formattedRow[columnLabels[col]] = value;
+      });
+      return formattedRow;
+    });
+    
+    
+  
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Historial");
+  
+    XLSX.writeFile(wb, `Historial_Reporte.xlsx`);
+    setModalOpen(false);
+  };
+  
 
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
@@ -87,6 +150,16 @@ function Historial() {
     );
   }
 
+  const columnLabels = {
+    ubi_origen: "Ubicación Origen",
+    ubi_destino: "Ubicación Destino",
+    code_prod: "Código del Producto",
+    cant_stock: "Cantidad",
+    fecha_movimiento: "Fecha de Movimiento",
+    name: "Usuario Responsable"
+  };
+  
+
   return (
     <Container>
       <Typography variant="h4" align="center" gutterBottom>
@@ -115,6 +188,10 @@ function Historial() {
               style={{ maxWidth: 400 }}
             />
           </Box>
+
+          <Button variant="contained" color="primary" onClick={() => setModalOpen(true)}>
+  Seleccionar Reporte
+</Button>
 
           <TableContainer component={Paper} style={{ maxHeight: 600, overflowY: 'auto', width: '100%' }}>
             <Table>
@@ -197,6 +274,56 @@ function Historial() {
           </Typography>
         </Box>
       )}
+
+<Dialog open={modalOpen} onClose={() => setModalOpen(false)} maxWidth="sm" fullWidth>
+  <DialogTitle>Generar Reporte</DialogTitle>
+  <DialogContent>
+    <Typography variant="subtitle1">Selecciona columnas:</Typography>
+    
+    {Object.keys(columnLabels).map((col) => (
+  <FormControlLabel
+    key={col}
+    control={
+      <Checkbox
+        checked={selectedColumns.includes(col)}
+        onChange={() =>
+          setSelectedColumns((prev) =>
+            prev.includes(col)
+              ? prev.filter((c) => c !== col)
+              : [...prev, col]
+          )
+        }
+      />
+    }
+    label={columnLabels[col]} // 👈 nombre bonito aquí
+  />
+))}
+
+
+    <Box mt={2}>
+      <LocalizationProvider dateAdapter={AdapterDayjs}  adapterLocale="es">
+        <DatePicker
+          label="Fecha inicio"
+          value={startDate}
+          onChange={(newValue) => setStartDate(newValue)}
+          renderInput={(params) => <TextField fullWidth {...params} />}
+        />
+        <Box mt={2} />
+        <DatePicker
+          label="Fecha fin"
+          value={endDate}
+          onChange={(newValue) => setEndDate(newValue)}
+          renderInput={(params) => <TextField fullWidth {...params} />}
+        />
+      </LocalizationProvider>
+    </Box>
+  </DialogContent>
+  <DialogActions>
+    <Button onClick={() => setModalOpen(false)}>Cancelar</Button>
+    <Button onClick={handleExportToExcel} variant="contained" color="primary">Exportar</Button>
+  </DialogActions>
+</Dialog>
+
     </Container>
   );
 }

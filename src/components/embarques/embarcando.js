@@ -12,6 +12,13 @@ import {
     Modal,
     Backdrop,
     Fade,
+    TableContainer,
+    Table,
+    TableHead,
+    TableRow,
+    TableCell,
+    TableBody,
+  Paper
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 
@@ -267,32 +274,39 @@ function Embarcando() {
                         <Typography variant="h4" component="h2" gutterBottom>
                             Productividad de Embarcadores
                         </Typography>
-                        <Grid container spacing={2}>
-                            {productividad.length > 0 ? (
-                                productividad.map((item, index) => (
-                                    <Grid item xs={12} sm={6} md={3} key={index}> {/* Ajustado a 3 para mostrar 4 cuadros en fila */}
-                                        <Card variant="outlined" sx={{ height: '100%', borderRadius: '16px' }}>
-                                            <CardContent>
-                                                <Typography variant="h6" align="center">{item.usuario}</Typography>
-                                                <Typography variant="body1" align="center">
-                                                    <strong>Partidas:</strong> {item.partidas}
-                                                </Typography>
-                                                <Typography variant="body1" align="center">
-                                                    <strong>Cnatidad de Piezas:</strong> {item.cantidad_piezas}
-                                                </Typography>
-                                                <Typography variant="body1" align="center">
-                                                    <strong>Tiempo Total:</strong> {(item.tiempo_total_trabajo)}
-                                                </Typography>
-                                            </CardContent>
-                                        </Card>
-                                    </Grid>
-                                ))
-                            ) : (
-                                <Grid item xs={12} display="flex" justifyContent="center">
-                                    <Alert severity="warning">No hay datos de productividad disponibles.</Alert>
-                                </Grid>
-                            )}
-                        </Grid>
+                       <TableContainer component={Paper}>
+  <Table>
+    <TableHead>
+      <TableRow>
+        <TableCell><strong>Usuario</strong></TableCell>
+        <TableCell><strong>Partidas</strong></TableCell>
+        <TableCell><strong>Cantidad de Piezas</strong></TableCell>
+        <TableCell><strong>Tiempo Total</strong></TableCell>
+      </TableRow>
+    </TableHead>
+    <TableBody>
+      {productividad.length > 0 ? (
+        [...productividad]
+          .sort((a, b) => b.partidas - a.partidas) // ← Orden ascendente por partidas
+          .map((item, index) => (
+            <TableRow key={index}>
+              <TableCell>{item.usuario}</TableCell>
+              <TableCell>{Number(item.partidas).toLocaleString("es-MX")}</TableCell>
+              <TableCell>{Number(item.cantidad_piezas).toLocaleString("es-MX")}</TableCell>
+              <TableCell>{item.tiempo_total_trabajo}</TableCell>
+            </TableRow>
+          ))
+      ) : (
+        <TableRow>
+          <TableCell colSpan={4} align="center">
+            No hay datos de productividad disponibles.
+          </TableCell>
+        </TableRow>
+      )}
+    </TableBody>
+  </Table>
+</TableContainer>
+
                     </Box>
                 </Fade>
             </Modal>

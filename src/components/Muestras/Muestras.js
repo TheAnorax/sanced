@@ -29,6 +29,7 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  Tooltip
 } from "@mui/material";
 import { pdfTemplate } from "./pdfTemplate";
 import jsPDF from "jspdf";
@@ -37,11 +38,19 @@ import VisibilityIcon from "@mui/icons-material/Visibility";
 import IconButton from "@mui/material/IconButton";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddTaskIcon from "@mui/icons-material/AddTask";
-import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline"; // Para aumentar
-import RemoveCircleOutlineIcon from "@mui/icons-material/RemoveCircleOutline"; // Para disminuir
+import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
+import RemoveCircleOutlineIcon from "@mui/icons-material/RemoveCircleOutline";
+import LocalPrintshopIcon from "@mui/icons-material/LocalPrintshop";
+import Swal from "sweetalert2";
+import CancelIcon from "@mui/icons-material/Cancel";
+import CloseIcon from "@mui/icons-material/Close";
+import ExitToAppIcon from "@mui/icons-material/ExitToApp";
+
+const capitalize = (str) =>
+  str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
 
 function Muestras() {
-  const [currentTab, setCurrentTab] = useState(0); // 0: Formulario/Carrito, 1: Autorizar, 2: Imprimir
+  const [currentTab, setCurrentTab] = useState(0);
   const [vista, setVista] = useState("formulario");
   const [user, setUser] = useState(null);
 
@@ -61,31 +70,15 @@ function Muestras() {
   const [alertaMessage, setAlertaMessage] = useState("");
 
   const [solicitudes, setSolicitudes] = useState([]);
-  const [solicitudesAutorizadas, setSolicitudesAutorizadas] = useState([]); // Al autorizar se moverán aquí
+  const [solicitudesAutorizadas, setSolicitudesAutorizadas] = useState([]);
 
   const [openModal, setOpenModal] = useState(false);
   const [productosModal, setProductosModal] = useState([]);
 
+  const [solicitudModalFolio, setSolicitudModalFolio] = useState(null);
+  const [solicitudSeleccionada, setSolicitudSeleccionada] = useState(null);
+
   let timeoutId = useRef(null);
-
-  useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-
-    const storedSolicitudes = localStorage.getItem("solicitudes");
-    if (storedSolicitudes) {
-      setSolicitudes(JSON.parse(storedSolicitudes));
-    }
-
-    const storedAutorizadas = localStorage.getItem("solicitudesAutorizadas");
-    if (storedAutorizadas) {
-      setSolicitudesAutorizadas(JSON.parse(storedAutorizadas));
-    }
-
-    obtenerDepartamentos();
-  }, []);
 
   useEffect(() => {
     if (user) {
@@ -100,23 +93,32 @@ function Muestras() {
     }
   }, [user]);
 
-  const handleOpenModal = (productos) => {
+  const handleOpenModal = async (productos, folio) => {
     setProductosModal(productos);
+    setSolicitudModalFolio(folio);
     setOpenModal(true);
+
+    // Si quieres obtener ubicaciones del primer producto
+    if (productos.length > 0) {
+      try {
+        const response = await axios.get(
+          `http://66.232.105.87:3007/api/muestras/ubicaciones/${productos[0].codigo}`
+        );
+        setUbicaciones(response.data.map(u => u.ubicacion));
+      } catch (error) {
+        console.error("Error al obtener ubicaciones:", error);
+        setUbicaciones([]);
+      }
+    }
   };
+
+
+  const [reabrirModal, setReabrirModal] = useState(false);
 
   const handleCloseModal = () => {
     setOpenModal(false);
-  };
-
-  const guardarSolicitudes = (arr) => {
-    setSolicitudes(arr);
-    localStorage.setItem("solicitudes", JSON.stringify(arr));
-  };
-
-  const guardarAutorizadas = (arr) => {
-    setSolicitudesAutorizadas(arr);
-    localStorage.setItem("solicitudesAutorizadas", JSON.stringify(arr));
+    setProductosModal([]); // Limpiar datos si quieres
+    setSolicitudSeleccionada(null); // o setOpenParentModal(false) si es otro estado
   };
 
   const obtenerDepartamentos = async () => {
@@ -124,7 +126,30 @@ function Muestras() {
       const response = await axios.get(
         "http://66.232.105.87:3007/api/muestras/departamentos"
       );
-      setDepartamentos(response.data);
+
+      let deps = response.data.map((d) => {
+        const valueNormalizado = d.nombre.trim();
+        const labelCapitalizado = valueNormalizado
+          .toLowerCase()
+          .split(" ")
+          .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+          .join(" ");
+
+        return {
+          value: valueNormalizado,
+          label: labelCapitalizado,
+        };
+      });
+
+      // 👉 Agrega el departamento asignado si no viene en la respuesta
+      if (user?.name && usuariosFijos[user.name]) {
+        const depAsignado = usuariosFijos[user.name];
+        if (!deps.find((d) => d.value === depAsignado)) {
+          deps.push({ value: depAsignado, label: depAsignado });
+        }
+      }
+
+      setDepartamentos(deps);
     } catch (error) {
       console.error("Error al obtener departamentos:", error);
     }
@@ -134,44 +159,46 @@ function Muestras() {
     setMotivo(event.target.value);
   };
 
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+    obtenerDepartamentos(); // 👈 ESTA LÍNEA FALTA
+  }, []);
+
   const manejarEnvio = (e) => {
     e.preventDefault();
 
-    if (!user || !user.name || !departamento || !motivo) {
+    if (!user || !user.name || !departamento || !uso) {
       setAlerta(true);
-      setAlertaMessage("¡Por favor complete los campos obligatorios!");
+      setAlertaMessage("¡Por favor complete todos los campos obligatorios!");
       return;
     }
 
-    const depPrefix = departamento.slice(0, 3).toUpperCase();
-    let lastFolioNumber = localStorage.getItem("lastFolioNumber");
-    if (!lastFolioNumber) {
-      lastFolioNumber = 1;
-      localStorage.setItem("lastFolioNumber", lastFolioNumber);
-    }
-
-    const folio = `${depPrefix}-${String(lastFolioNumber).padStart(3, "0")}`;
+    // Si el uso no es "Laboratorio/Certificacion", se toma como motivo directamente
+    const motivoFinal = uso === "Laboratorio/Certificacion" ? motivo : uso;
 
     const nuevaSolicitud = {
-      folio,
+      uso,
       nombre: user.name,
       departamento,
       motivo,
+      laboratorio: uso === "Laboratorio/Certificacion" ? laboratorio : null,
+      organismo_certificador:
+        uso === "Laboratorio/Certificacion" ? organismo : null,
       regresaArticulo,
       fecha: regresaArticulo ? fecha : null,
       requiereEnvio: regresaArticulo ? requiereEnvio : false,
-      detalleEnvio: regresaArticulo && requiereEnvio ? detalleEnvio : "",
+      detalleEnvio: detalleEnvio || "", // ✅ aquí el cambio
       carrito: [],
       autorizado: false,
-      enviadoParaAutorizar: false, // Aquí aseguramos que no se mueva a "autorizar" aún
+      enviadoParaAutorizar: false,
     };
 
-    const updatedSolicitudes = [...solicitudes, nuevaSolicitud];
-    guardarSolicitudes(updatedSolicitudes);
-
-    localStorage.setItem("lastFolioNumber", parseInt(lastFolioNumber) + 1);
-
-    setVista("carrito"); // Cambia a la vista de carrito, no a "Autorizar"
+    // ⛔ Ya no guardes en backend aquí
+    setSolicitudes((prev) => [...prev, nuevaSolicitud]);
+    setVista("carrito");
   };
 
   const handleCodigoChange = (event) => {
@@ -209,33 +236,37 @@ function Muestras() {
   };
 
   const agregarAlCarrito = () => {
-    if (!producto || cantidad <= 0) {
+    if (!producto || !producto.codigo || cantidad <= 0) {
       setAlerta(true);
-      setAlertaMessage("Por favor ingrese una cantidad válida.");
+      setAlertaMessage("Producto no válido o cantidad incorrecta");
       return;
     }
+
+    const totalPiezas = cantidad * (producto._pz || 1); // 👈 Calculas antes de usarla
+
+    const item = {
+      codigo: producto.codigo,
+      des: producto.des,
+      imagen: `../assets/image/img_pz/${producto.codigo}.jpg`,
+      cantidad,
+      ubi: String(totalPiezas),
+    };
 
     const lastSolicitudIndex = solicitudes.length - 1;
     if (lastSolicitudIndex < 0) {
       setAlerta(true);
-      setAlertaMessage("No hay ninguna solicitud para agregar productos.");
+      setAlertaMessage(
+        "No hay ninguna solicitud activa para agregar productos."
+      );
       return;
     }
 
     const currentSolicitud = solicitudes[lastSolicitudIndex];
 
-    const item = {
-      codigo: producto.code_prod,
-      des: producto.des,
-      cant_stock: producto.cant_stock,
-      imagen: `../assets/image/img_pz/${producto.code_prod}.jpg`,
-      cantidad,
-      ubi: producto.ubi,
-    };
-
     const productoExistente = currentSolicitud.carrito.find(
       (p) => p.codigo === item.codigo
     );
+
     let updatedCarrito;
     if (productoExistente) {
       updatedCarrito = currentSolicitud.carrito.map((p) =>
@@ -250,9 +281,10 @@ function Muestras() {
       ...solicitudes.slice(0, lastSolicitudIndex),
       updatedSolicitud,
     ];
-    guardarSolicitudes(updatedSolicitudes);
 
-    setCodigo(""); // Limpiar el código
+    setSolicitudes(updatedSolicitudes);
+
+    setCodigo(""); // limpiar
     setCantidad(1);
     setProducto(null);
   };
@@ -261,31 +293,76 @@ function Muestras() {
     setCurrentTab(newValue);
   };
 
-  const autorizarSolicitud = (folio) => {
-    const solicitudIndex = solicitudes.findIndex((s) => s.folio === folio);
-    if (solicitudIndex === -1) return;
+  const autorizarSolicitud = async (folio) => {
+    try {
+      // Actualiza en el backend
+      await axios.patch(
+        `http://66.232.105.87:3007/api/muestras/solicitudes/${folio}`,
+        {
+          autorizado: true,
+          enviadoParaAutorizar: true,
+          autorizado_por: user.name,
+        }
+      );
 
-    const solicitud = { ...solicitudes[solicitudIndex], autorizado: true };
+      // Actualiza en frontend
+      const solicitudIndex = solicitudes.findIndex((s) => s.folio === folio);
+      if (solicitudIndex === -1) return;
 
-    // Mover a autorizadas
-    const updatedSolicitudes = [...solicitudes];
-    updatedSolicitudes.splice(solicitudIndex, 1);
-    guardarSolicitudes(updatedSolicitudes);
+      const solicitudAutorizada = {
+        ...solicitudes[solicitudIndex],
+        autorizado: true,
+        enviadoParaAutorizar: true,
+        autorizado_por: user.name, // ✅ AÑADIDO AL ESTADO
+      };
 
-    const updatedAutorizadas = [...solicitudesAutorizadas, solicitud];
-    guardarAutorizadas(updatedAutorizadas);
+      const nuevasSolicitudes = [...solicitudes];
+      nuevasSolicitudes.splice(solicitudIndex, 1);
+      setSolicitudes(nuevasSolicitudes);
+
+      setSolicitudesAutorizadas([
+        ...solicitudesAutorizadas,
+        solicitudAutorizada,
+      ]);
+    } catch (error) {
+      console.error("❌ Error al autorizar solicitud:", error);
+      setAlerta(true);
+      setAlertaMessage("No se pudo autorizar la solicitud.");
+    }
+    await obtenerSolicitudesAutorizadas(); // 🔥 Esto actualiza con los datos correctos
   };
 
-  const borrarSolicitud = (folio) => {
-    const updatedSolicitudes = solicitudes.filter((s) => s.folio !== folio);
-    guardarSolicitudes(updatedSolicitudes);
-  };
+  const borrarSolicitudAutorizada = async (folio) => {
+    try {
+      const confirmacion = await Swal.fire({
+        title: "¿Estás seguro?",
+        text: `Esta acción eliminará la solicitud ${folio}.`,
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonText: "Sí, borrar",
+        cancelButtonText: "Cancelar",
+      });
 
-  const borrarSolicitudAutorizada = (folio) => {
-    const updatedAutorizadas = solicitudesAutorizadas.filter(
-      (s) => s.folio !== folio
-    );
-    guardarAutorizadas(updatedAutorizadas);
+      if (confirmacion.isConfirmed) {
+        await axios.delete(
+          `http://66.232.105.87:3007/api/muestras/solicitudes/${folio}`
+        );
+
+        // 🔁 ACTUALIZA EL ESTADO PARA QUE LA TABLA SE REFRESQUE
+        setSolicitudesAutorizadas((prev) =>
+          prev.filter((sol) => sol.folio !== folio)
+        );
+
+        Swal.fire(
+          "Eliminado",
+          "La solicitud fue eliminada correctamente.",
+          "success"
+        );
+      }
+    } catch (error) {
+      console.error("❌ Error al borrar solicitud:", error);
+      Swal.fire("Error", "No se pudo eliminar la solicitud.", "error");
+    }
   };
 
   const solicitudesAutorizadasFiltradas = solicitudesAutorizadas;
@@ -317,65 +394,615 @@ function Muestras() {
     document.body.removeChild(iframe);
   };
 
-  const enviarAAutorizar = () => {
+  const enviarAAutorizar = async () => {
     if (solicitudes.length === 0) {
       setAlerta(true);
       setAlertaMessage("No hay solicitudes para enviar a autorizar.");
       return;
     }
 
-    // Filtramos para obtener la solicitud más reciente que no haya sido enviada a autorizar
     const lastSolicitudIndex = solicitudes.length - 1;
-    const lastSolicitud = solicitudes[lastSolicitudIndex];
+    const lastSolicitud = { ...solicitudes[lastSolicitudIndex] };
 
-    // Solo cambiamos el estado a "enviadoParaAutorizar: true" si aún no se ha enviado
     if (!lastSolicitud.enviadoParaAutorizar) {
       lastSolicitud.enviadoParaAutorizar = true;
 
-      // Actualizamos la lista de solicitudes
-      const updatedSolicitudes = [
-        ...solicitudes.slice(0, lastSolicitudIndex),
-        lastSolicitud,
-      ];
-      guardarSolicitudes(updatedSolicitudes);
-      // Cambiamos a la pestaña de "Autorizar"
-      setCurrentTab(1); // Cambia a la pestaña "Autorizar"
+      try {
+        await axios.post(
+          "http://66.232.105.87:3007/api/muestras/solicitudes",
+          lastSolicitud
+        );
+        setSolicitudes((prev) => {
+          const copia = [...prev];
+          copia[lastSolicitudIndex] = lastSolicitud;
+          return copia;
+        });
+        setCurrentTab(1);
+      } catch (error) {
+        console.error("❌ Error al enviar a autorizar:", error);
+        setAlerta(true);
+        setAlertaMessage("Error al enviar solicitud.");
+      }
     }
   };
 
-  const removeProduct = (codigo) => {
-    // Filtrar el producto a eliminar
-    const productosActualizados = productosModal.filter(
-      (item) => item.codigo !== codigo
-    );
-    setProductosModal(productosActualizados); // Actualizar los productos en el modal
-
-    const lastSolicitudIndex = solicitudes.length - 1;
-    const currentSolicitud = solicitudes[lastSolicitudIndex];
-
-    // Actualizar el carrito con los productos restantes
-    const updatedSolicitud = {
-      ...currentSolicitud,
-      carrito: productosActualizados,
-    };
-    const updatedSolicitudes = [
-      ...solicitudes.slice(0, lastSolicitudIndex),
-      updatedSolicitud,
-    ];
-    guardarSolicitudes(updatedSolicitudes);
-
-    // También actualizamos el número de artículos en la solicitud
-    const cantidadArticulos = productosActualizados.length;
-    const updatedSolicitudWithCount = {
-      ...updatedSolicitud,
-      cantidadArticulos,
-    };
-    const updatedSolicitudesWithCount = [
-      ...solicitudes.slice(0, lastSolicitudIndex),
-      updatedSolicitudWithCount,
-    ];
-    guardarSolicitudes(updatedSolicitudesWithCount);
+  const guardarSolicitudes = async (arr) => {
+    setSolicitudes(arr);
+    try {
+      await axios.post(
+        "http://66.232.105.87:3007/api/muestras/solicitudes",
+        arr[arr.length - 1]
+      );
+    } catch (error) {
+      console.error("Error al guardar solicitudes:", error);
+      setAlerta(true);
+      setAlertaMessage("Error al guardar solicitudes en el servidor");
+    }
   };
+
+  const guardarAutorizadas = async (arr) => {
+    setSolicitudesAutorizadas(arr);
+    try {
+      await axios.post("http://66.232.105.87:3007/api/muestras/solicitudes", arr);
+    } catch (error) {
+      console.error("Error al guardar autorizadas:", error);
+      setAlerta(true);
+      setAlertaMessage(
+        "Error al guardar solicitudes autorizadas en el servidor"
+      );
+    }
+  };
+
+  const removeProduct = async (codigo, folio) => {
+    setOpenModal(false); // 🔒 Cierra temporalmente el modal para evitar superposición visual
+    setReabrirModal(true); // 🔁 Indica que debe reabrirse si se cancela
+
+    const confirmacion = await Swal.fire({
+      title: "¿Eliminar producto?",
+      text: "Este producto será removido de la solicitud.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#aaa",
+      confirmButtonText: "Sí, eliminar",
+      cancelButtonText: "Cancelar",
+    });
+
+    if (!confirmacion.isConfirmed) {
+      setOpenModal(true); // ❌ No se eliminó, vuelve a mostrar el modal
+      setReabrirModal(false);
+      return;
+    }
+
+    try {
+      // 🔥 Eliminar del backend solo si ya fue guardado
+      if (folio) {
+        await axios.delete(
+          `http://66.232.105.87:3007/api/muestras/solicitudes/${folio}/producto/${codigo}`
+        );
+      }
+
+      const nuevasSolicitudes = [...solicitudes];
+      const index = nuevasSolicitudes.findIndex((s) => s.folio === folio);
+      if (index !== -1) {
+        const productosActualizados = nuevasSolicitudes[index].carrito.filter(
+          (p) => p.codigo !== codigo
+        );
+        nuevasSolicitudes[index].carrito = productosActualizados;
+
+        setSolicitudes(nuevasSolicitudes);
+        guardarSolicitudes(nuevasSolicitudes);
+        setProductosModal(productosActualizados);
+      }
+
+      Swal.fire("Eliminado", "Producto eliminado correctamente.", "success");
+      setReabrirModal(false);
+    } catch (error) {
+      console.error("❌ Error al eliminar el producto:", error);
+      Swal.fire("Error", "No se pudo eliminar el producto.", "error");
+      if (reabrirModal) setOpenModal(true); // Reabre si hubo error
+      setReabrirModal(false);
+    }
+  };
+
+  useEffect(() => {
+    obtenerSolicitudes();
+    obtenerSolicitudesAutorizadas();
+  }, []);
+
+  useEffect(() => {
+    const cargarSolicitudes = async () => {
+      try {
+        const response = await axios.get(
+          "http://66.232.105.87:3007/api/muestras/solicitudes"
+        );
+        setSolicitudes(response.data);
+      } catch (error) {
+        console.error("❌ Error al obtener solicitudes:", error);
+      }
+    };
+
+    cargarSolicitudes();
+  }, []);
+
+  const normalizarSolicitudes = (data) =>
+    data.map((s) => ({
+      ...s,
+      requiereEnvio: s.requiere_envio === 1,
+      detalleEnvio: s.detalle_envio,
+      regresaArticulo: s.regresa_articulo === 1,
+    }));
+
+  const obtenerSolicitudes = async () => {
+    try {
+      const response = await axios.get(
+        "http://66.232.105.87:3007/api/muestras/solicitudes"
+      );
+      const normalizadas = normalizarSolicitudes(response.data);
+      setSolicitudes(normalizadas);
+    } catch (error) {
+      console.error("Error al obtener solicitudes:", error);
+    }
+  };
+
+  const obtenerSolicitudesAutorizadas = async () => {
+    try {
+      const response = await axios.get(
+        "http://66.232.105.87:3007/api/muestras/autorizadas"
+      );
+      const normalizadas = normalizarSolicitudes(response.data);
+      setSolicitudesAutorizadas(normalizadas);
+    } catch (error) {
+      console.error("Error al obtener autorizadas:", error);
+    }
+  };
+
+  const borrarSolicitud = async (folio) => {
+    try {
+      const confirmacion = await Swal.fire({
+        title: "¿Estás seguro?",
+        text: `Esta acción eliminará la solicitud ${folio}.`,
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonText: "Sí, borrar",
+        cancelButtonText: "Cancelar",
+      });
+
+      if (confirmacion.isConfirmed) {
+        await axios.delete(
+          `http://66.232.105.87:3007/api/muestras/solicitudes/${folio}`
+        );
+
+        // 🔁 ACTUALIZA EL ESTADO PARA QUE LA TABLA SE REFRESQUE
+        setSolicitudesAutorizadas((prev) =>
+          prev.filter((sol) => sol.folio !== folio)
+        );
+
+        Swal.fire(
+          "Eliminado",
+          "La solicitud fue eliminada correctamente.",
+          "success"
+        );
+      }
+    } catch (error) {
+      console.error("❌ Error al borrar solicitud:", error);
+      Swal.fire("Error", "No se pudo eliminar la solicitud.", "error");
+    }
+  };
+
+  //cancelar solicitud
+
+  const cancelarSolicitud = async (folio) => {
+    try {
+      await axios.patch(
+        `http://66.232.105.87:3007/api/muestras/solicitudes/${folio}`,
+        {
+          autorizado: 2, // ❌ Cancelado
+          enviadoParaAutorizar: true,
+          autorizado_por: user.name,
+        }
+      );
+
+      // Quitarla visualmente de la lista activa
+      setSolicitudes((prev) => prev.filter((s) => s.folio !== folio));
+
+      Swal.fire(
+        "Cancelada",
+        "La solicitud fue marcada como cancelada.",
+        "info"
+      );
+    } catch (error) {
+      console.error("❌ Error al cancelar solicitud:", error);
+      Swal.fire("Error", "No se pudo cancelar la solicitud.", "error");
+    }
+  };
+
+  //cantidad surtida
+
+  const [modalSurtidoOpen, setModalSurtidoOpen] = useState(false);
+
+  const abrirModalSurtido = (solicitud) => {
+    setSolicitudSeleccionada(solicitud);
+    setModalSurtidoOpen(true);
+  };
+
+  const guardarSurtido = async () => {
+    const errores = [];
+
+    solicitudSeleccionada.carrito.forEach((item) => {
+      const solicitada = parseInt(item.cantidad);
+      const surtida = parseInt(item.cantidad_surtida || 0);
+
+      if (surtida > solicitada) {
+        errores.push(
+          `Código ${item.codigo} - Surtido (${surtida}) mayor a solicitado (${solicitada})`
+        );
+      }
+    });
+
+    if (errores.length > 0) {
+      setModalSurtidoOpen(false); // 👈 CIERRA EL MODAL PRIMERO
+
+      setTimeout(() => {
+        Swal.fire({
+          icon: "warning",
+          title: "Cantidad inválida",
+          html: `Las siguientes líneas tienen errores:<br><br><ul style="text-align: left;">${errores
+            .map((e) => `<li>${e}</li>`)
+            .join("")}</ul>`,
+        });
+      }, 200); // espera pequeña para que el DOM cierre el modal
+
+      return;
+    }
+
+    try {
+      const payload = {
+        folio: solicitudSeleccionada.folio,
+        carrito: solicitudSeleccionada.carrito.map((item) => ({
+          codigo: item.codigo,
+          cantidad_surtida: parseInt(item.cantidad_surtida || 0),
+        })),
+      };
+
+      await axios.post("http://66.232.105.87:3007/api/muestras/surtido", payload);
+
+      setModalSurtidoOpen(false);
+      setTimeout(() => {
+        Swal.fire("Éxito", "Cantidades surtidas guardadas", "success");
+      }, 200);
+    } catch (error) {
+      console.error("❌ Error al guardar surtido:", error);
+      Swal.fire(
+        "Error",
+        "No se pudieron guardar las cantidades surtidas",
+        "error"
+      );
+    }
+  };
+
+  const handleSurtidoChange = (index, value) => {
+    setSolicitudSeleccionada((prev) => {
+      const copia = { ...prev };
+      copia.carrito[index].cantidad_surtida = parseInt(value, 10) || 0;
+      return copia;
+    });
+  };
+
+
+
+
+  const registrarSalida = async (folio) => {
+    try {
+      const solicitud = solicitudesAutorizadas.find((s) => s.folio === folio);
+
+      if (!solicitud) {
+        return Swal.fire("Error", "Solicitud no encontrada", "error");
+      }
+
+      // 🔍 Si NO hay fin de embarque (nombre o fecha), primero registrar embarque
+      if (!solicitud.fin_embarcado_at) {
+        const confirmar = await Swal.fire({
+          title: "¿Registrar fin de embarque?",
+          text: "Aún no se ha registrado el fin de embarque. ¿Deseas hacerlo ahora?",
+          icon: "question",
+          showCancelButton: true,
+          confirmButtonText: "Sí, registrar embarque",
+          cancelButtonText: "Cancelar",
+        });
+
+        if (!confirmar.isConfirmed) return;
+
+        await axios.patch(`http://66.232.105.87:3007/api/muestras/embarque/${folio}`, {
+          fin_embarcado_por: user.name,
+        });
+
+        Swal.fire("✅ Listo", "Fin de embarque registrado correctamente", "success");
+        await obtenerSolicitudesAutorizadas();
+        return; // ⛔ Ya no hace más, espera segundo clic para registrar salida
+      }
+
+      // ✅ Si YA hay fin de embarque, ahora sí registrar salida
+      const confirmarSalida = await Swal.fire({
+        title: "¿Registrar salida?",
+        text: "Ya se ha registrado el embarque. ¿Deseas registrar ahora la salida?",
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonText: "Sí, registrar salida",
+        cancelButtonText: "Cancelar",
+      });
+
+      if (!confirmarSalida.isConfirmed) return;
+
+      await axios.patch(`http://66.232.105.87:3007/api/muestras/salida/${folio}`, {
+        salida_por: user.name,
+      });
+
+      Swal.fire("✅ Listo", "Salida registrada correctamente", "success");
+      await obtenerSolicitudesAutorizadas();
+    } catch (error) {
+      console.error("❌ Error en proceso de salida:", error);
+      Swal.fire("Error", "No se pudo completar el proceso", "error");
+    }
+  };
+
+
+
+
+
+
+  //configuracion de los departamentos
+
+  const configuracionPorDepartamento = {
+    Calidad: {
+      usos: [
+        "Laboratorio/Certificacion",
+        "Nuevos Productos",
+        "Cambios fisicos garantias",
+        "Comparativos",
+      ],
+      motivos: {
+        "Laboratorio/Certificacion": [],
+        "Nuevos Productos": [],
+        "Cambios fisicos garantias": [],
+        Comparativos: [],
+      },
+    },
+    Cedis: {
+      usos: ["Uso Interno"],
+      motivos: {
+        "Uso Interno": [],
+      },
+    },
+    Compras: {
+      usos: ["Campo abierto"],
+      motivos: {
+        "Campo abierto": [],
+      },
+    },
+    Departamental: {
+      usos: [
+        "Walmart",
+        "Futurama",
+        "Walmart GS1",
+        "Walmart La Naranja",
+        "Casa Ley",
+        "Dollar General",
+        "Tiendas 3B",
+        "Tiendas del sol",
+        "Smart",
+        "Especificaciones de producto",
+        "Chedraui",
+        "Tramontina",
+        "Sears",
+        "HEB",
+        "Liverpool",
+        "Coppel",
+        "Soriana",
+        "SODIMAC",
+        "Waldos",
+        "Central Detallista",
+        "Merco",
+      ],
+      motivos: {
+        Walmart: [],
+        Futurama: [],
+        "Walmart GS1": [],
+        "Walmart La Naranja": [],
+        "Casa Ley": [],
+        "Dollar General": [],
+        "Tiendas 3B": [],
+        "Tiendas del sol": [],
+        Smart: [],
+        "Especificaciones de producto": [],
+        Chedraui: [],
+        Tramontina: [],
+        Sears: [],
+        HEB: [],
+        Liverpool: [],
+        Coppel: [],
+        Soriana: [],
+        SODIMAC: [],
+        Waldos: [],
+        "Central Detallista": [],
+        Merco: [],
+      },
+    },
+    Direccion: {
+      usos: [
+        "Material para Elias Sandler",
+        "Material para Eduardo Sandler",
+        "Material para Mauricio Sandler",
+      ],
+      motivos: {
+        "Material para Elias Sandler": [],
+        "Material para Eduardo Sandler": [],
+        "Material para Mauricio Sandler": [],
+      },
+    },
+    Diseño: {
+      usos: ["Toma de fotografias y video", "Revision de empaque"],
+      motivos: {
+        "Toma de fotografias y video": [],
+        "Revision de empaque": [],
+      },
+    },
+    Exportaciones: {
+      usos: ["Para clientes varios"],
+      motivos: {
+        "Para clientes varios": [],
+      },
+    },
+    Mercadotecnia: {
+      usos: ["Expo Ferretera", "Toma de fotografias y video"],
+      motivos: {
+        "Expo Ferretera": [],
+        "Toma de fotografias y video": [],
+      },
+    },
+    Planta: {
+      usos: [
+        "Equipo De Proteccion Personal",
+        "Herramientas De Uso Comun",
+        "Consumibles De Proceso",
+        "Material Para Mantenimiento",
+        "Material Para Proyectos",
+        "Muestras De Producto",
+      ],
+      motivos: {
+        "Equipo De Proteccion Personal": [],
+        "Herramientas De Uso Comun": [],
+        "Consumibles De Proceso": [],
+        "Material Para Mantenimiento": [],
+        "Material Para Proyectos": [],
+        "Muestras De Producto": [],
+      },
+    },
+    "Recursos Humanos": {
+      usos: ["Uso Interno"],
+      motivos: {
+        "Uso Interno": [],
+      },
+    },
+    "E-commerce": {
+      usos: ["Toma de fotografias y video"],
+      motivos: {
+        "Toma de fotografias y video": [],
+      },
+    },
+    "Taller POP": {
+      usos: ["Uso Interno", "Expo Ferretera"],
+      motivos: {
+        "Uso Interno": [],
+        "Expo Ferretera": [],
+      },
+    },
+  };
+
+  const normalizarDepartamento = (nombre) => {
+    const capitalizar = (str) =>
+      str.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+
+    const excepciones = {
+      MECARDOTECNIA: "Mercadotecnia",
+      "RECURSOS HUMANOS": "Recursos Humanos",
+      "E-COMMERCE": "E-commerce",
+      "TALLER POP": "Taller POP",
+      DISEÑO: "Diseño",
+    };
+
+    return excepciones[nombre] || capitalizar(nombre);
+  };
+
+  const [uso, setUso] = useState("");
+
+  const [laboratorio, setLaboratorio] = useState("");
+  const [organismo, setOrganismo] = useState("");
+
+  const laboratorios = [
+    "Ampliequipos",
+    "Tecnom",
+    "Nyce",
+    "Ance",
+    "Comecer",
+    "Prucer",
+    "Santul",
+    "Tesso",
+  ];
+
+  const organismosCertificadores = [
+    "Solnom",
+    "Normalitec",
+    "Factual",
+    "Mexen",
+    "Intertrade",
+    "Nyce",
+    "Ance",
+    "Comecer",
+  ];
+
+  const [departamentoBloqueado, setDepartamentoBloqueado] = useState(false);
+  const [nombre, setNombre] = useState(""); // si no lo tienes ya
+
+  const usuariosFijos = {
+    "Luis Angel Flores Barbosa": "Calidad",
+    "Axel Squivias Sanchez": "Compras",
+    "Marleni Moreno": "Compras",
+    "Katia Daniela Martinez Mora": "Departamental",
+    "Miriam Zayanni Meneses Tecomulapa": "Departamental",
+    "Montserrat Roa Nava": "Departamental",
+    "Jorge Mario Vallejo Pérez": "Departamental",
+    "Francisco Javier Pineda Basurto": "Diseño",
+    "Brenda Zuleyma Velazquez Tapia": "Mercadotecnia",
+    "Adriana Miron Cortes": "Planta",
+    "Mariana Lucero Ramirez Medina": "Recursos Humanos",
+    "Michel Escobar Jimenez": "E-commerce",
+    "Sergio Regalado Alvarez": "Taller POP",
+    "Enrrique Saavedra": "Cedis",
+    "Elias Sandler": "Direccion",
+    "Eduardo Sandler": "Direccion",
+    "Mauricio Sandler": "Direccion",
+    "Jonathan Alcantara": "Direccion",
+  };
+
+  useEffect(() => {
+    if (user?.name) {
+      setNombre(user.name);
+      if (usuariosFijos[user.name] && user.name !== "Jonathan") {
+        const depOriginal = usuariosFijos[user.name]; // usar tal cual
+        setDepartamento(depOriginal); // 👈 sin normalizar
+        setDepartamentoBloqueado(true);
+      } else {
+        setDepartamentoBloqueado(false);
+      }
+    }
+  }, [user]);
+
+  const [ubicaciones, setUbicaciones] = useState([]);
+
+  const [ubicacionesPorCodigo, setUbicacionesPorCodigo] = useState({});
+
+  const handleOpenSurtidoModal = async (solicitud) => {
+    setSolicitudSeleccionada(solicitud);
+    setModalSurtidoOpen(true);
+
+    const ubicacionesTemp = {};
+
+    for (const item of solicitud.carrito) {
+      try {
+        const res = await axios.get(`http://66.232.105.87:3007/api/muestras/ubicaciones/${item.codigo}`);
+        const ubicaciones = res.data.map(u => u.ubi);
+        ubicacionesTemp[item.codigo] = ubicaciones.length > 0 ? ubicaciones : ["No hay ubicaciones registradas"];
+      } catch (error) {
+        console.error(`Error ubicaciones para ${item.codigo}`, error);
+        ubicacionesTemp[item.codigo] = ["Error al cargar ubicaciones"];
+      }
+    }
+
+    setUbicacionesPorCodigo(ubicacionesTemp);
+  };
+
+
 
   return (
     <Container component="main" maxWidth="lg">
@@ -431,50 +1058,95 @@ function Muestras() {
                       />
                     </Grid>
                     <Grid item xs={12}>
-                      <FormControl fullWidth variant="outlined">
+                      <FormControl fullWidth required>
                         <InputLabel>Departamento</InputLabel>
                         <Select
-                          label="Departamento"
                           value={departamento}
                           onChange={(e) => setDepartamento(e.target.value)}
-                          required
+                          disabled={departamentoBloqueado}
+                          displayEmpty
                         >
-                          {departamentos.map((dept, index) => (
-                            <MenuItem key={index} value={dept.value}>
-                              {dept.label}
+                          {departamentoBloqueado && (
+                            <MenuItem value={departamento}>
+                              {departamento}
                             </MenuItem>
-                          ))}
+                          )}
+                          {!departamentoBloqueado &&
+                            departamentos.map((dep) => (
+                              <MenuItem key={dep.value} value={dep.value}>
+                                {dep.label}
+                              </MenuItem>
+                            ))}
                         </Select>
                       </FormControl>
                     </Grid>
                     <Grid item xs={12}>
-                      <FormControl fullWidth variant="outlined" required>
-                        <InputLabel id="motivo-label">
-                          Motivo de la solicitud
-                        </InputLabel>
-                        <Select
-                          labelId="motivo-label"
-                          value={motivo}
-                          onChange={handleMotivoChange}
-                          label="Motivo de la solicitud"
-                        >
-                          <MenuItem value="Muestras">Muestras</MenuItem>
-                          <MenuItem value="Donaciones">Donaciones</MenuItem>
-                          <MenuItem value="Maquila Interns">
-                            Maquila Interns
-                          </MenuItem>
-                          <MenuItem value="Obsequio">Obsequio</MenuItem>
-                          <MenuItem value="Cambio Fisico">
-                            Cambio Fisico
-                          </MenuItem>
-                          <MenuItem value="Insumos Pop">Insumos Pop</MenuItem>
-                          <MenuItem value="Maquila Externa">
-                            Maquila Externa
-                          </MenuItem>
-                          <MenuItem value="Uso Interno">Uso Interno</MenuItem>
-                          <MenuItem value="Pruebas">Pruebas</MenuItem>
-                        </Select>
-                      </FormControl>
+                      {departamento && (
+                        <Grid item xs={12}>
+                          <FormControl fullWidth required>
+                            <InputLabel>Uso</InputLabel>
+                            <Select
+                              value={uso}
+                              onChange={(e) => {
+                                setUso(e.target.value);
+                                setMotivo("");
+                                setLaboratorio("");
+                                setOrganismo("");
+                              }}
+                            >
+                              {(
+                                configuracionPorDepartamento[
+                                  normalizarDepartamento(departamento)
+                                ]?.usos || []
+                              ).map((u) => (
+                                <MenuItem key={u} value={u}>
+                                  {u}
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+                        </Grid>
+                      )}
+
+                      {uso === "Laboratorio/Certificacion" && (
+                        <>
+                          <Grid item xs={12}>
+                            <FormControl fullWidth required>
+                              <InputLabel>Laboratorio</InputLabel>
+                              <Select
+                                value={laboratorio}
+                                onChange={(e) => {
+                                  const value = e.target.value;
+                                  setLaboratorio(value);
+                                  setOrganismo(""); // 🔄 Ya no necesitas organismosPorLaboratorio
+                                }}
+                              >
+                                {laboratorios.map((lab) => (
+                                  <MenuItem key={lab} value={lab}>
+                                    {lab}
+                                  </MenuItem>
+                                ))}
+                              </Select>
+                            </FormControl>
+                          </Grid>
+
+                          <Grid item xs={12}>
+                            <FormControl fullWidth required>
+                              <InputLabel>Organismo Certificador</InputLabel>
+                              <Select
+                                value={organismo}
+                                onChange={(e) => setOrganismo(e.target.value)}
+                              >
+                                {organismosCertificadores.map((org) => (
+                                  <MenuItem key={org} value={org}>
+                                    {org}
+                                  </MenuItem>
+                                ))}
+                              </Select>
+                            </FormControl>
+                          </Grid>
+                        </>
+                      )}
                     </Grid>
 
                     {/* Ambos campos visibles, sin dependencias */}
@@ -493,19 +1165,6 @@ function Muestras() {
                       />
                     </Grid>
 
-                    <Grid item xs={12}>
-                      <FormControlLabel
-                        control={
-                          <Checkbox
-                            checked={requiereEnvio}
-                            onChange={(e) => setRequiereEnvio(e.target.checked)}
-                            color="primary"
-                          />
-                        }
-                        label="¿Requiere envío?"
-                      />
-                    </Grid>
-
                     {/* Si "Regresa artículo" está seleccionado, muestra la fecha de devolución */}
                     {regresaArticulo && (
                       <Grid item xs={12}>
@@ -521,19 +1180,41 @@ function Muestras() {
                       </Grid>
                     )}
 
-                    {/* Si "Requiere envío" está seleccionado, muestra los detalles del envío */}
-                    {requiereEnvio && (
-                      <Grid item xs={12}>
-                        <TextField
-                          label="Detalles del envío"
-                          variant="outlined"
-                          fullWidth
-                          value={detalleEnvio}
-                          onChange={(e) => setDetalleEnvio(e.target.value)}
-                          required
-                        />
-                      </Grid>
-                    )}
+                    <Grid item xs={12}>
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            checked={
+                              detalleEnvio === `Se entrega a ${user?.name}`
+                            }
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setDetalleEnvio(`Se entrega a ${user?.name}`);
+                              } else {
+                                setDetalleEnvio(""); // Limpiar si se desmarca
+                              }
+                            }}
+                            color="primary"
+                          />
+                        }
+                        label="¿Recoge el solicitante?"
+                      />
+                    </Grid>
+
+                    <Grid item xs={12}>
+                      <TextField
+                        label="Observaciones"
+                        variant="outlined"
+                        fullWidth
+                        required
+                        value={detalleEnvio}
+                        onChange={(e) => setDetalleEnvio(e.target.value)}
+                        InputProps={{
+                          readOnly:
+                            detalleEnvio === `Se entrega a ${user?.name}`,
+                        }}
+                      />
+                    </Grid>
 
                     <Grid item xs={12}>
                       <Button
@@ -578,7 +1259,7 @@ function Muestras() {
                           <TableCell>Imagen</TableCell>
                           <TableCell>Código</TableCell>
                           <TableCell>Descripción</TableCell>
-                          <TableCell>UM en Piezas</TableCell>
+                          <TableCell>UM - Cantidad</TableCell>
                           <TableCell>Acciones</TableCell>
                         </TableRow>
                       </TableHead>
@@ -586,28 +1267,33 @@ function Muestras() {
                         <TableRow>
                           <TableCell>
                             <img
-                              src={`../assets/image/img_pz/${producto.code_prod}.jpg`}
+                              src={`../assets/image/img_pz/${producto.codigo}.jpg`}
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src =
+                                  "/assets/image/img_pz/noimage.png";
+                              }}
                               alt="Producto"
                               style={{
                                 width: "50px",
                                 height: "50px",
                                 objectFit: "cover",
                               }}
-                              onError={(e) => {
-                                e.target.onerror = null;
-                                e.target.src = "https://via.placeholder.com/50"; // Imagen por defecto si no se encuentra
-                              }}
                             />
                           </TableCell>
-                          <TableCell>{producto.code_prod}</TableCell>
+                          <TableCell>{producto.codigo}</TableCell>
                           <TableCell>{producto.des}</TableCell>
                           <TableCell>
-                            <Grid container spacing={2} alignItems="center">
+                            {producto.um} - {producto._pz}
+                          </TableCell>
+
+                          <TableCell>
+                            <Grid container spacing={1} alignItems="center">
                               <Grid item>
                                 <IconButton
                                   onClick={() =>
                                     setCantidad(cantidad > 1 ? cantidad - 1 : 1)
-                                  } // Reduce la cantidad, pero nunca menos de 1
+                                  }
                                   sx={{ minWidth: "40px", padding: "10px" }}
                                   title="Disminuir cantidad"
                                 >
@@ -616,7 +1302,7 @@ function Muestras() {
                               </Grid>
                               <Grid item>
                                 <TextField
-                                  type="outlined"
+                                  type="number"
                                   value={cantidad}
                                   onChange={(e) =>
                                     setCantidad(Number(e.target.value))
@@ -627,15 +1313,24 @@ function Muestras() {
                               </Grid>
                               <Grid item>
                                 <IconButton
-                                  onClick={() => setCantidad(cantidad + 1)} // Incrementa la cantidad
+                                  onClick={() => setCantidad(cantidad + 1)}
                                   sx={{ minWidth: "40px", padding: "10px" }}
                                   title="Aumentar cantidad"
                                 >
                                   <AddCircleOutlineIcon />
                                 </IconButton>
                               </Grid>
+                              <Grid item xs={12}>
+                                <Typography variant="body2">
+                                  Total:{" "}
+                                  <strong>
+                                    {cantidad * (producto._pz || 1)} piezas
+                                  </strong>
+                                </Typography>
+                              </Grid>
                             </Grid>
                           </TableCell>
+
                           <TableCell>
                             <Button
                               sx={{
@@ -677,9 +1372,12 @@ function Muestras() {
                             <TableCell>Código</TableCell>
                             <TableCell>Imagen</TableCell>
                             <TableCell>Descripción</TableCell>
-                            <TableCell>Cantidad</TableCell>
+                            <TableCell>Cantidad (UM)</TableCell>
+                            <TableCell>Total Piezas</TableCell>
+                            <TableCell>Acciones</TableCell>
                           </TableRow>
                         </TableHead>
+
                         <TableBody>
                           {solicitudes[solicitudes.length - 1].carrito.map(
                             (item, index) => (
@@ -687,22 +1385,36 @@ function Muestras() {
                                 <TableCell>{item.codigo}</TableCell>
                                 <TableCell>
                                   <img
-                                    src={item.imagen}
+                                    src={`../assets/image/img_pz/${item.codigo}.jpg`}
+                                    onError={(e) => {
+                                      e.target.onerror = null;
+                                      e.target.src =
+                                        "/assets/image/img_pz/noimage.png";
+                                    }}
                                     alt="Producto"
                                     style={{
                                       width: "50px",
                                       height: "50px",
                                       objectFit: "cover",
                                     }}
-                                    onError={(e) => {
-                                      e.target.onerror = null;
-                                      e.target.src =
-                                        "https://via.placeholder.com/50";
-                                    }}
                                   />
                                 </TableCell>
                                 <TableCell>{item.des}</TableCell>
                                 <TableCell>{item.cantidad}</TableCell>
+                                <TableCell>{item.ubi}</TableCell>
+                                <TableCell>
+                                  <IconButton
+                                    onClick={() => {
+                                      const folio =
+                                        solicitudes[solicitudes.length - 1]
+                                          .folio;
+                                      removeProduct(item.codigo, folio);
+                                    }}
+                                    color="error"
+                                  >
+                                    <DeleteIcon />
+                                  </IconButton>
+                                </TableCell>
                               </TableRow>
                             )
                           )}
@@ -728,11 +1440,135 @@ function Muestras() {
             <Typography variant="h5" align="center" gutterBottom>
               Autorizar Solicitudes
             </Typography>
-            {solicitudes.filter((s) => s.enviadoParaAutorizar).length === 0 && (
-              <Typography>No hay solicitudes para autorizar.</Typography>
-            )}
-            {solicitudes.filter((s) => s.enviadoParaAutorizar).length > 0 && (
-              <TableContainer component={Paper} style={{ marginTop: "20px" }}>
+
+            {solicitudes.filter(
+              (s) =>
+                (s.enviadoParaAutorizar || s.enviado_para_autorizar === 1) &&
+                s.autorizado !== 2 // ⛔ ocultar canceladas
+            ).length === 0 && (
+                <Typography>No hay solicitudes para autorizar.</Typography>
+              )}
+
+            {solicitudes.filter(
+              (s) =>
+                (s.enviadoParaAutorizar || s.enviado_para_autorizar === 1) &&
+                s.autorizado !== 2 // ⛔ ocultar canceladas
+            ).length > 0 && (
+                <TableContainer component={Paper} style={{ marginTop: "20px" }}>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Folio</TableCell>
+                        <TableCell>Nombre</TableCell>
+                        <TableCell>Departamento</TableCell>
+                        <TableCell>Motivo</TableCell>
+                        <TableCell>Fecha Devolución</TableCell>
+                        <TableCell>Informacion de entrega o de Envio</TableCell>
+                        <TableCell>Artículos</TableCell>
+                        <TableCell>Autorizado</TableCell>
+                        <TableCell>Acciones</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {solicitudes
+                        .filter(
+                          (s) =>
+                            s.enviadoParaAutorizar ||
+                            s.enviado_para_autorizar === 1
+                        )
+                        .map((sol) => (
+                          <TableRow key={sol.folio}>
+                            <TableCell>{sol.folio}</TableCell>
+                            <TableCell>{sol.nombre}</TableCell>
+                            <TableCell>{sol.departamento}</TableCell>
+                            <TableCell>{sol.motivo}</TableCell>
+                            <TableCell>
+                              {sol.fecha
+                                ? new Date(sol.fecha).toLocaleDateString("es-MX")
+                                : "N/A"}
+                            </TableCell>
+                            <TableCell>{sol.detalle_envio || "N/A"}</TableCell>
+                            <TableCell>{sol.carrito?.length || 0}</TableCell>
+                            <TableCell>{sol.autorizado ? "Sí" : "No"}</TableCell>
+
+                            <TableCell>
+                              <Box
+                                display="flex"
+                                justifyContent="flex-start"
+                                alignItems="center"
+                              >
+                                {sol.autorizado === 0 && (
+                                  <>
+                                    {/* Botón verde: Autorizar */}
+                                    <IconButton
+                                      onClick={() =>
+                                        autorizarSolicitud(sol.folio)
+                                      }
+                                      color="success"
+                                      title="Autorizar y Generar PDF"
+                                      style={{ marginRight: "10px" }}
+                                    >
+                                      <AddTaskIcon />
+                                    </IconButton>
+
+                                    {/* Botón gris: Cancelar / Negar */}
+                                    <IconButton
+                                      onClick={() => cancelarSolicitud(sol.folio)}
+                                      color="error"
+                                      title="Cancelar solicitud"
+                                    >
+                                      <CancelIcon />
+                                    </IconButton>
+                                  </>
+                                )}
+
+                                <IconButton
+                                  onClick={() =>
+                                    handleOpenModal(sol.carrito, sol.folio)
+                                  }
+                                  sx={{ color: "orange" }}
+                                  title="Ver productos"
+                                >
+                                  <VisibilityIcon />
+                                </IconButton>
+
+                                {!sol.autorizado && (
+                                  <IconButton
+                                    onClick={() => borrarSolicitud(sol.folio)}
+                                    color="error"
+                                    title="Eliminar solicitud"
+                                  >
+                                    <DeleteIcon />
+                                  </IconButton>
+                                )}
+                              </Box>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+          </Paper>
+        )}
+
+        {currentTab === 2 && (
+          <Paper elevation={3} style={{ padding: "20px" }}>
+            <Typography variant="h5" align="center" gutterBottom>
+              Imprimir Solicitudes
+            </Typography>
+
+            {/* Sección de AUTORIZADAS */}
+            <Typography variant="h6" gutterBottom>
+              Solicitudes Autorizadas
+            </Typography>
+
+            {solicitudesAutorizadas.filter((sol) => sol.autorizado === 1)
+              .length > 0 ? (
+              <TableContainer
+                component={Paper}
+                style={{ marginBottom: "30px" }}
+              >
                 <Table>
                   <TableHead>
                     <TableRow>
@@ -741,71 +1577,149 @@ function Muestras() {
                       <TableCell>Departamento</TableCell>
                       <TableCell>Motivo</TableCell>
                       <TableCell>Fecha Devolución</TableCell>
-                      <TableCell>Requiere Envío</TableCell>
-                      <TableCell>Detalles Envío</TableCell>
+                      <TableCell>Detalles de entrega o de Envio</TableCell>
                       <TableCell>Artículos</TableCell>
                       <TableCell>Autorizado</TableCell>
+                      <TableCell>Embarcado</TableCell>
+                      <TableCell>Autorizo Salida</TableCell>
+
                       <TableCell>Acciones</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {solicitudes
-                      .filter((s) => s.enviadoParaAutorizar)
+                    {solicitudesAutorizadas
+                      .filter((sol) => sol.autorizado === 1)
                       .map((sol) => (
                         <TableRow key={sol.folio}>
                           <TableCell>{sol.folio}</TableCell>
                           <TableCell>{sol.nombre}</TableCell>
                           <TableCell>{sol.departamento}</TableCell>
                           <TableCell>{sol.motivo}</TableCell>
-                          <TableCell>{sol.fecha || "N/A"}</TableCell>
                           <TableCell>
-                            {sol.requiereEnvio ? "Sí" : "No"}
+                            {sol.fecha
+                              ? new Date(sol.fecha).toLocaleDateString("es-MX")
+                              : "N/A"}
                           </TableCell>
                           <TableCell>{sol.detalleEnvio || "N/A"}</TableCell>
-                          <TableCell>{sol.carrito.length}</TableCell>
-                          <TableCell>{sol.autorizado ? "Sí" : "No"}</TableCell>
+                          <TableCell>{sol.carrito?.length || 0}</TableCell>
+                          <TableCell>Sí</TableCell>
                           <TableCell>
-                            <Box
-                              display="flex"
-                              justifyContent="flex-start"
-                              alignItems="center"
+                            {sol.fin_embarcado_por
+                              ? `${sol.fin_embarcado_por} - ${new Date(sol.fin_embarcado_at).toLocaleTimeString("es-MX")}`
+                              : "Pendiente"}
+                          </TableCell>
+                          <TableCell>{sol.salida_por || "Pendiente"}</TableCell>
+                          <TableCell>
+                            <IconButton
+                              onClick={() => generarPDF(sol)}
+                              sx={{ color: "black" }}
                             >
-                              {!sol.autorizado && (
-                                <IconButton
-                                  onClick={() => autorizarSolicitud(sol.folio)}
-                                  color="success"
-                                  title="Autorizar"
-                                  style={{ marginRight: "10px" }} // Espacio entre los botones
-                                >
-                                  <AddTaskIcon />
-                                </IconButton>
-                              )}
+                              <LocalPrintshopIcon />
+                            </IconButton>
+                            <IconButton
+                              onClick={() => borrarSolicitud(sol.folio)}
+                              color="error"
+                              title="Eliminar solicitud"
+                            >
+                              <DeleteIcon />
+                            </IconButton>
+
+                            <IconButton
+                              onClick={() => handleOpenSurtidoModal(sol)}
+                              color="info"
+                              title="Registrar cantidades surtidas"
+                            >
+                              <VisibilityIcon />
+                            </IconButton>
+                            {(!sol.fin_embarcado_at || !sol.salida_por) && (
                               <IconButton
-                                onClick={() => handleOpenModal(sol.carrito)} // Abre el modal con los productos de la solicitud
-                                sx={{ color: "orange" }} // Color personalizable: naranja
-                                title="Ver productos"
-                                style={{ marginRight: "10px" }} // Espacio entre los botones
+                                onClick={() => registrarSalida(sol.folio)}
+                                color="success"
+                                title={
+                                  !sol.fin_embarcado_at
+                                    ? "Registrar fin de embarque"
+                                    : "Registrar salida"
+                                }
                               >
-                                <VisibilityIcon />
+                                <ExitToAppIcon />
                               </IconButton>
-                              <IconButton
-                                onClick={() => borrarSolicitud(sol.folio)}
-                                color="error"
-                                title="Borrar solicitud"
-                              >
-                                <DeleteIcon />
-                              </IconButton>
-                            </Box>
+                            )}
+
+
+
                           </TableCell>
                         </TableRow>
                       ))}
                   </TableBody>
                 </Table>
               </TableContainer>
+            ) : (
+              <Typography>No hay solicitudes autorizadas.</Typography>
+            )}
+
+            {/* Sección de CANCELADAS */}
+            <Typography variant="h5" align="center" gutterBottom>
+              Solicitudes Canceladas
+            </Typography>
+
+            {solicitudesAutorizadas.filter((sol) => sol.autorizado === 2)
+              .length > 0 ? (
+              <TableContainer component={Paper}>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Folio</TableCell>
+                      <TableCell>Nombre</TableCell>
+                      <TableCell>Departamento</TableCell>
+                      <TableCell>Motivo</TableCell>
+                      <TableCell>Fecha Devolución</TableCell>
+                      <TableCell>Detalles Envío</TableCell>
+                      <TableCell>Artículos</TableCell>
+                      <TableCell>Cancelado por</TableCell>
+                      <TableCell>Acciones</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {solicitudesAutorizadas
+                      .filter((sol) => sol.autorizado === 2)
+                      .map((sol) => (
+                        <TableRow
+                          key={sol.folio}
+                          sx={{ backgroundColor: "#f2f2f2" }}
+                        >
+                          <TableCell>{sol.folio}</TableCell>
+                          <TableCell>{sol.nombre}</TableCell>
+                          <TableCell>{sol.departamento}</TableCell>
+                          <TableCell>{sol.motivo}</TableCell>
+                          <TableCell>
+                            {sol.fecha
+                              ? new Date(sol.fecha).toLocaleDateString("es-MX")
+                              : "N/A"}
+                          </TableCell>
+                          <TableCell>{sol.detalleEnvio || "N/A"}</TableCell>
+                          <TableCell>{sol.carrito?.length || 0}</TableCell>
+                          <TableCell>{sol.autorizado_por || "N/A"}</TableCell>
+                          <TableCell>
+                            <IconButton
+                              onClick={() => borrarSolicitud(sol.folio)}
+                              color="error"
+                              title="Eliminar solicitud"
+                            >
+                              <DeleteIcon />
+                            </IconButton>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            ) : (
+              <Typography>No hay solicitudes canceladas.</Typography>
             )}
           </Paper>
         )}
 
+        {/* modal de productos solicitados  */}
         <Dialog open={openModal} onClose={handleCloseModal}>
           <DialogTitle>Productos de la Solicitud</DialogTitle>
           <DialogContent>
@@ -815,7 +1729,8 @@ function Muestras() {
                   <TableCell>Imagen</TableCell>
                   <TableCell>Código</TableCell>
                   <TableCell>Descripción</TableCell>
-                  <TableCell>Cantidad</TableCell>
+                  <TableCell>Cantidad (UM)</TableCell>
+                  <TableCell>Total Piezas</TableCell>
                   <TableCell>Acciones</TableCell>
                 </TableRow>
               </TableHead>
@@ -834,12 +1749,18 @@ function Muestras() {
                       />
                     </TableCell>
                     <TableCell>{item.codigo}</TableCell>
-                    <TableCell>{item.des}</TableCell>
+                    <TableCell>
+                      {item.descripcion || item.des || "Sin descripción"}
+                    </TableCell>
                     <TableCell>{item.cantidad}</TableCell>
+                    <TableCell>{item.ubi || item.ubicacion}</TableCell>
+
                     <TableCell>
                       <IconButton
-                        onClick={() => removeProduct(item.codigo)} // Abre el modal con los productos de la solicitud
                         color="error"
+                        onClick={() =>
+                          removeProduct(item.codigo, solicitudModalFolio)
+                        }
                       >
                         <DeleteIcon />
                       </IconButton>
@@ -856,68 +1777,121 @@ function Muestras() {
           </DialogActions>
         </Dialog>
 
-        {currentTab === 2 && (
-          <Paper elevation={3} style={{ padding: "20px" }}>
-            <Typography variant="h5" align="center" gutterBottom>
-              Imprimir Solicitudes
-            </Typography>
-            {solicitudesAutorizadas.length > 0 ? (
-              <TableContainer component={Paper} style={{ marginTop: "20px" }}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Folio</TableCell>
-                      <TableCell>Nombre</TableCell>
-                      <TableCell>Departamento</TableCell>
-                      <TableCell>Motivo</TableCell>
-                      <TableCell>Fecha Devolución</TableCell>
-                      <TableCell>Requiere Envío</TableCell>
-                      <TableCell>Detalles Envío</TableCell>
-                      <TableCell>Artículos</TableCell>
-                      <TableCell>Autorizado</TableCell>
-                      <TableCell>Acciones</TableCell>
+        {/* modal se confirmar piesas  */}
+
+        <Dialog
+          open={modalSurtidoOpen}
+          onClose={() => setModalSurtidoOpen(false)}
+          maxWidth="md"
+          fullWidth
+        >
+          <DialogTitle
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+            }}
+          >
+            Productos Surtidos – {solicitudSeleccionada?.folio}
+            <IconButton onClick={() => setModalSurtidoOpen(false)}>
+              <CloseIcon />
+            </IconButton>
+          </DialogTitle>
+
+          <DialogContent dividers>
+            <TableContainer component={Paper}>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Imagen</TableCell>
+                    <TableCell>Código</TableCell>
+                    <TableCell>Ubicaciones:</TableCell>
+                    <TableCell>Descripción</TableCell>
+                    <TableCell>Cantidad Solicitada</TableCell>
+                    <TableCell>Total Piezas</TableCell>
+                    <TableCell>Cantidad Surtida</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {solicitudSeleccionada?.carrito.map((item, index) => (
+                    <TableRow key={index}>
+                      <TableCell>
+                        <img
+                          src={`/assets/image/img_pz/${item.codigo}.jpg`}
+                          alt="producto"
+                          width={50}
+                        />
+                      </TableCell>
+                      <TableCell>{item.codigo}</TableCell>
+
+                      <TableCell>
+                        {ubicacionesPorCodigo[item.codigo] && ubicacionesPorCodigo[item.codigo].length > 0 ? (
+                          <Tooltip
+                            title={
+                              <ul style={{ margin: 0, padding: 0 }}>
+                                {ubicacionesPorCodigo[item.codigo].map((ubi, i) => (
+                                  <li key={i} style={{ listStyleType: "none" }}>{ubi}</li>
+                                ))}
+                              </ul>
+                            }
+                            arrow
+                            placement="top-start"
+                          >
+                            <div style={{
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              maxWidth: 120
+                            }}>
+                              {ubicacionesPorCodigo[item.codigo].slice(0, 2).join(", ")}
+                              {ubicacionesPorCodigo[item.codigo].length > 2 && " ..."}
+                            </div>
+                          </Tooltip>
+
+                        ) : (
+                          <Typography variant="body2">No hay ubicaciones registradas</Typography>
+                        )}
+                      </TableCell>
+
+                      <TableCell>{item.descripcion}</TableCell>
+                      <TableCell>{item.cantidad}</TableCell>
+                      <TableCell>{item.ubi || item.ubicacion}</TableCell>
+                      <TableCell>
+                        <TextField
+                          type="number"
+                          size="small"
+                          value={item.cantidad_surtida || ""}
+                          onChange={(e) =>
+                            handleSurtidoChange(index, e.target.value)
+                          }
+                          inputProps={{ min: 0, max: item.cantidad }}
+                          style={{ width: "80px" }}
+                        />
+                      </TableCell>
                     </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {solicitudesAutorizadas.map((sol) => (
-                      <TableRow key={sol.folio}>
-                        <TableCell>{sol.folio}</TableCell>
-                        <TableCell>{sol.nombre}</TableCell>
-                        <TableCell>{sol.departamento}</TableCell>
-                        <TableCell>{sol.motivo}</TableCell>
-                        <TableCell>{sol.fecha || "N/A"}</TableCell>
-                        <TableCell>{sol.requiereEnvio ? "Sí" : "No"}</TableCell>
-                        <TableCell>{sol.detalleEnvio || "N/A"}</TableCell>
-                        <TableCell>{sol.carrito.length}</TableCell>
-                        <TableCell>{sol.autorizado ? "Sí" : "No"}</TableCell>
-                        <TableCell>
-                          <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={() => generarPDF(sol)}
-                          >
-                            Imprimir PDF
-                          </Button>
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            variant="contained"
-                            color="secondary"
-                            onClick={() => borrarSolicitudAutorizada(sol.folio)}
-                          >
-                            Borrar
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            ) : (
-              <Typography>No hay solicitudes autorizadas.</Typography>
-            )}
-          </Paper>
-        )}
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </DialogContent>
+
+          <DialogActions>
+            <Button
+              onClick={() => setModalSurtidoOpen(false)}
+              color="secondary"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={guardarSurtido}
+              variant="contained"
+              color="primary"
+            >
+              Guardar
+            </Button>
+          </DialogActions>
+        </Dialog>
+
       </Box>
 
       <Snackbar

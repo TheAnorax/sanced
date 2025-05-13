@@ -20,6 +20,8 @@ import {
 } from "@mui/material";
 import { Delete, PlayArrow, CheckCircle } from "@mui/icons-material";
 import { UserContext } from "../context/UserContext";
+import * as XLSX from "xlsx";
+
 
 function TareaDev() {
   const [tareas, setTareas] = useState([]);
@@ -153,6 +155,38 @@ function TareaDev() {
       setAlerta("Error al actualizar el estado");
     }
   };
+
+  const handleArchivoExcel = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+  
+    const reader = new FileReader();
+  
+    reader.onload = (e) => {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: "array" });
+  
+      // Tomamos la primera hoja
+      const hoja = workbook.Sheets[workbook.SheetNames[0]];
+  
+      // Convertimos a JSON
+      const datos = XLSX.utils.sheet_to_json(hoja, { defval: "" });
+  
+      // Filtramos las columnas que nos interesan
+      const datosFiltrados = datos.map((fila) => ({
+        NoOrden: fila.NoOrden,
+        Articulo: fila.Articulo,
+        Cantidad: fila.Cantidad,
+        UM: fila.UM,
+        TpOrden: fila.TpOrden,
+      }));
+  
+      console.log("📦 Datos cargados desde Excel:", datosFiltrados);
+    };
+  
+    reader.readAsArrayBuffer(file);
+  };
+   
   
   
 
@@ -193,6 +227,22 @@ function TareaDev() {
         <>
           {/* Button to open modal */}
           <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 3 }}>
+
+           
+  {/* Botón de carga de Excel */}
+  <Button
+    variant="outlined"
+    component="label"
+    sx={{ borderRadius: "12px", boxShadow: 3 }}
+  >
+    Cargar Excel
+    <input
+      type="file"
+      hidden
+      accept=".xlsx, .xls"
+      onChange={handleArchivoExcel}
+    />
+  </Button> 
             <Button
               variant="contained"
               color="primary"

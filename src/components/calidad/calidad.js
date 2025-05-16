@@ -51,7 +51,11 @@ function Calidad({ onCloseModal }) {
 
   const fetchCalidadData = async () => {
     try {
+<<<<<<< HEAD
       const response = await axios.get("http://localhost:3007/api/calidad/calidad");
+=======
+      const response = await axios.get("http://66.232.105.87:3007/api/calidad/calidad");
+>>>>>>> origin/master
       setDatosCalidad(response.data);
     } catch (error) {
       console.error("Error al obtener los datos de calidad:", error);
@@ -73,7 +77,11 @@ function Calidad({ onCloseModal }) {
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
+<<<<<<< HEAD
           await axios.put("http://localhost:3007/api/calidad/calidad/autorizar", {
+=======
+          await axios.put("http://66.232.105.87:3007/api/calidad/calidad/autorizar", {
+>>>>>>> origin/master
             codigo: recibo.codigo,
             oc: recibo.oc,
             cantidad_recibida: recibo.cantidad_recibida,
@@ -105,7 +113,11 @@ function Calidad({ onCloseModal }) {
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
+<<<<<<< HEAD
           await axios.put("http://localhost:3007/api/calidad/calidad/cuarentena", {
+=======
+          await axios.put("http://66.232.105.87:3007/api/calidad/calidad/cuarentena", {
+>>>>>>> origin/master
             codigo: recibo.codigo,
             oc: recibo.oc,
             cantidad_recibida: recibo.cantidad_recibida,
@@ -136,7 +148,11 @@ function Calidad({ onCloseModal }) {
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
+<<<<<<< HEAD
           await axios.put("http://localhost:3007/api/calidad/calidad/segundas", {
+=======
+          await axios.put("http://66.232.105.87:3007/api/calidad/calidad/segundas", {
+>>>>>>> origin/master
             codigo: recibo.codigo,
             oc: recibo.oc,
             cantidad_recibida: recibo.cantidad_recibida,
@@ -157,7 +173,11 @@ function Calidad({ onCloseModal }) {
   const fetchProductoDetalles = async (codigo) => {
     setLoading(true);
     try {
+<<<<<<< HEAD
       const response = await axios.post("http://localhost:3007/api/calidad/calidad/codigo", { codigo_pro: codigo });
+=======
+      const response = await axios.post("http://66.232.105.87:3007/api/calidad/calidad/codigo", { codigo_pro: codigo });
+>>>>>>> origin/master
       setProductoDetalles(response.data);
     } catch (error) {
       console.error("Error al obtener los detalles del producto:", error);
@@ -168,7 +188,11 @@ function Calidad({ onCloseModal }) {
 
   const handleSave = async () => {
     try {
+<<<<<<< HEAD
       await axios.put("http://localhost:3007/api/calidad/calidad/updatecodigo", {
+=======
+      await axios.put("http://66.232.105.87:3007/api/calidad/calidad/updatecodigo", {
+>>>>>>> origin/master
         ...productoDetalles,
         codigo_pro: selectedProducto.codigo,
       });
@@ -236,7 +260,11 @@ function Calidad({ onCloseModal }) {
   const handleSearchProduct = async (e) => {
     if (e.key === "Enter" && searchCode.trim() !== "") {
       try {
+<<<<<<< HEAD
         const response = await axios.post("http://localhost:3007/api/calidad/calidad/codigo", { codigo_pro: searchCode });
+=======
+        const response = await axios.post("http://66.232.105.87:3007/api/calidad/calidad/codigo", { codigo_pro: searchCode });
+>>>>>>> origin/master
         setProductoDetalles(response.data);
       } catch (error) {
         console.error("Error al buscar el producto:", error);
@@ -247,7 +275,11 @@ function Calidad({ onCloseModal }) {
 
   const handleSaveNewProduct = async () => {
     try {
+<<<<<<< HEAD
       const response = await axios.post("http://localhost:3007/api/calidad/calidad/insertarBuscar", {
+=======
+      const response = await axios.post("http://66.232.105.87:3007/api/calidad/calidad/insertarBuscar", {
+>>>>>>> origin/master
         ...productoDetalles,
         codigo_pro: searchCode // Asegúrate de que `searchCode` sea un string o un número aquí
       });
@@ -263,7 +295,11 @@ function Calidad({ onCloseModal }) {
 
   const fetchInactiveProducts = async () => {
     try {
+<<<<<<< HEAD
       const response = await axios.get("http://localhost:3007/api/calidad/calidad/activoinactivo");
+=======
+      const response = await axios.get("http://66.232.105.87:3007/api/calidad/calidad/activoinactivo");
+>>>>>>> origin/master
       setInactiveProducts(response.data);
     } catch (error) {
       console.error("Error al obtener productos inactivos:", error);

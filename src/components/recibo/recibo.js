@@ -71,7 +71,11 @@ function Recibo() {
 
     try {
       // Guardar los datos en la base de datos antes de generar el PDF
+<<<<<<< HEAD
       await axios.post("http://localhost:3007/api/recibo/guardarRecibo", {
+=======
+      await axios.post("http://66.232.105.87:3007/api/recibo/guardarRecibo", {
+>>>>>>> origin/master
         codigo: tarimaData.recibido?.codigo,
         cantidad_recibida: tarimaData.recibido?.cant_recibir,
         fecha_recibo: new Date().toLocaleDateString("es-MX"),
@@ -195,7 +199,11 @@ function Recibo() {
 
     try {
       // Guardar los datos en la base de datos antes de generar el PDF
+<<<<<<< HEAD
       await axios.post("http://localhost:3007/api/recibo/guardarRecibo", {
+=======
+      await axios.post("http://66.232.105.87:3007/api/recibo/guardarRecibo", {
+>>>>>>> origin/master
         codigo: tarimaData.recibido?.codigo,
         cantidad_recibida: cantidadRecibida,
         fecha_recibo: new Date().toLocaleDateString("es-MX"),
@@ -262,12 +270,16 @@ function Recibo() {
     try {
       setLoading(true);
       const response = await axios.post(
+<<<<<<< HEAD
         "http://localhost:3007/recibo/lista",
+=======
+        "http://66.232.105.87:3007/recibo/lista",
+>>>>>>> origin/master
         {
           dato: dato,
         }
       );
-
+  
       if (response.data.resultado.error) {
         Swal.fire({
           icon: "info",
@@ -276,9 +288,14 @@ function Recibo() {
         });
         setRecibos([]);
       } else {
-        const recibosOrdenados = response.data.resultado.list.sort(
+        const recibosFiltrados = response.data.resultado.list.filter(
+          (recibo) => Number(recibo.cant_recibir) > 0
+        );
+  
+        const recibosOrdenados = recibosFiltrados.sort(
           (a, b) => new Date(a.arribo) - new Date(b.arribo)
         );
+  
         setRecibos(recibosOrdenados);
       }
     } catch (error) {
@@ -292,7 +309,7 @@ function Recibo() {
       setLoading(false);
     }
   };
-
+  
   useEffect(() => {
     fetchRecibos("0");
   }, []);
@@ -309,7 +326,11 @@ function Recibo() {
     setLoading(true);
     try {
       const response = await axios.post(
+<<<<<<< HEAD
         "http://localhost:3007/recibo/tarima",
+=======
+        "http://66.232.105.87:3007/recibo/tarima",
+>>>>>>> origin/master
         { 
           id_recibo: recibo.id_recibo,
         }
@@ -459,7 +480,11 @@ function Recibo() {
 
       if (confirmacion.isConfirmed) {
         await axios.post(
+<<<<<<< HEAD
           "http://localhost:3007/api/recibo/guardarTarima",
+=======
+          "http://66.232.105.87:3007/api/recibo/guardarTarima",
+>>>>>>> origin/master
           editedTarimaData
         );
         Swal.fire(

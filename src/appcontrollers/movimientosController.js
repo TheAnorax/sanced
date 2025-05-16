@@ -17,7 +17,7 @@ const consultarUbicacionEspecifica = async (req, res) => {
       u.code_prod,     
       u.cant_stock 
     FROM ubi_alma u
-    LEFT JOIN productos prod ON u.code_prod = prod.codigo_pro
+    LEFT JOIN productos prod ON u.code_prod = prod.codigo_pro 
     WHERE u.ubi = ?;
   `;
 
@@ -127,5 +127,80 @@ const actualizarCodigo = async (req, res) => {
 };
 
 
+const pickDisponible = async (req, res) => {
+  console.log("Consulta de ubicaciones disponibles (sin producto)");
 
-module.exports = { consultarUbicacionEspecifica, consultarUbicacionesConProductos, actualizarCodigo };
+  const query = `
+    SELECT 
+      id_ubi,
+      ubi,
+      code_prod 
+    FROM ubicaciones 
+    WHERE code_prod IS NULL OR code_prod = 0;
+  `;
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+
+    const [results] = await connection.query(query);
+
+    if (results.length === 0) {
+      return res.status(404).json({ message: "No hay ubicaciones disponibles" });
+    }
+
+    const response = results.map(row => ({
+      id_ubicacion: row.id_ubi,
+      ubicacion: row.ubi,
+      codigo_producto: row.code_prod,
+    }));
+
+    res.status(200).json(response);
+  } catch (error) {
+    console.error("Error al consultar ubicaciones disponibles:", error);
+    res.status(500).json({ error: "Error en el servidor" });
+  } finally {
+    if (connection) connection.release();
+  }
+};
+
+
+const AlmaDisponible = async (req, res) => {
+  console.log("Consulta de ubicaciones disponibles (sin producto)");
+
+  const query = `
+    SELECT 
+      id_ubi,
+      ubi,
+      code_prod 
+    FROM ubi_alma 
+    WHERE code_prod IS NULL OR code_prod = 0;
+  `;
+
+  let connection;
+  try {
+    connection = await pool.getConnection();
+
+    const [results] = await connection.query(query);
+
+    if (results.length === 0) {
+      return res.status(404).json({ message: "No hay ubicaciones disponibles" });
+    }
+
+    const response = results.map(row => ({
+      id_ubicacion: row.id_ubi,
+      ubicacion: row.ubi,
+      codigo_producto: row.code_prod,
+    }));
+
+    res.status(200).json(response);
+  } catch (error) {
+    console.error("Error al consultar ubicaciones disponibles:", error);
+    res.status(500).json({ error: "Error en el servidor" });
+  } finally {
+    if (connection) connection.release();
+  }
+};
+ 
+
+module.exports = { consultarUbicacionEspecifica, consultarUbicacionesConProductos, actualizarCodigo, pickDisponible, AlmaDisponible };

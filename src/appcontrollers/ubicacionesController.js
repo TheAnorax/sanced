@@ -1,13 +1,15 @@
-const pool = require('../config/database'); // Importa la configuración de la base de datos
+const pool = require('../config/database');
 
-// Controlador para consultar las ubicaciones de un producto
 const consultaUbicaciones = async (req, res) => {
-  console.log("Consulta de ubicaciones:", req.body);
   const { codigo_pro } = req.body;
+
+  console.log("Consulta alma con código:", codigo_pro);
 
   if (!codigo_pro) {
     return res.status(400).json({ error: "codigo_pro es requerido" });
   }
+
+  const codigoStr = String(codigo_pro).trim();
 
   const query = `
     SELECT 
@@ -15,31 +17,29 @@ const consultaUbicaciones = async (req, res) => {
       u.ubi,         
       u.cant_stock 
     FROM ubi_alma u
-    LEFT JOIN productos prod ON u.code_prod = prod.codigo_pro
+    LEFT JOIN productos prod ON CAST(u.code_prod AS UNSIGNED) = CAST(prod.codigo_pro AS UNSIGNED)
     WHERE u.code_prod = ?;
   `;
 
   let connection;
   try {
-    connection = await pool.getConnection(); // Obtiene una conexión del pool
+    connection = await pool.getConnection();
 
-    // Ejecuta la consulta
-    const [results] = await connection.query(query, [codigo_pro]);
+    const [results] = await connection.query(query, [codigoStr]);
 
     if (results.length === 0) {
       return res.status(404).json({ error: "Producto no encontrado" });
     }
 
-    // Estructura la respuesta con encabezado y lista de ubicaciones
     const response = {
-      descripcion: results[0].des, // Encabezado con la descripción del producto
+      descripcion: results[0].des || "Sin descripción",
       ubicaciones: results.map(row => ({
         ubicacion: row.ubi,
         cantidad_stock: row.cant_stock
       }))
     };
 
-    res.status(200).json(response); // Retorna la respuesta estructurada
+    res.status(200).json(response);
   } catch (error) {
     console.error("Error en la consulta:", error);
     res.status(500).send("Error en la consulta");

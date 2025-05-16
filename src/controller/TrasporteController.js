@@ -114,7 +114,13 @@ const insertarRutas = async (req, res) => {
       );
 
       if (existe.length > 0) {
+<<<<<<< HEAD
         console.log(`⏭️ Ya existe NO ORDEN ${noOrden} con tipo_original ${tipo_original}, no se insertará.`);
+=======
+        console.log(
+          `⏭️ Ya existe NO ORDEN ${noOrden} con tipo_original ${tipo_original}, no se insertará.`
+        );
+>>>>>>> origin/master
         continue; // Saltar este registro
       }
 
@@ -159,7 +165,12 @@ const insertarRutas = async (req, res) => {
     await connection.commit();
 
     res.status(200).json({
+<<<<<<< HEAD
       message: "✅ Rutas insertadas correctamente (sin duplicados por NO ORDEN y tipo_original).",
+=======
+      message:
+        "✅ Rutas insertadas correctamente (sin duplicados por NO ORDEN y tipo_original).",
+>>>>>>> origin/master
     });
   } catch (error) {
     await connection.rollback();
@@ -170,7 +181,10 @@ const insertarRutas = async (req, res) => {
   }
 };
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/master
 // Controlador: obtenerRutasDePaqueteria
 const obtenerRutasDePaqueteria = async (req, res) => {
   try {
@@ -187,19 +201,30 @@ const obtenerRutasDePaqueteria = async (req, res) => {
 
     const offset = (page - 1) * limit;
     let query = `
+<<<<<<< HEAD
       SELECT routeName, FECHA, \`NO ORDEN\`, NO_FACTURA, FECHA_DE_FACTURA, 
+=======
+      SELECT id, routeName, FECHA, \`NO ORDEN\`, NO_FACTURA, FECHA_DE_FACTURA, 
+>>>>>>> origin/master
              \`NUM. CLIENTE\`, \`NOMBRE DEL CLIENTE\`, ZONA, MUNICIPIO, ESTADO, 
              OBSERVACIONES, TOTAL, PARTIDAS, PIEZAS, TARIMAS, TRANSPORTE, 
              PAQUETERIA, GUIA, FECHA_DE_ENTREGA_CLIENTE, DIAS_DE_ENTREGA,
              TIPO, DIRECCION, TELEFONO, TOTAL_FACTURA_LT, ENTREGA_SATISFACTORIA_O_NO_SATISFACTORIA,
+<<<<<<< HEAD
              created_at, MOTIVO, NUMERO_DE_FACTURA_LT, FECHA_DE_ENTREGA_CLIENTE,tipo_original
+=======
+             created_at, MOTIVO, NUMERO_DE_FACTURA_LT, FECHA_DE_ENTREGA_CLIENTE, tipo_original
+>>>>>>> origin/master
       FROM paqueteria
       WHERE 1 = 1
     `;
 
     const params = [];
 
+<<<<<<< HEAD
     // 👇 Solo aplicamos filtros de fechas si NO estamos buscando por guía
+=======
+>>>>>>> origin/master
     const filtrandoPorGuia = guia && guia.trim() !== "";
 
     if (!filtrandoPorGuia) {
@@ -216,19 +241,28 @@ const obtenerRutasDePaqueteria = async (req, res) => {
       }
     }
 
+<<<<<<< HEAD
     // 👉 Filtro por TIPO si aplica
+=======
+>>>>>>> origin/master
     if (tipo) {
       query += " AND TIPO = ?";
       params.push(tipo);
     }
 
+<<<<<<< HEAD
     // 👉 Filtro por GUIA (esto siempre va al final)
+=======
+>>>>>>> origin/master
     if (guia) {
       query += " AND GUIA = ?";
       params.push(guia);
     }
 
+<<<<<<< HEAD
     // 👉 Orden y paginación
+=======
+>>>>>>> origin/master
     query += " ORDER BY created_at DESC LIMIT ? OFFSET ?";
     params.push(parseInt(limit), parseInt(offset));
 
@@ -382,6 +416,7 @@ const actualizarGuia = async (req, res) => {
     numeroFacturaLT,
     observaciones,
     tipo,
+<<<<<<< HEAD
     nuevoNoOrden,
     nuevoTipoOriginal,
     tipo_original_actual // 👈 valor actual para ubicar el registro
@@ -392,10 +427,20 @@ const actualizarGuia = async (req, res) => {
   if (!noOrden || guia === undefined || guia.trim() === "") {
     return res.status(400).json({
       message: "❌ Faltan datos: NO ORDEN o GUIA no son válidos.",
+=======
+  } = req.body;
+
+  const id = req.params.id || null;
+
+  if (!id || guia === undefined || guia.trim() === "") {
+    return res.status(400).json({
+      message: "❌ Faltan datos: ID o GUIA no son válidos.",
+>>>>>>> origin/master
     });
   }
 
   try {
+<<<<<<< HEAD
     // 1. Buscar el registro exacto por NO ORDEN y tipo_original_actual
     const [existe] = await pool.query(
       "SELECT * FROM paqueteria WHERE `NO ORDEN` = ? AND tipo_original <=> ?",
@@ -438,6 +483,46 @@ const actualizarGuia = async (req, res) => {
       NUMERO_DE_FACTURA_LT = ?, 
       OBSERVACIONES = ?, 
       TIPO = ?
+=======
+    // Verificar si existe el registro con ese ID
+    const [existe] = await pool.query("SELECT * FROM paqueteria WHERE id = ?", [
+      id,
+    ]);
+
+    if (existe.length === 0) {
+      return res.status(404).json({
+        message: "❌ No se encontró el pedido con ese ID.",
+      });
+    }
+
+    // Actualizar campos
+    const query = `
+      UPDATE paqueteria SET 
+        GUIA = ?, 
+        PAQUETERIA = ?, 
+        TRANSPORTE = ?, 
+        FECHA_DE_ENTREGA_CLIENTE = ?, 
+        DIAS_DE_ENTREGA = ?, 
+        ENTREGA_SATISFACTORIA_O_NO_SATISFACTORIA = ?, 
+        MOTIVO = ?, 
+        TOTAL_FACTURA_LT = ?, 
+        PRORRATEO_FACTURA_LT = ?, 
+        PRORRATEO_FACTURA_PAQUETERIA = ?, 
+        GASTOS_EXTRAS = ?, 
+        SUMA_FLETE = ?, 
+        PORCENTAJE_ENVIO = ?, 
+        PORCENTAJE_PAQUETERIA = ?, 
+        SUMA_GASTOS_EXTRAS = ?, 
+        PORCENTAJE_GLOBAL = ?, 
+        DIFERENCIA = ?, 
+        NO_FACTURA = ?, 
+        FECHA_DE_FACTURA = ?, 
+        TARIMAS = ?, 
+        NUMERO_DE_FACTURA_LT = ?, 
+        OBSERVACIONES = ?, 
+        TIPO = ?
+      WHERE id = ?;
+>>>>>>> origin/master
     `;
 
     const valores = [
@@ -463,6 +548,7 @@ const actualizarGuia = async (req, res) => {
       tarimas,
       numeroFacturaLT,
       observaciones,
+<<<<<<< HEAD
       tipo
     ];
 
@@ -485,6 +571,12 @@ const actualizarGuia = async (req, res) => {
 
     valores.push(noOrden, tipo_original_actual); // condición del WHERE
 
+=======
+      tipo,
+      id,
+    ];
+
+>>>>>>> origin/master
     const [resultado] = await pool.query(query, valores);
 
     if (resultado.affectedRows > 0) {
@@ -774,7 +866,11 @@ const getHistoricoData = async (req, res) => {
 
     const columnasFiltradas = columnasArray.filter((col) =>
       columnasPermitidas.includes(col)
+<<<<<<< HEAD
     ); 
+=======
+    );
+>>>>>>> origin/master
 
     if (columnasFiltradas.length === 0) {
       return res
@@ -1268,7 +1364,13 @@ const crearRuta = async (req, res) => {
   const { nombre, pedidos } = req.body;
 
   if (!nombre) {
+<<<<<<< HEAD
     return res.status(400).json({ message: "El nombre de la ruta es obligatorio." });
+=======
+    return res
+      .status(400)
+      .json({ message: "El nombre de la ruta es obligatorio." });
+>>>>>>> origin/master
   }
 
   try {
@@ -1360,8 +1462,21 @@ const agregarPedidoARuta = async (req, res) => {
     tipo,
   } = req.body;
 
+<<<<<<< HEAD
   if (!ruta_id || !no_orden || !num_cliente || !nombre_cliente || !fecha_emision) {
     return res.status(400).json({ message: "Faltan datos obligatorios para el pedido." });
+=======
+  if (
+    !ruta_id ||
+    !no_orden ||
+    !num_cliente ||
+    !nombre_cliente ||
+    !fecha_emision
+  ) {
+    return res
+      .status(400)
+      .json({ message: "Faltan datos obligatorios para el pedido." });
+>>>>>>> origin/master
   }
 
   try {
@@ -1371,7 +1486,13 @@ const agregarPedidoARuta = async (req, res) => {
     );
 
     if (existingOrder.length > 0) {
+<<<<<<< HEAD
       return res.status(409).json({ message: "El pedido ya existe en la ruta." });
+=======
+      return res
+        .status(409)
+        .json({ message: "El pedido ya existe en la ruta." });
+>>>>>>> origin/master
     }
 
     const query = `
@@ -1395,15 +1516,26 @@ const agregarPedidoARuta = async (req, res) => {
       tipo || "", // Se asegura que tipo se registre
     ]);
 
+<<<<<<< HEAD
     res.status(201).json({ message: "✅ Pedido agregado correctamente a la ruta." });
   } catch (error) {
     console.error("❌ Error al agregar pedido:", error);
+=======
+    res
+      .status(201)
+      .json({ message: "✅ Pedido agregado correctamente a la ruta." });
+  } catch (error) {
+    // console.error("❌ Error al agregar pedido:", error);
+>>>>>>> origin/master
     res.status(500).json({ message: "Error al agregar pedido a la ruta." });
   }
 };
 
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> origin/master
 const obtenerRutasConPedidos = async (req, res) => {
   try {
     const query = `
@@ -1473,8 +1605,11 @@ const obtenerRutasConPedidos = async (req, res) => {
   }
 };
 
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> origin/master
 const obtenerRutaPorId = async (req, res) => {
   const { id } = req.params;
 
@@ -1525,10 +1660,14 @@ const obtenerRutaPorId = async (req, res) => {
   }
 };
 
+<<<<<<< HEAD
 
 
 // Terminacion de la ruras ok 
 
+=======
+// Terminacion de la ruras ok
+>>>>>>> origin/master
 
 const obtenerResumenDelDia = async (req, res) => {
   try {
@@ -1711,7 +1850,11 @@ const getPaqueteriaData = async (req, res) => {
 
     res.json(groupedArray);
   } catch (error) {
+<<<<<<< HEAD
     console.error("Error al obtener paquetería:", error.message);
+=======
+    console.error("Error al obtener paquetería data:", error.message);
+>>>>>>> origin/master
     res.status(500).json({
       message: "Error al obtener datos de paquetería",
       error: error.message,
@@ -1740,7 +1883,14 @@ const getPedidosDia = async (req, res) => {
       [selectedDate]
     );
 
+<<<<<<< HEAD
     const pedidosIds = rows.map((p) => p.no_orden);
+=======
+    const pedidosIds = rows.map((p) => String(p.no_orden).trim());
+    if (pedidosIds.length === 0) {
+      return res.json([]); // No hay pedidos en paquetería ese día
+    }
+>>>>>>> origin/master
 
     // 2. Embarques y Finalizados
     const [embarques] = await pool.query(
@@ -1849,7 +1999,11 @@ const getPedidosDia = async (req, res) => {
 
     res.json([...resumenPorRutas, resumenGlobal]);
   } catch (error) {
+<<<<<<< HEAD
     console.error("Error al obtener paquetería:", error.message);
+=======
+    console.error("Error al obtener paquetería dia:", error.message);
+>>>>>>> origin/master
     res.status(500).json({
       message: "Error al obtener datos de paquetería",
       error: error.message,
@@ -1862,7 +2016,13 @@ const getPedidosDia = async (req, res) => {
 const actualizarTipoOriginalDesdeExcel = async (req, res) => {
   try {
     if (!req.file) {
+<<<<<<< HEAD
       return res.status(400).json({ message: "❌ No se ha subido ningún archivo." });
+=======
+      return res
+        .status(400)
+        .json({ message: "❌ No se ha subido ningún archivo." });
+>>>>>>> origin/master
     }
 
     const workbook = xlsx.read(req.file.buffer, { type: "buffer" });
@@ -1871,7 +2031,13 @@ const actualizarTipoOriginalDesdeExcel = async (req, res) => {
     const data = xlsx.utils.sheet_to_json(sheet, { defval: "" });
 
     if (data.length === 0) {
+<<<<<<< HEAD
       return res.status(400).json({ message: "❌ El archivo Excel está vacío." });
+=======
+      return res
+        .status(400)
+        .json({ message: "❌ El archivo Excel está vacío." });
+>>>>>>> origin/master
     }
 
     let actualizaciones = 0;
@@ -1881,12 +2047,22 @@ const actualizarTipoOriginalDesdeExcel = async (req, res) => {
       const tipoOrd = String(row["Tp ord"] || "").trim();
 
       if (!noOrden || !tipoOrd) {
+<<<<<<< HEAD
         console.warn(`⚠ Saltando fila con datos faltantes: ${JSON.stringify(row)}`);
+=======
+        console.warn(
+          `⚠ Saltando fila con datos faltantes: ${JSON.stringify(row)}`
+        );
+>>>>>>> origin/master
         continue;
       }
 
       const query = `
+<<<<<<< HEAD
         UPDATE pedidos
+=======
+        UPDATE paqueteria
+>>>>>>> origin/master
         SET tipo = ?
         WHERE no_orden = ?
       `;
@@ -1907,6 +2083,7 @@ const actualizarTipoOriginalDesdeExcel = async (req, res) => {
   }
 };
 
+<<<<<<< HEAD
 
 const actualizarGuiaCompleta = async (req, res) => {
   const { guia, transporte, paqueteria, ordenes } = req.body;
@@ -1959,6 +2136,70 @@ const actualizarGuiaCompleta = async (req, res) => {
 
 
 
+=======
+const actualizarGuiaCompleta = async (req, res) => {
+  const { guia, transporte, paqueteria } = req.body;
+  const noOrden = req.params.noOrden || null;
+
+  try {
+    if (
+      !noOrden ||
+      guia === undefined ||
+      guia.trim() === "" ||
+      transporte === undefined ||
+      transporte.trim() === ""
+    ) {
+      return res.status(400).json({
+        message:
+          "❌ Faltan datos: NO ORDEN, GUIA o TRANSPORTE/PAQUETERIA no son válidos.",
+      });
+    }
+
+    // Verificar si el NO ORDEN existe
+    const [registroExiste] = await pool.query(
+      "SELECT GUIA FROM paqueteria WHERE `NO ORDEN` = ?",
+      [noOrden]
+    );
+
+    if (registroExiste.length === 0) {
+      return res.status(404).json({
+        message: `❌ No se encontró la orden con NO ORDEN ${noOrden}.`,
+      });
+    }
+
+    // 🔹 Actualizar GUIA, TRANSPORTE y PAQUETERIA
+    const query = `
+      UPDATE paqueteria
+      SET 
+        GUIA = ?,
+        TRANSPORTE = ?,
+        PAQUETERIA = ?
+      WHERE \`NO ORDEN\` = ?;
+    `;
+
+    const [result] = await pool.query(query, [
+      guia,
+      transporte,
+      paqueteria,
+      noOrden,
+    ]);
+
+    if (result.affectedRows > 0) {
+      return res.status(200).json({
+        message: "✅ Guía, Transporte y Paquetería actualizados correctamente.",
+      });
+    } else {
+      return res.status(404).json({
+        message: `⚠ No se pudo actualizar la orden ${noOrden}.`,
+      });
+    }
+  } catch (error) {
+    console.error("❌ Error al actualizar la guía completa:", error.message);
+    return res.status(500).json({ message: "❌ Error interno al actualizar." });
+  }
+};
+
+>>>>>>> origin/master
 module.exports = {
   actualizarTipoOriginalDesdeExcel,
   getPaqueteriaData,

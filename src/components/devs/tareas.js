@@ -20,6 +20,8 @@ import {
 } from "@mui/material";
 import { Delete, PlayArrow, CheckCircle } from "@mui/icons-material";
 import { UserContext } from "../context/UserContext";
+import * as XLSX from "xlsx";
+
 
 function TareaDev() {
   const [tareas, setTareas] = useState([]);
@@ -43,7 +45,11 @@ function TareaDev() {
     const fetchTareas = async () => {
       try {
         const response = await axios.get(
+<<<<<<< HEAD
           "http://localhost:3007/api/devs/tareas"
+=======
+          "http://66.232.105.87:3007/api/devs/tareas"
+>>>>>>> origin/master
         );
         setTareas(response.data);
       } catch (error) {
@@ -58,7 +64,11 @@ function TareaDev() {
   useEffect(() => {
     const fetchUsuarios = async () => {
       try {
+<<<<<<< HEAD
         const response = await axios.get("http://localhost:3007/api/usuarios/usuarios");
+=======
+        const response = await axios.get("http://66.232.105.87:3007/api/usuarios/usuarios");
+>>>>>>> origin/master
         console.log("Datos de la API:", response.data); // Para verificar la estructura
   
         // Busca el grupo con turno === 4
@@ -85,7 +95,11 @@ function TareaDev() {
       console.log("Tarea que se enviará al backend:", tareaConAsignador);
   
       const response = await axios.post(
+<<<<<<< HEAD
         "http://localhost:3007/api/devs/tareas",
+=======
+        "http://66.232.105.87:3007/api/devs/tareas",
+>>>>>>> origin/master
         tareaConAsignador
       );
   
@@ -122,7 +136,11 @@ function TareaDev() {
   // Delete a task
   const handleEliminarTarea = async (id) => {
     try {
+<<<<<<< HEAD
       await axios.delete(`http://localhost:3007/api/devs/tareas/${id}`);
+=======
+      await axios.delete(`http://66.232.105.87:3007/api/devs/tareas/${id}`);
+>>>>>>> origin/master
       setTareas(tareas.filter((tarea) => tarea.id !== id));
       setAlerta("Tarea eliminada correctamente");
     } catch (error) {
@@ -137,7 +155,11 @@ function TareaDev() {
     if (!tarea) return;
   
     try {
+<<<<<<< HEAD
       await axios.put(`http://localhost:3007/api/devs/tareas/${id}`, {
+=======
+      await axios.put(`http://66.232.105.87:3007/api/devs/tareas/${id}`, {
+>>>>>>> origin/master
         ...tarea, // Enviar todos los datos actuales de la tarea
         estado, // Actualizar únicamente el estado
       });
@@ -153,6 +175,38 @@ function TareaDev() {
       setAlerta("Error al actualizar el estado");
     }
   };
+
+  const handleArchivoExcel = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+  
+    const reader = new FileReader();
+  
+    reader.onload = (e) => {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: "array" });
+  
+      // Tomamos la primera hoja
+      const hoja = workbook.Sheets[workbook.SheetNames[0]];
+  
+      // Convertimos a JSON
+      const datos = XLSX.utils.sheet_to_json(hoja, { defval: "" });
+  
+      // Filtramos las columnas que nos interesan
+      const datosFiltrados = datos.map((fila) => ({
+        NoOrden: fila.NoOrden,
+        Articulo: fila.Articulo,
+        Cantidad: fila.Cantidad,
+        UM: fila.UM,
+        TpOrden: fila.TpOrden,
+      }));
+  
+      console.log("📦 Datos cargados desde Excel:", datosFiltrados);
+    };
+  
+    reader.readAsArrayBuffer(file);
+  };
+   
   
   
 
@@ -193,6 +247,22 @@ function TareaDev() {
         <>
           {/* Button to open modal */}
           <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 3 }}>
+
+           
+  {/* Botón de carga de Excel */}
+  <Button
+    variant="outlined"
+    component="label"
+    sx={{ borderRadius: "12px", boxShadow: 3 }}
+  >
+    Cargar Excel
+    <input
+      type="file"
+      hidden
+      accept=".xlsx, .xls"
+      onChange={handleArchivoExcel}
+    />
+  </Button> 
             <Button
               variant="contained"
               color="primary"
@@ -251,37 +321,49 @@ function TareaDev() {
                       <TableCell>{formatFecha(tarea.fecha_inicio)}</TableCell>
                       <TableCell>{formatFecha(tarea.fecha_fin)}</TableCell>
                       <TableCell>
-                        <IconButton
-                          color="success"
-                          onClick={() =>
-                            handleCambiarEstado(tarea.id, "En Progreso")
-                          }
-                        >
-                          <PlayArrow />
-                        </IconButton>
-                        <IconButton
-                          color="secondary"
-                          onClick={() =>
-                            handleCambiarEstado(tarea.id, "Finalizado")
-                          }
-                        >
-                          <CheckCircle />
-                        </IconButton>
-                        <IconButton
-                          color="error"
-                          onClick={() => handleEliminarTarea(tarea.id)}
-                        >
-                          <Delete />
-                        </IconButton>
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          onClick={() => handleVerDetalles(tarea)}
-                          sx={{ ml: 1 }}
-                        >
-                          Ver Detalles
-                        </Button>
-                      </TableCell>
+  <TextField
+    select
+    size="small"
+    value={tarea.estado}
+    onChange={(e) => handleCambiarEstado(tarea.id, e.target.value)}
+    SelectProps={{ native: true }}
+    sx={{
+      minWidth: 150,
+      backgroundColor: "#fff",
+      borderRadius: "6px",
+    }}
+  >
+    {[
+      "Creado Pendiente",
+      "En Progreso",
+      "Pruebas Unitarias",
+      "Autorizada",
+      "Finalizado",
+    ].map((estado) => (
+      <option key={estado} value={estado}>
+        {estado}
+      </option>
+    ))}
+  </TextField>
+  <Box sx={{ mt: 1 }}>
+    <IconButton
+      color="error"
+      onClick={() => handleEliminarTarea(tarea.id)}
+      title="Eliminar"
+    >
+      <Delete />
+    </IconButton>
+    <Button
+      variant="outlined"
+      size="small"
+      onClick={() => handleVerDetalles(tarea)}
+      sx={{ ml: 1 }}
+    >
+      Ver Detalles
+    </Button>
+  </Box>
+</TableCell>
+
                     </TableRow>
                   ))}
               </TableBody>

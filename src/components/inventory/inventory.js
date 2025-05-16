@@ -69,11 +69,19 @@ function Inventory() {
           manualRes,
           inventarioRes,
         ] = await Promise.all([
+<<<<<<< HEAD
           axios.get("http://localhost:3007/api/inventory/porcentaje"),
           axios.get("http://localhost:3007/api/inventory/ubicaciones"),
           axios.get("http://localhost:3007/api/inventory/persona"),
           axios.get("http://localhost:3007/api/inventory/Manuealsi"),
           axios.get("http://localhost:3007/api/inventory/obtenerinventario"),
+=======
+          axios.get("http://66.232.105.87:3007/api/inventory/porcentaje"),
+          axios.get("http://66.232.105.87:3007/api/inventory/ubicaciones"),
+          axios.get("http://66.232.105.87:3007/api/inventory/persona"),
+          axios.get("http://66.232.105.87:3007/api/inventory/Manuealsi"),
+          axios.get("http://66.232.105.87:3007/api/inventory/obtenerinventario"),
+>>>>>>> origin/master
         ]);
 
         if (isMounted) {
@@ -110,7 +118,11 @@ function Inventory() {
         try {
           setLoading(true);
           const response = await axios.get(
+<<<<<<< HEAD
             "http://localhost:3007/api/inventory/getInventoryDet"
+=======
+            "http://66.232.105.87:3007/api/inventory/getInventoryDet"
+>>>>>>> origin/master
           );
           setInventoryReport(response.data.data || []);
           setFilteredData(response.data.data || []); // Inicializa los datos filtrados
@@ -131,6 +143,44 @@ function Inventory() {
     setSelectedPasillo(pasillo);
     applyFilters(pasillo, selectedTipo);
   };
+
+
+   // Función para obtener los datos de la API y exportarlos a Excel
+   const handleDownloadDistribucionInventario = async () => {
+    try {
+      setLoading(true);
+
+      // Llamada a la API para obtener los datos
+      const response = await axios.get(
+        "http://66.232.105.87:3007/api/inventory/obtenerDistribucionInventario"
+      );
+
+      const data = response.data;
+
+      if (!data || data.length === 0) {
+        console.error("No hay datos de distribución de inventario para exportar.");
+        return;
+      }
+
+      // Convertir los datos a una hoja de cálculo
+      const worksheet = utils.json_to_sheet(data);
+      const workbook = utils.book_new();
+      utils.book_append_sheet(workbook, worksheet, "Distribución Inventario");
+
+      // Crear el archivo Excel
+      const excelBuffer = write(workbook, { bookType: "xlsx", type: "array" });
+      const blob = new Blob([excelBuffer], { type: "application/octet-stream" });
+
+      // Descargar el archivo
+      saveAs(blob, "Distribucion_Inventario.xlsx");
+
+    } catch (error) {
+      console.error("Error al descargar la distribución de inventario:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
   // Manejar cambio en el filtro de tipo
   const handleTipoChange = (event) => {
@@ -356,6 +406,7 @@ function Inventory() {
       const [pickResponse, almacenajeResponse, consolidatedResponse] =
         await Promise.all([
           axios.get(
+<<<<<<< HEAD
             "http://localhost:3007/api/inventory/reportFinishInventory"
           ),
           axios.get(
@@ -363,6 +414,15 @@ function Inventory() {
           ),
           axios.get(
             "http://localhost:3007/api/inventory/reportConsolidatedInventory"
+=======
+            "http://66.232.105.87:3007/api/inventory/reportFinishInventory"
+          ),
+          axios.get(
+            "http://66.232.105.87:3007/api/inventory/reportFinishInventoryAlma"
+          ),
+          axios.get(
+            "http://66.232.105.87:3007/api/inventory/reportConsolidatedInventory"
+>>>>>>> origin/master
           ),
         ]);
 
@@ -414,6 +474,8 @@ function Inventory() {
         { wch: 15 },
       ];
       utils.book_append_sheet(workbook, almacenajeSheet, "Almacenaje");
+<<<<<<< HEAD
+=======
 
       // Hoja 3: Reporte de Conciliación Consolidada
       const consolidatedSheet = utils.json_to_sheet([
@@ -444,6 +506,127 @@ function Inventory() {
     }
   };
 
+  useEffect(() => {
+    if (editRowId === null) {
+      console.log("Recargando inventario después de edición...");
+      fetchInventory(); // 🔄 Recargar datos cuando terminas de editar
+    }
+  }, [editRowId]);
+
+  const fetchInventory = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(
+        "http://66.232.105.87:3007/api/inventory/obtenerinventario"
+      );
+      setInventoryData(response.data.data || []);
+    } catch (error) {
+      console.error("Error al cargar los datos de inventario:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEditClick = (idUbi, row) => {
+    setEditRowId(idUbi); // Ahora usa id_ubi
+    setEditValues({ ...row });
+  };
+
+  const handleInputChange = (event, field) => {
+    setEditValues((prev) => ({
+      ...prev,
+      [field]: event.target.value,
+    }));
+  };
+
+  const handleSaveClick = async () => {
+    try {
+      console.log("Editando fila con datos:", editValues);
+
+      const response = await axios.put(
+        `http://66.232.105.87:3007/api/inventory/update/${editRowId}`,
+        editValues
+      );
+
+      if (response.status === 200) {
+        console.log("Actualización exitosa. Recargando datos...");
+
+        // 🔄 Actualizar manualmente la tabla antes de recargar desde la API
+        setInventoryData((prevData) => {
+          const newData = prevData.map((row) =>
+            row.id_ubi === editRowId ? { ...row, ...editValues } : row
+          );
+          return [...newData]; // 🔄 Forzar nueva referencia
+        });
+
+        await fetchInventory(); // 🔄 Recargar datos desde la API
+
+        setEditRowId(null);
+      } else {
+        console.error("Error al actualizar: respuesta no exitosa");
+      }
+    } catch (error) {
+      console.error("Error al actualizar el inventario:", error);
+    }
+  };
+
+  return (
+    <Box width="100%" textAlign="center" marginTop={4}>
+      <Tabs value={selectedTab} onChange={handleTabChange} centered>
+        <Tab label="Progreso General" />
+        <Tab label="Progreso por Ubicaciones" />
+        <Tab label="Avance por Persona" />
+        <Tab label="Manual" />
+        <Tab label="Reporte de Inventario" />
+      </Tabs>
+
+      {/* Tab 0: Progreso General */}
+      {selectedTab === 0 && (
+        <Box marginTop={4} display="flex" justifyContent="center">
+          <Box width="50%" marginRight={2}>
+            <Typography variant="h4" gutterBottom>
+              Progreso General de Ubicaciones Alma.
+            </Typography>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleDownloadExcel}
+              disabled={loading || inventoryData.length === 0}
+            >
+              {loading ? "Cargando..." : "Descargar Excel"}
+            </Button>
+>>>>>>> origin/master
+
+      // Hoja 3: Reporte de Conciliación Consolidada
+      const consolidatedSheet = utils.json_to_sheet([
+        ...consolidatedData,
+        { codigo: "TOTAL GENERAL", clave: "", cantidad: consolidatedTotal },
+      ]);
+      utils.sheet_add_aoa(
+        consolidatedSheet,
+        [["Código", "Clave", "Cantidad"]],
+        { origin: "A1" }
+      );
+      consolidatedSheet["!cols"] = [{ wch: 20 }, { wch: 20 }, { wch: 15 }];
+      utils.book_append_sheet(workbook, consolidatedSheet, "Conciliación");
+
+      // Generar y descargar el archivo Excel con las tres hojas
+      const excelBuffer = write(workbook, { bookType: "xlsx", type: "array" });
+      const blob = new Blob([excelBuffer], {
+        type: "application/octet-stream",
+      });
+      saveAs(blob, "reportes.xlsx");
+    } catch (error) {
+      console.error(
+        "Error al generar los reportes de conciliación, almacenaje o consolidación:",
+        error
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+<<<<<<< HEAD
   useEffect(() => {
     fetchInventory();
   }, []);
@@ -633,6 +816,134 @@ function Inventory() {
                         .filter((location) => location.tipo === tipo)
                         .slice(start, end);
 
+=======
+            <Button
+        variant="contained"
+        color="primary"
+        onClick={handleDownloadDistribucionInventario}
+        disabled={loading}
+        sx={{ marginBottom: 4 }}
+      >
+        {loading ? "Descargando..." : "Descargar Distribución de Inventario"}
+      </Button>
+            <br></br>
+            <Box
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+              marginBottom={4}
+            >
+              <Box width="90%" marginRight={1}>
+                <LinearProgress
+                  variant="determinate"
+                  value={percentage}
+                  sx={{
+                    height: 30,
+                    borderRadius: 5,
+                    bgcolor: "grey.300",
+                    "& .MuiLinearProgress-bar": {
+                      backgroundColor: getProgressColor(percentage),
+                    },
+                  }}
+                />
+                <Box minWidth={35}>
+                  <Typography variant="h4" color="textSecondary">
+                    {`${Math.round(percentage)}%`}
+                  </Typography>
+                </Box>
+              </Box>
+            </Box>
+
+            {/* Panel de información de pasillos */}
+            <Box display="flex" flexWrap="wrap" justifyContent="center">
+              {pasilloPercentages.map((pasilloData, index) => (
+                <Box
+                  key={index}
+                  width="20%"
+                  padding={1}
+                  textAlign="center"
+                  margin={1}
+                  border={3}
+                  borderRadius={5}
+                >
+                  <Typography variant="h6">{`Pasillo: ${pasilloData.pasillo}`}</Typography>
+                  <Typography variant="body2" color="black">
+                    {`Completadas: ${pasilloData.completed} / Pendientes: ${pasilloData.pending}`}
+                  </Typography>
+                  <Box
+                    position="relative"
+                    display="inline-flex"
+                    justifyContent="center"
+                    alignItems="center"
+                    marginTop={1}
+                  >
+                    <CircularProgress
+                      variant="determinate"
+                      value={pasilloData.percentage}
+                      size={100}
+                      thickness={5}
+                      sx={{ color: getProgressColor(pasilloData.percentage) }}
+                    />
+
+                    <Box
+                      top={0}
+                      left={0}
+                      bottom={0}
+                      right={0}
+                      position="absolute"
+                      display="flex"
+                      alignItems="center"
+                      justifyContent="center"
+                    >
+                      <Typography
+                        variant="caption"
+                        component="div"
+                        color="textSecondary"
+                      >
+                        {`${Math.round(pasilloData.percentage)}%`}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Box>
+              ))}
+            </Box>
+          </Box>
+        </Box>
+      )}
+
+      {/* Tab 1: Progreso por Ubicaciones */}
+      {selectedTab === 1 && (
+        <Box marginTop={4}>
+          <Typography variant="h5">Progreso por Ubicaciones</Typography>
+          <Box display="flex" justifyContent="space-between" marginTop={4}>
+            {["PAR", "IMPAR"].map((tipo) => (
+              <Box key={tipo} width="48%" textAlign="center">
+                <Typography variant="h6">{`Ubicaciones tipo: ${tipo}`}</Typography>
+                <Box
+                  width="100%"
+                  height={400}
+                  overflow="auto"
+                  display="flex"
+                  flexWrap="wrap"
+                  justifyContent="center"
+                >
+                  <List
+                    height={400}
+                    itemCount={Math.ceil(
+                      locations.filter((location) => location.tipo === tipo)
+                        .length / 2
+                    )} // Dividido en grupos de 2
+                    itemSize={160} // Ajusta la altura de cada grupo de ubicaciones
+                    width="100%"
+                  >
+                    {({ index, style }) => {
+                      const start = index * 2;
+                      const end = start + 2;
+                      const locationGroup = locations
+                        .filter((location) => location.tipo === tipo)
+                        .slice(start, end);
+
+>>>>>>> origin/master
                       return (
                         <Box
                           key={index}
@@ -822,6 +1133,7 @@ function Inventory() {
           ) : filteredData.length > 0 ? (
             <Box sx={{ height: "60%", width: "100%", marginTop: 2 }}>
               <DataGrid
+                key={inventoryData.length}
                 rows={filteredData} // Datos filtrados
                 columns={columns} // Configuración de las columnas
                 getRowId={(row) => row.id_ubi} // Define el identificador único de las filas

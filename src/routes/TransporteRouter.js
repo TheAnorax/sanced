@@ -20,7 +20,11 @@ router.get("/ruta-unica", obtenerRutasParaPDF);
 
 router.get("/pedido/detalles/:noOrden", getFechaYCajasPorPedido);
 
+<<<<<<< HEAD
 router.put("/paqueteria/actualizar-guia/:noOrden", actualizarGuia);
+=======
+router.put("/paqueteria/actualizar-guia/:id", actualizarGuia);
+>>>>>>> origin/master
 
 router.get("/embarque/:codigo_ped", getPedidosEmbarque);
 
@@ -29,6 +33,7 @@ router.get("/transportistas", getTransportistas);
 router.get("/transportistas/empresas", getEmpresasTransportistas);
 
 router.post("/insertar-visita", insertarVisita);
+<<<<<<< HEAD
 
 router.post("/guardar-datos", guardarDatos);
 
@@ -70,6 +75,48 @@ router.get("/resumen-dia", obtenerResumenDelDia);
 
 router.post("/actualizar-multiples", actualizarGuiaCompleta); // ✅ NUEVA RUTA para múltiples
 
+=======
+
+router.post("/guardar-datos", guardarDatos);
+
+router.get("/obtener-datos", obtenerDatos);
+
+router.delete("/ruta/eliminar/:noOrden", eliminarRuta);
+
+router.get("/historico_clientes", getClientesHistorico);
+
+router.get("/historico_columnas", getColumnasHistorico);
+
+router.get("/historico", getHistoricoData);
+
+router.post("/status", getOrderStatus);
+
+router.post("/fusion", getFusionInfo);
+
+router.post(
+  "/subir-excel",
+  upload.single("archivo"),
+  actualizarFacturasDesdeExcel
+);
+
+router.post("/actualizar-tipo-original", upload.single("archivo"), actualizarTipoOriginalDesdeExcel);
+
+router.post("/actualizar-por-guia/:guia", actualizarPorGuia);
+
+//para que la vean otras computadoras
+
+router.post("/rutas", crearRuta);
+
+router.post("/rutas/pedidos", agregarPedidoARuta);
+
+router.get("/Rutasconpedido", obtenerRutasConPedidos);
+
+router.get("/rutas/:id", obtenerRutaPorId);
+
+router.get("/resumen-dia", obtenerResumenDelDia);
+
+router.put("/actualizar-guia-completa/:noOrden", actualizarGuiaCompleta);
+>>>>>>> origin/master
 
 module.exports = router;
  

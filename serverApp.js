@@ -10,5 +10,9 @@ app1.use(express.json());
 app1.use('/actualizar', actualizar);
 
 app1.listen(port, () => {
+<<<<<<< HEAD
     console.log(`ServerApp is running on http://localhost:${port}`);
+=======
+    console.log(`ServerApp is running on http://66.232.105.87:${port}`);
+>>>>>>> origin/master
 });

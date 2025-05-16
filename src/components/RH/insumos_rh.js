@@ -32,7 +32,11 @@ function InsumosRH() {
     // Obtener los datos de la API
     const fetchInsumos = async () => {
       try {
+<<<<<<< HEAD
         const response = await axios.get('http://localhost:3007/api/RH/RH');
+=======
+        const response = await axios.get('http://66.232.105.87:3007/api/RH/RH');
+>>>>>>> origin/master
         setInsumos(response.data);
       } catch (error) {
         console.error('Error al obtener los insumos:', error);
@@ -48,12 +52,20 @@ function InsumosRH() {
         try {
           if (isEditing) {
             console.log('Editando registro con Código:', formData.Codigo);
+<<<<<<< HEAD
             await axios.put(`http://localhost:3007/api/RH/RH/${formData.Codigo}`, formData);
+=======
+            await axios.put(`http://66.232.105.87:3007/api/RH/RH/${formData.Codigo}`, formData);
+>>>>>>> origin/master
           } else {
             console.log('Creando un nuevo registro:', formData);
       
             // Asegúrate de enviar el `Codigo` siempre, incluso si es una creación
+<<<<<<< HEAD
             await axios.post('http://localhost:3007/api/RH/RH', formData);
+=======
+            await axios.post('http://66.232.105.87:3007/api/RH/RH', formData);
+>>>>>>> origin/master
           }
       
           fetchInsumos();
@@ -67,7 +79,11 @@ function InsumosRH() {
     // Manejar la eliminación
     const handleDelete = async (codigo) => {
       try {
+<<<<<<< HEAD
         await axios.delete(`http://localhost:3007/api/RH/RH/${codigo}`);
+=======
+        await axios.delete(`http://66.232.105.87:3007/api/RH/RH/${codigo}`);
+>>>>>>> origin/master
         fetchInsumos();
       } catch (error) {
         console.error('Error al eliminar el insumo:', error);

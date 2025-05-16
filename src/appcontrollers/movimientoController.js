@@ -47,8 +47,8 @@ const realizarMovimiento = async (req, res) => {
     
         // Ejecutar la consulta adicional para ubicaciones
         const [ubicacionesUpdateResult] = await connection.query(
-          "UPDATE ubicaciones SET code_prod = ?, cant_stock = ?, almacen = ? WHERE ubi = ?",
-          [codigo_producto, cantidad_stock, codigo_almacen, ubicacion_final]
+          "UPDATE ubicaciones SET code_prod = ?, cant_stock = ?, almacen = ? WHERE code_prod = ?",
+          [codigo_producto, cantidad_stock, codigo_almacen, codigo_producto]
         );
     
         if (ubicacionesUpdateResult.affectedRows === 0) {
@@ -145,8 +145,8 @@ const realizarMovimiento = async (req, res) => {
       if (ubicacionExistente.length > 0) {
         // Si existe, actualizar la cantidad
         await connection.query(
-          "UPDATE ubicaciones SET cant_stock_real = ?, code_prod = ? , ingreso = NOW() WHERE ubi = ?",
-          [mitadStock, codigo_producto, ubicacion_final]
+          "UPDATE ubicaciones SET cant_stock_real = ?, c = ? , ingreso = NOW() WHERE codigo_producto = ?",
+          [mitadStock, codigo_producto, codigo_producto]
         );
       } else {
         // Si no existe, insertar nuevo registro
@@ -200,8 +200,8 @@ const realizarMovimiento = async (req, res) => {
     
         // Actualizar la cantidad en la tabla ubicaciones, manejando NULL correctamente
         const [updateResult] = await connection.query(
-          "UPDATE ubicaciones SET cant_stock_real = IFNULL(cant_stock_real, 0) + ?, code_prod = ?, lote = ?, almacen = ? WHERE id_ubi = ?",
-          [cantidad_stock, codigo_producto, lote, codigo_almacen, idUbiExistente]
+          "UPDATE ubicaciones SET cant_stock_real = IFNULL(cant_stock_real, 0) + ?, code_prod = ?, lote = ?, almacen = ? WHERE code_prod = ?",
+          [cantidad_stock, codigo_producto, lote, codigo_almacen, codigo_producto]
         );
         console.log("Resultado de actualización (affectedRows):", updateResult.affectedRows);
     
@@ -228,8 +228,8 @@ const realizarMovimiento = async (req, res) => {
           });
     
           const [updateResult] = await connection.query(
-            "UPDATE ubicaciones SET cant_stock_real = IFNULL(cant_stock_real, 0) + ?, code_prod = ?, lote = ?, almacen = ? WHERE id_ubi = ?",
-            [cantidad_stock, codigo_producto, lote, codigo_almacen, idUbiEncontrado]
+            "UPDATE ubicaciones SET cant_stock_real = IFNULL(cant_stock_real, 0) + ?, code_prod = ?, lote = ?, almacen = ? WHERE code_prod = ?",
+            [cantidad_stock, codigo_producto, lote, codigo_almacen, codigo_producto]
           );
           console.log("Resultado de actualización por código (affectedRows):", updateResult.affectedRows);
         } else {

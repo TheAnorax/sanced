@@ -34,10 +34,19 @@ import Queretaro from './components/Proyecto/ProyectoQueretaro';
 import Visitantes from './components/visitas/visitantes';
 import VisitasReporte from './components/visitas/visitasReporte';
 import Trasporte from './components/Transporte/Transporte';
+<<<<<<< HEAD
 import Tracking from './components/ventas/ventas';
 import KPi from './components/reporte/kpi';
 import COBERTURA from './components/COBERTURA/COBERTURA';
 import INVENTARIODOS from './components/Inventario/inventariodos';
+=======
+import KPi from './components/reporte/kpi'
+import Tracking from './components/ventas/ventas';
+import Plansurtido from './components/Transporte/plan';
+import Mapa from './components/reporte/mapa';
+import Catalogo from './components/productos/catalogo';
+import COBERTURA from './components/COBERTURA/COBERTURA';
+>>>>>>> origin/master
 
 function App() {
   return (
@@ -55,6 +64,7 @@ function App() {
             <Route path="finalizados" element={<ProtectedRoute><Finalizados /></ProtectedRoute>} />
             <Route path="plan" element={<ProtectedRoute><Plan /></ProtectedRoute>} />
             <Route path="bahias" element={<ProtectedRoute><Bahias /></ProtectedRoute>} />
+<<<<<<< HEAD
             <Route path="empaquetando" element={<ProtectedRoute><Empaquetando /></ProtectedRoute >} />
             <Route path="ubicaciones" element={<ProtectedRoute><Ubicaciones /></ProtectedRoute>} />
             <Route path="compras" element={<ProtectedRoute><Compras /></ProtectedRoute>} />
@@ -79,6 +89,35 @@ function App() {
             <Route path="kpi" element={<ProtectedRoute><KPi /></ProtectedRoute>} />
             <Route path="COBERTURA" element={<ProtectedRoute><COBERTURA /></ProtectedRoute>} />
             <Route path="INVENTARIODOS" element={<ProtectedRoute><INVENTARIODOS /></ProtectedRoute>} />
+=======
+            <Route path="empaquetando" element={<ProtectedRoute><Empaquetando /></ProtectedRoute > }/>
+            <Route path="ubicaciones" element={<ProtectedRoute><Ubicaciones /></ProtectedRoute>}/>
+            <Route path="compras" element={<ProtectedRoute><Compras /></ProtectedRoute>}/>
+            <Route path="recibo" element={<ProtectedRoute><Recibo /></ProtectedRoute>}/>
+            <Route path="embarques" element={<ProtectedRoute><Embarques /></ProtectedRoute>}/>
+            <Route path="usuarios" element={<ProtectedRoute><Usuarios /></ProtectedRoute>}/>
+            <Route path="calidad" element={<ProtectedRoute><Calidad /></ProtectedRoute>}/>
+            <Route path="inventarios" element={<ProtectedRoute><Inventarios /></ProtectedRoute>}/>
+            <Route path="reporter" element={<ProtectedRoute><Reporter/></ProtectedRoute>}/>
+            <Route path="insumos" element={<ProtectedRoute><Insumos /></ProtectedRoute>}/>
+            <Route path="embarcando" element={<ProtectedRoute><Embarcando  /></ProtectedRoute>} />
+            <Route path="inventario" element={<ProtectedRoute><Inventario  /></ProtectedRoute>} />
+            <Route path="muestras" element={<ProtectedRoute><Muestras  /></ProtectedRoute>} />
+            <Route path="Historial" element={<ProtectedRoute><Historial  /></ProtectedRoute>} />
+            <Route path="devs" element={<ProtectedRoute><Devs  /></ProtectedRoute>} />
+            <Route path="RH" element={<ProtectedRoute><RH  /></ProtectedRoute>} />
+            <Route path="Queretaro" element={<ProtectedRoute><Queretaro  /></ProtectedRoute>} />
+            <Route path="visitas" element={<ProtectedRoute><Visitantes  /></ProtectedRoute>} />
+            <Route path="visitas-reporte" element={<ProtectedRoute><VisitasReporte  /></ProtectedRoute>} />
+            <Route path="Trasporte" element={<ProtectedRoute><Trasporte  /></ProtectedRoute>} />
+            <Route path="kpi" element={<ProtectedRoute><KPi  /></ProtectedRoute>} />
+            <Route path="Tracking" element={<ProtectedRoute><Tracking  /></ProtectedRoute>} />
+            <Route path="Plansurtido" element={<ProtectedRoute><Plansurtido /></ProtectedRoute>} />
+            <Route path="Mapa" element={<ProtectedRoute><Mapa /></ProtectedRoute>} />
+            <Route path="Catalogo" element={<ProtectedRoute><Catalogo /></ProtectedRoute>} />
+            <Route path="COBERTURA" element={<ProtectedRoute><COBERTURA /></ProtectedRoute>} />
+
+>>>>>>> origin/master
           </Route>
         </Routes>
       </Router>

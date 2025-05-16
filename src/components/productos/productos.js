@@ -78,6 +78,9 @@ function ProductoCRUD() {
   const [filteredProductos, setFilteredProductos] = useState([]);
   const { user } = useContext(UserContext);
   const [search, setSearch] = useState("");
+  const codigosSinImagenRef = React.useRef(new Set());
+
+
   const [form, setForm] = useState({
     codigo_pro: "",
     clave: "",
@@ -124,6 +127,8 @@ function ProductoCRUD() {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [calculatedTotal, setCalculatedTotal] = useState(0);
   const [flyerData, setFlyerData] = useState(null);
+  const [openImageModal, setOpenImageModal] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
 
   const isSmallScreen = useMediaQuery("(max-width:600px)");
   const isMediumScreen = useMediaQuery("(max-width:960px)");
@@ -131,7 +136,11 @@ function ProductoCRUD() {
   const fetchProductos = async () => {
     try {
       const response = await axios.get(
+<<<<<<< HEAD
         "http://localhost:3007/api/productos"
+=======
+        "http://66.232.105.87:3007/api/productos"
+>>>>>>> origin/master
       );
       setProductos(response.data);
       setFilteredProductos(response.data);
@@ -142,14 +151,29 @@ function ProductoCRUD() {
 
   const [enteredQuantities, setEnteredQuantities] = useState({
     pieces: 0,
-    inners: 0, 
+    inners: 0,
     masters: 0,
   });
+
+  const handleOpenImageModal = (imagePath) => {
+    setSelectedImage(imagePath);
+    setOpenImageModal(true);
+  };
+
+  // Función para cerrar el modal
+  const handleCloseImageModal = () => {
+    setOpenImageModal(false);
+    setSelectedImage(null);
+  };
 
   const fetchUbicaciones = async (codigo_pro) => {
     try {
       const response = await axios.get(
+<<<<<<< HEAD
         `http://localhost:3007/api/productos/ubicaciones?codigo_pro=${codigo_pro}`
+=======
+        `http://66.232.105.87:3007/api/productos/ubicaciones?codigo_pro=${codigo_pro}`
+>>>>>>> origin/master
       );
       setUbicaciones(response.data);
     } catch (error) {
@@ -166,20 +190,9 @@ function ProductoCRUD() {
     filterProductos(e.target.value);
   };
 
-  const handleOpenCalculator = (product) => {
-    setSelectedProduct(product);
-    setCalculatorOpen(true);
-  };
 
-  useEffect(() => {
-    console.log("Estado de calculatorOpen:", calculatorOpen);
-    console.log("Producto seleccionado:", selectedProduct);
-  }, [calculatorOpen, selectedProduct]);
 
-  const handleCloseCalculator = () => {
-    setCalculatorOpen(false);
-    setSelectedProduct(null);
-  };
+ 
 
   const filterProductos = (searchTerm) => {
     const filtered = productos.filter(
@@ -260,7 +273,11 @@ function ProductoCRUD() {
           });
           if (confirmUpdate.isConfirmed) {
             await axios.put(
+<<<<<<< HEAD
               `http://localhost:3007/api/productos/${editId}`,
+=======
+              `http://66.232.105.87:3007/api/productos/${editId}`,
+>>>>>>> origin/master
               formData,
               {
                 headers: {
@@ -276,11 +293,23 @@ function ProductoCRUD() {
             );
           }
         } else {
+<<<<<<< HEAD
           await axios.post("http://localhost:3007/api/productos", formData, {
             headers: {
               "Content-Type": "multipart/form-data",
             },
           });
+=======
+          await axios.post(
+            "http://66.232.105.87:3007/api/productos",
+            formData,
+            {
+              headers: {
+                "Content-Type": "multipart/form-data",
+              },
+            }
+          );
+>>>>>>> origin/master
           fetchProductos();
           handleClose();
           MySwal.fire(
@@ -316,7 +345,11 @@ function ProductoCRUD() {
   //   // Carga los datos de la volumetría para el Flyer
   //   try {
   //     const response = await axios.get(
+<<<<<<< HEAD
   //       `http://localhost:3007/api/productos/volumetria?codigo_pro=${producto.codigo_pro}`
+=======
+  //       `http://66.232.105.87:3007/api/productos/volumetria?codigo_pro=${producto.codigo_pro}`
+>>>>>>> origin/master
   //     );
   //     setFlyerData(response.data);
   //   } catch (error) {
@@ -324,6 +357,7 @@ function ProductoCRUD() {
   //     setFlyerData(null); // Limpia los datos en caso de error
   //   }
   // };
+  
 
   const handleView = async (producto) => {
     setForm(producto);
@@ -338,7 +372,11 @@ function ProductoCRUD() {
     // Carga los datos de la volumetría para el Flyer
     try {
       const response = await axios.get(
+<<<<<<< HEAD
         `http://localhost:3007/api/productos/volumetria?codigo_pro=${producto.codigo_pro}`
+=======
+        `http://66.232.105.87:3007/api/productos/volumetria?codigo_pro=${producto.codigo_pro}`
+>>>>>>> origin/master
       );
       console.log("Datos de volumetría:", response.data); // Verifica los datos
       setFlyerData(response.data);
@@ -364,7 +402,11 @@ function ProductoCRUD() {
     });
     if (confirmDelete.isConfirmed) {
       try {
+<<<<<<< HEAD
         await axios.delete(`http://localhost:3007/api/productos/${id}`);
+=======
+        await axios.delete(`http://66.232.105.87:3007/api/productos/${id}`);
+>>>>>>> origin/master
         fetchProductos();
         MySwal.fire("Eliminado", "El producto ha sido eliminado.", "success");
       } catch (error) {
@@ -377,7 +419,6 @@ function ProductoCRUD() {
       }
     }
   };
-  
 
   const handleVolumetriaSubmit = async () => {
     try {
@@ -391,7 +432,11 @@ function ProductoCRUD() {
 
       // Usa form.codigo_pro pero pásalo como 'codigo' en la URL
       await axios.put(
+<<<<<<< HEAD
         `http://localhost:3007/api/productos/volumetria/${form.codigo_pro}`, // Aquí envías el código correctamente
+=======
+        `http://66.232.105.87:3007/api/productos/volumetria/${form.codigo_pro}`, // Aquí envías el código correctamente
+>>>>>>> origin/master
         volumetriaData // Datos del cuerpo de la solicitud
       );
 
@@ -500,7 +545,6 @@ function ProductoCRUD() {
     saveAs(blob, `Productos-Santul-${fecha}.xlsx`);
   };
 
-
   const formatNumber = (number) => {
     if (number === null || number === undefined) return "0";
     return new Intl.NumberFormat("es-MX").format(number);
@@ -523,17 +567,37 @@ function ProductoCRUD() {
               src={`../assets/image/img_pz/${params.row.codigo_pro}.jpg`}
               alt="Producto"
               style={{
-                width: "100px",
-                height: "100px",
+                width: "50px",
+                height: "50px",
                 objectFit: "cover",
+                cursor: "pointer",
               }}
+              onClick={() =>
+                handleOpenImageModal(
+                  `../assets/image/img_pz/${params.row.codigo_pro}.jpg`
+                )
+              }
               onError={(e) => {
                 e.target.onerror = null;
                 e.target.src = "../assets/image/img_pz/noimage.png";
+        
+                // Guardar código del producto sin imagen
+                codigosSinImagenRef.add(params.row.codigo_pro);
+        
+                // Mostrar en consola en tiempo real
+                console.warn(
+                  `[IMG NOT FOUND] Producto sin imagen: ${params.row.codigo_pro}`
+                );
+        
+                // (Opcional) Mostrar lista completa cada vez que se añade uno nuevo
+                console.log(
+                  "[LISTA COMPLETA SIN IMAGEN]:",
+                  Array.from(codigosSinImagenRef)
+                );
               }}
             />
           ),
-        },
+        },        
         {
           field: "actions",
           headerName: "Actions",
@@ -569,7 +633,13 @@ function ProductoCRUD() {
                 width: "50px",
                 height: "50px",
                 objectFit: "cover",
+                cursor: "pointer",
               }}
+              onClick={() =>
+                handleOpenImageModal(
+                  `../assets/image/img_pz/${params.row.codigo_pro}.jpg`
+                )
+              }
               onError={(e) => {
                 e.target.onerror = null;
                 e.target.src = "../assets/image/img_pz/noimage.png";
@@ -580,26 +650,40 @@ function ProductoCRUD() {
         { field: "codigo_pro", headerName: "Código", width: 100 },
         { field: "des", headerName: "Descripción", width: 300 },
         { field: "_pz", headerName: "PZ", width: 150 },
-        { field: "_pq", headerName: "PQ", width: 150 },
         { field: "_inner", headerName: "Inner", width: 150 },
         { field: "_master", headerName: "Master", width: 150 },
         {
           field: "stock_total",
           headerName: "Total",
           width: 150,
-          renderCell: (params) => <span>{formatNumber(params.value)}</span>,
+          renderCell: (params) =>
+            ["Admin", "Master",  "INV" ,"Control"].includes(user?.role) ? (
+              <span>{formatNumber(params.value)}</span>
+            ) : (
+              <span>-</span> // Muestra un guion si no tiene permiso
+            ),
         },
         {
-          field: "stock_almacen" ,
+          field: "stock_almacen",
           headerName: "Almacenamiento",
           width: 150,
-          renderCell: (params) => <span>{formatNumber(params.value)}</span>,
+          renderCell: (params) =>
+            ["Admin", "Master", "INV" ,"Control"].includes(user?.role) ? (
+              <span>{formatNumber(params.value)}</span>
+            ) : (
+              <span>-</span>
+            ),
         },
         {
           field: "stock_picking",
           headerName: "Picking",
           width: 150,
-          renderCell: (params) => <span>{formatNumber(params.value)}</span>,
+          renderCell: (params) =>
+            ["Admin", "Master", "INV" ,"Control"].includes(user?.role) ? (
+              <span>{formatNumber(params.value)}</span>
+            ) : (
+              <span>-</span>
+            ),
         },
         {
           field: "actions",
@@ -683,6 +767,17 @@ function ProductoCRUD() {
             Descargar Reporte
           </Button>
         </Box>
+
+        <Button
+  variant="outlined"
+  onClick={() => {
+    console.table(Array.from(codigosSinImagenRef.current));
+  }}
+>
+  Ver productos sin imagen
+</Button>
+
+
       </Box>
       <Paper elevation={3} sx={{ p: 3, overflow: "auto" }}>
         <div style={{ height: isMediumScreen ? 500 : 750, width: "100%" }}>
@@ -694,98 +789,7 @@ function ProductoCRUD() {
           />
         </div>
       </Paper>
-      <Dialog
-        open={calculatorOpen}
-        onClose={handleCloseCalculator}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>Calcular Total por Unidades</DialogTitle>
-        <DialogContent>
-          {selectedProduct ? (
-            <Box display="flex" flexDirection="column" gap={2}>
-              <Typography variant="h6">
-                Producto: {selectedProduct.des}
-              </Typography>
-              <TextField
-                label="Cantidad de PIEZAS"
-                type="number"
-                defaultValue={selectedProduct._pz}
-                onChange={(e) =>
-                  setSelectedProduct({
-                    ...selectedProduct,
-                    _pz: parseInt(e.target.value, 10) || 0,
-                  })
-                }
-              />
-              <TextField
-                label="Cantidad de INNER"
-                type="number"
-                defaultValue={selectedProduct._inner}
-                onChange={(e) =>
-                  setSelectedProduct({
-                    ...selectedProduct,
-                    _inner: parseInt(e.target.value, 10) || 0,
-                  })
-                }
-              />
-              <TextField
-                label="Cantidad de MASTER"
-                type="number"
-                defaultValue={selectedProduct._master}
-                onChange={(e) =>
-                  setSelectedProduct({
-                    ...selectedProduct,
-                    _master: parseInt(e.target.value, 10) || 0,
-                  })
-                }
-              />
-              <TextField
-                label="Cantidad de PIEZAS"
-                type="number"
-                value={enteredQuantities.pieces}
-                onChange={(e) =>
-                  setEnteredQuantities((prev) => ({
-                    ...prev,
-                    pieces: parseInt(e.target.value, 10) || 0,
-                  }))
-                }
-              />
-              <TextField
-                label="Cantidad de INNER"
-                type="number"
-                value={enteredQuantities.inners}
-                onChange={(e) =>
-                  setEnteredQuantities((prev) => ({
-                    ...prev,
-                    inners: parseInt(e.target.value, 10) || 0,
-                  }))
-                }
-              />
-              <TextField
-                label="Cantidad de MASTER"
-                type="number"
-                value={enteredQuantities.masters}
-                onChange={(e) =>
-                  setEnteredQuantities((prev) => ({
-                    ...prev,
-                    masters: parseInt(e.target.value, 10) || 0,
-                  }))
-                }
-              />
-            </Box>
-          ) : (
-            <Typography variant="body1">
-              Cargando datos del producto...
-            </Typography>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseCalculator} color="secondary">
-            Cerrar
-          </Button>
-        </DialogActions>
-      </Dialog>
+     
 
       <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
         <DialogTitle>
@@ -1005,146 +1009,6 @@ function ProductoCRUD() {
                       name="code_pz"
                       value={form.code_pz}
                       onChange={handleChange}
-                    />
-                  )}
-                </Grid>
-
-                <Grid item xs={12} sm={12} mt={4}>
-                  <Divider>
-                    <Typography variant="h6">PAQUETE</Typography>
-                  </Divider>
-                </Grid>
-                <Grid item xs={12} sm={6} width={150} height={70}>
-                  {readOnly ? (
-                    form.img_pq ? (
-                      <img
-                        src={`../assets/image/img_pq/${form.img_pq}`}
-                        alt="Producto"
-                        style={{
-                          width: "250px",
-                          height: "250px",
-                          marginLeft: "55px",
-                        }}
-                      />
-                    ) : (
-                      <img
-                        src="../assets/image/img_pz/noimage.png"
-                        alt="Sin imagen"
-                        style={{
-                          width: "250px",
-                          height: "250px",
-                          marginLeft: "55px",
-                        }}
-                      />
-                    )
-                  ) : (
-                    <TextField
-                      fullWidth
-                      label="Imagen de PAQUETE"
-                      name="img_pq"
-                      type="file"
-                      onChange={handleImageChange}
-                      variant="outlined"
-                    />
-                  )}
-                </Grid>
-                <Grid item xs={12} sm={6} mt={2}>
-                  <TextField
-                    fullWidth
-                    label="Cantidad en PAQUETE"
-                    name="_pq"
-                    value={form._pq}
-                    onChange={handleChange}
-                    variant="outlined"
-                    type="number"
-                    InputProps={{
-                      readOnly: readOnly,
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}></Grid>
-                <Grid item xs={12} sm={3}>
-                  <TextField
-                    fullWidth
-                    label="Largo PQ"
-                    name="largo_pq"
-                    value={form.largo_pq}
-                    onChange={handleChange}
-                    variant="outlined"
-                    type="number"
-                    InputProps={{
-                      readOnly: readOnly,
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={3}>
-                  <TextField
-                    fullWidth
-                    label="Ancho PQ"
-                    name="ancho_pq"
-                    value={form.ancho_pq}
-                    onChange={handleChange}
-                    variant="outlined"
-                    type="number"
-                    InputProps={{
-                      readOnly: readOnly,
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}></Grid>
-                <Grid item xs={12} sm={3}>
-                  <TextField
-                    fullWidth
-                    label="Alto PQ"
-                    name="alto_pq"
-                    value={form.alto_pq}
-                    onChange={handleChange}
-                    variant="outlined"
-                    type="number"
-                    InputProps={{
-                      readOnly: readOnly,
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={3}>
-                  <TextField
-                    fullWidth
-                    label="Peso PQ"
-                    name="peso_pq"
-                    value={form.peso_pq}
-                    onChange={handleChange}
-                    variant="outlined"
-                    type="number"
-                    InputProps={{
-                      readOnly: readOnly,
-                    }}
-                  />
-                </Grid>
-                <Grid
-                  item
-                  xs={12}
-                  sm={6}
-                  width={150}
-                  height={70}
-                  marginLeft={6}
-                  mb={5}
-                >
-                  {readOnly ? (
-                    form.code_pq ? (
-                      <Barcode value={form.code_pq} />
-                    ) : (
-                      <Box width={266} height={142} marginLeft={12}>
-                        Sin código
-                      </Box>
-                    )
-                  ) : (
-                    <TextField
-                      fullWidth
-                      label="Código de barras de PAQUETE"
-                      name="code_pq"
-                      value={form.code_pq}
-                      onChange={handleChange}
-                      variant="outlined"
                     />
                   )}
                 </Grid>
@@ -1584,9 +1448,30 @@ function ProductoCRUD() {
           {tabIndex === 3 && <div>Contenido de Ficha Comercial</div>}
         </DialogContent>
       </Dialog>
+      <Dialog
+        open={openImageModal}
+        onClose={handleCloseImageModal}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>Vista Previa de la Imagen</DialogTitle>
+        <DialogContent dividers>
+          {selectedImage && (
+            <img
+              src={selectedImage}
+              alt="Producto"
+              style={{ width: "100%", height: "auto", objectFit: "contain" }}
+            />
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseImageModal} color="primary">
+            Cerrar
+          </Button>
+        </DialogActions>
+      </Dialog>
     </ThemeProvider>
   );
 }
 
 export default ProductoCRUD;
- 

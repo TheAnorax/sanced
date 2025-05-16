@@ -5,7 +5,7 @@ const getBahias = async (req, res) => {
       const [rows] = await pool.query(`SELECT * FROM bahias`);
   
       // Filtrar las bahías que contienen el texto "Pasillo"
-      const filteredRows = rows.filter(bahia => !bahia.bahia.includes('Pasillo'));
+      const filteredRows = rows.filter(bahia => !bahia.bahia.includes('CABECERA'));
   
       // Inicializar un objeto para agrupar las bahías
       const groupedBahias = {

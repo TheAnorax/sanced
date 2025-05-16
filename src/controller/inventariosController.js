@@ -234,6 +234,7 @@ u.ubi,
 prod.des,
 u.code_prod,
 u.cant_stock,
+u.cant_stock_real,
 u.pasillo,
 u.lote,
 u.almacen
@@ -248,7 +249,9 @@ ORDER BY u.ubi ASC
       error: error.message,
     });
   }
-};const updatePeacking = async (req, res) => {
+};
+
+const updatePeacking = async (req, res) => {
   const { id_ubi, code_prod, cant_stock, pasillo, lote, almacen, user_id, ubi } = req.body;
   //console.log("Update Pick:", req.body);
 
@@ -343,24 +346,25 @@ const obtenerUbiAlma = async (req, res) => {
   try {
     // Realizar la consulta para obtener todos los registros
     const [rows] = await pool.query(`
-      SELECT 
-        id_ubi, 
-        ubi, 
-        code_prod, 
-        cant_stock, 
-        pasillo, 
-        lote, 
-        almacen, 
-        codigo_ubi, 
-        ingreso, 
-        estado, 
-        codigo_ingreso,
+     SELECT 
+        u.id_ubi,
+        prod.des,
+        u.ubi, 
+        u.code_prod, 
+        u.cant_stock, 
+        u.pasillo, 
+        u.lote, 
+        u.almacen, 
+        u.codigo_ubi, 
+        u.ingreso, 
+        u.nivel,
         CASE 
-          WHEN pasillo REGEXP '^[0-9]+$' THEN 'Almacen' 
-          WHEN pasillo REGEXP 'AV' THEN 'Picking'
+          WHEN u.pasillo REGEXP '^[0-9]+$' THEN 'Almacen' 
+          WHEN u.pasillo REGEXP 'AV' THEN 'Picking'
           ELSE 'Otro'
-        END AS area
-      FROM ubi_alma
+        END AS AREA
+      FROM ubi_alma u
+      LEFT JOIN productos prod ON u.code_prod = prod.codigo_pro
     `);
 
     // Estructura de la respuesta
@@ -428,7 +432,7 @@ const deleteTarea = async (req, res) => {
 const getUbicacionesImpares = async (req, res) => {
   try {
     const [result] = await pool.query(`
-      SELECT ubi , code_prod, cant_stock, pasillo, lote, almacen, estado
+      SELECT ubi , code_prod, cant_stock, pasillo, lote, almacen, estado, nivel, ingreso
       FROM ubi_alma
       WHERE CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(ubi, '-', 2), '-', -1) AS UNSIGNED) % 2 = 1;
     `);
@@ -443,7 +447,7 @@ const getUbicacionesImpares = async (req, res) => {
 const getUbicacionesPares = async (req, res) => {
   try {
     const [result] = await pool.query(`
-      SELECT ubi, code_prod, cant_stock, pasillo, lote, almacen, estado
+      SELECT ubi, code_prod, cant_stock, pasillo, lote, almacen, estado, nivel, ingreso
       FROM ubi_alma
       WHERE CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(ubi, '-', 2), '-', -1) AS UNSIGNED) % 2 = 0;
     `);
@@ -451,6 +455,41 @@ const getUbicacionesPares = async (req, res) => {
   } catch (error) {
     console.error("Error al obtener ubicaciones pares:", error);
     res.status(500).json({ error: "Error al obtener ubicaciones pares" });
+  }
+};
+
+
+const deletepickUnbi = async (req, res) => {
+  const { id_ubi } = req.body;
+  console.log("DELETE ubicaciones", req.body);
+
+  if (!id_ubi) {
+    return res.status(400).json({
+      success: false,
+      message: "Falta el ID de la ubicación.",
+    });
+  }
+
+  try {
+    const [result] = await pool.query("DELETE FROM ubicaciones WHERE id_ubi = ?", [id_ubi]);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No se encontró la ubicación para eliminar.",
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: "Ubicación eliminada correctamente.",
+    });
+  } catch (error) {
+    console.error("Error al eliminar la ubicación:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error al eliminar la ubicación.",
+    });
   }
 };
 
@@ -468,4 +507,5 @@ module.exports = {
   getUbicacionesImpares,
   getUbicacionesPares,
   insertNuevaUbicacion,
+  deletepickUnbi
 }; 

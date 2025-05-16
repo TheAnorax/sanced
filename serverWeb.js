@@ -32,7 +32,11 @@ const Trasporte= require('./src/routes/TransporteRouter')
 const KPi = require('./src/routes/reporteRoutes')
 const Tracking = require('./src/routes/ventasRoutes')
 const COBERTURA = require('./src/routes/coberturaRoutes')
+<<<<<<< HEAD
 const INVENTARIODOS = require('./src/routes/inventarioRoutes')
+=======
+const planeacion = require('./src/routes/pleneacionRoutes')
+>>>>>>> origin/master
 
 const app = express();
 const port = 3007;
@@ -75,9 +79,17 @@ app.use('/api/Trasporte',Trasporte)
 app.use('/api/kpi', KPi)
 app.use('/api/Ventas', Tracking)
 app.use('/api/cobertura', COBERTURA)
+<<<<<<< HEAD
 app.use('/api/Inventario', INVENTARIODOS)
 
 
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
+=======
+app.use('/api/planeacion', planeacion)
+
+
+app.listen(port, () => {
+  console.log(`Server is running on http://66.232.105.87:${port}`);
+>>>>>>> origin/master
 });

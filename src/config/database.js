@@ -10,6 +10,7 @@ const pool = mysql.createPool({
     connectionLimit: 10,
     queueLimit: 0,
     connectTimeout: 60000, // Manejo de tiempo de espera de conexión largo
+    timezone: '-06:00' // Forzar UTC-6
 });
 
 module.exports = pool;

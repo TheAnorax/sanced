@@ -4,42 +4,46 @@ const moment = require('moment');
 const getSurtidos = async (req, res) => {
   try {
     const [rows] = await pool.query(`
-      
-  SELECT
-        p.id_pedi,
-        p.pedido,
-        p.tipo,
-        p.codigo_ped,
-        prod.des,
-        prod._pz AS pieza,
-        p.cantidad,
-        p.cant_surti,
-        p.cant_no_env,
-        p.id_usuario,
-        p.um,
-        p.unido,
-        p._pz,
-        p._pq,
-        p._inner,
-        p._master,
-        p.ubi_bahia,
-        p.inicio_surtido,
-        p.fin_surtido,
-        p.estado,
-        p.motivo,
-        p.unificado,
-        u.cant_stock,
-        u.ubi,
-        u.pasillo,
-        (SELECT COUNT(DISTINCT p2.codigo_ped)
-         FROM pedido_surtido p2
-         WHERE p2.pedido = p.pedido) AS partidas 
-      FROM pedido_surtido p
-      LEFT JOIN productos prod ON p.codigo_ped = prod.codigo_pro
-      LEFT JOIN ubicaciones u ON p.codigo_ped = u.code_prod      
-      WHERE p.estado = "S" OR p.estado = "B"
-      GROUP BY p.id_pedi
-      ORDER BY u.ubi ASC;
+SELECT
+  p.id_pedi,
+  p.pedido,
+  p.tipo,
+  pq.routeName,
+  p.codigo_ped,
+  prod.des,
+  prod._pz AS pieza,
+  p.cantidad,
+  p.cant_surti,
+  p.cant_no_env,
+  p.id_usuario,
+  p.um,
+  p.unido,
+  p._pz,
+  p._pq,
+  p._inner,
+  p._master,
+  p.ubi_bahia,
+  p.inicio_surtido,
+  p.fin_surtido,
+  p.estado,
+  p.motivo,
+  p.unificado,
+  p.fusion,
+  u.cant_stock,
+  u.ubi,
+  u.pasillo,
+  (SELECT COUNT(DISTINCT p2.codigo_ped)
+   FROM pedido_surtido p2
+   WHERE p2.pedido = p.pedido AND p2.tipo = p.tipo) AS partidas 
+FROM pedido_surtido p
+LEFT JOIN productos prod ON p.codigo_ped = prod.codigo_pro
+LEFT JOIN paqueteria pq 
+  ON p.pedido = pq.\`NO ORDEN\` AND p.tipo = pq.tipo_original
+LEFT JOIN ubicaciones u ON p.codigo_ped = u.code_prod
+WHERE p.estado = 'S' OR p.estado = 'B'
+GROUP BY p.id_pedi
+ORDER BY u.ubi ASC;
+
     `);
 
     const groupedPedidos = rows.reduce((acc, pedido) => {
@@ -56,6 +60,7 @@ const getSurtidos = async (req, res) => {
       acc[pedido.pedido].items.push({
         id_pedi: pedido.id_pedi,
         tipo: pedido.tipo,
+        routeName: pedido.routeName,
         codigo_ped: pedido.codigo_ped,
         des: pedido.des,
         cantidad: pedido.cantidad,
@@ -72,6 +77,7 @@ const getSurtidos = async (req, res) => {
         _inner: pedido._inner,
         _master: pedido._master,
         ubi_bahia: pedido.ubi_bahia,
+        fusion: pedido.fusion,
         estado: pedido.estado,
         motivo: pedido.motivo,
         unificado: pedido.unificado,
@@ -118,6 +124,8 @@ const authorizePedido = async (req, res) => {
   const connection = await pool.getConnection();
   try {
     const { pedidoId } = req.params;
+    const { tipo, items } = req.body;
+    // console.log("itemsAUTH",tipo);
 
     if (!pedidoId) {
       return res.status(400).json({ message: 'Datos incompletos en la solicitud' });
@@ -127,9 +135,10 @@ const authorizePedido = async (req, res) => {
 
     // Verificar si el pedido ya existe en la tabla pedido_embarque
     const [existingOrders] = await connection.query(
-      'SELECT * FROM pedido_embarque WHERE pedido = ?',
-      [pedidoId]
+      'SELECT * FROM pedido_embarque WHERE pedido = ? AND tipo = ?',
+      [pedidoId, tipo]
     );
+    
 
     if (existingOrders.length > 0) {
       await connection.rollback();
@@ -150,9 +159,9 @@ const authorizePedido = async (req, res) => {
     // Insertar datos en la tabla pedido_embarque usando el pedidoId
     const insertQueries = pedidoSurtidoItems.map(item => {
       return connection.query(
-        `INSERT INTO pedido_embarque (pedido, tipo, codigo_ped, clave, cantidad, cant_surti, cant_no_env, um, _pz, _pq, _inner, _master, ubi_bahia, estado, id_usuario, inicio_surtido, fin_surtido, unido, id_usuario_surtido, registro, registro_surtido, registro_embarque, motivo, unificado) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'E', ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?)`,
-        [pedidoId, item.tipo, item.codigo_ped, item.clave, item.cantidad, item.cant_surti, item.cant_no_env, item.um, item._pz, item._pq, item._inner, item._master, item.ubi_bahia, item.id_usuario, item.inicio_surtido, item.fin_surtido, item.unido, item.id_usuario_surtido, item.registro, item.registro_surtido, item.motivo, item.unificado]
+        `INSERT INTO pedido_embarque (pedido, tipo, codigo_ped, clave, cantidad, cant_surti, cant_no_env, um, _pz, _pq, _inner, _master, ubi_bahia, estado, id_usuario, inicio_surtido, fin_surtido, unido, id_usuario_surtido, registro, registro_surtido, registro_embarque, motivo, unificado, fusion) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'E', ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?)`,
+        [pedidoId, item.tipo, item.codigo_ped, item.clave, item.cantidad, item.cant_surti, item.cant_no_env, item.um, item._pz, item._pq, item._inner, item._master, item.ubi_bahia, item.id_usuario, item.inicio_surtido, item.fin_surtido, item.unido, item.id_usuario_surtido, item.registro, item.registro_surtido, item.motivo, item.unificado, item.fusion]
       );
     });
 
@@ -171,7 +180,7 @@ const authorizePedido = async (req, res) => {
     await updateUMLogic();
 
     await connection.query(`DELETE FROM pedido_embarque
-WHERE id_pedi IN (
+WHERE id_pedi IN ( 
     SELECT id_pedi
     FROM (
         SELECT 
@@ -258,11 +267,21 @@ const updateBahias = async (req, res) => {
 
     // Actualizar las bahías en la tabla `bahias`
     // Dividir la actualización en partes manejables
+    // for (const bahia of newBahias) {
+    //   console.log("Actualizando bahía:", bahia); // Agregar un log para cada bahía
+    //   await pool.query(
+    //     'UPDATE bahias SET estado = ?, id_pdi = ? WHERE bahia = ?',
+    //     [estadoB, pedidoId, bahia]
+    //   );
+    // }
+
     for (const bahia of newBahias) {
-      console.log("Actualizando bahía:", bahia); // Agregar un log para cada bahía
+      // Si contiene "Pasillo-", omitir
+      if (bahia.includes("Pasillo-")) continue;
+    
       await pool.query(
         'UPDATE bahias SET estado = ?, id_pdi = ? WHERE bahia = ?',
-        [estadoB, pedidoId, bahia]
+        ['1', pedidoId, bahia]
       );
     }
 
@@ -272,6 +291,66 @@ const updateBahias = async (req, res) => {
     res.status(500).json({ message: 'Error al actualizar las bahías', error: error.message });
   }
 };
+
+
+// CONTROLADOR
+const updateBahiasfinalizado = async (req, res) => {
+  try {
+    const { pedidoId, tipo } = req.params;
+    const { ubi_bahia } = req.body;
+
+    if (!ubi_bahia) {
+      return res.status(400).json({ message: 'El campo ubi_bahia es obligatorio' });
+    }
+
+    const tables = ['pedido_surtido', 'pedido_embarque', 'pedido_finalizado'];
+    let targetTable = null;
+    let currentBahias = [];
+
+    for (const table of tables) {
+      const [rows] = await pool.query(
+        `SELECT ubi_bahia FROM ${table} WHERE pedido = ? AND tipo = ?`,
+        [pedidoId, tipo]
+      );
+
+      if (rows.length > 0) {
+        currentBahias = rows[0].ubi_bahia?.split(', ') || [];
+        targetTable = table;
+        break;
+      }
+    }
+
+    if (!targetTable) {
+      return res.status(404).json({ message: 'Pedido no encontrado en ninguna tabla' });
+    }
+
+    const newBahias = ubi_bahia.split(', ');
+    const combinedBahias = [...new Set([...currentBahias, ...newBahias])].join(', ');
+
+    await pool.query(
+      `UPDATE ${targetTable} SET ubi_bahia = ? WHERE pedido = ? AND tipo = ?`,
+      [combinedBahias, pedidoId, tipo]
+    );
+
+    for (const bahia of newBahias) {
+      // Si contiene "Pasillo-", omitir
+      if (bahia.includes("Pasillo-")) continue;
+    
+      await pool.query(
+        'UPDATE bahias SET estado = ?, id_pdi = ? WHERE bahia = ?',
+        ['1', pedidoId, bahia]
+      );
+    }
+    
+
+    res.status(200).json({ message: `Bahías actualizadas en ${targetTable}` });
+  } catch (error) {
+    console.error('Error al actualizar las bahías:', error);
+    res.status(500).json({ message: 'Error al actualizar las bahías', error: error.message });
+  }
+};
+
+
 
 const cancelPedido = async (req, res) => {
   try {
@@ -685,4 +764,4 @@ const updateUMLogic = async () => {
 
 
 
-module.exports = { getSurtidos, updatePedido, authorizePedido, updateBahias, cancelPedido, getPedidosDelDia };
+module.exports = { getSurtidos, updatePedido, authorizePedido, updateBahias, cancelPedido, getPedidosDelDia, updateBahiasfinalizado };

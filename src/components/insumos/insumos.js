@@ -147,7 +147,11 @@ function Insumos() {
 
   const fetchInsumos = async () => {
     try {
+<<<<<<< HEAD
       const response = await axios.get("http://localhost:3007/insumo/lista");
+=======
+      const response = await axios.get("http://66.232.105.87:3007/insumo/lista");
+>>>>>>> origin/master
       const data = response.data.resultado.list;
 
       // Procesamos los insumos para calcular el requerimiento basado en la diferencia
@@ -492,7 +496,11 @@ function Insumos() {
       };
 
       const response = await axios.post(
+<<<<<<< HEAD
         "http://localhost:3007/insumo/obtnercodigo",
+=======
+        "http://66.232.105.87:3007/insumo/obtnercodigo",
+>>>>>>> origin/master
         requestBody
       );
       const data = response.data.resultado.list[0];
@@ -510,7 +518,11 @@ function Insumos() {
   const fetchInsumoData = async () => {
     try {
       const response = await fetch(
+<<<<<<< HEAD
         "http://localhost:3007/insumo/Insumosagregados"
+=======
+        "http://66.232.105.87:3007/insumo/Insumosagregados"
+>>>>>>> origin/master
       );
       const data = await response.json();
       if (data.resultado && !data.resultado.error) {
@@ -535,7 +547,11 @@ function Insumos() {
 
     try {
       const response = await axios.post(
+<<<<<<< HEAD
         "http://localhost:3007/insumo/newinsumo",
+=======
+        "http://66.232.105.87:3007/insumo/newinsumo",
+>>>>>>> origin/master
         newInsumoData
       );
       console.log("Nuevo insumo agregado:", response.data);
@@ -578,7 +594,11 @@ function Insumos() {
     // Si la validación es exitosa, proceder con la actualización del inventario
     try {
       const response = await axios.post(
+<<<<<<< HEAD
         "http://localhost:3007/insumo/updateinventario",
+=======
+        "http://66.232.105.87:3007/insumo/updateinventario",
+>>>>>>> origin/master
         consumeData
       );
 
@@ -639,7 +659,11 @@ function Insumos() {
 
     try {
       const response = await axios.post(
+<<<<<<< HEAD
         "http://localhost:3007/insumo/modifyInsumo",
+=======
+        "http://66.232.105.87:3007/insumo/modifyInsumo",
+>>>>>>> origin/master
         requestBody
       );
 
@@ -670,7 +694,11 @@ function Insumos() {
 
     try {
       const response = await axios.post(
+<<<<<<< HEAD
         "http://localhost:3007/insumo/ingresoInsumos",
+=======
+        "http://66.232.105.87:3007/insumo/ingresoInsumos",
+>>>>>>> origin/master
         ingresoData
       );
       console.log("Insumos agregados:", response.data);
@@ -685,7 +713,11 @@ function Insumos() {
   const fetchReducedInsumoData = async () => {
     try {
       const response = await fetch(
+<<<<<<< HEAD
         "http://localhost:3007/insumo/Insumosreducidos"
+=======
+        "http://66.232.105.87:3007/insumo/Insumosreducidos"
+>>>>>>> origin/master
       );
       const data = await response.json();
       console.log("Datos reducidos obtenidos:", data);
@@ -835,7 +867,7 @@ function Insumos() {
         <Box display="flex" gap={1}>
           {(user?.role === "Admin" ||
             user?.role === "Master" ||
-            user?.role === "INV") && (
+            user?.role === "INV" || user?.role === "Dep") && (
             <IconButton
               sx={{ color: "#51acf8" }}
               onClick={() => handleView(params.row)}
@@ -845,7 +877,7 @@ function Insumos() {
           )}
 
           {(user?.role === "Admin" ||
-            user?.role === "Master" || user?.role === "INV" || user?.role === "Recibo" || user?.role === "Eti") && (
+            user?.role === "Master" || user?.role === "INV" || user?.role === "Recibo" || user?.role === "Eti" || user?.role === "Dep") && (
             <IconButton
               sx={{ color: "black" }}
               onClick={() => handleConsumeFormOpen(params.row)}
@@ -881,7 +913,7 @@ function Insumos() {
 
           {(user?.role === "Admin" ||
             user?.role === "Master" ||
-            user?.role === "INV") && (
+            user?.role === "INV" || user?.role === "Dep") && (
             <Button
               variant="contained"
               sx={{ background: "green" }}

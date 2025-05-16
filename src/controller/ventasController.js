@@ -76,10 +76,17 @@ const insertarRutas = async (req, res) => {
       .json({ message: "No se enviaron rutas para insertar." });
   }
 
+<<<<<<< HEAD
   const connection = await pool.getConnection();
 
   try {
     await connection.beginTransaction();
+=======
+  const connection = await pool.getConnection(); // Obtener conexión
+
+  try {
+    await connection.beginTransaction(); // Iniciar la transacción
+>>>>>>> origin/master
 
     for (let ruta of rutas) {
       const {
@@ -100,13 +107,18 @@ const insertarRutas = async (req, res) => {
         DIRECCION,
         TELEFONO,
         CORREO,
+<<<<<<< HEAD
         "EJECUTIVO VTAS": ejecutivoVtas,
         GUIA,
         tipo_original,
+=======
+        GUIA,
+>>>>>>> origin/master
       } = ruta;
 
       const formattedDate = moment(FECHA, "DD/MM/YYYY").format("YYYY-MM-DD");
 
+<<<<<<< HEAD
       // 👉 Validación: si ya existe ese NO ORDEN con ese tipo_original, no lo insertes
       const [existe] = await connection.query(
         `SELECT 1 FROM paqueteria WHERE \`NO ORDEN\` = ? AND tipo_original = ? LIMIT 1`,
@@ -118,14 +130,23 @@ const insertarRutas = async (req, res) => {
         continue; // Saltar este registro
       }
 
+=======
+      // ✅ Consulta para insertar sin duplicados
+>>>>>>> origin/master
       const insertQuery = `
         INSERT INTO paqueteria (
           routeName, FECHA, \`NO ORDEN\`, \`NO_FACTURA\`, \`NUM. CLIENTE\`,
           \`NOMBRE DEL CLIENTE\`, ZONA, MUNICIPIO, ESTADO, OBSERVACIONES,
+<<<<<<< HEAD
           TOTAL, PARTIDAS, PIEZAS, TRANSPORTE, PAQUETERIA, TIPO,
           DIRECCION, TELEFONO, CORREO, \`EJECUTIVO VTAS\`, GUIA, tipo_original
         )
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+=======
+          TOTAL, PARTIDAS, PIEZAS, TRANSPORTE, PAQUETERIA, TIPO, DIRECCION, TELEFONO, CORREO, GUIA
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+>>>>>>> origin/master
       `;
 
       const values = [
@@ -148,14 +169,19 @@ const insertarRutas = async (req, res) => {
         DIRECCION,
         TELEFONO,
         CORREO,
+<<<<<<< HEAD
         ejecutivoVtas,
         GUIA,
         tipo_original || null,
+=======
+        GUIA,
+>>>>>>> origin/master
       ];
 
       await connection.query(insertQuery, values);
     }
 
+<<<<<<< HEAD
     await connection.commit();
 
     res.status(200).json({
@@ -172,6 +198,41 @@ const insertarRutas = async (req, res) => {
 
 
 // Controlador: obtenerRutasDePaqueteria
+=======
+    // ✅ Eliminar duplicados dejando solo el primero registrado
+    const deleteDuplicatesQuery = `
+      DELETE FROM paqueteria 
+      WHERE id NOT IN (
+        SELECT id FROM (
+          SELECT MIN(id) AS id
+          FROM paqueteria
+          GROUP BY \`NO ORDEN\`
+        ) AS temp
+      )
+    `;
+
+    await connection.query(deleteDuplicatesQuery);
+
+    await connection.commit(); // Confirmar la inserción
+
+    res.status(200).json({
+      message: "✅ Rutas insertadas y duplicados eliminados correctamente.",
+    });
+  } catch (error) {
+    await connection.rollback(); // Revertir cambios si hay un error
+    console.error(
+      "❌ Error al insertar rutas o eliminar duplicados:",
+      error.message
+    );
+    res
+      .status(500)
+      .json({ message: "Error al insertar rutas o eliminar duplicados" });
+  } finally {
+    connection.release(); // Liberar la conexión
+  }
+};
+
+>>>>>>> origin/master
 const obtenerRutasDePaqueteria = async (req, res) => {
   try {
     const {
@@ -192,7 +253,11 @@ const obtenerRutasDePaqueteria = async (req, res) => {
              OBSERVACIONES, TOTAL, PARTIDAS, PIEZAS, TARIMAS, TRANSPORTE, 
              PAQUETERIA, GUIA, FECHA_DE_ENTREGA_CLIENTE, DIAS_DE_ENTREGA,
              TIPO, DIRECCION, TELEFONO, TOTAL_FACTURA_LT, ENTREGA_SATISFACTORIA_O_NO_SATISFACTORIA,
+<<<<<<< HEAD
              created_at, MOTIVO, NUMERO_DE_FACTURA_LT, FECHA_DE_ENTREGA_CLIENTE,tipo_original
+=======
+             created_at, MOTIVO, NUMERO_DE_FACTURA_LT, FECHA_DE_ENTREGA_CLIENTE,\`EJECUTIVO VTAS\`
+>>>>>>> origin/master
       FROM paqueteria
       WHERE 1 = 1
     `;
@@ -242,6 +307,10 @@ const obtenerRutasDePaqueteria = async (req, res) => {
   }
 };
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/master
 const obtenerRutasParaPDF = async (req, res) => {
   try {
     const {
@@ -251,7 +320,11 @@ const obtenerRutasParaPDF = async (req, res) => {
       guia = "",
       expandir = false,
       desde = "",
+<<<<<<< HEAD
       hasta = "",
+=======
+      hasta = ""
+>>>>>>> origin/master
     } = req.query;
 
     const offset = (page - 1) * limit;
@@ -317,6 +390,10 @@ const obtenerRutasParaPDF = async (req, res) => {
   }
 };
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/master
 const getFechaYCajasPorPedido = async (req, res) => {
   const { noOrden } = req.params;
 
@@ -324,28 +401,45 @@ const getFechaYCajasPorPedido = async (req, res) => {
     const query = `
                     SELECT
                     MAX(fin_embarque) AS ultimaFechaEmbarque,
+<<<<<<< HEAD
                     MAX(caja) AS ultimaCaja 
+=======
+                    SUM(caja) AS totalCajas
+>>>>>>> origin/master
                     FROM pedido_finalizado
                     WHERE pedido = ?;
                 `;
 
     const [rows] = await pool.query(query, [noOrden]);
 
+<<<<<<< HEAD
     if (rows.length > 0 && rows[0].ultimaFechaEmbarque) {
       res.json({
         ultimaFechaEmbarque: moment(rows[0].ultimaFechaEmbarque).format(
           "DD/MM/YYYY"
         ), // Formateamos la fecha correctamente
         ultimaCaja: rows[0].ultimaCaja || 0, // 🔹 Devolver 0 si no hay datos
+=======
+    if (rows.length > 0) {
+      res.json({
+        ultimaFechaEmbarque: moment(rows[0].ultimaFechaEmbarque).format(
+          "DD/MM/YYYY"
+        ), // Formateamos la fecha
+        totalCajas: rows[0].totalCajas,
+>>>>>>> origin/master
       });
     } else {
       res.status(404).json({
         message: "No se encontraron registros para este número de pedido",
+<<<<<<< HEAD
         ultimaCaja: 0, // 🔹 Asegurar que ultimaCaja no sea undefined
+=======
+>>>>>>> origin/master
       });
     }
   } catch (error) {
     console.error(
+<<<<<<< HEAD
       "Error al obtener la fecha de embarque y la última caja:",
       error.message
     );
@@ -362,6 +456,21 @@ const actualizarGuia = async (req, res) => {
     guia,
     paqueteria,
     transporte,
+=======
+      "Error al obtener la fecha de embarque y las cajas:",
+      error.message
+    );
+    res
+      .status(500)
+      .json({ message: "Error al obtener la fecha de embarque y las cajas" });
+  }
+};
+
+const actualizarGuia = async (req, res) => {
+  const {
+    guia, // Ahora la guía viene del body
+    paqueteria,
+>>>>>>> origin/master
     fechaEntregaCliente,
     diasEntrega,
     entregaSatisfactoria,
@@ -381,6 +490,7 @@ const actualizarGuia = async (req, res) => {
     tarimas,
     numeroFacturaLT,
     observaciones,
+<<<<<<< HEAD
     tipo,
     nuevoNoOrden,
     nuevoTipoOriginal,
@@ -444,6 +554,62 @@ const actualizarGuia = async (req, res) => {
       guia,
       paqueteria,
       transporte,
+=======
+  } = req.body;
+
+  try {
+    const noOrden = req.params.noOrden || null; // Ahora solo tomamos noOrden de la URL
+
+    if (!noOrden || guia === undefined || guia.trim() === "") {
+      return res.status(400).json({
+        message: "❌ Faltan datos: NO ORDEN o GUIA no son válidos.",
+      });
+    }
+
+    // Verificar si el NO ORDEN existe
+    const [registroExiste] = await pool.query(
+      "SELECT GUIA FROM paqueteria WHERE `NO ORDEN` = ?",
+      [noOrden]
+    );
+
+    if (registroExiste.length === 0) {
+      return res.status(404).json({
+        message: `❌ No se encontró la orden con NO ORDEN ${noOrden}.`,
+      });
+    }
+
+    // Ejecutar actualización
+    const query = `
+      UPDATE paqueteria
+      SET 
+          GUIA = ?, 
+          PAQUETERIA = ?, 
+          FECHA_DE_ENTREGA_CLIENTE = ?, 
+          DIAS_DE_ENTREGA = ?, 
+          ENTREGA_SATISFACTORIA_O_NO_SATISFACTORIA = ?, 
+          MOTIVO = ?, 
+          TOTAL_FACTURA_LT = ?, 
+          PRORRATEO_FACTURA_LT = ?, 
+          PRORRATEO_FACTURA_PAQUETERIA = ?, 
+          GASTOS_EXTRAS = ?, 
+          SUMA_FLETE = ?, 
+          PORCENTAJE_ENVIO = ?, 
+          PORCENTAJE_PAQUETERIA = ?, 
+          SUMA_GASTOS_EXTRAS = ?, 
+          PORCENTAJE_GLOBAL = ?, 
+          DIFERENCIA = ?, 
+          NO_FACTURA = ?, 
+          FECHA_DE_FACTURA = ?, 
+          TARIMAS = ?, 
+          NUMERO_DE_FACTURA_LT = ?, 
+          OBSERVACIONES = ?
+      WHERE \`NO ORDEN\` = ?
+    `;
+
+    const [result] = await pool.query(query, [
+      guia,
+      paqueteria,
+>>>>>>> origin/master
       fechaEntregaCliente,
       diasEntrega,
       entregaSatisfactoria,
@@ -463,6 +629,7 @@ const actualizarGuia = async (req, res) => {
       tarimas,
       numeroFacturaLT,
       observaciones,
+<<<<<<< HEAD
       tipo
     ];
 
@@ -504,6 +671,26 @@ const actualizarGuia = async (req, res) => {
 
 
 
+=======
+      noOrden,
+    ]);
+
+    if (result.affectedRows > 0) {
+      return res
+        .status(200)
+        .json({ message: "✅ Guía actualizada correctamente." });
+    } else {
+      return res.status(404).json({
+        message: `⚠ No se pudo actualizar la guía para el NO ORDEN ${noOrden}.`,
+      });
+    }
+  } catch (error) {
+    console.error("❌ Error al actualizar la guía:", error.message);
+    return res.status(500).json({ message: "❌ Error al actualizar la guía." });
+  }
+};
+
+>>>>>>> origin/master
 const getPedidosEmbarque = async (req, res) => {
   try {
     const { codigo_ped } = req.params;
@@ -644,7 +831,10 @@ const insertarVisita = async (req, res) => {
   }
 };
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/master
 const guardarDatos = async (req, res) => {
   const datos = req.body;
 
@@ -774,7 +964,11 @@ const getHistoricoData = async (req, res) => {
 
     const columnasFiltradas = columnasArray.filter((col) =>
       columnasPermitidas.includes(col)
+<<<<<<< HEAD
     ); 
+=======
+    );
+>>>>>>> origin/master
 
     if (columnasFiltradas.length === 0) {
       return res
@@ -870,12 +1064,19 @@ const getColumnasHistorico = async (req, res) => {
 
 const getOrderStatus = async (req, res) => {
   try {
+<<<<<<< HEAD
     let orderNumbers = req.body.orderNumbers || [req.params.orderNumber];
+=======
+    // Si se envían varios pedidos en un array o un único pedido desde params
+    let orderNumbers = req.body.orderNumbers || [req.params.orderNumber];
+
+>>>>>>> origin/master
     if (!orderNumbers || orderNumbers.length === 0) {
       return res.status(400).json({ message: "No se enviaron pedidos" });
     }
 
     let statusResults = {};
+<<<<<<< HEAD
     const fusionMap = {}; // 🔁 Mapa para fusiones bidireccionales
 
     const statusColors = {
@@ -1024,6 +1225,74 @@ const getOrderStatus = async (req, res) => {
           fusionWith: `${fusionWith}-${pedido}`,
           tipo_original: betterStatus.tipo_original, // <- usar del mejor estado
           tipo_tabla: betterStatus.tipo_tabla,
+=======
+
+    // Buscar en `pedi` y asignar color rojo
+    let [result] = await pool.query(
+      `SELECT pedido FROM pedi WHERE pedido IN (?)`,
+      [orderNumbers]
+    );
+    result.forEach((row) => {
+      statusResults[row.pedido] = {
+        statusText: "Por Asignar",
+        color: "#ff0000", // Rojo
+        table: "pedi",
+      };
+    });
+
+    // Buscar en `pedido_surtido` y asignar color amarillo
+    [result] = await pool.query(
+      `SELECT pedido FROM pedido_surtido WHERE pedido IN (?)`,
+      [orderNumbers]
+    );
+    result.forEach((row) => {
+      statusResults[row.pedido] = {
+        statusText: "Surtiendo",
+        color: "#040404", // Amarillo
+        table: "pedido_surtido",
+      };
+    });
+
+    // Buscar en `pedido_embarcado` (o `pedido_embarque`) y asignar color naranja
+    try {
+      [result] = await pool.query(
+        `SELECT pedido FROM pedido_embarque WHERE pedido IN (?)`,
+        [orderNumbers]
+      );
+      result.forEach((row) => {
+        statusResults[row.pedido] = {
+          statusText: "Embarcando",
+          color: "#0d10f3", // Naranja
+          table: "pedido_embarque",
+        };
+      });
+    } catch (error) {
+      console.warn(
+        "⚠️ Tabla `pedido_embarcado` no existe. Omitiendo búsqueda."
+      );
+    }
+
+    // Buscar en `pedido_finalizado` y asignar color verde
+    [result] = await pool.query(
+      `SELECT pedido FROM pedido_finalizado WHERE pedido IN (?)`,
+      [orderNumbers]
+    );
+    result.forEach((row) => {
+      statusResults[row.pedido] = {
+        statusText: "Pedido Finalizado",
+        color: "#008000", // Verde
+        table: "pedido_finalizado",
+      };
+    });
+
+    // Para los pedidos que no se encontraron en ninguna tabla, asigna un status por defecto
+    orderNumbers.forEach((orderNumber) => {
+      if (!statusResults[orderNumber]) {
+        statusResults[orderNumber] = {
+          statusText: "Pedido no encontrado",
+          color: "#808080", // Gris (por defecto)
+          table: "Desconocido",
+>>>>>>> origin/master
         };
       }
     });
@@ -1035,6 +1304,7 @@ const getOrderStatus = async (req, res) => {
   }
 };
 
+<<<<<<< HEAD
 const getFusionInfo = async (req, res) => {
   try {
     const orderNumbers = req.body.orderNumbers || [req.params.orderNumber];
@@ -1109,6 +1379,8 @@ const getFusionInfo = async (req, res) => {
   }
 };
 
+=======
+>>>>>>> origin/master
 const actualizarFacturasDesdeExcel = async (req, res) => {
   try {
     // Validar si se subió un archivo
@@ -1137,6 +1409,7 @@ const actualizarFacturasDesdeExcel = async (req, res) => {
 
     // Recorrer cada fila del archivo Excel
     for (const row of data) {
+<<<<<<< HEAD
       const noOrden = row["Número orden"];
       const noFactura = row["Número documento"];
       let fechaFactura = row["Fecha factura"];
@@ -1146,6 +1419,17 @@ const actualizarFacturasDesdeExcel = async (req, res) => {
         // console.warn(
         //   `⚠ Saltando fila con datos faltantes: ${JSON.stringify(row)}`
         // );
+=======
+      const noOrden = row["Nº de la orden"];
+      const noFactura = row["Nº de doc"];
+      let fechaFactura = row["Fch de fact."];
+
+      // Validar que los datos esenciales existan
+      if (!noOrden || !noFactura || !fechaFactura) {
+        console.warn(
+          `⚠ Saltando fila con datos faltantes: ${JSON.stringify(row)}`
+        );
+>>>>>>> origin/master
         continue;
       }
 
@@ -1185,6 +1469,7 @@ const actualizarFacturasDesdeExcel = async (req, res) => {
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
+<<<<<<< HEAD
 const actualizarPorGuia = async (req, res) => {
   const { guia } = req.params;
 
@@ -1962,6 +2247,9 @@ const actualizarGuiaCompleta = async (req, res) => {
 module.exports = {
   actualizarTipoOriginalDesdeExcel,
   getPaqueteriaData,
+=======
+module.exports = {
+>>>>>>> origin/master
   getObservacionesPorClientes,
   getUltimaFechaEmbarque,
   insertarRutas,
@@ -1981,6 +2269,7 @@ module.exports = {
   getOrderStatus,
   upload,
   actualizarFacturasDesdeExcel,
+<<<<<<< HEAD
   actualizarPorGuia,
   crearRuta,
   agregarPedidoARuta,
@@ -1991,4 +2280,7 @@ module.exports = {
   getPedidosDia,
   obtenerRutasParaPDF,
   actualizarGuiaCompleta,
+=======
+  obtenerRutasParaPDF,
+>>>>>>> origin/master
 };

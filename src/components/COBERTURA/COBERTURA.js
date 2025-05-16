@@ -1,6 +1,25 @@
 import React, { useState } from "react";
 import axios from "axios";
+<<<<<<< HEAD
 import { TextField, Button, Container, Typography, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Box, Grid, TablePagination,} from "@mui/material";
+=======
+import {
+    TextField,
+    Button,
+    Container,
+    Typography,
+    Paper,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
+    Box,
+    Grid,
+    TablePagination,
+} from "@mui/material";
+>>>>>>> origin/master
 
 function COBERTURA() {
     const [codigoPostal, setCodigoPostal] = useState("");
@@ -20,7 +39,11 @@ function COBERTURA() {
         if (!codigoPostal) return;
 
         try {
+<<<<<<< HEAD
             const response = await axios.get("http://localhost:3007/api/cobertura/cobertura", {
+=======
+            const response = await axios.get("http://66.232.105.87:3007/api/cobertura/cobertura", {
+>>>>>>> origin/master
                 params: { codigo_postal: codigoPostal },
             });
 
@@ -104,7 +127,11 @@ function COBERTURA() {
             </Paper>
 
             <Grid container spacing={4}>
+<<<<<<< HEAD
                 {renderTable("Cobertura 2025",
+=======
+                {renderTable("Cobertura PAQUETEXPRRES",
+>>>>>>> origin/master
                     ["CP", "Delegación", "Colonia", "Ciudad", "Estado", "Cobertura", "Días"],
                     datos2025,
                     page1,

@@ -2,19 +2,21 @@ const pool = require("../config/database");
 
 const getEmbarques = async (req, res) => {
   try {
-    const [rows] = await pool.query(`
-     SELECT
-        p.id_pedi,
+    const [rows] = await pool.query(` 
+      SELECT
+        MIN(p.id_pedi) AS id_pedi,  -- Usamos MIN para cumplir con ONLY_FULL_GROUP_BY
         p.tipo,
         p.pedido,
         p.id_usuario_paqueteria,
-        (SELECT COUNT(DISTINCT p2.codigo_ped)
-         FROM pedido_embarque p2
-         WHERE p2.pedido = p.pedido) AS partidas
+        (
+          SELECT COUNT(DISTINCT p2.codigo_ped)
+          FROM pedido_embarque p2
+          WHERE p2.pedido = p.pedido AND p2.tipo = p.tipo
+        ) AS partidas
       FROM pedido_embarque p
-      WHERE p.estado ='E'
-      AND p.id_usuario_paqueteria IS NULL
-      GROUP BY pedido; 
+      WHERE p.estado = 'E'
+        AND p.id_usuario_paqueteria IS NULL
+      GROUP BY p.pedido, p.tipo, p.id_usuario_paqueteria
     `);
 
     const pedidos = rows.map((pedido) => ({
@@ -25,22 +27,25 @@ const getEmbarques = async (req, res) => {
       id_usuario_paqueteria: pedido.id_usuario_paqueteria,
     }));
 
-    res.json(pedidos); // Envía los datos directamente en forma de array
+    res.json(pedidos);
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error al obtener los pedidos", error: error.message });
+    console.error("Error al obtener los embarques:", error.message);
+    res.status(500).json({
+      message: "Error al obtener los pedidos",
+      error: error.message,
+    });
   }
 };
+
 
 const updateUsuarioEmbarques = async (req, res) => {
   try {
     const { pedidoId } = req.params;
-    const { id_usuario_paqueteria } = req.body;
+    const { id_usuario_paqueteria, tipo } = req.body;
 
     await pool.query(
-      "UPDATE pedido_embarque SET id_usuario_paqueteria = ? WHERE pedido = ?",
-      [id_usuario_paqueteria, pedidoId]
+      "UPDATE pedido_embarque SET id_usuario_paqueteria = ? WHERE pedido = ? AND tipo = ?",
+      [id_usuario_paqueteria, pedidoId, tipo]
     );
 
     res
@@ -53,6 +58,7 @@ const updateUsuarioEmbarques = async (req, res) => {
     });
   }
 };
+
 
 const getProgresoValidacionEmbarque = async (req, res) => {
   try {
@@ -182,4 +188,26 @@ const getProductividadEmbarcadores = async (req, res) => {
   }
 };
 
-module.exports = { getEmbarques, updateUsuarioEmbarques ,  getProgresoValidacionEmbarque,  getProductividadEmbarcadores };
+const resetUsuarioEmbarque = async (req, res) => {
+  try {
+    const { pedidoId } = req.params;
+
+    await pool.query(
+      "UPDATE pedido_embarque SET id_usuario_paqueteria = NULL WHERE pedido = ?",
+      [pedidoId]
+    );
+
+    res.status(200).json({
+      message: `Usuario de paquetería removido correctamente para el pedido ${pedidoId}`,
+    });
+  } catch (error) {
+    console.error("Error al resetear usuario:", error);
+    res.status(500).json({
+      message: "Error al remover usuario de paquetería",
+      error: error.message,
+    });
+  }
+};
+
+
+module.exports = { getEmbarques, updateUsuarioEmbarques ,  getProgresoValidacionEmbarque,  getProductividadEmbarcadores, resetUsuarioEmbarque };

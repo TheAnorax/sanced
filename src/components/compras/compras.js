@@ -142,7 +142,11 @@ function Compras() {
       if (result.isConfirmed) {
         // Si se confirma, actualizar el estado en la base de datos
         const response = await axios.put(
+<<<<<<< HEAD
           `http://localhost:3007/api/compras/compras/cancelar/${id_recibo}`, // URL corregida
+=======
+          `http://66.232.105.87:3007/api/compras/compras/cancelar/${id_recibo}`, // URL corregida
+>>>>>>> origin/master
           { estado: "Cancelado" } // Parámetro enviado para actualizar el estado
         );
 
@@ -195,7 +199,11 @@ function Compras() {
       if (result.isConfirmed) {
         // Realizar la llamada a la API para actualizar los datos en la base de datos
         const response = await axios.put(
+<<<<<<< HEAD
           `http://localhost:3007/api/compras/compras/recibo/${selectedProduct.id_recibo}`,
+=======
+          `http://66.232.105.87:3007/api/compras/compras/recibo/${selectedProduct.id_recibo}`,
+>>>>>>> origin/master
           {
             almacen7050: almacen1, // Almacén 7050
             almacen7066: almacen2, // Almacén 7066
@@ -253,7 +261,11 @@ function Compras() {
       if (result.isConfirmed) {
         // Realizar la asignación automática de todas las unidades al almacén 7050
         const response = await axios.put(
+<<<<<<< HEAD
           `http://localhost:3007/api/compras/compras/recibo/${compra.id_recibo}`,
+=======
+          `http://66.232.105.87:3007/api/compras/compras/recibo/${compra.id_recibo}`,
+>>>>>>> origin/master
           {
             almacen7050: "7050", // Almacén 7050
             almacen7066: "7066", // Almacén 7066 predefinido (puede ser opcional)
@@ -354,7 +366,11 @@ function Compras() {
   const fetchCompras2 = async () => {
     try {
       const response = await axios.get(
+<<<<<<< HEAD
         `http://localhost:3007/api/compras/compras?tipo=${tipo}`
+=======
+        `http://66.232.105.87:3007/api/compras/compras?tipo=${tipo}`
+>>>>>>> origin/master
       );
 
       setCompras(response.data);
@@ -379,7 +395,11 @@ function Compras() {
       const fetchCompras = async () => {
         try {
           const response = await axios.get(
+<<<<<<< HEAD
             `http://localhost:3007/api/compras/compras?tipo=${tipo}`
+=======
+            `http://66.232.105.87:3007/api/compras/compras?tipo=${tipo}`
+>>>>>>> origin/master
           );
 
           setCompras(response.data);
@@ -400,7 +420,11 @@ function Compras() {
       const fetchProductos = async () => {
         try {
           const response = await axios.get(
+<<<<<<< HEAD
             "http://localhost:3007/api/productos"
+=======
+            "http://66.232.105.87:3007/api/productos"
+>>>>>>> origin/master
           );
           setProductos(response.data);
         } catch (error) {
@@ -503,7 +527,11 @@ function Compras() {
         // Enviar cada lote por separado
         for (const batch of batches) {
           await axios.post(
+<<<<<<< HEAD
             "http://localhost:3007/api/compras/compras/upload-excel",
+=======
+            "http://66.232.105.87:3007/api/compras/compras/upload-excel",
+>>>>>>> origin/master
             batch
           );
         }
@@ -511,7 +539,11 @@ function Compras() {
 
         // Refrescar la tabla de compras después de la carga
         const response = await axios.get(
+<<<<<<< HEAD
           `http://localhost:3007/api/compras/compras?tipo=${tipo}`
+=======
+          `http://66.232.105.87:3007/api/compras/compras?tipo=${tipo}`
+>>>>>>> origin/master
         );
         setCompras(response.data);
       } catch (error) {
@@ -606,7 +638,11 @@ function Compras() {
   //   setLoading(true);
   //   try {
   //     await axios.post(
+<<<<<<< HEAD
   //       "http://localhost:3007/api/compras/compras/upload-pdfsOC",
+=======
+  //       "http://66.232.105.87:3007/api/compras/compras/upload-pdfsOC",
+>>>>>>> origin/master
   //       formData,
   //       {
   //         headers: { "Content-Type": "multipart/form-data" },
@@ -675,7 +711,11 @@ function Compras() {
 
     try {
       const response = await axios.post(
+<<<<<<< HEAD
         "http://localhost:3007/api/compras/compras/upload-pdfs",
+=======
+        "http://66.232.105.87:3007/api/compras/compras/upload-pdfs",
+>>>>>>> origin/master
         formData,
         {
           headers: { "Content-Type": "multipart/form-data" },
@@ -756,7 +796,7 @@ function Compras() {
       setCantidad("");
       setReferencia("");
       setUnidadMedida("");
-      setContenedor(""); 
+      setContenedor("");
       setNaviera("");
       setPedimento("");
       setRecepcionDate(dayjs());
@@ -789,7 +829,7 @@ function Compras() {
         html: `
           <img src="../assets/image/img_pz/${
             selectedProduct.codigo_pro
-          }.jpg" alt="Producto" style="width: 150px; height: 150px; margin-bottom: 10px;" />
+          }.jpg" alt="Producto" style="width: 150px; height: 150px; margin-bottom: 10px;" /> 
           <p><strong>Código:</strong> ${selectedProduct.codigo_pro}</p>
           <p><strong>Cantidad a ${
             isEditing ? "Editar" : "Recibir"
@@ -806,7 +846,11 @@ function Compras() {
       if (result.isConfirmed) {
         if (isEditing) {
           await axios.put(
+<<<<<<< HEAD
             `http://localhost:3007/api/compras/recibo/${selectedProduct.id_recibo}`,
+=======
+            `http://66.232.105.87:3007/api/compras/recibo/${selectedProduct.id_recibo}`,
+>>>>>>> origin/master
             {
               oc,
               cantidad,
@@ -827,7 +871,11 @@ function Compras() {
           );
         } else {
           const userId = user?.id_usu;
+<<<<<<< HEAD
           await axios.post("http://localhost:3007/api/compras/recibo", {
+=======
+          await axios.post("http://66.232.105.87:3007/api/compras/recibo", {
+>>>>>>> origin/master
             oc,
             cantidad,
             recepcion: recepcionFormatted,
@@ -848,7 +896,11 @@ function Compras() {
         }
 
         const response = await axios.get(
+<<<<<<< HEAD
           `http://localhost:3007/api/compras/compras?tipo=${tipo}`
+=======
+          `http://66.232.105.87:3007/api/compras/compras?tipo=${tipo}`
+>>>>>>> origin/master
         );
         setCompras(response.data);
 
@@ -1408,7 +1460,7 @@ function Compras() {
                   <TableCell>{compra.codigo}</TableCell>
                   <TableCell>{compra.cant_recibir}</TableCell>
                   <TableCell>
-                    {new Date(compra.arribo).toLocaleDateString()}
+                    {dayjs.utc(compra.arribo).format("DD/MM/YYYY")}
                   </TableCell>
                   <TableCell>{compra.oc}</TableCell>
                   <TableCell>{compra.contenedor}</TableCell>
@@ -1655,7 +1707,11 @@ function Compras() {
               {detalleData?.pdf_1 ? (
                 <div>
                   <Button
+<<<<<<< HEAD
                     href={`http://localhost:3011/docs/${detalleData.pdf_1}`}
+=======
+                    href={`http://66.232.105.87:3011/docs/${detalleData.pdf_1}`}
+>>>>>>> origin/master
                     target="_blank"
                     rel="noopener noreferrer"
                     variant="contained"
@@ -1722,7 +1778,11 @@ function Compras() {
                   {detalleData.pdf_2.split(",").map((pdfName, index) => (
                     <Button
                       key={index}
+<<<<<<< HEAD
                       href={`http://localhost:3011/docs/${pdfName.trim()}`}
+=======
+                      href={`http://66.232.105.87:3011/docs/${pdfName.trim()}`}
+>>>>>>> origin/master
                       target="_blank"
                       rel="noopener noreferrer"
                       variant="contained"
@@ -1797,7 +1857,11 @@ function Compras() {
               {detalleData?.pdf_3 ? (
                 <div>
                   <Button
+<<<<<<< HEAD
                     href={`http://localhost:3011/docs/${detalleData.pdf_3}`}
+=======
+                    href={`http://66.232.105.87:3011/docs/${detalleData.pdf_3}`}
+>>>>>>> origin/master
                     target="_blank"
                     rel="noopener noreferrer"
                     variant="contained"
@@ -1864,7 +1928,11 @@ function Compras() {
                   {detalleData.pdf_4.split(",").map((pdfName, index) => (
                     <Button
                       key={index}
+<<<<<<< HEAD
                       href={`http://localhost:3011/docs/${pdfName.trim()}`}
+=======
+                      href={`http://66.232.105.87:3011/docs/${pdfName.trim()}`}
+>>>>>>> origin/master
                       target="_blank"
                       rel="noopener noreferrer"
                       variant="contained"
@@ -1938,7 +2006,11 @@ function Compras() {
               {detalleData?.pdf_5 ? (
                 <div>
                   <Button
+<<<<<<< HEAD
                     href={`http://localhost:3011/docs/${detalleData.pdf_5}`}
+=======
+                    href={`http://66.232.105.87:3011/docs/${detalleData.pdf_5}`}
+>>>>>>> origin/master
                     target="_blank"
                     rel="noopener noreferrer"
                     variant="contained"
@@ -2002,7 +2074,7 @@ function Compras() {
                   variant="contained"
                   color="primary"
                   onClick={handleFilesUpload}
-                  startIcon={<UploadFileIcon />}
+                  startIcon={<UploadFileIcon />} 
                 >
                   Subir Archivos
                 </Button>

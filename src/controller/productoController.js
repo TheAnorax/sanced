@@ -1,19 +1,35 @@
 const pool = require('../config/database');
 const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
+const path = require("path");
+const fs = require("fs");
 
-// Configuración de multer para guardar archivos en el servidor
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, '../../public/assets/image/img_pz/'));
+    const folders = {
+      img_pz: "C:/Users/rodrigo/Desktop/react/imagenes/img_pz",
+      img_inner: "C:/Users/rodrigo/Desktop/react/imagenes/img_inner",
+      img_master: "C:/Users/rodrigo/Desktop/react/imagenes/img_master",
+    };
+
+    const folderPath = folders[file.fieldname];
+
+    // Crear carpeta si no existe
+    fs.mkdirSync(folderPath, { recursive: true });
+
+    cb(null, folderPath);
   },
   filename: (req, file, cb) => {
-    cb(null, `${Date.now()}-${file.originalname}`);
+    const ext = path.extname(file.originalname); // extensión .jpg o .png
+    const base = req.body.codigo_pro || path.basename(file.originalname, ext); // nombre del archivo
+    cb(null, `${base}${ext}`);
   },
 });
 
+
+
+
 const upload = multer({ storage });
+
 
 const getAllProducts = async (req, res) => {
   try {
@@ -44,6 +60,7 @@ const getAllProducts = async (req, res) => {
   p.peso_pz,               
   p.peso_inner,            
   p.peso_master,
+  p.img_pz,
 
   -- Sumar correctamente el stock en almacenamiento
   COALESCE(ua.cant_stock, 0) AS stock_almacen,
@@ -328,8 +345,49 @@ const deleteProduct = async (req, res) => {
   }
 };
 
+// const updateVolumetria = async (req, res) => {
+//   const { codigo } = req.params; // El valor que viene en la URL será tomado como 'codigo'
+//   const { cajas_cama, pieza_caja, cajas_tarima, camas_tarima, pieza_tarima } = req.body; 
+
+//   if (!codigo) {
+//     return res.status(400).json({ message: "El código del producto es obligatorio" });
+//   }
+
+//   try {
+//     // Verifica si el producto existe usando 'codigo'
+//     const [producto] = await pool.query(
+//       `SELECT * FROM volumetria WHERE codigo = ?`,
+//       [codigo]
+//     );
+
+//     if (producto.length === 0) {
+//       return res.status(404).json({ message: "Producto no encontrado" });
+//     }
+
+//     // Actualiza los datos de volumetría
+//     const [result] = await pool.query(
+//       `UPDATE volumetria 
+//        SET cajas_cama = ?, pieza_caja = ?, cajas_tarima = ?, camas_tarima = ?, pieza_tarima = ? 
+//        WHERE codigo = ?`,
+//       [cajas_cama, pieza_caja, cajas_tarima, camas_tarima, pieza_tarima, codigo]
+//     );
+
+//     if (result.affectedRows === 0) {
+//       return res.status(500).json({ message: "No se pudo actualizar la volumetría" });
+
+      
+//     }
+
+//     res.json({ message: "Volumetría actualizada correctamente" });
+//   } catch (error) {
+//     console.error("Error al actualizar la volumetría:", error);
+//     res.status(500).json({ message: "Error al actualizar la volumetría", error: error.message });
+//   }
+// };
+
+
 const updateVolumetria = async (req, res) => {
-  const { codigo } = req.params; // El valor que viene en la URL será tomado como 'codigo'
+  const { codigo } = req.params; // Código del producto desde la URL
   const { cajas_cama, pieza_caja, cajas_tarima, camas_tarima, pieza_tarima } = req.body; 
 
   if (!codigo) {
@@ -337,34 +395,47 @@ const updateVolumetria = async (req, res) => {
   }
 
   try {
-    // Verifica si el producto existe usando 'codigo'
+    // Verificar si el producto existe en la tabla `volumetria`
     const [producto] = await pool.query(
       `SELECT * FROM volumetria WHERE codigo = ?`,
       [codigo]
     );
 
     if (producto.length === 0) {
-      return res.status(404).json({ message: "Producto no encontrado" });
+      // Si el producto NO existe, insertarlo en la base de datos
+      const [insertResult] = await pool.query(
+        `INSERT INTO volumetria (codigo, cajas_cama, pieza_caja, cajas_tarima, camas_tarima, pieza_tarima) 
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [codigo, cajas_cama, pieza_caja, cajas_tarima, camas_tarima, pieza_tarima]
+      );
+
+      if (insertResult.affectedRows === 1) {
+        return res.status(201).json({ message: "Producto insertado correctamente en volumetría" });
+      } else {
+        return res.status(500).json({ message: "No se pudo insertar el producto" });
+      }
     }
 
-    // Actualiza los datos de volumetría
-    const [result] = await pool.query(
+    // Si el producto SÍ existe, actualizarlo
+    const [updateResult] = await pool.query(
       `UPDATE volumetria 
        SET cajas_cama = ?, pieza_caja = ?, cajas_tarima = ?, camas_tarima = ?, pieza_tarima = ? 
        WHERE codigo = ?`,
       [cajas_cama, pieza_caja, cajas_tarima, camas_tarima, pieza_tarima, codigo]
     );
 
-    if (result.affectedRows === 0) {
+    if (updateResult.affectedRows === 0) {
       return res.status(500).json({ message: "No se pudo actualizar la volumetría" });
     }
 
     res.json({ message: "Volumetría actualizada correctamente" });
+
   } catch (error) {
-    console.error("Error al actualizar la volumetría:", error);
-    res.status(500).json({ message: "Error al actualizar la volumetría", error: error.message });
+    console.error("Error al actualizar/insertar la volumetría:", error);
+    res.status(500).json({ message: "Error al procesar la volumetría", error: error.message });
   }
 };
+
 
 
 const getStockTotal = async (req, res) => {
@@ -390,4 +461,202 @@ const getStockTotal = async (req, res) => {
 };
 
 
-module.exports = { getAllProducts, createProduct, updateProduct, deleteProduct, getAllProductsUbi, getVoluProducts, updateVolumetria, upload , getStockTotal};
+///////////////////////////////////////CXATALOGO/////////////////////////////////////////////////////
+
+
+const getCatalogProducts = async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT 
+        p.id_prod,              
+        p.codigo_pro, 
+        p.clave,                
+        p.des,              
+        p._pz,
+        p._inner,                  
+        p._master,                 
+        p._palet,                  
+        p.um,
+        u.ubi,
+        p.code_pz,
+        p.code_pq,
+        p.code_master,
+        p.code_inner,
+
+        COALESCE(ua.cant_stock, 0) AS stock_almacen,
+        COALESCE(u.cant_stock_real, 0) AS stock_picking,
+        COALESCE(ua.cant_stock, 0) + COALESCE(u.cant_stock_real, 0) AS stock_total
+
+      FROM productos p
+
+      LEFT JOIN (
+        SELECT 
+          code_prod, 
+          SUM(CAST(cant_stock AS SIGNED)) AS cant_stock
+        FROM ubi_alma
+        GROUP BY code_prod
+      ) ua ON p.codigo_pro = ua.code_prod
+
+      LEFT JOIN (
+        SELECT 
+          code_prod, 
+          SUM(cant_stock_real) AS cant_stock_real,
+          MAX(ubi) AS ubi
+        FROM ubicaciones
+        GROUP BY code_prod
+      ) u ON p.codigo_pro = u.code_prod
+
+      GROUP BY p.id_prod
+      ORDER BY p.codigo_pro ASC;
+    `);
+
+    res.json(rows);
+  } catch (error) {
+    res.status(500).json({ message: 'Error al obtener los productos', error: error.message });
+  }
+};
+
+const getDetalleCatalogo = async (req, res) => {
+  const { codigo_pro } = req.query;
+
+  if (!codigo_pro) {
+    return res.status(400).json({ message: 'Se requiere un código_pro' });
+  }
+
+  try {
+    const [rows] = await pool.query(`
+      SELECT 
+        id_prod,
+        codigo_pro,
+        um,
+        clave,
+        inventario,
+        inv_m,
+        inv_i,
+        inv_p,
+        des,
+        code_pz,
+        code_pq,
+        code_master,
+        code_inner,
+        code_palet,
+        _pz,
+        _pq,
+        _inner, 
+        _master,
+        _palet, 
+        largo_pz,
+        largo_inner,
+        largo_master, 
+        ancho_pz,
+        ancho_inner,
+        ancho_master, 
+        alto_pz,
+        alto_inner,
+        alto_master,
+        peso_pz,
+        peso_inner,
+        peso_master,
+        garantia,
+        img_pz, 
+        img_pq, 
+        img_inner, 
+        img_master
+      FROM productos 
+      WHERE codigo_pro = ?
+    `, [codigo_pro]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: 'Producto no encontrado' });
+    }
+
+    res.json(rows[0]);
+  } catch (error) {
+    res.status(500).json({ message: 'Error al obtener el producto', error: error.message });
+  }
+};
+
+// Controlador: updateDetalleCatalogo.js
+const updateDetalleCatalogo = async (req, res) => {
+  const {
+    codigo_pro,
+    _pz, _inner, _master,
+    largo_pz, ancho_pz, alto_pz, peso_pz,
+    largo_inner, ancho_inner, alto_inner, peso_inner,
+    largo_master, ancho_master, alto_master, peso_master,
+    code_pz, code_inner, code_master
+  } = req.body;
+
+  if (!codigo_pro) {
+    return res.status(400).json({ message: "Código de producto requerido" });
+  }
+
+  try {
+    const [result] = await pool.query(`
+      UPDATE productos SET
+        _pz = ?, _inner = ?, _master = ?,
+        largo_pz = ?, ancho_pz = ?, alto_pz = ?, peso_pz = ?,
+        largo_inner = ?, ancho_inner = ?, alto_inner = ?, peso_inner = ?,
+        largo_master = ?, ancho_master = ?, alto_master = ?, peso_master = ?,
+        code_pz = ?, code_inner = ?, code_master = ?
+      WHERE codigo_pro = ?
+    `, [
+      _pz || 0, _inner || 0, _master || 0,
+      largo_pz || 0, ancho_pz || 0, alto_pz || 0, peso_pz || 0,
+      largo_inner || 0, ancho_inner || 0, alto_inner || 0, peso_inner || 0,
+      largo_master || 0, ancho_master || 0, alto_master || 0, peso_master || 0,
+      code_pz || 0, code_inner || 0, code_master || 0,
+      codigo_pro
+    ]);
+
+    res.json({ message: "Producto actualizado correctamente", affectedRows: result.affectedRows });
+  } catch (error) {
+    console.error("Error al actualizar producto:", error);
+    res.status(500).json({ message: "Error en la actualización", error: error.message });
+  }
+};
+
+const updateDetalleCatalogoImg = async (req, res) => {
+  const { codigo_pro } = req.body;
+  const files = req.files;
+
+
+
+  if (!codigo_pro) {
+    return res.status(400).json({ message: "Falta el código del producto" });
+  }
+
+  const camposActualizados = {};
+
+  // Verificamos qué archivos llegaron y guardamos su nombre en camposActualizados
+  for (const campo in files) {
+    const file = files[campo][0]; // ej. files["img_inner"]
+    const fileName = file.filename; // ya es `${codigo_pro}.jpg`
+    
+    if (campo === "img_pz") camposActualizados.img_pz = fileName;
+    if (campo === "img_inner") camposActualizados.img_inner = fileName;
+    if (campo === "img_master") camposActualizados.img_master = fileName;
+  }
+
+  try {
+    // Si hay campos que actualizar, genera el query dinámico
+    if (Object.keys(camposActualizados).length > 0) {
+      const campos = Object.keys(camposActualizados)
+        .map((campo) => `${campo} = ?`)
+        .join(", ");
+
+      const valores = Object.values(camposActualizados);
+
+      const query = `UPDATE productos SET ${campos} WHERE codigo_pro = ?`;
+      await pool.query(query, [...valores, codigo_pro]);
+    }
+
+    res.json({ message: "Imágenes subidas y referencias actualizadas correctamente" });
+  } catch (err) {
+    console.error("Error al actualizar la base de datos:", err);
+    res.status(500).json({ message: "Error al actualizar imágenes en la base de datos" });
+  }
+};
+
+
+module.exports = { getAllProducts, createProduct, updateProduct, deleteProduct, getAllProductsUbi, getVoluProducts, updateVolumetria, upload , getStockTotal, getCatalogProducts, getDetalleCatalogo, updateDetalleCatalogo, updateDetalleCatalogoImg };

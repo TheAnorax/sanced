@@ -1,20 +1,35 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import {
+<<<<<<< HEAD
     Card, CardContent, CardMedia, Grid, Typography, Dialog, DialogActions, DialogContent, DialogTitle, Button, IconButton, Box, TextField, TablePagination, Tabs, Tab, MenuItem, Select, InputLabel, FormControl, Table, TableHead, TableRow, TableCell, TableBody, Modal,
+=======
+    Card, CardContent, CardMedia, Grid, Typography, Dialog, DialogActions, DialogContent, DialogTitle, Button, IconButton, Box, TextField, TablePagination,
+    Tabs, Tab, MenuItem, Select, InputLabel, FormControl, Table, TableHead, TableRow, TableCell, TableBody, Modal
+>>>>>>> origin/master
 } from '@mui/material';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import CloseIcon from '@mui/icons-material/Close';
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
+<<<<<<< HEAD
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 
+=======
+>>>>>>> origin/master
 
 
 function ProyectoQueretaro() {
 
     const [ciudadSeleccionada, setCiudadSeleccionada] = useState("queretaro");
+<<<<<<< HEAD
+=======
+
+
+
+
+>>>>>>> origin/master
     const [data, setData] = useState([]);
     const [filteredData, setFilteredData] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
@@ -47,6 +62,10 @@ function ProyectoQueretaro() {
         setImagenSeleccionada(null);
     };
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> origin/master
     const [exhibitors, setExhibitors] = useState([]);
 
     useEffect(() => {
@@ -60,8 +79,14 @@ function ProyectoQueretaro() {
     }, [selectedZona, selectedRuta, diaVisita]);
 
     useEffect(() => {
+<<<<<<< HEAD
         if (currentDay && selectedRuta) {
             axios.get(`http://localhost:3007/api/Queretaro/proyectoqueretaro?dia_visita=${currentDay}&ruta=${selectedRuta}`)
+=======
+        if (currentDay) {
+            console.log("Enviando solicitud a la API con dia_visita:", currentDay);  // Verifica el valor de dia_visita
+            axios.get(`http://66.232.105.87:3007/api/Queretaro/proyectoqueretaro?dia_visita=${currentDay}`)
+>>>>>>> origin/master
                 .then((response) => {
                     const ordenados = response.data.sort((a, b) => (a.orden_visita || 9999) - (b.orden_visita || 9999));
                     setData(ordenados);
@@ -144,7 +169,11 @@ function ProyectoQueretaro() {
         setExhibitors(exhibidores || []);
 
         // Hacer la consulta a la API para obtener los datos filtrados por categoría y segmento
+<<<<<<< HEAD
         axios.get(`http://localhost:3007/api/Queretaro/category/${encodedGiro}/${encodedPortafolio}/${encodedSegmento}`)
+=======
+        axios.get(`http://66.232.105.87:3007/api/Queretaro/category/${encodedGiro}/${encodedPortafolio}/${encodedSegmento}`)
+>>>>>>> origin/master
             .then((response) => {
                 console.log('Datos filtrados por portafolio, categoría y segmento:', response.data.data);
                 if (response.data.data && response.data.data.length > 0) {
@@ -164,7 +193,11 @@ function ProyectoQueretaro() {
         setSelectedZone(zone);
 
         // Filtrar los proyectos según la zona seleccionada
+<<<<<<< HEAD
         axios.get(`http://localhost:3007/api/Queretaro/proyectoqueretaro?zona=${zone}`)
+=======
+        axios.get(`http://66.232.105.87:3007/api/Queretaro/proyectoqueretaro?zona=${zone}`)
+>>>>>>> origin/master
             .then((response) => {
                 setFilteredData(response.data);
                 setPage(0); // Reset the page when changing the filter
@@ -219,7 +252,11 @@ function ProyectoQueretaro() {
         }
 
         // Llamada a la API para obtener los datos de la tabla correspondiente
+<<<<<<< HEAD
         axios.get(`http://localhost:3007/api/Queretaro/${table}`)
+=======
+        axios.get(`http://66.232.105.87:3007/api/Queretaro/${table}`)
+>>>>>>> origin/master
             .then((response) => {
                 setTabData(response.data);  // Establecer los datos para mostrar en el segundo tab
             })
@@ -270,10 +307,27 @@ function ProyectoQueretaro() {
         setSelectedRoutes(routes);
     };
 
+<<<<<<< HEAD
     const enviarOrdenAlServidor = async (nuevoOrdenIds) => {
         try {
             await axios.post('http://localhost:3007/api/Queretaro/proyectoqueretaro/ordenar', {
                 orden: nuevoOrdenIds
+=======
+    const fetchFilteredData = () => {
+        if (!selectedZone || selectedRoutes.length === 0) return;
+
+        axios.get('http://66.232.105.87:3007/api/Queretaro/proyectoqueretaro/filtrado', {
+            params: {
+                zona: selectedZone,
+                rutas: selectedRoutes.join(',')
+            }
+        })
+            .then(response => {
+                setData(response.data);
+            })
+            .catch(error => {
+                console.error('Error al obtener los datos filtrados:', error);
+>>>>>>> origin/master
             });
             alert('Orden guardado correctamente');
         } catch (error) {
@@ -281,7 +335,10 @@ function ProyectoQueretaro() {
         }
     };
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/master
     const renderVistaPrincipal = () => (
 
         <>
@@ -727,6 +784,7 @@ function ProyectoQueretaro() {
                             </Box>
                         )}
 
+<<<<<<< HEAD
                         {tabIndex === 4 && (
                             <Box sx={{ paddingTop: 2 }}>
                                 <Typography variant="h6" gutterBottom>
@@ -837,6 +895,8 @@ function ProyectoQueretaro() {
 
 
 
+=======
+>>>>>>> origin/master
                     </DialogContent >
 
                     <DialogActions>
@@ -876,6 +936,170 @@ function ProyectoQueretaro() {
             </TableBody>
         </Table>
     );
+
+<<<<<<< HEAD
+    // Mapeo de la informacion
+=======
+    const renderVista1 = () => (
+        <Box sx={{ p: 3 }}>
+            <Typography variant="h5">Vista 1: Formulario Personalizado</Typography>
+>>>>>>> origin/master
+
+    const convertToEmbedUrl = (url) => {
+        if (!url.includes("viewer")) return url; // Si ya es embed, no cambiarlo
+        return url.replace("/viewer?", "/embed?");
+    };
+
+    const mainMap = "https://www.google.com/maps/d/embed?mid=16AT0b4cYTSNQQVQYHkQKC8Rp4Q1g2VE&ll=20.561320310882667,-100.38615969894488&z=15";
+
+<<<<<<< HEAD
+    const otherMaps = [
+        convertToEmbedUrl("https://www.google.com/maps/d/u/0/viewer?mid=1ih6-YP-d1yE3ZviYr5z-ddiPhdwfVCI&femb=1&ll=20.563953977471986%2C-100.39009649543087&z=13"),
+        convertToEmbedUrl("https://www.google.com/maps/d/u/0/viewer?mid=1VSCN-JF-whrAHR5twiO6CRrPfxOAXu8&femb=1&ll=20.640139755227455%2C-100.42183552642823&z=12"),
+        convertToEmbedUrl("https://www.google.com/maps/d/u/0/viewer?mid=1KXHSTDk2Cp0AjYSE_y3mXsO9s9XfAGs&femb=1&ll=20.636652202622624%2C-100.44765901324463&z=13"),
+        convertToEmbedUrl("https://www.google.com/maps/d/u/0/viewer?mid=15d-dWNOfWPMZnm85WI0hYTaqUvNB3Yg&ll=20.64328286231578%2C-100.39405011241543&z=13"),
+        convertToEmbedUrl("https://www.google.com/maps/d/u/0/viewer?mid=16Mxu_WIDcLeIdh3TpdM42BfPEZTS49A&ll=20.562950614267464%2C-100.39048423373035&z=14"),
+    ];
+
+    const imagePaths = [
+        "/Rutas/Ruta1.jpeg",
+        "/Rutas/Ruta2.jpeg",
+        "/Rutas/Ruta3.jpeg",
+        "/Rutas/Ruta4.jpeg",
+        "/Rutas/Ruta5.jpeg",
+    ];
+
+    const MapaRutas = () => {
+        const [openModal, setOpenModal] = useState(false);
+        const [selectedImage, setSelectedImage] = useState("");
+        const [selectedMap, setSelectedMap] = useState("");
+
+        // Función para abrir el modal con la imagen y el mapa seleccionados
+        const handleOpenModal = (image, map) => {
+            setSelectedImage(image);
+            setSelectedMap(map);
+            setOpenModal(true);
+        };
+
+        // Función para cerrar el modal
+        const handleCloseModal = () => {
+            setOpenModal(false);
+        };
+
+        return (
+            <Box sx={{ p: 3 }}>
+                {/* Mapa principal arriba */}
+                <Box sx={{ mb: 3 }}>
+                    <iframe
+                        src={mainMap}
+                        width="100%"
+                        height="600px"
+                        title="Mapa Principal"
+                        style={{ border: "none" }}
+                        allowFullScreen
+                    />
+                </Box>
+
+                {/* Otros mapas con sus imágenes */}
+                <Grid container spacing={2} justifyContent="center">
+                    {otherMaps.map((link, index) => (
+                        <Grid item xs={12} sm={6} md={4} lg={3} key={index}>
+                            <Card sx={{ maxWidth: "100%", cursor: "pointer" }} onClick={() => handleOpenModal(imagePaths[index], link)}>
+                                {/* Imagen asociada al mapa */}
+                                <CardMedia
+                                    component="img"
+                                    sx={{
+                                        width: "100%",
+                                        height: 180,
+                                        objectFit: "contain",
+                                    }}
+                                    image={imagePaths[index]}
+                                    alt={`Ruta ${index + 1}`}
+                                    onError={(e) => e.target.style.display = 'none'}
+                                />
+                                {/* Mapa en iframe */}
+                                <iframe
+                                    src={link}
+                                    width="100%"
+                                    height="300px"
+                                    title={`Mapa ${index + 2}`}
+                                    style={{ border: "none" }}
+                                    allowFullScreen
+                                />
+                            </Card>
+                        </Grid>
+                    ))}
+                </Grid>
+
+                {/* Modal para mostrar la imagen y el mapa en grande */}
+                <Modal open={openModal} onClose={handleCloseModal}
+                    sx={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <Box sx={{
+                        bgcolor: "white",
+                        p: 3,
+                        borderRadius: 2,
+                        boxShadow: 24,
+                        width: "80vw",
+                        height: "80vh",
+                        overflow: "auto",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center"
+                    }}>
+                        {/* Botón de cierre */}
+                        <IconButton onClick={handleCloseModal} sx={{ alignSelf: "flex-end" }}>
+                            <CloseIcon />
+                        </IconButton>
+
+                        <Typography variant="h6" sx={{ mb: 2, textAlign: "center" }}>Vista Ampliada</Typography>
+
+                        {/* Imagen ampliada con mayor tamaño */}
+                        <CardMedia
+                            component="img"
+                            sx={{
+                                width: "100%",      // Ocupa el ancho completo del modal
+                                maxWidth: "95vw",   // Máximo 80% del viewport width
+                                height: "auto",
+                                maxHeight: "95vh",  // Máximo 80% del viewport height
+                                objectFit: "contain",
+                                marginBottom: 2
+                            }}
+                            image={selectedImage}
+                            alt="Imagen ampliada"
+                        />
+
+                        {/* Mapa ampliado */}
+                        <iframe
+                            src={selectedMap}
+                            width="100%"
+                            height="400px"
+                            title="Mapa ampliado"
+                            style={{ border: "none" }}
+                            allowFullScreen
+                        />
+                    </Box>
+                </Modal>
+
+            </Box>
+        );
+    };
+
+    const transformImageUrl = (url) => {
+        if (!url || typeof url !== 'string') {
+            return "https://via.placeholder.com/140"; // Imagen de respaldo si la URL es inválida
+        }
+
+        if (url.includes("drive.google.com")) {
+            const fileIdMatch = url.match(/id=([-\w]+)/);
+            return fileIdMatch ? `https://drive.google.com/uc?export=view&id=${fileIdMatch[1]}` : url;
+        }
+
+        return url;
+    };
+
+    //Menu de los de queretaro 
+
+=======
 
     // Mapeo de la informacion
 
@@ -1032,10 +1256,12 @@ function ProyectoQueretaro() {
 
     //Menu de los de queretaro 
 
+>>>>>>> origin/master
     const renderView = () => {
         if (ciudadSeleccionada === "queretaro") {
             return (
                 <>
+<<<<<<< HEAD
                     {!selectedRuta ? (
                         <Grid container spacing={2} justifyContent="center" sx={{ mb: 3 }}>
                             <Grid item xs={12} sm={6} md={4}>
@@ -1087,6 +1313,18 @@ function ProyectoQueretaro() {
         }
 
         if (ciudadSeleccionada === "guadalajara") {
+=======
+                    <Grid container spacing={2} justifyContent="center" sx={{ mb: 3 }}>
+                        <Button onClick={() => setCurrentView('view1')}>Mapa</Button>
+                        <Button onClick={() => setCurrentView('default')}>Lugares de visita</Button>
+                    </Grid>
+
+                    {currentView === 'default' && renderVistaPrincipal()}
+                    {currentView === 'view1' && <MapaRutas />}
+                </>
+            );
+        } else if (ciudadSeleccionada === "guadalajara") {
+>>>>>>> origin/master
             return (
                 <>
                     <Grid container spacing={2} justifyContent="center" sx={{ mb: 3 }}>
@@ -1140,6 +1378,7 @@ function ProyectoQueretaro() {
                         </Card>
                     </Grid>
                 ))}
+<<<<<<< HEAD
             </Grid>
         </Box>
     );
@@ -1338,6 +1577,62 @@ function ProyectoQueretaro() {
 
 
 
+=======
+            </Grid>
+        </Box>
+    );
+
+
+
+    return (
+        <>
+            {/* Botones para cambiar la ciudad */}
+            <Grid container spacing={2} justifyContent="center" sx={{ mb: 3 }}>
+                <Button onClick={() => setCiudadSeleccionada("guadalajara")} sx={{ color: "red" }}>Ver Guadalajara</Button>
+                <Button onClick={() => setCiudadSeleccionada("queretaro")} sx={{ color: "red" }}>Ver Querétaro</Button>
+            </Grid>
+
+            {/* Renderiza la vista seleccionada */}
+            {renderView()}
+
+            {/* //MODAL PARA ABRIR LAS IMAGENES */}
+            <Modal
+                open={modalImagenAbierto}
+                onClose={cerrarImagen}
+                sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+                <Box sx={{
+                    bgcolor: 'white',
+                    borderRadius: 2,
+                    p: 2,
+                    maxWidth: '90vw',
+                    maxHeight: '90vh',
+                    outline: 'none',
+                    boxShadow: 24
+                }}>
+                    <IconButton onClick={cerrarImagen} sx={{ position: 'absolute', top: 8, right: 8 }}>
+                        <CloseIcon />
+                    </IconButton>
+                    <img
+                        src={imagenSeleccionada}
+                        alt="Vista ampliada"
+                        style={{
+                            width: '100%',
+                            height: 'auto',
+                            maxHeight: '80vh',
+                            borderRadius: '8px'
+                        }}
+                        onError={(e) => e.target.src = "/imagenes/default.png"}
+                    />
+                </Box>
+            </Modal>
+
+
+
+        </>
+    );
+
+>>>>>>> origin/master
 }
 
 export default ProyectoQueretaro;

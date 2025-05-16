@@ -8,26 +8,42 @@ import { AutoSizer, List, CellMeasurer, CellMeasurerCache } from 'react-virtuali
 import * as XLSX from 'xlsx'; // Importar la librería para manejar archivos Excel
 
 const fetchPedidos = async () => {
+<<<<<<< HEAD
   const response = await axios.get('http://localhost:3007/api/pedidos/pedidos');
+=======
+  const response = await axios.get('http://66.232.105.87:3007/api/pedidos/pedidos');
+>>>>>>> origin/master
   return response.data;
 };
 
 // const fetchBahias = async () => {
+<<<<<<< HEAD
 //   const response = await axios.get('http://localhost:3007/api/pedidos/bahias'); 
+=======
+//   const response = await axios.get('http://66.232.105.87:3007/api/pedidos/bahias'); 
+>>>>>>> origin/master
   
 //   // Filtrar las bahías que no comiencen con "B" o "C"
-//   const filteredBahias = response.data.filter(bahia => !/^C-/.test(bahia.bahia));
+//   const filteredBahias = response.data.filter(bahia => !/^C-/.teyyst(bahia.bahia));
   
 //   return filteredBahias;
 // };
 
 const fetchBahias = async () => {
+<<<<<<< HEAD
   const response = await axios.get('http://localhost:3007/api/pedidos/bahias');
+=======
+  const response = await axios.get('http://66.232.105.87:3007/api/pedidos/bahias');
+>>>>>>> origin/master
   return response.data;
 };
 
 const fetchUsuarios = async () => {
+<<<<<<< HEAD
   const response = await axios.get('http://localhost:3007/api/pedidos/usuarios');
+=======
+  const response = await axios.get('http://66.232.105.87:3007/api/pedidos/usuarios');
+>>>>>>> origin/master
   return response.data;
 };
 
@@ -49,7 +65,11 @@ const usePedidos = () => {
   const mutation = useMutation({
     mutationFn: async (pedidoData) => {
       const { pedido, estado, bahias, items, usuarioId } = pedidoData;
+<<<<<<< HEAD
       await axios.post('http://localhost:3007/api/pedidos/surtir', {
+=======
+      await axios.post('http://66.232.105.87:3007/api/pedidos/surtir', {
+>>>>>>> origin/master
         pedido,
         estado,
         bahias,
@@ -260,7 +280,11 @@ const Pedidos = React.memo(() => {
     mergedPedido.unificado = mergedPedido.items.map(item => item.unificado); // Crear un arreglo con los registros 'unificado' de cada item
   
     try {
+<<<<<<< HEAD
       await axios.post('http://localhost:3007/api/pedidos/merge', mergedPedido);
+=======
+      await axios.post('http://66.232.105.87:3007/api/pedidos/merge', mergedPedido);
+>>>>>>> origin/master
       Swal.fire('Éxito', 'Pedidos fusionados correctamente', 'success');
       setSelectedPedidos([]);
     } catch (error) {

@@ -12,8 +12,8 @@ import Webcam from "react-webcam";
 import ejemplo from './ej_empleados.png';
 
 function VisitasReporte (){
-  const api = "http://localhost:3007/api/visitas";
-  const foto = "http://localhost:3007/api/fotos";
+  const api = "http://66.232.105.87:3007/api/visitas";
+  const foto = "http://66.232.105.87:3007/api/fotos";
 
   const user = JSON.parse(localStorage.getItem("user"));
   //tab

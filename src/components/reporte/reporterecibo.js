@@ -106,7 +106,11 @@ function ReporteReciboCedis() {
       try {
         setLoading(true); // Iniciar el estado de carga
         const response = await axios.get(
+<<<<<<< HEAD
           "http://localhost:3007/recibo/reporte"
+=======
+          "http://66.232.105.87:3007/recibo/reporte"
+>>>>>>> origin/master
         );
         if (response.data.resultado.error === "false") {
           setReporteData(response.data.resultado.list); // Guardar los datos obtenidos en el estado
@@ -145,7 +149,11 @@ function ReporteReciboCedis() {
 
     try {
       const response = await axios.post(
+<<<<<<< HEAD
         "http://localhost:3007/recibo/detalle",
+=======
+        "http://66.232.105.87:3007/recibo/detalle",
+>>>>>>> origin/master
         { id_recibo }
       );
 
@@ -300,7 +308,11 @@ function ReporteReciboCedis() {
       setUploadProgress(0); // Reiniciar progreso
   
       const response = await axios.post(
+<<<<<<< HEAD
         "http://localhost:3007/api/compras/compras/upload-pdfs",
+=======
+        "http://66.232.105.87:3007/api/compras/compras/upload-pdfs",
+>>>>>>> origin/master
         formData,
         {
           headers: { "Content-Type": "multipart/form-data" },
@@ -810,7 +822,11 @@ function ReporteReciboCedis() {
                       >
                         {/* Botón principal */}
                         <Button
+<<<<<<< HEAD
                           href={`http://localhost:3011/docs/${detalleData.pdf_1}`}
+=======
+                          href={`http://66.232.105.87:3011/docs/${detalleData.pdf_1}`}
+>>>>>>> origin/master
                           target="_blank"
                           rel="noopener noreferrer"
                           variant="contained"
@@ -880,7 +896,11 @@ function ReporteReciboCedis() {
                         {detalleData.pdf_2.split(",").map((pdfName, index) => (
                           <Button
                             key={index}
+<<<<<<< HEAD
                             href={`http://localhost:3011/docs/${pdfName.trim()}`}
+=======
+                            href={`http://66.232.105.87:3011/docs/${pdfName.trim()}`}
+>>>>>>> origin/master
                             target="_blank"
                             rel="noopener noreferrer"
                             variant="contained"
@@ -952,7 +972,11 @@ function ReporteReciboCedis() {
                         }}
                       >
                         <Button
+<<<<<<< HEAD
                           href={`http://localhost:3011/docs/${detalleData.pdf_3}`}
+=======
+                          href={`http://66.232.105.87:3011/docs/${detalleData.pdf_3}`}
+>>>>>>> origin/master
                           target="_blank"
                           rel="noopener noreferrer"
                           variant="contained"
@@ -1026,7 +1050,11 @@ function ReporteReciboCedis() {
                         {detalleData.pdf_4.split(",").map((pdfName, index) => (
                           <Button
                             key={index}
+<<<<<<< HEAD
                             href={`http://localhost:3011/docs/${pdfName.trim()}`}
+=======
+                            href={`http://66.232.105.87:3011/docs/${pdfName.trim()}`}
+>>>>>>> origin/master
                             target="_blank"
                             rel="noopener noreferrer"
                             variant="contained"
@@ -1107,7 +1135,11 @@ function ReporteReciboCedis() {
                       }}
                     >
                         <Button
+<<<<<<< HEAD
                           href={`http://localhost:3011/docs/${detalleData.pdf_5}`}
+=======
+                          href={`http://66.232.105.87:3011/docs/${detalleData.pdf_5}`}
+>>>>>>> origin/master
                           target="_blank"
                           rel="noopener noreferrer"
                           variant="contained"
@@ -1185,7 +1217,11 @@ function ReporteReciboCedis() {
                         {detalleData.pdf_6.split(",").map((pdfName, index) => (
                           <Button
                             key={index}
+<<<<<<< HEAD
                             href={`http://localhost:3011/docs/${pdfName.trim()}`}
+=======
+                            href={`http://66.232.105.87:3011/docs/${pdfName.trim()}`}
+>>>>>>> origin/master
                             target="_blank"
                             rel="noopener noreferrer"
                             variant="contained"

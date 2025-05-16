@@ -1,7 +1,11 @@
 import logo from './logob.png';
 
 export const pdfTemplate = (solicitud) => {
+<<<<<<< HEAD
     const { nombre, departamento, motivo, regresaArticulo, requiereEnvio, detalleEnvio, carrito, folio, fecha, autorizado_por } = solicitud;
+=======
+    const { nombre, departamento, motivo, regresaArticulo, requiereEnvio, detalleEnvio, carrito, folio, fecha, autorizado_por, salida_por } = solicitud;
+>>>>>>> origin/master
 
     const fechaFormateada = fecha ? new Date(fecha).toLocaleDateString("es-MX", {
         year: "numeric",
@@ -110,16 +114,22 @@ export const pdfTemplate = (solicitud) => {
                         <div>
                             <p><strong>Solicitante:</strong> ${nombre}</p>
                             ${autorizado_por ? `<p><strong>Autorizado por:</strong> ${autorizado_por}</p>` : ""}
+<<<<<<< HEAD
                             <p><strong>Departamento:</strong> ${departamento}</p>
                             <p><strong>Motivo de la solicitud:</strong> ${motivo}</p>
                             <p><strong>Regresa artículos:</strong> ${regresaArticulo ? "Sí" : "No"}</p>
                             ${regresaArticulo ? `<p><strong>Fecha de devolución:</strong> ${fechaFormateada}</p>` : ''}
 
+=======
+                            ${salida_por ? `<p><strong>Autorizó salida:</strong> ${salida_por}</p>` : ""}
+                            <p><strong>Departamento:</strong> ${departamento}</p>
+                            ${regresaArticulo ? `<p><strong>Fecha de devolución:</strong> ${fechaFormateada}</p>` : ''}
+>>>>>>> origin/master
                         </div>
                         <div>
+                        <p><strong>Motivo de la solicitud:</strong> ${motivo}</p>
                             <p><strong>Fecha de solicitud:</strong> ${new Date().toLocaleDateString()}</p>
-                            <p><strong>Requiere envío:</strong> ${requiereEnvio ? "Sí" : "No"}</p>
-                            <p><strong>Detalles del envío:</strong> ${detalleEnvio || "N/A"}</p>
+                            <p><strong>Informacion de entrega o de Envio:</strong> ${detalleEnvio || "N/A"}</p>
                         </div>
                     </div>
 
@@ -128,8 +138,10 @@ export const pdfTemplate = (solicitud) => {
                             <tr>
                                 <th>Código</th>
                                 <th>Descripción</th>
-                                <th>Cantidad</th>
+                                <th>Cantidad Solicitada</th>
+                                <th>Cantidad Surtida</th>
                             </tr>
+
                         </thead>
                         <tbody>
                             ${carrito.map(item => `  
@@ -137,7 +149,7 @@ export const pdfTemplate = (solicitud) => {
                                 <td>${item.codigo}</td>
                                 <td>${item.descripcion}</td>
                                 <td>${item.cantidad}</td>
-                                
+                                <td>${item.cantidad_surtida ?? 0}</td>   
                             </tr>
                             `).join('')}
                         </tbody>

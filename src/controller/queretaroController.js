@@ -68,6 +68,8 @@ const getProyectoQueretaro = async (req, res) => {
   }
 };
 
+
+
 // Obtener datos filtrados por categoría, portafolio y segmento
 const getCategoryData = async (req, res) => {
   const { giro, portafolio, segmento } = req.params;
@@ -188,6 +190,7 @@ const getFilteredProyectoQueretaro = async (req, res) => {
 const updateOrdenVisita = async (req, res) => {
   const { orden } = req.body;
 
+<<<<<<< HEAD
   if (!Array.isArray(orden)) {
     return res.status(400).json({ message: 'Formato de datos incorrecto' });
   }
@@ -213,3 +216,7 @@ const updateOrdenVisita = async (req, res) => {
 
 
 module.exports = { getProyectoQueretaro, getCategoryData, getFilteredProyectoQueretaro, updateOrdenVisita };
+=======
+
+module.exports = { getProyectoQueretaro, getCategoryData, getFilteredProyectoQueretaro };
+>>>>>>> origin/master

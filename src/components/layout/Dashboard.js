@@ -172,8 +172,11 @@ const getTitle = (pathname) => {
       return "Catalogo";
     case "/dashboard/COBERTURA":
       return "Cobertura";
+<<<<<<< HEAD
     case "/dashboard/INVENTARIODOS":
       return "Inventario";
+=======
+>>>>>>> origin/master
     default:
       return "Dashboard";
   }

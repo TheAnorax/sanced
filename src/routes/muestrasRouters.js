@@ -1,7 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const { Departamentos, buscarProducto, guardarSolicitudes, obtenerSolicitudes, obtenerAutorizadas, actualizarSolicitud, eliminarSolicitud,
+<<<<<<< HEAD
     eliminarProductoDeSolicitud
+=======
+    eliminarProductoDeSolicitud, guardarCantidadSurtida, marcarSalida, obtenerUbicacionesPorCodigo, registrarFinEmbarque
+>>>>>>> origin/master
 } = require('../controller/muestrasController');
 
 router.get('/departamentos', Departamentos);
@@ -23,6 +27,19 @@ router.delete('/solicitudes/:folio', eliminarSolicitud); // ✅ esta es la nueva
 
 router.delete('/solicitudes/:folio/producto/:codigo', eliminarProductoDeSolicitud);
 
+<<<<<<< HEAD
+=======
+router.post("/surtido", guardarCantidadSurtida);
+
+router.patch("/salida/:folio", marcarSalida);
+
+router.patch("/embarque/:folio", registrarFinEmbarque);
+
+
+router.get('/ubicaciones/:codigo', obtenerUbicacionesPorCodigo);
+
+
+>>>>>>> origin/master
 
 
 module.exports = router;

@@ -373,99 +373,56 @@ const getPedidosDelDia = async (req, res) => {
     const yesterday = moment().subtract(1, 'day').format('YYYY-MM-DD');
     const query = `
       
-
 SELECT * FROM (
-        SELECT 'surtido' AS origen, 
-               p.id_pedi, 
-               p.pedido, 
-               p.tipo, 
-               p.codigo_ped, 
-               p.clave, 
-               p.cantidad, 
-               p.cant_surti, 
-               p.cant_no_env, 
-               p.um,  
-               p._pz, 
-               p._pq, 
-               p._inner, 
-               p._master, 
-               p.ubi_bahia, 
-               p.estado, 
-               p.id_usuario, 
-               p.id_usuario_paqueteria, 
-               p.registro, 
-               p.inicio_surtido, 
-               p.fin_surtido, 
-               p.unido,
-               us.name AS usuario_nombre,
-               us.role AS usuario_role
-        FROM pedido_surtido p 
-        LEFT JOIN usuarios us ON p.id_usuario_surtido = us.id_usu
-        WHERE (DATE(p.inicio_surtido) = ? 
-               OR (DATE(p.inicio_surtido) = ? AND TIME(p.inicio_surtido) >= '21:30:00') AND p.estado <> "C")
-        
-        UNION ALL
+                SELECT 'surtido' AS origen, 
+                       p.id_pedi, 
+                       p.pedido, 
+                       p.cantidad, 
+                       p.cant_surti, 
+                       p.inicio_surtido, 
+                       p.fin_surtido, 
+                       us.name AS usuario_nombre,
+                       us.role AS usuario_role,
+                       us.turno AS usuario_turno
+                FROM pedido_surtido p
+                LEFT JOIN usuarios us ON p.id_usuario_surtido = us.id_usu
+                WHERE DATE(p.inicio_surtido) = ? 
+                      OR (DATE(p.inicio_surtido) = ? AND TIME(p.inicio_surtido) >= '21:30:00')
 
-        SELECT 'embarque' AS origen, 
-               e.id_pedi, 
-               e.pedido, 
-               e.tipo, 
-               e.codigo_ped, 
-               e.clave, 
-               e.cantidad, 
-               e.cant_surti, 
-               e.cant_no_env, 
-               e.um,  
-               e._pz, 
-               e._pq, 
-               e._inner, 
-               e._master, 
-               e.ubi_bahia, 
-               e.estado, 
-               e.id_usuario, 
-               e.id_usuario_paqueteria, 
-               e.registro, 
-               e.inicio_surtido, 
-               e.fin_surtido, 
-               e.unido,
-               us.name AS usuario_nombre,
-               us.role AS usuario_role
-        FROM pedido_embarque e 
-        LEFT JOIN usuarios us ON e.id_usuario_surtido = us.id_usu
-        WHERE (DATE(e.inicio_surtido) = ? 
-               OR (DATE(e.inicio_surtido) = ? AND TIME(e.inicio_surtido) >= '21:30:00'))
-        
-        UNION ALL
+                UNION ALL
 
-        SELECT 'finalizado' AS origen, 
-               f.id_pedi, 
-               f.pedido, 
-               f.tipo, 
-               f.codigo_ped, 
-               f.clave, 
-               f.cantidad, 
-               f.cant_surti, 
-               f.cant_no_env, 
-               f.um,  
-               f._pz, 
-               f._pq, 
-               f._inner, 
-               f._master, 
-               f.ubi_bahia, 
-               f.estado, 
-               f.id_usuario, 
-               f.id_usuario_paqueteria, 
-               f.registro, 
-               f.inicio_surtido, 
-               f.fin_surtido, 
-               f.unido,
-               us.name AS usuario_nombre,
-               us.role AS usuario_role
-        FROM pedido_finalizado f 
-        LEFT JOIN usuarios us ON f.id_usuario_surtido = us.id_usu
-        WHERE (DATE(f.inicio_surtido) = ? 
-               OR (DATE(f.inicio_surtido) = ? AND TIME(f.inicio_surtido) >= '21:30:00'))
-      ) AS pedidos;
+                SELECT 'embarque' AS origen, 
+                       e.id_pedi, 
+                       e.pedido, 
+                       e.cantidad, 
+                       e.cant_surti, 
+                       e.inicio_surtido, 
+                       e.fin_surtido, 
+                       us.name AS usuario_nombre,
+                       us.role AS usuario_role,
+                       us.turno AS usuario_turno
+                FROM pedido_embarque e
+                LEFT JOIN usuarios us ON e.id_usuario_surtido = us.id_usu
+                WHERE DATE(e.inicio_surtido) = ? 
+                      OR (DATE(e.inicio_surtido) = ? AND TIME(e.inicio_surtido) >= '21:30:00')
+
+                UNION ALL
+
+                SELECT 'finalizado' AS origen, 
+                       f.id_pedi, 
+                       f.pedido, 
+                       f.cantidad, 
+                       f.cant_surti, 
+                       f.inicio_surtido, 
+                       f.fin_surtido, 
+                       us.name AS usuario_nombre,
+                       us.role AS usuario_role,
+                       us.turno AS usuario_turno
+                FROM pedido_finalizado f
+                LEFT JOIN usuarios us ON f.id_usuario_surtido = us.id_usu
+                WHERE DATE(f.inicio_surtido) = ? 
+                      OR (DATE(f.inicio_surtido) = ? AND TIME(f.inicio_surtido) >= '21:30:00')
+            ) AS pedidos;
 
     `;
 

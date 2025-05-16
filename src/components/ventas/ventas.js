@@ -1791,8 +1791,6 @@ function Tracking() {
 
   // ✅ Versión con tabla de IMPORTE AGREGADA al final (corregida)
 
-  // ✅ Versión con tabla de IMPORTE AGREGADA al final (corregida)
-
   const totalPagesExp = "___total_pages___";
 
   function addPageNumber(doc) {
@@ -2871,6 +2869,12 @@ function Tracking() {
   const [filtroGeneralAsignacion, setFiltroGeneralAsignacion] = useState("");
   const [filtroEstadoAsignacion, setFiltroEstadoAsignacion] = useState("");
 
+  const [filtroAsigNoOrden, setFiltroAsigNoOrden] = useState("");
+  const [filtroAsigNombreCliente, setFiltroAsigNombreCliente] = useState("");
+  const [filtroAsigNumCliente, setFiltroAsigNumCliente] = useState("");
+  const [filtroAsigEstado, setFiltroAsigEstado] = useState("");
+  const [filtroAsigEjecutivo, setFiltroAsigEjecutivo] = useState("");
+
   const filteredAsignacion = useMemo(() => {
     return sentRoutesData.filter((item) => {
       if (
@@ -2880,23 +2884,46 @@ function Tracking() {
         return false;
       }
 
-      const cumpleGeneral =
-        !filtroGeneralAsignacion ||
-        item["NO ORDEN"]?.toString().includes(filtroGeneralAsignacion) ||
-        item["NUM. CLIENTE"]?.toString().includes(filtroGeneralAsignacion) ||
+      const coincideNoOrden =
+        !filtroAsigNoOrden ||
+        item["NO ORDEN"]?.toString().includes(filtroAsigNoOrden);
+
+      const coincideNombreCliente =
+        !filtroAsigNombreCliente ||
         item["NOMBRE DEL CLIENTE"]
           ?.toLowerCase()
-          .includes(filtroGeneralAsignacion.toLowerCase());
+          .includes(filtroAsigNombreCliente.toLowerCase());
 
-      const cumpleEstado =
-        !filtroEstadoAsignacion ||
-        item.ESTADO?.toLowerCase().includes(
-          filtroEstadoAsignacion.toLowerCase()
-        );
+      const coincideNumCliente =
+        !filtroAsigNumCliente ||
+        item["NUM. CLIENTE"]?.toString().includes(filtroAsigNumCliente);
 
-      return cumpleGeneral && cumpleEstado;
+      const coincideEstado =
+        !filtroAsigEstado ||
+        item.ESTADO?.toLowerCase().includes(filtroAsigEstado.toLowerCase());
+
+      const coincideEjecutivo =
+        !filtroAsigEjecutivo ||
+        item["EJECUTIVO VTAS"]
+          ?.toLowerCase()
+          .includes(filtroAsigEjecutivo.toLowerCase());
+
+      return (
+        coincideNoOrden &&
+        coincideNombreCliente &&
+        coincideNumCliente &&
+        coincideEstado &&
+        coincideEjecutivo
+      );
     });
-  }, [sentRoutesData, filtroGeneralAsignacion, filtroEstadoAsignacion]);
+  }, [
+    sentRoutesData,
+    filtroAsigNoOrden,
+    filtroAsigNombreCliente,
+    filtroAsigNumCliente,
+    filtroAsigEstado,
+    filtroAsigEjecutivo,
+  ]);
 
   const paginatedAsignacion = filteredAsignacion.slice(
     page * rowsPerPage,
@@ -2917,19 +2944,39 @@ function Tracking() {
   const [facturaSeleccionada, setFacturaSeleccionada] = useState(""); // Filtro por factura
   const [fechaEntregaSeleccionada, setFechaEntregaSeleccionada] = useState(""); // Filtro por fecha
 
+  const [filtroNoOrden, setFiltroNoOrden] = useState("");
+  const [filtroNombreCliente, setFiltroNombreCliente] = useState("");
+  const [filtroMunicipio, setFiltroMunicipio] = useState("");
+  const [filtroFecha, setFiltroFecha] = useState("");
+  const [filtroNumCliente, setFiltroNumCliente] = useState("");
+
+  const [filtroEjecutivo, setFiltroEjecutivo] = useState("");
+
   const paqueteriaFiltrada = useMemo(() => {
     return paqueteriaData.filter((routeData) => {
-      const coincideGeneral =
-        !filtroGeneral ||
-        routeData["NO ORDEN"]?.toString().includes(filtroGeneral) ||
+      const coincideNoOrden =
+        !filtroNoOrden ||
+        routeData["NO ORDEN"]?.toString().includes(filtroNoOrden);
+
+      const coincideNombreCliente =
+        !filtroNombreCliente ||
         routeData["NOMBRE DEL CLIENTE"]
-          ?.toString()
-          .toLowerCase()
-          .includes(filtroGeneral.toLowerCase());
+          ?.toLowerCase()
+          .includes(filtroNombreCliente.toLowerCase());
 
       const coincideEstado =
         !filtroEstado ||
         routeData.ESTADO?.toLowerCase().includes(filtroEstado.toLowerCase());
+
+      const coincideMunicipio =
+        !filtroMunicipio ||
+        routeData.MUNICIPIO?.toLowerCase().includes(
+          filtroMunicipio.toLowerCase()
+        );
+
+      const coincideNumCliente =
+        !filtroNumCliente ||
+        routeData["NUM CLIENTE"]?.toString().includes(filtroNumCliente);
 
       const coincidePaqueteria =
         !paqueteriaSeleccionada ||
@@ -2941,51 +2988,103 @@ function Tracking() {
       const coincideGuia =
         !mostrarSinGuia || !routeData.GUIA || routeData.GUIA.trim() === "";
 
+      const coincideEjecutivo =
+        !filtroEjecutivo ||
+        routeData["EJECUTIVO VTAS"]
+          ?.toLowerCase()
+          .includes(filtroEjecutivo.toLowerCase());
+
       return (
-        coincideGeneral &&
+        coincideNoOrden &&
+        coincideNombreCliente &&
         coincideEstado &&
+        coincideMunicipio &&
+        coincideNumCliente &&
         coincidePaqueteria &&
         coincideEstatus &&
-        coincideGuia
+        coincideGuia &&
+        coincideEjecutivo
       );
     });
   }, [
-    filtroGeneral,
-    filtroEstado,
     paqueteriaData,
+    filtroNoOrden,
+    filtroNombreCliente,
+    filtroEstado,
+    filtroMunicipio,
+    filtroNumCliente,
     paqueteriaSeleccionada,
     estatusSeleccionado,
     mostrarSinGuia,
+    filtroEjecutivo,
   ]);
+
+  const [filtroDirectaNoOrden, setFiltroDirectaNoOrden] = useState("");
+  const [filtroDirectaNombreCliente, setFiltroDirectaNombreCliente] =
+    useState("");
+  const [filtroDirectaEstado, setFiltroDirectaEstado] = useState("");
+  const [filtroDirectaMunicipio, setFiltroDirectaMunicipio] = useState("");
+  const [filtroDirectaNumCliente, setFiltroDirectaNumCliente] = useState("");
+  const [filtroDirectaEjecutivo, setFiltroDirectaEjecutivo] = useState("");
 
   const directaFiltrada = useMemo(() => {
     return directaData.filter((item) => {
-      const cumpleGeneral =
-        !filtroGeneral ||
+      const coincideNoOrden =
+        !filtroDirectaNoOrden ||
+        item["NO ORDEN"]?.toString().includes(filtroDirectaNoOrden);
+
+      const coincideNombreCliente =
+        !filtroDirectaNombreCliente ||
         item["NOMBRE DEL CLIENTE"]
           ?.toLowerCase()
-          .includes(filtroGeneral.toLowerCase()) ||
-        item["NO ORDEN"]?.toString().includes(filtroGeneral);
+          .includes(filtroDirectaNombreCliente.toLowerCase());
 
-      const cumpleEstado =
-        !filtroEstado ||
-        item.ESTADO?.toLowerCase().includes(filtroEstado.toLowerCase());
+      const coincideEstado =
+        !filtroDirectaEstado ||
+        item.ESTADO?.toLowerCase().includes(filtroDirectaEstado.toLowerCase());
 
-      const cumpleEstatus =
+      const coincideMunicipio =
+        !filtroDirectaMunicipio ||
+        item.MUNICIPIO?.toLowerCase().includes(
+          filtroDirectaMunicipio.toLowerCase()
+        );
+
+      const coincideNumCliente =
+        !filtroDirectaNumCliente ||
+        item["NUM. CLIENTE"]?.toString().includes(filtroDirectaNumCliente);
+
+      const coincideEjecutivo =
+        !filtroDirectaEjecutivo ||
+        item["EJECUTIVO VTAS"]
+          ?.toLowerCase()
+          .includes(filtroDirectaEjecutivo.toLowerCase());
+
+      const coincideEstatus =
         !estatusSeleccionado || item.statusText === estatusSeleccionado;
 
-      const cumpleFechaEntrega =
+      const coincideFechaEntrega =
         !fechaEntregaSeleccionada ||
         item.FECHA_DE_ENTREGA_CLIENTE === fechaEntregaSeleccionada;
 
       return (
-        cumpleGeneral && cumpleEstado && cumpleEstatus && cumpleFechaEntrega
+        coincideNoOrden &&
+        coincideNombreCliente &&
+        coincideEstado &&
+        coincideMunicipio &&
+        coincideNumCliente &&
+        coincideEjecutivo &&
+        coincideEstatus &&
+        coincideFechaEntrega
       );
     });
   }, [
-    filtroGeneral,
-    filtroEstado,
     directaData,
+    filtroDirectaNoOrden,
+    filtroDirectaNombreCliente,
+    filtroDirectaEstado,
+    filtroDirectaMunicipio,
+    filtroDirectaNumCliente,
+    filtroDirectaEjecutivo,
     estatusSeleccionado,
     fechaEntregaSeleccionada,
   ]);
@@ -3262,27 +3361,6 @@ function Tracking() {
                 <option value="11">Noviembre</option>
                 <option value="12">Diciembre</option> */}
               </select>
-
-              <Typography variant="h5" style={{ textAlign: "center" }}>
-                Transportes
-              </Typography>
-
-              {/* Caja de texto centrada y más grande */}
-              <TextField
-                label="Buscar por No Orden o Nombre del Cliente"
-                value={filtroGeneral}
-                onChange={(e) => setFiltroGeneral(e.target.value)}
-                variant="outlined"
-                size="small"
-              />
-
-              <TextField
-                label="Buscar por Estado"
-                value={filtroEstado}
-                onChange={(e) => setFiltroEstado(e.target.value)}
-                variant="outlined"
-                size="small"
-              />
             </div>
 
             <TablePagination
@@ -3300,10 +3378,38 @@ function Tracking() {
               <TableBody>
                 <TableRow>
                   {visibleColumns.includes("NO ORDEN") && (
-                    <TableCell>NO ORDEN</TableCell>
+                    <TableCell>
+                      <Box display="flex" flexDirection="column">
+                        <Typography variant="subtitle2">
+                          EJECUTIVO VTAS
+                        </Typography>
+                        <TextField
+                          value={filtroEjecutivo}
+                          onChange={(e) => setFiltroEjecutivo(e.target.value)}
+                          size="small"
+                          placeholder="Buscar ejecutivo"
+                          variant="outlined"
+                        />
+                      </Box>
+                    </TableCell>
                   )}
+
                   {visibleColumns.includes("NO ORDEN") && (
-                    <TableCell>Estado del Pedido</TableCell>
+                    <TableCell>
+                      <Box display="flex" flexDirection="column">
+                        <Typography variant="subtitle2">NO ORDEN</Typography>
+                        <TextField
+                          value={filtroNoOrden}
+                          onChange={(e) => setFiltroNoOrden(e.target.value)}
+                          size="small"
+                          placeholder="Buscar orden"
+                          variant="outlined"
+                        />
+                      </Box>
+                    </TableCell>
+                  )}
+                  {visibleColumns.includes("FECHA") && (
+                    <TableCell>Estado del pedido</TableCell>
                   )}
                   {visibleColumns.includes("FECHA") && (
                     <TableCell>FECHA</TableCell>
@@ -3311,15 +3417,43 @@ function Tracking() {
                   {visibleColumns.includes("NUM CLIENTE") && (
                     <TableCell>NUM CLIENTE</TableCell>
                   )}
+
                   {visibleColumns.includes("NOMBRE DEL CLIENTE") && (
-                    <TableCell>NOMBRE DEL CLIENTE</TableCell>
+                    <TableCell>
+                      <Box display="flex" flexDirection="column">
+                        <TableCell>NOMBRE DEL CLIENTE</TableCell>
+                        <TextField
+                          value={filtroNombreCliente}
+                          onChange={(e) =>
+                            setFiltroNombreCliente(e.target.value)
+                          }
+                          size="small"
+                          placeholder="Buscar cliente"
+                          variant="outlined"
+                        />
+                      </Box>
+                    </TableCell>
                   )}
+
                   {visibleColumns.includes("MUNICIPIO") && (
                     <TableCell>MUNICIPIO</TableCell>
                   )}
+
                   {visibleColumns.includes("ESTADO") && (
-                    <TableCell>ESTADO</TableCell>
+                    <TableCell>
+                      <Box display="flex" flexDirection="column">
+                        <Typography variant="subtitle2">ESTADO</Typography>
+                        <TextField
+                          value={filtroEstado}
+                          onChange={(e) => setFiltroEstado(e.target.value)}
+                          size="small"
+                          placeholder="Buscar estado"
+                          variant="outlined"
+                        />
+                      </Box>
+                    </TableCell>
                   )}
+
                   {visibleColumns.includes("OBSERVACIONES") && (
                     <TableCell>OBSERVACIONES</TableCell>
                   )}
@@ -3369,7 +3503,16 @@ function Tracking() {
                         onClick={() => handleRowClick(routeData)}
                       >
                         {visibleColumns.includes("NO ORDEN") && (
-                          <TableCell>{routeData["NO ORDEN"]}</TableCell>
+                          <TableCell>
+                            {routeData["EJECUTIVO VTAS"] || "Sin Ejecutivo"}
+                          </TableCell>
+                        )}
+
+                        {visibleColumns.includes("NO ORDEN") && (
+                          <TableCell>
+                            {routeData["NO ORDEN"]} -{" "}
+                            {routeData["tipo_original"]}
+                          </TableCell>
                         )}
 
                         <TableCell>
@@ -3387,12 +3530,14 @@ function Tracking() {
                         {visibleColumns.includes("NUM CLIENTE") && (
                           <TableCell>{routeData["NUM. CLIENTE"]}</TableCell>
                         )}
+
                         {visibleColumns.includes("NOMBRE DEL CLIENTE") && (
                           <TableCell>
                             {" "}
                             {routeData["NOMBRE DEL CLIENTE"]}{" "}
                           </TableCell>
                         )}
+
                         {visibleColumns.includes("MUNICIPIO") && (
                           <TableCell>{routeData.MUNICIPIO}</TableCell>
                         )}
@@ -3556,26 +3701,6 @@ function Tracking() {
                 <option value="11">Noviembre</option>
                 <option value="12">Diciembre</option> */}
               </select>
-              <Typography variant="h5" style={{ textAlign: "center" }}>
-                Transportes
-              </Typography>
-
-              <TextField
-                label="Buscar por No Orden o Nombre del Cliente"
-                value={filtroGeneral}
-                onChange={(e) => setFiltroGeneral(e.target.value)}
-                variant="outlined"
-                size="small"
-                sx={{ mr: 2 }}
-              />
-
-              <TextField
-                label="Buscar por Estado"
-                value={filtroEstado}
-                onChange={(e) => setFiltroEstado(e.target.value)}
-                variant="outlined"
-                size="small"
-              />
             </div>
 
             <TablePagination
@@ -3593,7 +3718,39 @@ function Tracking() {
               <TableHead>
                 <TableRow>
                   {visibleColumns.includes("NO ORDEN") && (
-                    <TableCell>NO ORDEN</TableCell>
+                    <TableCell>
+                      <Box display="flex" flexDirection="column">
+                        <Typography variant="subtitle2">
+                          EJECUTIVO VTAS
+                        </Typography>
+                        <TextField
+                          value={filtroDirectaEjecutivo}
+                          onChange={(e) =>
+                            setFiltroDirectaEjecutivo(e.target.value)
+                          }
+                          size="small"
+                          placeholder="Buscar ejecutivo"
+                          variant="outlined"
+                        />
+                      </Box>
+                    </TableCell>
+                  )}
+
+                  {visibleColumns.includes("NO ORDEN") && (
+                    <TableCell>
+                      <Box display="flex" flexDirection="column">
+                        <Typography variant="subtitle2">NO ORDEN</Typography>
+                        <TextField
+                          value={filtroDirectaNoOrden}
+                          onChange={(e) =>
+                            setFiltroDirectaNoOrden(e.target.value)
+                          }
+                          size="small"
+                          placeholder="Buscar orden"
+                          variant="outlined"
+                        />
+                      </Box>
+                    </TableCell>
                   )}
                   {visibleColumns.includes("ESTADO") && (
                     <TableCell>Estado del Pedido</TableCell>
@@ -3605,13 +3762,42 @@ function Tracking() {
                     <TableCell>NUM CLIENTE</TableCell>
                   )}
                   {visibleColumns.includes("NOMBRE DEL CLIENTE") && (
-                    <TableCell>NOMBRE DEL CLIENTE</TableCell>
+                    <TableCell>
+                      <Box display="flex" flexDirection="column">
+                        <Typography variant="subtitle2">
+                          NOMBRE DEL CLIENTE
+                        </Typography>
+                        <TextField
+                          value={filtroDirectaNombreCliente}
+                          onChange={(e) =>
+                            setFiltroDirectaNombreCliente(e.target.value)
+                          }
+                          size="small"
+                          placeholder="Buscar cliente"
+                          variant="outlined"
+                        />
+                      </Box>
+                    </TableCell>
                   )}
                   {visibleColumns.includes("MUNICIPIO") && (
                     <TableCell>MUNICIPIO</TableCell>
                   )}
+
                   {visibleColumns.includes("ESTADO") && (
-                    <TableCell>ESTADO</TableCell>
+                    <TableCell>
+                      <Box display="flex" flexDirection="column">
+                        <Typography variant="subtitle2">ESTADO</Typography>
+                        <TextField
+                          value={filtroDirectaEstado}
+                          onChange={(e) =>
+                            setFiltroDirectaEstado(e.target.value)
+                          }
+                          size="small"
+                          placeholder="Buscar estado"
+                          variant="outlined"
+                        />
+                      </Box>
+                    </TableCell>
                   )}
                   {visibleColumns.includes("OBSERVACIONES") && (
                     <TableCell>OBSERVACIONES</TableCell>
@@ -3656,7 +3842,16 @@ function Tracking() {
                     .map((routeData, index) => (
                       <TableRow key={index}>
                         {visibleColumns.includes("NO ORDEN") && (
-                          <TableCell>{routeData["NO ORDEN"]}</TableCell>
+                          <TableCell>
+                            {routeData["EJECUTIVO VTAS"] || "Sin Ejecutivo"}
+                          </TableCell>
+                        )}
+
+                        {visibleColumns.includes("NO ORDEN") && (
+                          <TableCell>
+                            {routeData["NO ORDEN"]} -{" "}
+                            {routeData["tipo_original"]}
+                          </TableCell>
                         )}
 
                         <TableCell>
@@ -3726,25 +3921,6 @@ function Tracking() {
                               alignItems="center"
                             >
                               <Grid item>
-                                {/* <Grid item>
-
-                                                                    <IconButton
-                                                                        onClick={() => {
-                                                                            window.open(
-                                                                                "https://app2.simpliroute.com/#/planner/vehicles",
-                                                                                "_blank"
-                                                                            );
-                                                                        }}
-                                                                        size="small"
-                                                                        style={{ color: "#616161" }}
-                                                                    >
-                                                                        <AirportShuttleIcon />
-                                                                    </IconButton>
-
-                                                                </Grid> */}
-                              </Grid>
-
-                              <Grid item>
                                 <IconButton
                                   variant="contained"
                                   style={{ color: "black" }} // Negro con texto blanco
@@ -3798,9 +3974,6 @@ function Tracking() {
                 alt="Filtro"
                 style={{ width: "400px", height: "auto" }}
               />
-              <Typography variant="h5" style={{ textAlign: "center" }}>
-                Transportes
-              </Typography>
 
               <TextField
                 label="Buscar por No Orden o Nombre del Cliente"
@@ -4026,42 +4199,46 @@ function Tracking() {
                 <option value="11">Noviembre</option>
                 <option value="12">Diciembre</option> */}
               </select>
-              <Typography variant="h5" style={{ textAlign: "center" }}>
-                Transportes
-              </Typography>
-
-              <TextField
-                label="Buscar por No. Orden, Cliente o Num. Cliente"
-                value={filtroGeneralAsignacion}
-                onChange={(e) => setFiltroGeneralAsignacion(e.target.value)}
-                variant="outlined"
-                size="small"
-                sx={{ mr: 2 }}
-              />
-
-              <TextField
-                label="Buscar por Estado"
-                value={filtroEstadoAsignacion}
-                onChange={(e) => setFiltroEstadoAsignacion(e.target.value)}
-                variant="outlined"
-                size="small"
-              />
             </div>
 
             <Table>
               <TableHead>
                 <TableRow>
                   {visibleColumns.includes("ESTADO") && (
-                    <TableCell>Estado del Pedido</TableCell>
+                    <TableCell>Status</TableCell>
                   )}
                   {visibleColumns.includes("FECHA") && (
                     <TableCell>FECHA</TableCell>
                   )}
                   {visibleColumns.includes("NO ORDEN") && (
-                    <TableCell>NO ORDEN</TableCell>
+                    <TableCell>
+                      <Box display="flex" flexDirection="column">
+                        <TableCell>NO ORDEN</TableCell>
+                        <TextField
+                          value={filtroAsigNoOrden}
+                          onChange={(e) => setFiltroAsigNoOrden(e.target.value)}
+                          size="small"
+                          placeholder="Buscar orden"
+                          variant="outlined"
+                        />
+                      </Box>
+                    </TableCell>
                   )}
                   {visibleColumns.includes("NO ORDEN") && (
-                    <TableCell>EJECUTIVO VTAS</TableCell>
+                    <TableCell>
+                      <Box display="flex" flexDirection="column">
+                        <TableCell>EJECUTIVO VTAS</TableCell>
+                        <TextField
+                          value={filtroAsigEjecutivo}
+                          onChange={(e) =>
+                            setFiltroAsigEjecutivo(e.target.value)
+                          }
+                          size="small"
+                          placeholder="Buscar ejecutivo"
+                          variant="outlined"
+                        />
+                      </Box>
+                    </TableCell>
                   )}
                   {visibleColumns.includes("GUIA") && (
                     <TableCell>GUIA</TableCell>
@@ -4075,8 +4252,22 @@ function Tracking() {
                   {visibleColumns.includes("NUM CLIENTE") && (
                     <TableCell>NUM CLIENTE</TableCell>
                   )}
+
                   {visibleColumns.includes("NOMBRE DEL CLIENTE") && (
-                    <TableCell>NOMBRE DEL CLIENTE</TableCell>
+                    <TableCell>
+                      <Box display="flex" flexDirection="column">
+                        <TableCell>NOMBRE DEL CLIENTE</TableCell>
+                        <TextField
+                          value={filtroAsigNombreCliente}
+                          onChange={(e) =>
+                            setFiltroAsigNombreCliente(e.target.value)
+                          }
+                          size="small"
+                          placeholder="Buscar cliente"
+                          variant="outlined"
+                        />
+                      </Box>
+                    </TableCell>
                   )}
                   {visibleColumns.includes("TRANSPORTE") && (
                     <TableCell>TRANSPORTE / RUTA</TableCell>
@@ -4156,7 +4347,9 @@ function Tracking() {
                         <TableCell>{formatDate(routeData.FECHA)}</TableCell>
                       )}
                       {visibleColumns.includes("NO ORDEN") && (
-                        <TableCell>{routeData["NO ORDEN"]}</TableCell>
+                        <TableCell>
+                          {routeData["NO ORDEN"]} - {routeData["tipo_original"]}
+                        </TableCell>
                       )}
                       {visibleColumns.includes("NO ORDEN") && (
                         <TableCell>

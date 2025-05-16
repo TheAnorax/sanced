@@ -80,7 +80,6 @@ function ProductoCRUD() {
   const [search, setSearch] = useState("");
   const codigosSinImagenRef = React.useRef(new Set());
 
-
   const [form, setForm] = useState({
     codigo_pro: "",
     clave: "",
@@ -181,10 +180,6 @@ function ProductoCRUD() {
     setSearch(e.target.value);
     filterProductos(e.target.value);
   };
-
-
-
- 
 
   const filterProductos = (searchTerm) => {
     const filtered = productos.filter(
@@ -333,7 +328,6 @@ function ProductoCRUD() {
   //     setFlyerData(null); // Limpia los datos en caso de error
   //   }
   // };
-  
 
   const handleView = async (producto) => {
     setForm(producto);
@@ -544,15 +538,15 @@ function ProductoCRUD() {
               onError={(e) => {
                 e.target.onerror = null;
                 e.target.src = "../assets/image/img_pz/noimage.png";
-        
+
                 // Guardar código del producto sin imagen
                 codigosSinImagenRef.add(params.row.codigo_pro);
-        
+
                 // Mostrar en consola en tiempo real
                 console.warn(
                   `[IMG NOT FOUND] Producto sin imagen: ${params.row.codigo_pro}`
                 );
-        
+
                 // (Opcional) Mostrar lista completa cada vez que se añade uno nuevo
                 console.log(
                   "[LISTA COMPLETA SIN IMAGEN]:",
@@ -561,7 +555,7 @@ function ProductoCRUD() {
               }}
             />
           ),
-        },        
+        },
         {
           field: "actions",
           headerName: "Actions",
@@ -621,7 +615,7 @@ function ProductoCRUD() {
           headerName: "Total",
           width: 150,
           renderCell: (params) =>
-            ["Admin", "Master",  "INV" ,"Control"].includes(user?.role) ? (
+            ["Admin", "Master", "INV", "Control"].includes(user?.role) ? (
               <span>{formatNumber(params.value)}</span>
             ) : (
               <span>-</span> // Muestra un guion si no tiene permiso
@@ -632,7 +626,7 @@ function ProductoCRUD() {
           headerName: "Almacenamiento",
           width: 150,
           renderCell: (params) =>
-            ["Admin", "Master", "INV" ,"Control"].includes(user?.role) ? (
+            ["Admin", "Master", "INV", "Control"].includes(user?.role) ? (
               <span>{formatNumber(params.value)}</span>
             ) : (
               <span>-</span>
@@ -643,7 +637,7 @@ function ProductoCRUD() {
           headerName: "Picking",
           width: 150,
           renderCell: (params) =>
-            ["Admin", "Master", "INV" ,"Control"].includes(user?.role) ? (
+            ["Admin", "Master", "INV", "Control"].includes(user?.role) ? (
               <span>{formatNumber(params.value)}</span>
             ) : (
               <span>-</span>
@@ -712,7 +706,7 @@ function ProductoCRUD() {
           }}
         />
         <Box display="flex" gap={2}>
-          {user?.role === "Admin" && ( // Mostrar sólo si el usuario tiene rol Admin
+          {(user?.role === "Admin" || user?.role === "INV") && (
             <Button
               variant="contained"
               color="primary"
@@ -733,15 +727,13 @@ function ProductoCRUD() {
         </Box>
 
         <Button
-  variant="outlined"
-  onClick={() => {
-    console.table(Array.from(codigosSinImagenRef.current));
-  }}
->
-  Ver productos sin imagen
-</Button>
-
-
+          variant="outlined"
+          onClick={() => {
+            console.table(Array.from(codigosSinImagenRef.current));
+          }}
+        >
+          Ver productos sin imagen
+        </Button>
       </Box>
       <Paper elevation={3} sx={{ p: 3, overflow: "auto" }}>
         <div style={{ height: isMediumScreen ? 500 : 750, width: "100%" }}>
@@ -753,7 +745,6 @@ function ProductoCRUD() {
           />
         </div>
       </Paper>
-     
 
       <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
         <DialogTitle>

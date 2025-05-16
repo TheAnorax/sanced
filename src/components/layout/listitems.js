@@ -148,6 +148,7 @@ export const mainListItems = (user) => {
         "Audi",
         "VENT",
         "VentAdmin",
+        "INV"
       ],
       path: "/dashboard/finalizados",
       icon: <PlaylistAddCheckIcon />,

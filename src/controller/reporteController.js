@@ -1,7 +1,7 @@
 const pool = require("../config/database");
 const moment = require("moment");
 
-// Función para convertir minutos a formato "HH:mm"
+// Función para convertir minutos a formato "HH:mm" 
 const convertirMinutosAHoras = (minutos) => {
   const horas = Math.floor(minutos / 60);
   const minutosRestantes = minutos % 60;
@@ -193,7 +193,7 @@ const getPrduSurtido = async (req, res) => {
 
       let tiempoTrabajoMinutos = 0;
       if (turnoData.primer_inicio && turnoData.ultimo_fin) {
-        tiempoTrabajoMinutos = moment(turnoData.ultimo_fin).diff(
+        tiempoTrabajoMinutos = moment(turnoData.ultimo_fin).diff( 
           moment(turnoData.primer_inicio),
           "minutes"
         );
@@ -263,10 +263,13 @@ const getPrduSurtido = async (req, res) => {
   }
 };
 
-const getPrduPaqueteria  = async (req, res) => {
+
+
+const getPrduPaqueteria = async (req, res) => {
   try {
     const selectedDate = req.query.date || moment().format("YYYY-MM-DD");
 
+    // 1. Obtener los datos de productividad
     const [rows] = await pool.query(
       `
       SELECT 
@@ -288,8 +291,8 @@ const getPrduPaqueteria  = async (req, res) => {
               p.fin_embarque
           FROM pedido_embarque p
           WHERE p.estado = 'F'
-          AND p.id_usuario_paqueteria IS NOT NULL
-          AND DATE(p.inicio_embarque) = ?
+            AND p.id_usuario_paqueteria IS NOT NULL
+            AND DATE(p.inicio_embarque) = ?
 
           UNION ALL
 
@@ -304,22 +307,48 @@ const getPrduPaqueteria  = async (req, res) => {
               pf.fin_embarque
           FROM pedido_finalizado pf
           WHERE pf.estado = 'F'
-          AND pf.id_usuario_paqueteria IS NOT NULL
-          AND DATE(pf.inicio_embarque) = ?
+            AND pf.id_usuario_paqueteria IS NOT NULL
+            AND DATE(pf.inicio_embarque) = ?
       ) AS combined
       LEFT JOIN usuarios us ON combined.id_usuario_paqueteria = us.id_usu
       WHERE us.role LIKE 'PQ%'
       GROUP BY us.role, us.name;
-    `,
+      `,
       [selectedDate, selectedDate]
     );
 
+    // 2. Obtener el total facturado desde paqueteria por tipo y fecha
+    const [totalFacturadoRows] = await pool.query(
+      `
+      SELECT FORMAT(SUM(IFNULL(TOTAL, 0)), 2) AS total_facturado
+      FROM paqueteria
+      WHERE tipo = 'paqueteria'
+        AND DATE(created_at) = ?
+      `,
+      [selectedDate]
+    );
+
+    // 3. Obtener total de pedidos únicos (NO ORDEN) por tipo = paqueteria
+    const [totalPedidosRows] = await pool.query(
+      `
+      SELECT COUNT(DISTINCT \`NO ORDEN\`) AS total_pedidos
+      FROM paqueteria
+      WHERE tipo = 'paqueteria'
+        AND DATE(created_at) = ?
+      `,
+      [selectedDate]
+    );
+
+    const totalPedidos = totalPedidosRows[0]?.total_pedidos || 0;
+
+    // 4. Validar si hay datos
     if (rows.length === 0) {
       return res.json({
         message: `No hay datos disponibles para la fecha: ${selectedDate}`,
       });
     }
 
+    // 5. Calcular totales generales
     const totalPartidas = rows.reduce((sum, row) => sum + row.partidas, 0);
     const totalPiezas = rows.reduce((sum, row) => sum + parseInt(row.cantidad_piezas || 0), 0);
 
@@ -337,14 +366,20 @@ const getPrduPaqueteria  = async (req, res) => {
     const minutos = String(tiempoTotalTrabajo.getUTCMinutes()).padStart(2, "0");
     const segundos = String(tiempoTotalTrabajo.getUTCSeconds()).padStart(2, "0");
 
+    const total_facturado = totalFacturadoRows[0]?.total_facturado || "0.00";
+
+    // 6. Respuesta final
     res.json({
       total_partidas: totalPartidas,
+      total_pedidos: totalPedidos,
       total_piezas: totalPiezas,
       primer_inicio_embarque: primerInicioEmbarque,
       ultimo_fin_embarque: ultimoFinEmbarque,
       tiempo_total_trabajo: `${horas}:${minutos}:${segundos}`,
+      total_facturado: total_facturado,
       fecha_consultada: selectedDate
     });
+
   } catch (error) {
     console.error("Error al obtener la productividad de empaquetadores:", error);
     res.status(500).json({
@@ -355,12 +390,14 @@ const getPrduPaqueteria  = async (req, res) => {
 };
 
 
+
 const getPrduEmbarque = async (req, res) => {
   try {
     const selectedDate = req.query.date || moment().format("YYYY-MM-DD");
     const previousDate = moment(selectedDate).subtract(1, "day").format("YYYY-MM-DD");
 
-    const [rows] = await pool.query(
+    // 1. Obtener productividad por turno desde pedido_embarque y pedido_finalizado
+    const [resumenPorTurno] = await pool.query(
       `
       WITH pedidos AS (
           SELECT 
@@ -379,9 +416,7 @@ const getPrduEmbarque = async (req, res) => {
                   OR 
                   (DATE(p.inicio_embarque) = ? AND TIME(p.inicio_embarque) >= '21:30:00')
               )
-
           UNION ALL
-
           SELECT 
               pf.codigo_ped,
               pf._pz,
@@ -399,7 +434,6 @@ const getPrduEmbarque = async (req, res) => {
                   (DATE(pf.inicio_embarque) = ? AND TIME(pf.inicio_embarque) >= '21:30:00')
               )
       )
-
       SELECT 
           CASE 
               WHEN TIME(pedidos.inicio_embarque) >= '21:30:00' OR TIME(pedidos.inicio_embarque) < '06:30:00' THEN 'Turno 3'
@@ -414,11 +448,66 @@ const getPrduEmbarque = async (req, res) => {
       FROM pedidos
       GROUP BY turno
       ORDER BY FIELD(turno, 'Turno 3', 'Turno 1', 'Turno 2');
-    `,
+      `,
       [selectedDate, previousDate, selectedDate, previousDate]
     );
 
-    res.json(rows);
+    // 2. Obtener total facturado y pedidos únicos por turno usando inicio_embarque relacionado con NO ORDEN
+    const [facturadoPorTurno] = await pool.query(
+      `
+      WITH pedidos_union AS (
+        SELECT codigo_ped, inicio_embarque FROM pedido_embarque
+        WHERE estado = 'F' AND id_usuario_paqueteria IS NOT NULL
+          AND DATE(inicio_embarque) = ?
+
+        UNION ALL
+
+        SELECT codigo_ped, inicio_embarque FROM pedido_finalizado
+        WHERE estado = 'F' AND id_usuario_paqueteria IS NOT NULL
+          AND DATE(inicio_embarque) = ?
+      )
+      SELECT
+        CASE
+          WHEN TIME(pu.inicio_embarque) >= '21:30:00' OR TIME(pu.inicio_embarque) < '06:30:00' THEN 'Turno 3'
+          WHEN TIME(pu.inicio_embarque) >= '06:30:00' AND TIME(pu.inicio_embarque) < '14:00:00' THEN 'Turno 1'
+          WHEN TIME(pu.inicio_embarque) >= '14:00:00' AND TIME(pu.inicio_embarque) < '21:30:00' THEN 'Turno 2'
+        END AS turno,
+        FORMAT(SUM(IFNULL(pq.TOTAL, 0)), 2) AS total_facturado,
+        COUNT(DISTINCT pq.\`NO ORDEN\`) AS total_pedidos
+      FROM paqueteria pq
+      JOIN pedidos_union pu ON CAST(pq.\`NO ORDEN\` AS CHAR) = CAST(pu.codigo_ped AS CHAR)
+      WHERE pq.tipo = 'directa'
+      GROUP BY turno;
+      `,
+      [selectedDate, selectedDate]
+    );
+
+    // 3. Combinar por turno
+    const resumenFinal = resumenPorTurno.map((turnoData) => {
+      const match = facturadoPorTurno.find(f => f.turno === turnoData.turno);
+      return {
+        ...turnoData,
+        total_facturado: match?.total_facturado || "0.00",
+        total_pedidos: match?.total_pedidos || 0
+      };
+    });
+
+    // 4. Calcular total general
+    const total_facturado_general = facturadoPorTurno.reduce(
+      (sum, t) => sum + parseFloat((t.total_facturado || "0").replace(/,/g, "")),
+      0
+    ).toLocaleString("es-MX", {
+      style: "currency",
+      currency: "MXN"
+    });
+
+    // 5. Responder
+    res.json({
+      resumen_por_turno: resumenFinal,
+      total_facturado_general,
+      fecha_consultada: selectedDate
+    });
+
   } catch (error) {
     console.error("❌ Error al obtener la productividad de embarque:", error);
     res.status(500).json({
@@ -427,6 +516,11 @@ const getPrduEmbarque = async (req, res) => {
     });
   }
 };
+
+
+
+
+
 
 const getPrduRecibo = async (req, res) => {
   try {

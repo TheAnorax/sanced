@@ -81,7 +81,7 @@ const getSaleArrive = async (req, res) => {
         prod.clave
       FROM recibo_compras c 
       LEFT JOIN productos prod ON c.codigo = prod.codigo_pro
-      WHERE c.arribo >= CURDATE()
+      WHERE c.arribo >= CURDATE() AND c.estado IN ("C", "F");
     `;
 
     const [rows] = await pool.query(query);

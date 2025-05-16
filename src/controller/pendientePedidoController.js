@@ -230,7 +230,16 @@ const savePedidoSurtido = async (req, res) => {
     const codigosExcluir = [8792, 8793, 8247, 8291, 8293, 8294, 8805, 8295, 8863];
     const codigosinner = [4352, 4353, 4354];
 
-    const codigosAnegar = [1095, 1096, 1097, 1098, 1099, 1100, 1111, 1112, 1113, 1114, 1115, 1116, 1117, 1118, 1119, 1123, 1124, 1125, 1126, 1127, 1130, 1131, 1132, 1133, 1134, 1135, 1211, 1217, 1218, 1223, 1224, 1225, 1226, 1227, 1228, 1240, 1241, 1242, 1243, 1252, 1253, 1254, 1255, 1256, 1257, 1260, 1261, 1262, 1263, 1264, 1265, 1266, 1267, 1268, 1270, 1271, 1275, 1276, 1278, 1284, 1288, 1289, 1290, 1291, 1292, 1293, 1294, 1295, 1296, 1297, 1298, 1299, 1314, 1315, 1316, 1317, 1318, 1319, 1362, 1363, 1600, 2128, 2155, 2156, 2157, 2158, 2162, 2163, 2165, 2167, 2170, 2171, 2194, 2203, 2204, 2205, 2500, 2501, 2502, 2503, 1158, 1159, 1624, 2116, 2117, 2118, 2119, 2122, 2125, 1351, 1352, 1353, 2114, 2120, 2121, 2126, 2130, 2132, 2140, 2148, ];
+    // const codigosAnegar = [1095, 1096, 1097, 1098, 1099, 1100, 1111, 1112, 1113, 1114, 1115, 1116, 1117, 1118, 1119, 1123, 1124, 1125, 1126, 1127, 1130, 1131, 1132, 1133, 1134, 1135, 1211, 1217, 1218, 1223, 1224, 1225, 1226, 1227, 1228, 1240, 1241, 1242, 1243, 1252, 1253, 1254, 1255, 1256, 1257, 1260, 1261, 1262, 1263, 1264, 1265, 1266, 1267, 1268, 1270, 1271, 1275, 1276, 1278, 1284, 1288, 1289, 1290, 1291, 1292, 1293, 1294, 1295, 1296, 1297, 1298, 1299, 1314, 1315, 1316, 1317, 1318, 1319, 1362, 1363, 1600, 2128, 2155, 2156, 2157, 2158, 2162, 2163, 2165, 2167, 2170, 2171, 2194, 2203, 2204, 2205, 2500, 2501, 2502, 2503, 1158, 1159, 1624, 2116, 2117, 2118, 2119, 2122, 2125, 1351, 1352, 1353, 2114, 2120, 2121, 2126, 2130, 2132, 2140, 2148, ];
+    // const codigos16 = [1211, 1217, 1218, 1241, 1242, 1243, 1267, 1271, 1278, 1362, 1363, 2500];
+    // const codigo8 = [2170,2171,2194];
+    // const codigos12 =[1130,1131,1223,1224,1225,1226,1227,1228,1252,1253,1254,1255,1256,1257,1260,1261,1262,1263,1264,1265,1284,1288,1289,1290,1291,1292,1293,1294,1295,1296,1297,1298,1299,1314,1315,1316,1317,1318,1319,1600,2158,1158,1159,2120,2130,2132,2140];
+    // const codigos20 =[1095,1096,1097,1098,1099,1100,1111,1114,1115,1116,1117,1118,1119,1123,1124,1125,1126,1127,1132,1133,1134,1135,2503];
+    // const codigos24 =[2155,2156,2157,2205];
+    // const codigos40 =[1266,1275,1276,2128,2502,1351,1352,1353,];
+    // const codigos48 =[2203,2204,1624,2116,2117,2118,2119,2122,2125,2121,2126,2148,2163];
+    // const codigos100 =[1240];
+
     const now = new Date();
 
 
@@ -281,11 +290,69 @@ const savePedidoSurtido = async (req, res) => {
           //   fin_surtido = now;
           //   motivo = 'UM NO COINCIDE';
           // }
-          
-          if (codigosAnegar.includes(item.codigo_ped)) {
-            motivo = `${item.cantidad} BACKORDER`;
-            item.cantidad = 18; // cantidad forzada
-          }
+
+        //  if (codigos16.includes(item.codigo_ped)) {
+        //       if (item.cantidad > 16) {
+        //         motivo = `${item.cantidad} BACKORDER`;
+        //         item.cantidad = 16; // límite máximo
+        //       }
+        //       // si es <= 18, no se modifica la cantidad y no se asigna motivo
+        //     }
+
+        //     if (codigo8.includes(item.codigo_ped)) {
+        //       if (item.cantidad > 8) {
+        //         motivo = `${item.cantidad} BACKORDER`;
+        //         item.cantidad = 8; // límite máximo
+        //       }
+        //       // si es <= 18, no se modifica la cantidad y no se asigna motivo
+        //     }
+        //     if (codigos12.includes(item.codigo_ped)) {
+        //       if (item.cantidad > 12) {
+        //         motivo = `${item.cantidad} BACKORDER`;
+        //         item.cantidad = 12; // límite máximo
+        //       }
+        //       // si es <= 18, no se modifica la cantidad y no se asigna motivo
+        //     }
+
+        //     if (codigos20.includes(item.codigo_ped)) {
+        //       if (item.cantidad > 20) {
+        //         motivo = `${item.cantidad} BACKORDER`;
+        //         item.cantidad = 20; // límite máximo
+        //       }
+        //       // si es <= 18, no se modifica la cantidad y no se asigna motivo
+        //     }
+
+        //     if (codigos24.includes(item.codigo_ped)) {
+        //       if (item.cantidad > 24) {
+        //         motivo = `${item.cantidad} BACKORDER`;
+        //         item.cantidad = 24; // límite máximo
+        //       }
+        //       // si es <= 18, no se modifica la cantidad y no se asigna motivo
+        //     }
+
+        //     if (codigos40.includes(item.codigo_ped)) {
+        //       if (item.cantidad > 40) {
+        //         motivo = `${item.cantidad} BACKORDER`;
+        //         item.cantidad = 40; // límite máximo
+        //       }
+        //       // si es <= 18, no se modifica la cantidad y no se asigna motivo
+        //     }
+
+        //     if (codigos48.includes(item.codigo_ped)) {
+        //       if (item.cantidad > 48) {
+        //         motivo = `${item.cantidad} BACKORDER`;
+        //         item.cantidad = 48; // límite máximo
+        //       }
+        //       // si es <= 18, no se modifica la cantidad y no se asigna motivo
+        //     }
+
+        //     if (codigos100.includes(item.codigo_ped)) {
+        //       if (item.cantidad > 100) {
+        //         motivo = `${item.cantidad} BACKORDER`;
+        //         item.cantidad = 100; // límite máximo
+        //       }
+        //       // si es <= 18, no se modifica la cantidad y no se asigna motivo
+        //     }
 
           if (item.pz_ && item.pz_ > 1 && item.cantidad % item.pz_ !== 0) {
             const resto = item.cantidad % item.pz_;

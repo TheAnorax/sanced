@@ -290,8 +290,6 @@ function KpiDashboard() {
 
   const renderPaqueteria = () => (
     <Grid item xs={12} md={6}>
-      {" "}
-      {/* 🔹 Cambiar md={4} por md={6} */}
       <Card
         variant="outlined"
         sx={{
@@ -323,6 +321,16 @@ function KpiDashboard() {
             <Timer sx={{ fontSize: 25, color: "#f44336" }} />,
             "Tiempo Total",
             dataPaqueteria?.tiempo_total_trabajo || "00:00:00"
+          )}
+          {renderKpiCard(
+            <ListAlt sx={{ fontSize: 25, color: "#4caf50" }} />,
+            "Total Facturado",
+            `$${dataPaqueteria?.total_facturado || "0.00"}`
+          )}
+          {renderKpiCard(
+            <ListAlt sx={{ fontSize: 25, color: "#03a9f4" }} />,
+            "Total Pedidos",
+            dataPaqueteria?.total_pedidos || 0
           )}
         </Grid>
       </Card>
@@ -362,6 +370,11 @@ function KpiDashboard() {
             <Timer sx={{ fontSize: 25, color: "#f44336" }} />,
             "Tiempo Total",
             turnoData.tiempo_total_trabajo
+          )}
+          {renderKpiCard(
+            <ListAlt sx={{ fontSize: 25, color: "#4caf50" }} />,
+            "Total Facturado",
+            `$${turnoData.total_facturado || "0.00"}`
           )}
         </Grid>
       </Card>
@@ -473,9 +486,9 @@ function KpiDashboard() {
     const fechas = resumenPaqueteria.map((item) =>
       dayjs(item.fecha).format("YYYY-MM-DD")
     );
-  
+
     const partidas = resumenPaqueteria.map((item) => item.total_partidas);
-  
+
     return {
       labels: fechas,
       datasets: [
@@ -483,11 +496,10 @@ function KpiDashboard() {
           label: "Total Partidas",
           data: partidas,
           backgroundColor: "#2196f3",
-        }
+        },
       ],
     };
   };
-  
 
   const renderRecibo = () => (
     <Grid item xs={12} md={4}>
@@ -636,7 +648,7 @@ function KpiDashboard() {
             <Alert severity="error">{errorEmbarques}</Alert>
           ) : (
             <Grid container spacing={1} justifyContent="center">
-              {dataEmbarques.map((turno, index) =>
+              {dataEmbarques?.resumen_por_turno?.map((turno, index) =>
                 renderTurno(turno, turno.turno)
               )}
             </Grid>
@@ -701,36 +713,37 @@ function KpiDashboard() {
                     },
                   },
                 }}
-                
               />
               {resumenPaqueteria.length > 0 && (
-  <Box sx={{ mt: 4, maxWidth: "100%", overflowX: "auto" }}>
-    <Typography variant="h6" sx={{ mb: 2, color: "#4caf50", fontWeight: "bold" }}>
-      📦 Histórico Paquetería (por día)
-    </Typography>
-    <Bar
-      data={buildChartPaqueteria()}
-      options={{
-        responsive: true,
-        plugins: {
-          legend: {
-            position: "top",
-          },
-        },
-        scales: {
-          y: {
-            beginAtZero: true,
-            title: {
-              display: true,
-              text: "Total por Día",
-            },
-          },
-        },
-      }}
-    />
-  </Box>
-)}
-
+                <Box sx={{ mt: 4, maxWidth: "100%", overflowX: "auto" }}>
+                  <Typography
+                    variant="h6"
+                    sx={{ mb: 2, color: "#4caf50", fontWeight: "bold" }}
+                  >
+                    📦 Histórico Paquetería (por día)
+                  </Typography>
+                  <Bar
+                    data={buildChartPaqueteria()}
+                    options={{
+                      responsive: true,
+                      plugins: {
+                        legend: {
+                          position: "top",
+                        },
+                      },
+                      scales: {
+                        y: {
+                          beginAtZero: true,
+                          title: {
+                            display: true,
+                            text: "Total por Día",
+                          },
+                        },
+                      },
+                    }}
+                  />
+                </Box>
+              )}
             </Box>
           )}
         </>

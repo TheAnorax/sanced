@@ -64,7 +64,7 @@ import barraFooter from "./BARRA.jpg";
 
 const hasExpired = (timestamp) => {
   const now = new Date().getTime();
-  return now - timestamp > 30 * 24 * 60 * 60 * 1000; // 30 días
+  return now - timestamp > 500 * 24 * 60 * 60 * 1000; // 500 días
 };
 
 function Transporte() {

@@ -1835,6 +1835,183 @@ const getPedidosDia = async (req, res) => {
   }
 };
 
+const datosPedidos = async (req, res) => {
+  try {
+    const { noOrden, numCliente } = req.query;
+
+    if (!noOrden || !numCliente) {
+      return res.status(400).json({
+        success: false,
+        message: "Faltan parámetros requeridos: 'noOrden' y 'numCliente'.",
+      });
+    }
+
+    // Buscar pedido específico
+    const [result] = await pool.query(
+      `SELECT
+        p.id,
+        p.FECHA,    
+        p.\`NO ORDEN\` AS no_orden,
+        p.tipo_original,
+        p.NO_FACTURA,
+        p.FECHA_DE_FACTURA,
+        p.\`NUM. CLIENTE\` AS num_cliente,
+        p.\`NOMBRE DEL CLIENTE\` AS nombre_cliente,
+        p.ZONA,
+        p.MUNICIPIO,
+        p.ESTADO,
+        p.OBSERVACIONES,
+        p.TOTAL,
+        p.PARTIDAS,
+        p.PIEZAS,
+        p.TARIMAS,
+        p.TRANSPORTE,
+        p.GUIA,
+        p.FECHA_DE_ENTREGA_CLIENTE,
+        p.DIAS_DE_ENTREGA,
+        p.ENTREGA_SATISFACTORIA_O_NO_SATISFACTORIA AS entrega_satisfactoria,
+        p.MOTIVO,
+        p.TIPO,
+        p.DIRECCION,
+        p.TELEFONO,
+        p.CORREO,
+        p.\`EJECUTIVO VTAS\` AS ejecutivo_vtas
+      FROM paqueteria p
+      WHERE \`NO ORDEN\` = ? AND \`NUM. CLIENTE\` = ?
+      LIMIT 1`,
+      [noOrden, numCliente]
+    );
+
+    if (result.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: `No se encontró un pedido con NO ORDEN ${noOrden} y NUM. CLIENTE ${numCliente}`,
+      });
+    }
+
+    const pedido = result[0];
+    const pedidoId = pedido.no_orden;
+    const tipo = pedido.tipo_original;
+
+    // Buscar en EMBARQUE
+    let [[embarcado]] = await pool.query(
+      `SELECT pedido, fusion, tipo FROM pedido_embarque 
+       WHERE pedido = ? AND SUBSTRING_INDEX(tipo, ',', 1) = ?`,
+      [pedidoId, tipo]
+    );
+
+    if (!embarcado) {
+      [[embarcado]] = await pool.query(
+        `SELECT pedido, fusion, tipo FROM pedido_embarque 
+         WHERE FIND_IN_SET(?, fusion) AND SUBSTRING_INDEX(tipo, ',', 1) = ?`,
+        [pedidoId, tipo]
+      );
+    }
+
+    if (embarcado) {
+      return res.json({
+        success: true,
+        data: {
+          ...pedido,
+          avance: "100%",
+          tablaOrigen: "EMBARQUES",
+          tipo_encontrado: embarcado.tipo,
+          fusion: embarcado.fusion || null,
+        },
+      });
+    }
+
+    // Buscar en FINALIZADO
+    let [[finalizado]] = await pool.query(
+      `SELECT pedido, fusion, tipo FROM pedido_finalizado 
+       WHERE pedido = ? AND SUBSTRING_INDEX(tipo, ',', 1) = ?`,
+      [pedidoId, tipo]
+    );
+
+    if (!finalizado) {
+      [[finalizado]] = await pool.query(
+        `SELECT pedido, fusion, tipo FROM pedido_finalizado 
+         WHERE FIND_IN_SET(?, fusion) AND SUBSTRING_INDEX(tipo, ',', 1) = ?`,
+        [pedidoId, tipo]
+      );
+    }
+
+    if (finalizado) {
+      return res.json({
+        success: true,
+        data: {
+          ...pedido,
+          avance: "100%",
+          tablaOrigen: "FINALIZADO",
+          tipo_encontrado: finalizado.tipo,
+          fusion: finalizado.fusion || null,
+        },
+      });
+    }
+
+    // Buscar en SURTIDO
+    let [[avanceRow]] = await pool.query(
+      `SELECT 
+        SUM(cant_surti) AS surtido, 
+        SUM(cantidad) AS total,
+        MAX(tipo) AS tipo, 
+        MAX(fusion) AS fusion
+      FROM pedido_surtido 
+      WHERE pedido = ? AND SUBSTRING_INDEX(tipo, ',', 1) = ?`,
+      [pedidoId, tipo]
+    );
+
+    if (!avanceRow?.total) {
+      [[avanceRow]] = await pool.query(
+        `SELECT 
+          SUM(cant_surti) AS surtido, 
+          SUM(cantidad) AS total,
+          MAX(tipo) AS tipo, 
+          MAX(fusion) AS fusion
+        FROM pedido_surtido 
+        WHERE FIND_IN_SET(?, fusion) AND SUBSTRING_INDEX(tipo, ',', 1) = ?`,
+        [pedidoId, tipo]
+      );
+    }
+
+    if (avanceRow?.total > 0) {
+      const avance = ((avanceRow.surtido / avanceRow.total) * 100).toFixed(0);
+
+      return res.json({
+        success: true,
+        data: {
+          ...pedido,
+          avance: `${avance}%`,
+          tablaOrigen: "SURTIDO",
+          tipo_encontrado: avanceRow.tipo,
+          fusion: avanceRow.fusion || null,
+        },
+      });
+    }
+
+    // No se encontró avance
+    return res.json({
+      success: true,
+      data: {
+        ...pedido,
+        avance: "0%",
+        tablaOrigen: "No Asignado",
+        tipo_encontrado: null,
+        fusion: null,
+      },
+    });
+
+  } catch (error) {
+    console.error("❌ Error en datosPedidos:", error.message);
+    res.status(500).json({
+      success: false,
+      message: "Error interno al procesar el pedido",
+      error: error.message,
+    });
+  }
+};
+
+
 //funcion de actualisar
 
 const actualizarTipoOriginalDesdeExcel = async (req, res) => {
@@ -1985,4 +2162,5 @@ module.exports = {
   getPedidosDia,
   obtenerRutasParaPDF,
   actualizarGuiaCompleta,
+  datosPedidos,
 };

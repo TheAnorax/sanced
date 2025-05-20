@@ -123,17 +123,11 @@ function Muestras() {
 
   const obtenerDepartamentos = async () => {
     try {
-      const response = await axios.get(
-        "http://66.232.105.87:3007/api/muestras/departamentos"
-      );
+      const response = await axios.get("http://66.232.105.87:3007/api/muestras/departamentos");
 
       let deps = response.data.map((d) => {
-        const valueNormalizado = d.nombre.trim();
-        const labelCapitalizado = valueNormalizado
-          .toLowerCase()
-          .split(" ")
-          .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-          .join(" ");
+        const valueNormalizado = d.value.trim(); // ✅ CAMBIO AQUÍ
+        const labelCapitalizado = d.label.trim(); // ✅ CAMBIO AQUÍ
 
         return {
           value: valueNormalizado,
@@ -141,8 +135,14 @@ function Muestras() {
         };
       });
 
-      // 👉 Agrega el departamento asignado si no viene en la respuesta
-      if (user?.name && usuariosFijos[user.name]) {
+      const libres = [
+        "Elias Sandler",
+        "Eduardo Sandler",
+        "Mauricio Sandler",
+        "Jonathan Alcantara",
+      ];
+
+      if (user?.name && usuariosFijos[user.name] && !libres.includes(user.name)) {
         const depAsignado = usuariosFijos[user.name];
         if (!deps.find((d) => d.value === depAsignado)) {
           deps.push({ value: depAsignado, label: depAsignado });
@@ -155,6 +155,7 @@ function Muestras() {
     }
   };
 
+
   const handleMotivoChange = (event) => {
     setMotivo(event.target.value);
   };
@@ -164,8 +165,15 @@ function Muestras() {
     if (storedUser) {
       setUser(JSON.parse(storedUser));
     }
-    obtenerDepartamentos(); // 👈 ESTA LÍNEA FALTA
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      obtenerDepartamentos();
+    }
+  }, [user]);
+
+
 
   const manejarEnvio = (e) => {
     e.preventDefault();
@@ -968,15 +976,24 @@ function Muestras() {
   useEffect(() => {
     if (user?.name) {
       setNombre(user.name);
-      if (usuariosFijos[user.name] && user.name !== "Jonathan") {
-        const depOriginal = usuariosFijos[user.name]; // usar tal cual
-        setDepartamento(depOriginal); // 👈 sin normalizar
+
+      const libres = [
+        "Elias Sandler",
+        "Eduardo Sandler",
+        "Mauricio Sandler",
+        "Jonathan Alcantara",
+      ];
+
+      if (usuariosFijos[user.name] && !libres.includes(user.name)) {
+        const depOriginal = usuariosFijos[user.name];
+        setDepartamento(depOriginal);
         setDepartamentoBloqueado(true);
       } else {
         setDepartamentoBloqueado(false);
       }
     }
   }, [user]);
+
 
   const [ubicaciones, setUbicaciones] = useState([]);
 

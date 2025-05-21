@@ -29,12 +29,11 @@ import SummarizeIcon from "@mui/icons-material/Summarize";
 import AnalyticsIcon from "@mui/icons-material/Analytics";
 import CompareArrowsIcon from "@mui/icons-material/CompareArrows";
 import PersonPinCircleIcon from "@mui/icons-material/PersonPinCircle";
-import GarageIcon from '@mui/icons-material/Garage';
+import GarageIcon from "@mui/icons-material/Garage";
 import { AdminPanelSettings } from "@mui/icons-material";
-import PlaceIcon from '@mui/icons-material/Place';
-import MapIcon from '@mui/icons-material/Map';
-import NavigationIcon from '@mui/icons-material/Navigation';
-
+import PlaceIcon from "@mui/icons-material/Place";
+import MapIcon from "@mui/icons-material/Map";
+import NavigationIcon from "@mui/icons-material/Navigation";
 
 // Personalizando el Tooltip
 const CustomTooltip = styled(({ className, ...props }) => (
@@ -77,37 +76,63 @@ export const mainListItems = (user) => {
         "Audi",
         "Plan",
         "VENT",
+        "VENT3",
         "CON",
         "Vent",
         "VentAdmin",
-         "VENT",
-         "Tran","Rep","embspb", "Dep"
+        "VENT",
+        "Tran",
+        "Rep",
+        "embspb",
+        "Dep",
       ],
       path: "/dashboard/productos",
       icon: <HandymanIcon />,
       text: "Productos",
     },
     {
-      role: [  "Master", "Admin",  "INV"],
+      role: ["Master", "Admin", "INV"],
       path: "/dashboard/Catalogo",
       icon: <AodIcon />,
       text: "Catalogo",
     },
     {
-      role: ["Admin", "Nac", "Nac2","Imp", "Plan", "Master","VentAdmin", ],  // Ajusta los roles que deberían ver esta opción"
+      role: ["Admin", "Nac", "Nac2", "Imp", "Plan", "Master", "VentAdmin"], // Ajusta los roles que deberían ver esta opción"
       external: true,
       path: "http://192.168.3.27:3000/menu/estadisticos",
       icon: <AnalyticsIcon />,
       text: "SanPlan",
     },
     {
-      role: ["Admin", "Master", "Trans", "PQ1", "Control", "EB1", "Paquet", "Embar","Tran","Rep"],
+      role: [
+        "Admin",
+        "Master",
+        "Trans",
+        "PQ1",
+        "Control",
+        "EB1",
+        "Paquet",
+        "Embar",
+        "Tran",
+        "Rep",
+      ],
       path: "/dashboard/Trasporte",
       icon: <GarageIcon />,
       text: "Transporte",
     },
     {
-      role: ["Admin", "Master", "Trans", "Rep", "Vent","VentAdmin", "VENT","Tran","Audi"],
+      role: [
+        "Admin",
+        "Master",
+        "Trans",
+        "Rep",
+        "Vent",
+        "VentAdmin",
+        "VENT",
+        "VENT3",
+        "Tran",
+        "Audi",
+      ],
       path: "/dashboard/Tracking",
       icon: <PlaceIcon />,
       text: "Tracking",
@@ -125,13 +150,22 @@ export const mainListItems = (user) => {
       text: "Surtiendo",
     },
     {
-      role: ["Master", "Control", "Admin", "Master2"],
+      role: ["Master", "Control", "Admin", "Master2", "Paquet"],
       path: "/dashboard/kpi",
       icon: <AodIcon />,
       text: "kpi",
     },
     {
-      role: ["Control", "Admin", "Master", "Master2", "VENT", "VentAdmin", "INV"],
+      role: [
+        "Control",
+        "Admin",
+        "Master",
+        "Master2",
+        "VENT",
+        "VENT3",
+        "VentAdmin",
+        "INV",
+      ],
       path: "/dashboard/pedidos-surtido",
       icon: <ContentPasteIcon />,
       text: "Pedidos",
@@ -147,8 +181,9 @@ export const mainListItems = (user) => {
         "Master2",
         "Audi",
         "VENT",
+        "VENT3",
         "VentAdmin",
-        "INV"
+        "INV",
       ],
       path: "/dashboard/finalizados",
       icon: <PlaylistAddCheckIcon />,
@@ -205,7 +240,7 @@ export const mainListItems = (user) => {
       text: "Compras",
     },
     {
-      role: ["Admin", "Master", "Recibo", "INV", "VENT", "VentAdmin",],
+      role: ["Admin", "Master", "Recibo", "INV", "VENT", "VentAdmin", "VENT3"],
       path: "/dashboard/recibo",
       icon: <ReceiptLongIcon />,
       text: "Producto a Recibir ",
@@ -252,7 +287,7 @@ export const mainListItems = (user) => {
     //   text: "Inventario dia 0",
     // },
     {
-      role: ["Admin", "Master", "Master2","INV"],
+      role: ["Admin", "Master", "Master2", "INV", "Nac", "Mue", "Audi", "Nac2", "Ins"],
       path: "/dashboard/muestras",
       icon: <SummarizeIcon />,
       text: "Muestras",
@@ -276,31 +311,40 @@ export const mainListItems = (user) => {
       text: "RH",
     },
     {
-      role: ["Admin", "Master", "Master2"],
+      role: ["Admin", "Master", "Master2","VENT3"],
       path: "/dashboard/Queretaro",
       icon: <MapIcon />,
       text: "Proyectos",
     },
     {
-      role: ["Admin",'POLIA', 'POLIB', 'POLIP', 'POLIAR', 'CONTROL', 'RH', 'TRAFICO'],
+      role: [
+        "Admin",
+        "POLIA",
+        "POLIB",
+        "POLIP",
+        "POLIAR",
+        "CONTROL",
+        "RH",
+        "TRAFICO",
+      ],
       path: "/dashboard/visitas",
-      icon: <PersonPinCircleIcon/>,
+      icon: <PersonPinCircleIcon />,
       text: "Visitas",
     },
     {
-      role: ["Admin", 'CONTROL', 'RH'],
+      role: ["Admin", "CONTROL", "RH"],
       path: "/dashboard/visitas-reporte",
-      icon: <AdminPanelSettings/>,
+      icon: <AdminPanelSettings />,
       text: "Visitas Reporte",
     },
     {
-      role: ["Master", "Control", "Admin", "Master2",  "Paquet", "Embar",],
+      role: ["Master", "Control", "Admin", "Master2", "Paquet", "Embar"],
       path: "/dashboard/Plansurtido",
       icon: <AodIcon />,
       text: "Plan",
     },
     {
-      role: ["Master",  "Admin", "Master2"],
+      role: ["Master", "Admin", "Master2"],
       path: "/dashboard/Mapa",
       icon: <AodIcon />,
       text: "Mapa",
@@ -311,6 +355,7 @@ export const mainListItems = (user) => {
       icon: <NavigationIcon />,
       text: "COBERTURA",
     },
+<<<<<<< HEAD
     {
       role: ["Admin"],
       path: "/dashboard/RepoProb",
@@ -318,13 +363,15 @@ export const mainListItems = (user) => {
       text: "Reportar Problema",
     },
     
+=======
+>>>>>>> f7163f8c1dd5b8ee7da1f1906cc82ba7db0eddeb
   ];
 
   return (
     <React.Fragment>
       {items
         .filter((item) => item.role.includes(user.role))
-        .map((item, index) => (
+        .map((item, index) =>
           // <ListItemButton component={Link} to={item.path} key={index}>
           //   <CustomTooltip
           //     title={
@@ -375,8 +422,7 @@ export const mainListItems = (user) => {
               <ListItemText primary={item.text} />
             </ListItemButton>
           )
-          
-        ))}
+        )}
     </React.Fragment>
   );
 };

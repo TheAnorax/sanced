@@ -68,70 +68,57 @@ const getProyectoQueretaro = async (req, res) => {
   }
 };
 
-
-
 // Obtener datos filtrados por categoría, portafolio y segmento
 const getCategoryData = async (req, res) => {
-  const { giro, portafolio, segmento } = req.params;
+  let { giro, portafolio, segmento } = req.params;
 
   try {
     const tableName = mapGiroToTable(giro);
+    const segmentColumn = segmento.trim().toUpperCase(); // 🔥 limpieza robusta
 
-    // Determinar la columna del segmento
-    let segmentColumn = "";
-    if (segmento === "ORO") {
-      segmentColumn = "ORO";
-    } else if (segmento === "PLATA") {
-      segmentColumn = "PLATA";
-    } else if (segmento === "BRONCE") {
-      segmentColumn = "BRONCE";
-    } else {
+    if (!["ORO", "PLATA", "BRONCE"].includes(segmentColumn)) {
       return res.status(400).json({ message: "Segmento no válido" });
     }
 
-    // Primera consulta: Obtener productos base
+    // Solo productos que tienen "Aplica" en la columna correspondiente
     const query = `
-          SELECT Codigo, Descripcion, Categoria, ${segmentColumn} AS SegmentoPrecio
-          FROM savawms.${tableName}
-          WHERE Categoria = ?
-          AND ${segmentColumn} IS NOT NULL
-      `;
-
+      SELECT Codigo, Descripcion, Categoria, ${segmentColumn} AS SegmentoPrecio
+      FROM savawms.${tableName}
+      WHERE Categoria = ?
+      AND TRIM(UPPER(${segmentColumn})) = 'APLICA'
+    `;
     const [categoryRows] = await pool.query(query, [portafolio]);
 
-    // Si no hay productos base, retornar los resultados vacíos
     if (categoryRows.length === 0) {
-      return res.json({ data: categoryRows });
+      return res.json({ data: [] });
     }
 
-    // Extraer los códigos para la segunda consulta
     const codigos = categoryRows.map(row => row.Codigo);
 
-    // Segunda consulta: Obtener detalles de precios incluyendo `Precio_T`
     const queryPrices = `
-          SELECT Codigo, \`Inner\`, \`Master\`, \`TP\`, ${segmento} AS Precio, Precio_T
-          FROM savawms.precios
-          WHERE Codigo IN (?)
-      `;
-
+      SELECT Codigo, \`Inner\`, \`Master\`, \`TP\`, ${segmentColumn} AS Precio, Precio_T
+      FROM savawms.precios
+      WHERE Codigo IN (?)
+    `;
     const [priceRows] = await pool.query(queryPrices, [codigos]);
 
     const normalizeCode = (code) => code.toString().trim();
 
-    // Combinar resultados
     const combinedData = categoryRows.map(categoryItem => {
-      const priceItem = priceRows.find(price => normalizeCode(price.Codigo) === normalizeCode(categoryItem.Codigo));
+      const priceItem = priceRows.find(price =>
+        normalizeCode(price.Codigo) === normalizeCode(categoryItem.Codigo)
+      );
+
       return {
         ...categoryItem,
         Inner: priceItem ? priceItem.Inner : 'N/A',
         Master: priceItem ? priceItem.Master : 'N/A',
         TP: priceItem ? priceItem.TP : 'N/A',
         Precio: priceItem ? priceItem.Precio : 'N/A',
-        Precio_T: priceItem && priceItem.Precio_T !== '#N/D' ? priceItem.Precio_T : '0'  // Reemplaza #N/D por 0
+        Precio_T: priceItem && priceItem.Precio_T !== '#N/D' ? priceItem.Precio_T : '0'
       };
     });
 
-    // Enviar los datos combinados al cliente
     res.json({ data: combinedData });
   } catch (error) {
     console.error("Error al obtener los datos de la tabla:", error.message);
@@ -139,21 +126,22 @@ const getCategoryData = async (req, res) => {
   }
 };
 
+
 // Mapeo de giros a tablas específicas
 const mapGiroToTable = (giro) => {
   switch (giro.toLowerCase()) {
-    case 'ferretería': return 'Ferreteria';
+    case 'ferreteria': return 'ferreteria';
     case 'papelería': return 'Papelería';
-    case 'mecánica': return 'Mecanica';
+    case 'mecanica': return 'mecanica';
     case 'herrería': return 'Herreria';
     case 'cerrajería': return 'Cerrajería';
-    case 'vidrio y aluminio': return 'Vidrio_y_Aluminio';
+    case 'vidrio y aluminio': return 'vidrio_y_aluminio';
     case 'plomería': return 'Plomería';
     case 'construcción': return 'Construcción';
     case 'pintura': return 'Pintura';
     case 'eléctricoiluminación': return 'EléctricoIluminación';
     case 'construcción ligera': return 'ConstrucciónLigera';
-    default: return 'Ferreteria'; // Tabla por defecto
+    default: return 'ferreteria'; // Tabla por defecto
   }
 };
 
@@ -187,6 +175,31 @@ const getFilteredProyectoQueretaro = async (req, res) => {
   }
 };
 
+const updateOrdenVisita = async (req, res) => {
+  const { orden } = req.body;
+
+  if (!Array.isArray(orden)) {
+    return res.status(400).json({ message: 'Formato de datos incorrecto' });
+  }
+
+  try {
+    const promises = orden.map((id, index) => {
+      return pool.query(
+        'UPDATE proyectoqueretaro SET orden_visita = ? WHERE id = ?',
+        [index + 1, id] // empezamos desde 1
+      );
+    });
+
+    await Promise.all(promises);
+
+    res.json({ message: 'Orden actualizado correctamente' });
+  } catch (error) {
+    console.error('Error al actualizar el orden:', error.message);
+    res.status(500).json({ message: 'Error al actualizar el orden', error: error.message });
+  }
+};
 
 
-module.exports = { getProyectoQueretaro, getCategoryData, getFilteredProyectoQueretaro };
+
+
+module.exports = { getProyectoQueretaro, getCategoryData, getFilteredProyectoQueretaro, updateOrdenVisita };

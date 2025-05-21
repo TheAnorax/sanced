@@ -1,19 +1,8 @@
 import logo from "./logob.png";
 
-export const pdfTemplate = (solicitud) => {
-  const {
-    nombre,
-    departamento,
-    motivo,
-    regresaArticulo,
-    requiereEnvio,
-    detalleEnvio,
-    carrito,
-    folio,
-    fecha,
-    autorizado_por,
-    salida_por,
-  } = solicitud;
+export const pdfUbicacionesTemplate = (solicitud) => {
+  const { nombre, departamento, motivo, detalleEnvio, carrito, folio, fecha } =
+    solicitud;
 
   const fechaFormateada = fecha
     ? new Date(fecha).toLocaleDateString("es-MX", {
@@ -34,8 +23,8 @@ export const pdfTemplate = (solicitud) => {
                     box-sizing: border-box;
                 }
                 .container {
-                    margin: 20px; /* Este margen aleja todo el contenido del borde */
-                    border: 5px solid black; /* Borde alrededor de la página */
+                    margin: 20px;
+                    border: 5px solid black;
                 }
                 .header {
                     display: flex;
@@ -78,44 +67,13 @@ export const pdfTemplate = (solicitud) => {
                     background-color: #f0f0f0;
                     font-size: 14px;
                 }
-                .footer {
-                    margin-top: 500px;
-                    text-align: center;
-                    margin-bottom: 50px;
-                }
-                .footer .signatures {
-                    display: flex;
-                    justify-content: space-evenly; /* Distribute the signatures evenly */
-                    width: 100%;
-                    align-items: center; /* Ensure items are aligned */
-                }
-                .footer div {
-                    text-align: center;
-                    margin: 0 20px;
-                }
-                .footer img {
-                    width: 80px;
-                    height: auto;
-                    display: block;
-                    margin: 0 auto;
-                }
-                .signature-line {
-                    border-top: 1px solid black;
-                    font-size: 12px;
-                    text-align: center;
-                    margin-top: 5px;
-                }
-                .footer div p {
-                    font-size: 12px;
-                    margin-top: 5px;
-                }
             </style>
         </head>
         <body>
             <div class="container">
                 <div class="header">
                     <img src="${logo}" alt="Logo" />
-                    <div class="title">BAJA DE ALMACÉN</div>
+                    <div class="title">UBICACIONES DE PRODUCTOS</div>
                     <div class="folio">Folio: ${folio}</div>
                 </div>
 
@@ -123,27 +81,12 @@ export const pdfTemplate = (solicitud) => {
                     <div class="details">
                         <div>
                             <p><strong>Solicitante:</strong> ${nombre}</p>
-                            ${
-                              autorizado_por
-                                ? `<p><strong>Autorizado por:</strong> ${autorizado_por}</p>`
-                                : ""
-                            }
-                            ${
-                              salida_por
-                                ? `<p><strong>Autorizó salida:</strong> ${salida_por}</p>`
-                                : ""
-                            }
                             <p><strong>Departamento:</strong> ${departamento}</p>
-                            ${
-                              regresaArticulo
-                                ? `<p><strong>Fecha de devolución:</strong> ${fechaFormateada}</p>`
-                                : ""
-                            }
+                            <p><strong>Fecha de solicitud:</strong> ${fechaFormateada}</p>
                         </div>
                         <div>
-                        <p><strong>Motivo de la solicitud:</strong> ${motivo}</p>
-                            <p><strong>Fecha de solicitud:</strong> ${new Date().toLocaleDateString()}</p>
-                            <p><strong>Informacion de entrega o de Envio:</strong> ${
+                            <p><strong>Motivo:</strong> ${motivo}</p>
+                            <p><strong>Información de entrega:</strong> ${
                               detalleEnvio || "N/A"
                             }</p>
                         </div>
@@ -154,21 +97,20 @@ export const pdfTemplate = (solicitud) => {
                             <tr>
                                 <th>Código</th>
                                 <th>Descripción</th>
-                                <th>Cantidad Solicitada</th>
-                                <th>Cantidad Surtida</th>
+                                <th>Cantidad</th>
+                                <th>Ubicación</th>
                             </tr>
-
                         </thead>
                         <tbody>
                             ${carrito
                               .map(
-                                (item) => `  
-                            <tr>
-                                <td>${item.codigo} (${item.um || "N/A"})</td>
-                                <td>${item.descripcion}</td>
-                                <td>${item.cantidad}</td>
-                                <td>${item.cantidad_surtida ?? 0}</td>   
-                            </tr>
+                                (item) => `
+                                <tr>
+                                    <td>${item.codigo}</td>
+                                    <td>${item.descripcion}</td>
+                                    <td>${item.cantidad}</td>
+                                    <td>${item.ubicacion || "N/A"}</td>
+                                </tr>
                             `
                               )
                               .join("")}

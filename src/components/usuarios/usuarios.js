@@ -827,7 +827,8 @@
                           </TableCell>
                           <TableCell>
                             {(user?.role === "Master" ||
-                              user?.role === "Admin") && (
+                              user?.role === "Admin"   ||
+                              user?.role === "Control") && (
                               <Button
                                 variant="contained"
                                 color="primary"

@@ -280,7 +280,7 @@ const updateBahias = async (req, res) => {
       if (bahia.includes("Pasillo-")) continue;
     
       await pool.query(
-        'UPDATE bahias SET estado = ?, id_pdi = ? WHERE bahia = ?',
+        'UPDATE bahias SET estado = ?, id_pdi = ?, ingreso = NOW() WHERE bahia = ?',
         ['1', pedidoId, bahia]
       );
     }
@@ -337,8 +337,8 @@ const updateBahiasfinalizado = async (req, res) => {
       if (bahia.includes("Pasillo-")) continue;
     
       await pool.query(
-        'UPDATE bahias SET estado = ?, id_pdi = ? WHERE bahia = ?',
-        ['1', pedidoId, bahia]
+        'UPDATE bahias SET estado = ?, id_pdi = ?, ingreso = NOW() WHERE bahia = ?',
+        ['4', pedidoId, bahia]
       );
     }
     
@@ -381,6 +381,8 @@ SELECT * FROM (
                        p.cant_surti, 
                        p.inicio_surtido, 
                        p.fin_surtido, 
+                       p.ubi_bahia,
+                       p.tipo,
                        us.name AS usuario_nombre,
                        us.role AS usuario_role,
                        us.turno AS usuario_turno
@@ -398,6 +400,8 @@ SELECT * FROM (
                        e.cant_surti, 
                        e.inicio_surtido, 
                        e.fin_surtido, 
+                       e.ubi_bahia,
+                       e.tipo,
                        us.name AS usuario_nombre,
                        us.role AS usuario_role,
                        us.turno AS usuario_turno
@@ -414,7 +418,9 @@ SELECT * FROM (
                        f.cantidad, 
                        f.cant_surti, 
                        f.inicio_surtido, 
-                       f.fin_surtido, 
+                       f.fin_surtido,                        
+                       f.ubi_bahia,
+                       f.tipo,
                        us.name AS usuario_nombre,
                        us.role AS usuario_role,
                        us.turno AS usuario_turno

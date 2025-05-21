@@ -120,7 +120,7 @@ const getProgresoValidacionEmbarque = async (req, res) => {
     });
   }
 };
-
+// src/controllers/productividad.js
 const getProductividadEmbarcadores = async (req, res) => {
   try {
     const [rows] = await pool.query(`
@@ -146,7 +146,7 @@ const getProductividadEmbarcadores = async (req, res) => {
           FROM pedido_embarque p
           WHERE p.estado = 'F'
             AND p.id_usuario_paqueteria IS NOT NULL
-            AND DATE(p.inicio_embarque) = CURDATE()
+            AND p.inicio_embarque BETWEEN CONCAT(CURDATE() - INTERVAL 1 DAY, ' 21:30:00') AND NOW()
 
           UNION ALL
 
@@ -162,15 +162,13 @@ const getProductividadEmbarcadores = async (req, res) => {
           FROM pedido_finalizado pf
           WHERE pf.estado = 'F'
             AND pf.id_usuario_paqueteria IS NOT NULL
-            AND DATE(pf.inicio_embarque) = CURDATE()
+            AND pf.inicio_embarque BETWEEN CONCAT(CURDATE() - INTERVAL 1 DAY, ' 21:30:00') AND NOW()
         ) AS combined
       LEFT JOIN 
         usuarios us ON combined.id_usuario_paqueteria = us.id_usu
       GROUP BY 
         us.name, us.role;
     `);
-
-   // console.log("Filas obtenidas de la base de datos:", rows);
 
     const filteredRows = rows.filter(
       (row) => row.role && row.role.includes("EB")
@@ -179,14 +177,14 @@ const getProductividadEmbarcadores = async (req, res) => {
     res.json(filteredRows);
   } catch (error) {
     console.error("Error al obtener la productividad de embarcadores:", error);
-    res
-      .status(500)
-      .json({
-        message: "Error al obtener la productividad de embarcadores",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Error al obtener la productividad de embarcadores",
+      error: error.message,
+    });
   }
 };
+
+
 
 const resetUsuarioEmbarque = async (req, res) => {
   try {

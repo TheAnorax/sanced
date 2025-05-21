@@ -172,6 +172,8 @@ const getTitle = (pathname) => {
       return "Catalogo";
     case "/dashboard/COBERTURA":
       return "Cobertura";
+    case "/dashboard/RepoProb":
+      return "RepoProb";
     default:
       return "Dashboard";
   }

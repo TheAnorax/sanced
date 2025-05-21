@@ -311,7 +311,12 @@ export const mainListItems = (user) => {
       icon: <NavigationIcon />,
       text: "COBERTURA",
     },
-    
+    {
+      role: ["Admin"],
+      path: "/dashboard/RepoProb",
+      icon: <ManageSearchIcon />,
+      text: "Reportar Problema",
+    },
     
   ];
 

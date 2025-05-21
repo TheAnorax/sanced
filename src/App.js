@@ -40,6 +40,7 @@ import Plansurtido from './components/Transporte/plan';
 import Mapa from './components/reporte/mapa';
 import Catalogo from './components/productos/catalogo';
 import COBERTURA from './components/COBERTURA/COBERTURA';
+import RepoProb from './components/Repo_Prob/Repo_Prob';
 
 function App() {
   return (        
@@ -83,7 +84,7 @@ function App() {
             <Route path="Mapa" element={<ProtectedRoute><Mapa /></ProtectedRoute>} />
             <Route path="Catalogo" element={<ProtectedRoute><Catalogo /></ProtectedRoute>} />
             <Route path="COBERTURA" element={<ProtectedRoute><COBERTURA /></ProtectedRoute>} />
-
+            <Route path="RepoProb" element={<ProtectedRoute><RepoProb /></ProtectedRoute>} />
           </Route>
         </Routes>
       </Router>

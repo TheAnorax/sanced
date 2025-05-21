@@ -33,6 +33,7 @@ const KPi = require('./src/routes/reporteRoutes')
 const Tracking = require('./src/routes/ventasRoutes')
 const COBERTURA = require('./src/routes/coberturaRoutes')
 const planeacion = require('./src/routes/pleneacionRoutes')
+const repo_prob = require('./src/routes/repo_prob_routes')
 
 const app = express();
 const port = 3007;
@@ -75,7 +76,7 @@ app.use('/api/kpi', KPi)
 app.use('/api/Ventas', Tracking)
 app.use('/api/cobertura', COBERTURA)
 app.use('/api/planeacion', planeacion)
-
+app.use('/api/repo_prob', repo_prob)
 
 app.listen(port, () => {
   console.log(`Server is running on http://66.232.105.87:${port}`);

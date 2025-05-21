@@ -11,10 +11,15 @@ const actualizarCantidadSurtida = async (req, res) => {
     cantumsurt: cant_des,
     pedido,
     um,
-    usuarioS
+    usuarioS,
+    origen 
   } = req.body;
 
-  const cant_surti_um = 1;
+  const cant_surti_um = origen === 'offline' ? nuevaCantidadSurtida : 1;
+
+  const totalUnidades = origen === 'offline'
+  ? nuevaCantidadSurtida * cant_des
+  : cant_des;
 
   const updateQueries = {
     PZ: "UPDATE pedido_surtido SET _pz = _pz + ? WHERE pedido = ? AND id_pedi = ?;",
@@ -66,7 +71,7 @@ const actualizarCantidadSurtida = async (req, res) => {
     }
 
     // 🔄 Actualizar pedido_surtido primero
-    const [resultPedido] = await connection.query(updatePedidoQuery, [cant_des, usuarioS, pedidoId, id_pedi]);
+    const [resultPedido] = await connection.query(updatePedidoQuery, [totalUnidades, usuarioS, pedidoId, id_pedi]);
 
     if (resultPedido.affectedRows > 0) {
       await connection.query(updateUmQuery, [cant_surti_um, pedidoId, id_pedi]);
@@ -101,14 +106,14 @@ const actualizarCantidadSurtida = async (req, res) => {
 
     const { id_ubi, cant_stock_real, ubi, almacen } = ubicaciones[0];
 
-    if (cant_stock_real < cant_des) {
-      throw new Error(`Stock insuficiente en la mejor ubicación (${ubi}). Disponible: ${cant_stock_real}, Intentando descontar: ${cant_des}`);
+    if (cant_stock_real < totalUnidades) {
+      throw new Error(`Stock insuficiente en la mejor ubicación (${ubi}). Disponible: ${cant_stock_real}, Intentando descontar: ${totalUnidades}`);
     }
 
     // 🔄 Descontar stock en la ubicación seleccionada
     const [updateStock] = await connection.query(
       "UPDATE ubicaciones SET cant_stock_real = cant_stock_real - ? WHERE id_ubi = ?",
-      [cant_des, id_ubi]
+      [totalUnidades, id_ubi]
     );
 
     if (updateStock.affectedRows === 0) {
@@ -120,7 +125,7 @@ const actualizarCantidadSurtida = async (req, res) => {
       `INSERT INTO historial_surtido 
          (ubi_origen, ubi_destino, code_prod, cant_stock, lote, almacen_origen, almacen_destino, fecha_movimiento, usuario) 
         VALUES (?, ?, ?, ?, NULL, ?, ?, NOW(), ?)`,
-       ["Picking", "PedidoSurtido", codigo_ped, cant_des, "Almacén", pedido, usuarioS]
+       ["Picking", "PedidoSurtido", codigo_ped, totalUnidades, "Almacén", pedido, usuarioS]
      );
 
     await connection.commit();  // ✅ Confirmar cambios en ubicaciones

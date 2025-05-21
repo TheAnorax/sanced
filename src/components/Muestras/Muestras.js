@@ -29,9 +29,11 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  Tooltip
+  Tooltip,
 } from "@mui/material";
+
 import { pdfTemplate } from "./pdfTemplate";
+import { pdfUbicacionesTemplate } from "./pdfUbicacionesTemplate";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import VisibilityIcon from "@mui/icons-material/Visibility";
@@ -77,6 +79,7 @@ function Muestras() {
 
   const [solicitudModalFolio, setSolicitudModalFolio] = useState(null);
   const [solicitudSeleccionada, setSolicitudSeleccionada] = useState(null);
+  const [enviandoSolicitud, setEnviandoSolicitud] = useState(false);
 
   let timeoutId = useRef(null);
 
@@ -104,14 +107,13 @@ function Muestras() {
         const response = await axios.get(
           `http://66.232.105.87:3007/api/muestras/ubicaciones/${productos[0].codigo}`
         );
-        setUbicaciones(response.data.map(u => u.ubicacion));
+        setUbicaciones(response.data.map((u) => u.ubicacion));
       } catch (error) {
         console.error("Error al obtener ubicaciones:", error);
         setUbicaciones([]);
       }
     }
   };
-
 
   const [reabrirModal, setReabrirModal] = useState(false);
 
@@ -123,7 +125,9 @@ function Muestras() {
 
   const obtenerDepartamentos = async () => {
     try {
-      const response = await axios.get("http://66.232.105.87:3007/api/muestras/departamentos");
+      const response = await axios.get(
+        "http://66.232.105.87:3007/api/muestras/departamentos"
+      );
 
       let deps = response.data.map((d) => {
         const valueNormalizado = d.value.trim(); // ✅ CAMBIO AQUÍ
@@ -142,7 +146,11 @@ function Muestras() {
         "Jonathan Alcantara",
       ];
 
-      if (user?.name && usuariosFijos[user.name] && !libres.includes(user.name)) {
+      if (
+        user?.name &&
+        usuariosFijos[user.name] &&
+        !libres.includes(user.name)
+      ) {
         const depAsignado = usuariosFijos[user.name];
         if (!deps.find((d) => d.value === depAsignado)) {
           deps.push({ value: depAsignado, label: depAsignado });
@@ -154,7 +162,6 @@ function Muestras() {
       console.error("Error al obtener departamentos:", error);
     }
   };
-
 
   const handleMotivoChange = (event) => {
     setMotivo(event.target.value);
@@ -173,7 +180,7 @@ function Muestras() {
     }
   }, [user]);
 
-
+  const [indiceSolicitudActiva, setIndiceSolicitudActiva] = useState(null);
 
   const manejarEnvio = (e) => {
     e.preventDefault();
@@ -184,7 +191,6 @@ function Muestras() {
       return;
     }
 
-    // Si el uso no es "Laboratorio/Certificacion", se toma como motivo directamente
     const motivoFinal = uso === "Laboratorio/Certificacion" ? motivo : uso;
 
     const nuevaSolicitud = {
@@ -198,14 +204,25 @@ function Muestras() {
       regresaArticulo,
       fecha: regresaArticulo ? fecha : null,
       requiereEnvio: regresaArticulo ? requiereEnvio : false,
-      detalleEnvio: detalleEnvio || "", // ✅ aquí el cambio
-      carrito: [],
+      detalleEnvio: detalleEnvio || "",
+      carrito: solicitudes[indiceSolicitudActiva]?.carrito || [], // ✅ recupera si ya existe
       autorizado: false,
       enviadoParaAutorizar: false,
     };
 
-    // ⛔ Ya no guardes en backend aquí
-    setSolicitudes((prev) => [...prev, nuevaSolicitud]);
+    let nuevasSolicitudes;
+
+    if (indiceSolicitudActiva !== null) {
+      // ✅ Actualiza la solicitud activa
+      nuevasSolicitudes = [...solicitudes];
+      nuevasSolicitudes[indiceSolicitudActiva] = nuevaSolicitud;
+    } else {
+      // 🔄 Si es nueva
+      nuevasSolicitudes = [...solicitudes, nuevaSolicitud];
+      setIndiceSolicitudActiva(nuevasSolicitudes.length - 1);
+    }
+
+    setSolicitudes(nuevasSolicitudes);
     setVista("carrito");
   };
 
@@ -258,6 +275,7 @@ function Muestras() {
       imagen: `../assets/image/img_pz/${producto.codigo}.jpg`,
       cantidad,
       ubi: String(totalPiezas),
+      um: producto.um || "", // ✅ Aquí se agrega
     };
 
     const lastSolicitudIndex = solicitudes.length - 1;
@@ -375,37 +393,14 @@ function Muestras() {
 
   const solicitudesAutorizadasFiltradas = solicitudesAutorizadas;
 
-  const generarPDF = async (solicitud) => {
-    const htmlString = pdfTemplate(solicitud);
-
-    const iframe = document.createElement("iframe");
-    document.body.appendChild(iframe);
-    iframe.style.width = "210mm";
-    iframe.style.height = "297mm";
-    iframe.contentDocument.open();
-    iframe.contentDocument.write(htmlString);
-    iframe.contentDocument.close();
-
-    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-    const iframeBody = iframeDoc.body;
-
-    const canvas = await html2canvas(iframeBody, { scale: 2 });
-    const imgData = canvas.toDataURL("image/png");
-
-    const pdf = new jsPDF("p", "mm", "a4");
-    const imgProps = pdf.getImageProperties(imgData);
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-    pdf.save(`Solicitud_${solicitud.folio}.pdf`);
-
-    document.body.removeChild(iframe);
-  };
-
   const enviarAAutorizar = async () => {
+    if (enviandoSolicitud) return; // ⛔ evita doble clic
+    setEnviandoSolicitud(true); // 🔒 bloquea el botón
+
     if (solicitudes.length === 0) {
       setAlerta(true);
       setAlertaMessage("No hay solicitudes para enviar a autorizar.");
+      setEnviandoSolicitud(false); // 🔓 desbloquea si hay error
       return;
     }
 
@@ -420,11 +415,13 @@ function Muestras() {
           "http://66.232.105.87:3007/api/muestras/solicitudes",
           lastSolicitud
         );
+
         setSolicitudes((prev) => {
           const copia = [...prev];
           copia[lastSolicitudIndex] = lastSolicitud;
           return copia;
         });
+
         setCurrentTab(1);
       } catch (error) {
         console.error("❌ Error al enviar a autorizar:", error);
@@ -432,6 +429,8 @@ function Muestras() {
         setAlertaMessage("Error al enviar solicitud.");
       }
     }
+
+    setEnviandoSolicitud(false); // 🔓 desbloquea al final
   };
 
   const guardarSolicitudes = async (arr) => {
@@ -451,7 +450,10 @@ function Muestras() {
   const guardarAutorizadas = async (arr) => {
     setSolicitudesAutorizadas(arr);
     try {
-      await axios.post("http://66.232.105.87:3007/api/muestras/solicitudes", arr);
+      await axios.post(
+        "http://66.232.105.87:3007/api/muestras/solicitudes",
+        arr
+      );
     } catch (error) {
       console.error("Error al guardar autorizadas:", error);
       setAlerta(true);
@@ -673,7 +675,10 @@ function Muestras() {
         })),
       };
 
-      await axios.post("http://66.232.105.87:3007/api/muestras/surtido", payload);
+      await axios.post(
+        "http://66.232.105.87:3007/api/muestras/surtido",
+        payload
+      );
 
       setModalSurtidoOpen(false);
       setTimeout(() => {
@@ -697,9 +702,6 @@ function Muestras() {
     });
   };
 
-
-
-
   const registrarSalida = async (folio) => {
     try {
       const solicitud = solicitudesAutorizadas.find((s) => s.folio === folio);
@@ -721,11 +723,18 @@ function Muestras() {
 
         if (!confirmar.isConfirmed) return;
 
-        await axios.patch(`http://66.232.105.87:3007/api/muestras/embarque/${folio}`, {
-          fin_embarcado_por: user.name,
-        });
+        await axios.patch(
+          `http://66.232.105.87:3007/api/muestras/embarque/${folio}`,
+          {
+            fin_embarcado_por: user.name,
+          }
+        );
 
-        Swal.fire("✅ Listo", "Fin de embarque registrado correctamente", "success");
+        Swal.fire(
+          "✅ Listo",
+          "Fin de embarque registrado correctamente",
+          "success"
+        );
         await obtenerSolicitudesAutorizadas();
         return; // ⛔ Ya no hace más, espera segundo clic para registrar salida
       }
@@ -742,9 +751,12 @@ function Muestras() {
 
       if (!confirmarSalida.isConfirmed) return;
 
-      await axios.patch(`http://66.232.105.87:3007/api/muestras/salida/${folio}`, {
-        salida_por: user.name,
-      });
+      await axios.patch(
+        `http://66.232.105.87:3007/api/muestras/salida/${folio}`,
+        {
+          salida_por: user.name,
+        }
+      );
 
       Swal.fire("✅ Listo", "Salida registrada correctamente", "success");
       await obtenerSolicitudesAutorizadas();
@@ -753,11 +765,6 @@ function Muestras() {
       Swal.fire("Error", "No se pudo completar el proceso", "error");
     }
   };
-
-
-
-
-
 
   //configuracion de los departamentos
 
@@ -956,16 +963,21 @@ function Muestras() {
     "Luis Angel Flores Barbosa": "Calidad",
     "Axel Squivias Sanchez": "Compras",
     "Marleni Moreno": "Compras",
-    "Katia Daniela Martinez Mora": "Departamental",
-    "Miriam Zayanni Meneses Tecomulapa": "Departamental",
+    "Nadia Cano": "Compras",
+    "Rocio Mancilla": "Compras",
+    "Abraham arenas": "Compras",
+    "Ariel Ramírez": "Compras",
+    "Daniela Mondragón": "Compras",
+    "Katia Daniela Martinez Mo": "Departamental",
+    "Miriam Zayanni Meneses Te": "Departamental",
     "Montserrat Roa Nava": "Departamental",
     "Jorge Mario Vallejo Pérez": "Departamental",
-    "Francisco Javier Pineda Basurto": "Diseño",
-    "Brenda Zuleyma Velazquez Tapia": "Mercadotecnia",
+    "Francisco Javier Pineda B": "DISEÑO",
+    "Brenda Zuleyma Velazquez": "Mercadotecnia",
     "Adriana Miron Cortes": "Planta",
-    "Mariana Lucero Ramirez Medina": "Recursos Humanos",
-    "Michel Escobar Jimenez": "E-commerce",
-    "Sergio Regalado Alvarez": "Taller POP",
+    "Mariana Lucero Ramirez Me": "Recursos Humanos",
+    "Michel Escobar Jimenez": "E-COMMERCE",
+    "Sergio Regalado Alvarez": "TALLER POP",
     "Enrrique Saavedra": "Cedis",
     "Elias Sandler": "Direccion",
     "Eduardo Sandler": "Direccion",
@@ -994,7 +1006,6 @@ function Muestras() {
     }
   }, [user]);
 
-
   const [ubicaciones, setUbicaciones] = useState([]);
 
   const [ubicacionesPorCodigo, setUbicacionesPorCodigo] = useState({});
@@ -1007,9 +1018,14 @@ function Muestras() {
 
     for (const item of solicitud.carrito) {
       try {
-        const res = await axios.get(`http://66.232.105.87:3007/api/muestras/ubicaciones/${item.codigo}`);
-        const ubicaciones = res.data.map(u => u.ubi);
-        ubicacionesTemp[item.codigo] = ubicaciones.length > 0 ? ubicaciones : ["No hay ubicaciones registradas"];
+        const res = await axios.get(
+          `http://66.232.105.87:3007/api/muestras/ubicaciones/${item.codigo}`
+        );
+        const ubicaciones = res.data.map((u) => u.ubi);
+        ubicacionesTemp[item.codigo] =
+          ubicaciones.length > 0
+            ? ubicaciones
+            : ["No hay ubicaciones registradas"];
       } catch (error) {
         console.error(`Error ubicaciones para ${item.codigo}`, error);
         ubicacionesTemp[item.codigo] = ["Error al cargar ubicaciones"];
@@ -1019,7 +1035,82 @@ function Muestras() {
     setUbicacionesPorCodigo(ubicacionesTemp);
   };
 
+  const [departamentoFiltrado, setDepartamentoFiltrado] = useState("");
 
+  const handleGenerarPDF = async (solicitud) => {
+    const pdfCount = parseInt(solicitud.pdf_generado || 0);
+
+    if (pdfCount >= 2) {
+      alert(
+        "Ya se generaron los dos documentos permitidos para esta solicitud."
+      );
+      return;
+    }
+
+    const generar = async (html, nombreArchivo) => {
+      const iframe = document.createElement("iframe");
+      document.body.appendChild(iframe);
+      iframe.style.width = "210mm";
+      iframe.style.height = "297mm";
+      iframe.contentDocument.open();
+      iframe.contentDocument.write(html);
+      iframe.contentDocument.close();
+
+      const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+      const iframeBody = iframeDoc.body;
+      const canvas = await html2canvas(iframeBody, { scale: 2 });
+
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+      pdf.save(nombreArchivo);
+
+      document.body.removeChild(iframe);
+    };
+
+    try {
+      if (pdfCount === 0) {
+        // 🟡 PRIMER PDF – UBICACIONES
+        const carritoConUbicaciones = await Promise.all(
+          solicitud.carrito.map(async (item) => {
+            try {
+              const res = await axios.get(
+                `http://66.232.105.87:3007/api/muestras/ubicaciones/${item.codigo}`
+              );
+              const ubicaciones = res.data.map((u) => u.ubi).join(" | ");
+              return { ...item, ubicacion: ubicaciones || "N/A" };
+            } catch (err) {
+              console.error("Error al obtener ubicación:", item.codigo, err);
+              return { ...item, ubicacion: "Error" };
+            }
+          })
+        );
+
+        const solicitudConUbicaciones = {
+          ...solicitud,
+          carrito: carritoConUbicaciones,
+        };
+
+        const html = pdfUbicacionesTemplate(solicitudConUbicaciones);
+        await generar(html, `Ubicaciones_${solicitud.folio}.pdf`);
+      } else if (pdfCount === 1) {
+        // 🔵 SEGUNDO PDF – FINAL
+        const html = pdfTemplate(solicitud);
+        await generar(html, `Solicitud_${solicitud.folio}.pdf`);
+      }
+
+      // 🔄 Actualiza contador
+      await axios.put(
+        `http://66.232.105.87:3007/api/muestras/contador-pdf/${solicitud.folio}`
+      );
+      await obtenerSolicitudesAutorizadas();
+    } catch (error) {
+      console.error("❌ Error al generar PDF:", error);
+      alert("Error al generar el PDF.");
+    }
+  };
 
   return (
     <Container component="main" maxWidth="lg">
@@ -1030,7 +1121,12 @@ function Muestras() {
           disabled={
             user?.role !== "Admin" &&
             user?.role !== "INV" &&
-            user?.role !== "Master"
+            user?.role !== "Master" &&
+            user?.role !== "Mue" &&
+            user?.role !== "Audi" &&
+            user?.role !== "Nac2" &&
+            user?.role !== "Ins" &&
+            user?.role !== "Nac"
           }
         />
         {/* Solo Admin y Master pueden ver "Autorizar" */}
@@ -1044,7 +1140,12 @@ function Muestras() {
           disabled={
             user?.role !== "Admin" &&
             user?.role !== "INV" &&
-            user?.role !== "Master"
+            user?.role !== "Master" &&
+            user?.role !== "Mue" &&
+            user?.role !== "Audi" &&
+            user?.role !== "Nac2" &&
+            user?.role !== "Ins" &&
+            user?.role !== "Nac"
           }
         />
       </Tabs>
@@ -1146,6 +1247,7 @@ function Muestras() {
                               </Select>
                             </FormControl>
                           </Grid>
+                          <br></br>
 
                           <Grid item xs={12}>
                             <FormControl fullWidth required>
@@ -1162,6 +1264,7 @@ function Muestras() {
                               </Select>
                             </FormControl>
                           </Grid>
+                          <br></br>
                         </>
                       )}
                     </Grid>
@@ -1253,6 +1356,30 @@ function Muestras() {
                 <Typography variant="h5" align="center" gutterBottom>
                   Carrito de Solicitudes
                 </Typography>
+
+                <Button
+                  variant="outlined"
+                  color="secondary"
+                  onClick={() => {
+                    const sol = solicitudes[indiceSolicitudActiva];
+                    if (sol) {
+                      setUso(sol.uso);
+                      setMotivo(sol.motivo);
+                      setDepartamento(sol.departamento);
+                      setDetalleEnvio(sol.detalleEnvio || "");
+                      setRegresaArticulo(sol.regresaArticulo || false);
+                      setFecha(sol.fecha || "");
+                      setRequiereEnvio(sol.requiereEnvio || false);
+                      setLaboratorio(sol.laboratorio || "");
+                      setOrganismo(sol.organismo_certificador || "");
+                    }
+                    setVista("formulario");
+                  }}
+                  style={{ marginBottom: "16px" }}
+                >
+                  ← Regresar al formulario
+                </Button>
+
                 <Grid container spacing={2}>
                   <Grid item xs={12}>
                     <TextField
@@ -1441,8 +1568,11 @@ function Muestras() {
                         variant="contained"
                         color="primary"
                         onClick={enviarAAutorizar}
+                        disabled={enviandoSolicitud}
                       >
-                        Enviar a Autorizar
+                        {enviandoSolicitud
+                          ? "Enviando..."
+                          : "Enviar a Autorizar"}
                       </Button>
                     </TableContainer>
                   </>
@@ -1463,109 +1593,109 @@ function Muestras() {
                 (s.enviadoParaAutorizar || s.enviado_para_autorizar === 1) &&
                 s.autorizado !== 2 // ⛔ ocultar canceladas
             ).length === 0 && (
-                <Typography>No hay solicitudes para autorizar.</Typography>
-              )}
+              <Typography>No hay solicitudes para autorizar.</Typography>
+            )}
 
             {solicitudes.filter(
               (s) =>
                 (s.enviadoParaAutorizar || s.enviado_para_autorizar === 1) &&
                 s.autorizado !== 2 // ⛔ ocultar canceladas
             ).length > 0 && (
-                <TableContainer component={Paper} style={{ marginTop: "20px" }}>
-                  <Table>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Folio</TableCell>
-                        <TableCell>Nombre</TableCell>
-                        <TableCell>Departamento</TableCell>
-                        <TableCell>Motivo</TableCell>
-                        <TableCell>Fecha Devolución</TableCell>
-                        <TableCell>Informacion de entrega o de Envio</TableCell>
-                        <TableCell>Artículos</TableCell>
-                        <TableCell>Autorizado</TableCell>
-                        <TableCell>Acciones</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {solicitudes
-                        .filter(
-                          (s) =>
-                            s.enviadoParaAutorizar ||
-                            s.enviado_para_autorizar === 1
-                        )
-                        .map((sol) => (
-                          <TableRow key={sol.folio}>
-                            <TableCell>{sol.folio}</TableCell>
-                            <TableCell>{sol.nombre}</TableCell>
-                            <TableCell>{sol.departamento}</TableCell>
-                            <TableCell>{sol.motivo}</TableCell>
-                            <TableCell>
-                              {sol.fecha
-                                ? new Date(sol.fecha).toLocaleDateString("es-MX")
-                                : "N/A"}
-                            </TableCell>
-                            <TableCell>{sol.detalle_envio || "N/A"}</TableCell>
-                            <TableCell>{sol.carrito?.length || 0}</TableCell>
-                            <TableCell>{sol.autorizado ? "Sí" : "No"}</TableCell>
+              <TableContainer component={Paper} style={{ marginTop: "20px" }}>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Folio</TableCell>
+                      <TableCell>Nombre</TableCell>
+                      <TableCell>Departamento</TableCell>
+                      <TableCell>Motivo</TableCell>
+                      <TableCell>Fecha Devolución</TableCell>
+                      <TableCell>Informacion de entrega o de Envio</TableCell>
+                      <TableCell>Artículos</TableCell>
+                      <TableCell>Autorizado</TableCell>
+                      <TableCell>Acciones</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {solicitudes
+                      .filter(
+                        (s) =>
+                          s.enviadoParaAutorizar ||
+                          s.enviado_para_autorizar === 1
+                      )
+                      .map((sol) => (
+                        <TableRow key={sol.folio}>
+                          <TableCell>{sol.folio}</TableCell>
+                          <TableCell>{sol.nombre}</TableCell>
+                          <TableCell>{sol.departamento}</TableCell>
+                          <TableCell>{sol.motivo}</TableCell>
+                          <TableCell>
+                            {sol.fecha
+                              ? new Date(sol.fecha).toLocaleDateString("es-MX")
+                              : "N/A"}
+                          </TableCell>
+                          <TableCell>{sol.detalle_envio || "N/A"}</TableCell>
+                          <TableCell>{sol.carrito?.length || 0}</TableCell>
+                          <TableCell>{sol.autorizado ? "Sí" : "No"}</TableCell>
 
-                            <TableCell>
-                              <Box
-                                display="flex"
-                                justifyContent="flex-start"
-                                alignItems="center"
-                              >
-                                {sol.autorizado === 0 && (
-                                  <>
-                                    {/* Botón verde: Autorizar */}
-                                    <IconButton
-                                      onClick={() =>
-                                        autorizarSolicitud(sol.folio)
-                                      }
-                                      color="success"
-                                      title="Autorizar y Generar PDF"
-                                      style={{ marginRight: "10px" }}
-                                    >
-                                      <AddTaskIcon />
-                                    </IconButton>
-
-                                    {/* Botón gris: Cancelar / Negar */}
-                                    <IconButton
-                                      onClick={() => cancelarSolicitud(sol.folio)}
-                                      color="error"
-                                      title="Cancelar solicitud"
-                                    >
-                                      <CancelIcon />
-                                    </IconButton>
-                                  </>
-                                )}
-
-                                <IconButton
-                                  onClick={() =>
-                                    handleOpenModal(sol.carrito, sol.folio)
-                                  }
-                                  sx={{ color: "orange" }}
-                                  title="Ver productos"
-                                >
-                                  <VisibilityIcon />
-                                </IconButton>
-
-                                {!sol.autorizado && (
+                          <TableCell>
+                            <Box
+                              display="flex"
+                              justifyContent="flex-start"
+                              alignItems="center"
+                            >
+                              {sol.autorizado === 0 && (
+                                <>
+                                  {/* Botón verde: Autorizar */}
                                   <IconButton
-                                    onClick={() => borrarSolicitud(sol.folio)}
-                                    color="error"
-                                    title="Eliminar solicitud"
+                                    onClick={() =>
+                                      autorizarSolicitud(sol.folio)
+                                    }
+                                    color="success"
+                                    title="Autorizar y Generar PDF"
+                                    style={{ marginRight: "10px" }}
                                   >
-                                    <DeleteIcon />
+                                    <AddTaskIcon />
                                   </IconButton>
-                                )}
-                              </Box>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              )}
+
+                                  {/* Botón gris: Cancelar / Negar */}
+                                  <IconButton
+                                    onClick={() => cancelarSolicitud(sol.folio)}
+                                    color="error"
+                                    title="Cancelar solicitud"
+                                  >
+                                    <CancelIcon />
+                                  </IconButton>
+                                </>
+                              )}
+
+                              <IconButton
+                                onClick={() =>
+                                  handleOpenModal(sol.carrito, sol.folio)
+                                }
+                                sx={{ color: "orange" }}
+                                title="Ver productos"
+                              >
+                                <VisibilityIcon />
+                              </IconButton>
+
+                              {!sol.autorizado && (
+                                <IconButton
+                                  onClick={() => borrarSolicitud(sol.folio)}
+                                  color="error"
+                                  title="Eliminar solicitud"
+                                >
+                                  <DeleteIcon />
+                                </IconButton>
+                              )}
+                            </Box>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
           </Paper>
         )}
 
@@ -1575,13 +1705,34 @@ function Muestras() {
               Imprimir Solicitudes
             </Typography>
 
+            <FormControl sx={{ width: 300, mb: 2 }}>
+              <InputLabel>Filtrar por Departamento</InputLabel>
+              <Select
+                value={departamentoFiltrado}
+                label="Filtrar por Departamento"
+                onChange={(e) => setDepartamentoFiltrado(e.target.value)}
+              >
+                <MenuItem value="">Todos los departamentos</MenuItem>
+                {departamentos.map((dep) => (
+                  <MenuItem key={dep.value} value={dep.label}>
+                    {dep.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
             {/* Sección de AUTORIZADAS */}
             <Typography variant="h6" gutterBottom>
               Solicitudes Autorizadas
             </Typography>
 
-            {solicitudesAutorizadas.filter((sol) => sol.autorizado === 1)
-              .length > 0 ? (
+            {solicitudesAutorizadas.filter(
+              (sol) =>
+                sol.autorizado === 1 &&
+                (departamentoFiltrado === "" ||
+                  sol.departamento?.toLowerCase() ===
+                    departamentoFiltrado.toLowerCase())
+            ).length > 0 ? (
               <TableContainer
                 component={Paper}
                 style={{ marginBottom: "30px" }}
@@ -1605,7 +1756,13 @@ function Muestras() {
                   </TableHead>
                   <TableBody>
                     {solicitudesAutorizadas
-                      .filter((sol) => sol.autorizado === 1)
+                      .filter(
+                        (sol) =>
+                          sol.autorizado === 1 &&
+                          (departamentoFiltrado === "" ||
+                            sol.departamento?.toLowerCase() ===
+                              departamentoFiltrado.toLowerCase())
+                      )
                       .map((sol) => (
                         <TableRow key={sol.folio}>
                           <TableCell>{sol.folio}</TableCell>
@@ -1622,48 +1779,62 @@ function Muestras() {
                           <TableCell>Sí</TableCell>
                           <TableCell>
                             {sol.fin_embarcado_por
-                              ? `${sol.fin_embarcado_por} - ${new Date(sol.fin_embarcado_at).toLocaleTimeString("es-MX")}`
+                              ? `${sol.fin_embarcado_por} - ${new Date(
+                                  sol.fin_embarcado_at
+                                ).toLocaleTimeString("es-MX")}`
                               : "Pendiente"}
                           </TableCell>
                           <TableCell>{sol.salida_por || "Pendiente"}</TableCell>
                           <TableCell>
-                            <IconButton
-                              onClick={() => generarPDF(sol)}
-                              sx={{ color: "black" }}
+                            <Tooltip
+                              title={`Generar PDF (${sol.pdf_generado}/2)`}
                             >
-                              <LocalPrintshopIcon />
-                            </IconButton>
-                            <IconButton
-                              onClick={() => borrarSolicitud(sol.folio)}
-                              color="error"
-                              title="Eliminar solicitud"
-                            >
-                              <DeleteIcon />
-                            </IconButton>
+                              <span>
+                                <IconButton
+                                  onClick={() => handleGenerarPDF(sol)}
+                                  disabled={sol.pdf_generado >= 2}
+                                >
+                                  <LocalPrintshopIcon />
+                                </IconButton>
+                              </span>
+                            </Tooltip>
 
-                            <IconButton
-                              onClick={() => handleOpenSurtidoModal(sol)}
-                              color="info"
-                              title="Registrar cantidades surtidas"
-                            >
-                              <VisibilityIcon />
-                            </IconButton>
-                            {(!sol.fin_embarcado_at || !sol.salida_por) && (
+                            {(user?.role === "Admin" ||
+                              user?.role === "Master") && (
                               <IconButton
-                                onClick={() => registrarSalida(sol.folio)}
-                                color="success"
-                                title={
-                                  !sol.fin_embarcado_at
-                                    ? "Registrar fin de embarque"
-                                    : "Registrar salida"
-                                }
+                                onClick={() => borrarSolicitud(sol.folio)}
+                                color="error"
+                                title="Eliminar solicitud"
                               >
-                                <ExitToAppIcon />
+                                <DeleteIcon />
                               </IconButton>
                             )}
 
+                            {(user?.role === "Admin" || user?.role === "Master" || user?.role === "INV") && (
+                              <IconButton
+                                onClick={() => handleOpenSurtidoModal(sol)}
+                                color="info"
+                                title="Registrar cantidades surtidas"
+                              >
+                                <VisibilityIcon />
+                              </IconButton>
+                            )}
 
-
+                            {(!sol.fin_embarcado_at || !sol.salida_por) &&
+                              (user?.role === "INV" ||
+                                user?.role === "Admin") && (
+                                <IconButton
+                                  onClick={() => registrarSalida(sol.folio)}
+                                  color="success"
+                                  title={
+                                    !sol.fin_embarcado_at
+                                      ? "Registrar fin de embarque"
+                                      : "Registrar salida"
+                                  }
+                                >
+                                  <ExitToAppIcon />
+                                </IconButton>
+                              )}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -1679,8 +1850,13 @@ function Muestras() {
               Solicitudes Canceladas
             </Typography>
 
-            {solicitudesAutorizadas.filter((sol) => sol.autorizado === 2)
-              .length > 0 ? (
+            {solicitudesAutorizadas.filter(
+              (sol) =>
+                sol.autorizado === 2 &&
+                (departamentoFiltrado === "" ||
+                  sol.departamento?.toLowerCase() ===
+                    departamentoFiltrado.toLowerCase())
+            ).length > 0 ? (
               <TableContainer component={Paper}>
                 <Table>
                   <TableHead>
@@ -1698,7 +1874,13 @@ function Muestras() {
                   </TableHead>
                   <TableBody>
                     {solicitudesAutorizadas
-                      .filter((sol) => sol.autorizado === 2)
+                      .filter(
+                        (sol) =>
+                          sol.autorizado === 2 &&
+                          (departamentoFiltrado === "" ||
+                            sol.departamento?.toLowerCase() ===
+                              departamentoFiltrado.toLowerCase())
+                      )
                       .map((sol) => (
                         <TableRow
                           key={sol.folio}
@@ -1717,13 +1899,17 @@ function Muestras() {
                           <TableCell>{sol.carrito?.length || 0}</TableCell>
                           <TableCell>{sol.autorizado_por || "N/A"}</TableCell>
                           <TableCell>
-                            <IconButton
-                              onClick={() => borrarSolicitud(sol.folio)}
-                              color="error"
-                              title="Eliminar solicitud"
-                            >
-                              <DeleteIcon />
-                            </IconButton>
+                            {["Admin", "Master", "Master2", "Master3"].includes(
+                              user?.role
+                            ) && (
+                              <IconButton
+                                onClick={() => borrarSolicitud(sol.folio)}
+                                color="error"
+                                title="Eliminar solicitud"
+                              >
+                                <DeleteIcon />
+                              </IconButton>
+                            )}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -1842,31 +2028,45 @@ function Muestras() {
                       <TableCell>{item.codigo}</TableCell>
 
                       <TableCell>
-                        {ubicacionesPorCodigo[item.codigo] && ubicacionesPorCodigo[item.codigo].length > 0 ? (
+                        {ubicacionesPorCodigo[item.codigo] &&
+                        ubicacionesPorCodigo[item.codigo].length > 0 ? (
                           <Tooltip
                             title={
                               <ul style={{ margin: 0, padding: 0 }}>
-                                {ubicacionesPorCodigo[item.codigo].map((ubi, i) => (
-                                  <li key={i} style={{ listStyleType: "none" }}>{ubi}</li>
-                                ))}
+                                {ubicacionesPorCodigo[item.codigo].map(
+                                  (ubi, i) => (
+                                    <li
+                                      key={i}
+                                      style={{ listStyleType: "none" }}
+                                    >
+                                      {ubi}
+                                    </li>
+                                  )
+                                )}
                               </ul>
                             }
                             arrow
                             placement="top-start"
                           >
-                            <div style={{
-                              whiteSpace: "nowrap",
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              maxWidth: 120
-                            }}>
-                              {ubicacionesPorCodigo[item.codigo].slice(0, 2).join(", ")}
-                              {ubicacionesPorCodigo[item.codigo].length > 2 && " ..."}
+                            <div
+                              style={{
+                                whiteSpace: "nowrap",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                maxWidth: 120,
+                              }}
+                            >
+                              {ubicacionesPorCodigo[item.codigo]
+                                .slice(0, 2)
+                                .join(", ")}
+                              {ubicacionesPorCodigo[item.codigo].length > 2 &&
+                                " ..."}
                             </div>
                           </Tooltip>
-
                         ) : (
-                          <Typography variant="body2">No hay ubicaciones registradas</Typography>
+                          <Typography variant="body2">
+                            No hay ubicaciones registradas
+                          </Typography>
                         )}
                       </TableCell>
 
@@ -1908,7 +2108,6 @@ function Muestras() {
             </Button>
           </DialogActions>
         </Dialog>
-
       </Box>
 
       <Snackbar

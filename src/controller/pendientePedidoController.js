@@ -56,6 +56,7 @@ const getBahias = async (req, res) => {
     res.status(500).json({ message: 'Error al obtener las bahías', error: error.message });
   }
 };
+
 //en este controlador en ves de buscar en una sola tabla que es la de pedid_surtido la existencia de este pedido que tambie me busque si este pedido ya se encuentra en la tabla de pedido_embarque, Y pedido_finalizado
 // const savePedidoSurtido = async (req, res) => {
 //   const { pedido, estado, bahias, items, usuarioId } = req.body;
@@ -142,7 +143,7 @@ const getBahias = async (req, res) => {
 const savePedidoSurtido = async (req, res) => {
   const { pedido, estado, bahias, items, usuarioId } = req.body;
   const tipo = items[0]?.tipo;
- // console.log("pendiente",req.body)
+  // console.log("pendiente",req.body)
   if (!pedido || !estado || !bahias || !items || !tipo) {
     console.error('Datos incompletos en la solicitud');
     return res.status(400).json({ message: 'Datos incompletos o tipo inválido' });
@@ -385,9 +386,11 @@ const savePedidoSurtido = async (req, res) => {
     const ubicacionesFiltradas = bahias.filter(bahia => !ubicacionesAExcluir.includes(bahia));
 
     if (ubicacionesFiltradas.length > 0) {
-      const updateBahiasQuery = 'UPDATE bahias SET estado = ?, id_pdi = ?, ingreso = CURRENT_DATE WHERE bahia IN (?)';
-      await connection.query(updateBahiasQuery, [estado_B, pedido, ubicacionesFiltradas.join(',')]);
+      const placeholders = ubicacionesFiltradas.map(() => '?').join(', ');
+      const updateBahiasQuery = `UPDATE bahias SET estado = ?, id_pdi = ?, ingreso = CURRENT_DATE WHERE bahia IN (${placeholders})`;
+      await connection.query(updateBahiasQuery, [estado_B, pedido, ...ubicacionesFiltradas]);
     }
+    
 
     // const deletePedidoQuery = 'DELETE FROM pedi WHERE pedido = ?';
     // await connection.query(deletePedidoQuery, [pedido]);

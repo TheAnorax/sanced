@@ -4,7 +4,7 @@ const bcrypt = require('bcrypt');
 
 const getUsuarios = async (req, res) => {
   try {
-    const [rows] = await pool.query(`SELECT * FROM usuarios;`);
+    const [rows] = await pool.query(`SELECT * FROM usuarios WHERE estado = 1;`);
 
     if (!rows.length) {
       return res.status(404).json({ message: "No se encontraron usuarios" });

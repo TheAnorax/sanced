@@ -105,6 +105,11 @@ const TableProb = () => {
 
   const columns = [
     { field: "motivo", headerName: "Motivo", width: 150 },
+
+    { field: "desc_sku", headerName: "Descripción", width: 200 }, // Nueva columna para Descripción
+    { field: "pzs", headerName: "Piezas", width: 100 }, // Nueva columna para Piezas
+    { field: "no_pedido", headerName: "No Pedido", width: 150 }, // Nueva columna para No Pedido
+
     { field: "area", headerName: "Área", width: 150 },
     { field: "encargado", headerName: "Encargado", width: 150 },
     { field: "remitente", headerName: "Remitente", width: 150 },

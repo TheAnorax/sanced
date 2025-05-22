@@ -355,16 +355,12 @@ export const mainListItems = (user) => {
       icon: <NavigationIcon />,
       text: "COBERTURA",
     },
-<<<<<<< HEAD
     {
       role: ["Admin"],
       path: "/dashboard/RepoProb",
       icon: <ManageSearchIcon />,
       text: "Reportar Problema",
     },
-    
-=======
->>>>>>> f7163f8c1dd5b8ee7da1f1906cc82ba7db0eddeb
   ];
 
   return (

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Confirmación de Entrega de Muestras</title>
+</head>
+
+<body style="background-color: #f4f4f4; padding: 20px; font-family: Arial, sans-serif;">
+    <table
+        style="max-width: 600px; margin: auto; background-color: white; border-radius: 8px; box-shadow: 0 0 10px #ccc;">
+        <tr>
+            <td style="text-align: center; padding: 20px;">
+                <img src="cid:logo_sanced" alt="Logo Sanced" width="180"
+                    style="width: 180px; height: auto; display: block; margin: 0 auto;" />
+            </td>
+        </tr>
+        <tr>
+            <td style="background-color: #198754; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+                <h2 style="margin: 0;">✅ Tus muestras están listas para recoger</h2>
+            </td>
+        </tr>
+        <tr>
+            <td style="padding: 20px;">
+                <p>Hola <strong>{{nombre}}</strong>,</p>
+                <p>Tu solicitud de muestras con el folio <strong>{{folio}}</strong> ya está lista para ser recogida en
+                    el área de CEDIS.</p>
+
+                <ul style="padding-left: 20px;">
+                    <li><strong>Departamento:</strong> {{departamento}}</li>
+                    <li><strong>Motivo:</strong> {{motivo}}</li>
+                    <li><strong>Fecha de entrega:</strong> {{fecha}}</li>
+                </ul>
+
+                {{tablaProductos}}
+
+                <p>Recuerda llevar este correo junto con el QR para que puedan ser entregadas.</p>
+
+                <hr />
+                <p style="font-size: 12px; color: #888;">Este correo fue generado automáticamente por el sistema de
+                    muestras.</p>
+            </td>
+        </tr>
+    </table>
+</body>
+
+</html>

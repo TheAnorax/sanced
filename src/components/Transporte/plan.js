@@ -40,7 +40,7 @@ function Plansurtido() {
     setLoading(true);
     try {
       const response = await axios.get(
-        `http://66.232.105.87:3007/api/Trasporte/getPaqueteriaData?fecha=${fecha}`
+        `http://localhost:3007/api/Trasporte/getPaqueteriaData?fecha=${fecha}`
       );
       setData(response.data);
     } catch (error) {
@@ -53,7 +53,7 @@ function Plansurtido() {
   const fetchResumen = async (fecha) => {
     try {
       const response = await axios.get(
-        `http://66.232.105.87:3007/api/Trasporte/getPedidosDia?fecha=${fecha}`
+        `http://localhost:3007/api/Trasporte/getPedidosDia?fecha=${fecha}`
       );
       setResumen(response.data);
     } catch (error) {

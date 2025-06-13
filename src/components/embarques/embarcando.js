@@ -46,7 +46,7 @@ function Embarcando() {
     useEffect(() => {
         const fetchPedidos = async () => {
             try {
-                const response = await fetch('http://66.232.105.87:3007/api/embarque/embarque/progreso');
+                const response = await fetch('http://localhost:3007/api/embarque/embarque/progreso');
                 if (!response.ok) {
                     throw new Error(`Error HTTP: ${response.status}`);
                 }
@@ -115,7 +115,7 @@ function Embarcando() {
 
     const handleOpen = async () => {
         try {
-            const response = await fetch('http://66.232.105.87:3007/api/embarque/embarque/productividad'); // URL para obtener los datos de productividad
+            const response = await fetch('http://localhost:3007/api/embarque/embarque/productividad'); // URL para obtener los datos de productividad
             if (!response.ok) {
                 throw new Error(`Error HTTP: ${response.status}`);
             }

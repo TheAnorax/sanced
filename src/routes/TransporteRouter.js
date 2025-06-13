@@ -1,8 +1,10 @@
 const express = require("express");
 const router = express.Router();
-const {  getObservacionesPorClientes,  getUltimaFechaEmbarque,  insertarRutas,  obtenerRutasDePaqueteria,  getFechaYCajasPorPedido,  actualizarGuia,  getPedidosEmbarque,  getTransportistas,  getEmpresasTransportistas,  insertarVisita,  guardarDatos,
-  obtenerDatos,  eliminarRuta,  getOrderStatus,  getHistoricoData,  getColumnasHistorico,  getClientesHistorico,  upload,  actualizarFacturasDesdeExcel,  actualizarPorGuia,  crearRuta,  agregarPedidoARuta,  obtenerRutasConPedidos,  obtenerRutaPorId,  obtenerResumenDelDia,
-  getPaqueteriaData,  getPedidosDia,  getFusionInfo,  obtenerRutasParaPDF,actualizarTipoOriginalDesdeExcel, actualizarGuiaCompleta, datosPedidos} = require("../controller/TrasporteController");
+const multer = require('multer');
+const upload = multer();
+const { getObservacionesPorClientes, getUltimaFechaEmbarque, insertarRutas, obtenerRutasDePaqueteria, getFechaYCajasPorPedido, actualizarGuia, getPedidosEmbarque, getTransportistas, getEmpresasTransportistas, insertarVisita, guardarDatos,
+  obtenerDatos, eliminarRuta, getOrderStatus, getHistoricoData, getColumnasHistorico, getClientesHistorico, actualizarFacturasDesdeExcel, actualizarPorGuia, crearRuta, agregarPedidoARuta, obtenerRutasConPedidos, obtenerRutaPorId, obtenerResumenDelDia,
+  getPaqueteriaData, getPedidosDia, getFusionInfo, obtenerRutasParaPDF, actualizarTipoOriginalDesdeExcel, actualizarGuiaCompleta, datosPedidos, enviarCorreoAsignacion, getReferenciasClientes } = require("../controller/TrasporteController");
 
 router.get("/getPaqueteriaData", getPaqueteriaData);
 
@@ -71,5 +73,10 @@ router.get("/rutas/:id", obtenerRutaPorId);
 router.get("/resumen-dia", obtenerResumenDelDia);
 
 router.put("/actualizar-guia-completa/:noOrden", actualizarGuiaCompleta);
+
+router.get('/referencias', getReferenciasClientes);
+
+// POST: Enviar correo de asignación (con intentos)
+router.post('/enviar-correo-asignacion', enviarCorreoAsignacion);
 
 module.exports = router;

@@ -35,7 +35,7 @@ function COBERTURA() {
         if (!codigoPostal) return;
 
         try {
-            const response = await axios.get("http://66.232.105.87:3007/api/cobertura/cobertura", {
+            const response = await axios.get("http://localhost:3007/api/cobertura/cobertura", {
                 params: { codigo_postal: codigoPostal },
             });
 

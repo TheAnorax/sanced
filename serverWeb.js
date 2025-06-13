@@ -78,5 +78,5 @@ app.use('/api/planeacion', planeacion)
 
 
 app.listen(port, () => {
-  console.log(`Server is running on http://66.232.105.87:${port}`);
+  console.log(`Server is running on http://localhost:${port}`);
 });

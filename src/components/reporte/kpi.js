@@ -92,7 +92,7 @@ function KpiDashboard() {
     try {
       const formattedDate = date.format("YYYY-MM-DD");
       const response = await axios.get(
-        `http://66.232.105.87:3007/api/kpi/getPrduSurtido`,
+        `http://localhost:3007/api/kpi/getPrduSurtido`,
         {
           params: { date: formattedDate },
         }
@@ -111,7 +111,7 @@ function KpiDashboard() {
     try {
       const formattedDate = date.format("YYYY-MM-DD");
       const response = await axios.get(
-        `http://66.232.105.87:3007/api/historial/kpi`,
+        `http://localhost:3007/api/historial/kpi`,
         {
           params: { date: formattedDate },
         }
@@ -131,7 +131,7 @@ function KpiDashboard() {
     try {
       const formattedDate = selectedDate.format("YYYY-MM-DD");
       const response = await axios.get(
-        `http://66.232.105.87:3007/api/kpi/getPrduPaqueteria`,
+        `http://localhost:3007/api/kpi/getPrduPaqueteria`,
         {
           params: { date: formattedDate },
         }
@@ -151,7 +151,7 @@ function KpiDashboard() {
     try {
       const formattedDate = selectedDate.format("YYYY-MM-DD");
       const response = await axios.get(
-        `http://66.232.105.87:3007/api/kpi/getPrduEmbarque`,
+        `http://localhost:3007/api/kpi/getPrduEmbarque`,
         {
           params: { date: formattedDate },
         }
@@ -170,7 +170,7 @@ function KpiDashboard() {
     try {
       const formattedDate = selectedDate.format("YYYY-MM-DD");
       const response = await axios.get(
-        `http://66.232.105.87:3007/api/kpi/getPrduRecibo`,
+        `http://localhost:3007/api/kpi/getPrduRecibo`,
         {
           params: { date: formattedDate },
         }
@@ -404,7 +404,7 @@ function KpiDashboard() {
     setLoadingHistorico(true);
     try {
       const response = await axios.get(
-        "http://66.232.105.87:3007/api/kpi/getPrduSurtidoPorRango",
+        "http://localhost:3007/api/kpi/getPrduSurtidoPorRango",
         {
           params: {
             inicio: rangoInicio.format("YYYY-MM-DD"),
@@ -469,7 +469,7 @@ function KpiDashboard() {
   const fetchHistoricoPaqueteria = async () => {
     try {
       const response = await axios.get(
-        "http://66.232.105.87:3007/api/kpi/getPrduPaqueteriaPorrango",
+        "http://localhost:3007/api/kpi/getPrduPaqueteriaPorrango",
         {
           params: {
             inicio: rangoInicio.format("YYYY-MM-DD"),

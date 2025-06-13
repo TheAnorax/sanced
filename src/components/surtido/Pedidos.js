@@ -8,12 +8,12 @@ import { AutoSizer, List, CellMeasurer, CellMeasurerCache } from 'react-virtuali
 import * as XLSX from 'xlsx'; // Importar la librería para manejar archivos Excel
 
 const fetchPedidos = async () => {
-  const response = await axios.get('http://66.232.105.87:3007/api/pedidos/pedidos');
+  const response = await axios.get('http://localhost:3007/api/pedidos/pedidos');
   return response.data;
 };
 
 // const fetchBahias = async () => {
-//   const response = await axios.get('http://66.232.105.87:3007/api/pedidos/bahias'); 
+//   const response = await axios.get('http://localhost:3007/api/pedidos/bahias'); 
   
 //   // Filtrar las bahías que no comiencen con "B" o "C"
 //   const filteredBahias = response.data.filter(bahia => !/^C-/.teyyst(bahia.bahia));
@@ -22,12 +22,12 @@ const fetchPedidos = async () => {
 // };
 
 const fetchBahias = async () => {
-  const response = await axios.get('http://66.232.105.87:3007/api/pedidos/bahias');
+  const response = await axios.get('http://localhost:3007/api/pedidos/bahias');
   return response.data;
 };
 
 const fetchUsuarios = async () => {
-  const response = await axios.get('http://66.232.105.87:3007/api/pedidos/usuarios');
+  const response = await axios.get('http://localhost:3007/api/pedidos/usuarios');
   return response.data;
 };
 
@@ -49,7 +49,7 @@ const usePedidos = () => {
   const mutation = useMutation({
     mutationFn: async (pedidoData) => {
       const { pedido, estado, bahias, items, usuarioId } = pedidoData;
-      await axios.post('http://66.232.105.87:3007/api/pedidos/surtir', {
+      await axios.post('http://localhost:3007/api/pedidos/surtir', {
         pedido,
         estado,
         bahias,
@@ -260,7 +260,7 @@ const Pedidos = React.memo(() => {
     mergedPedido.unificado = mergedPedido.items.map(item => item.unificado); // Crear un arreglo con los registros 'unificado' de cada item
   
     try {
-      await axios.post('http://66.232.105.87:3007/api/pedidos/merge', mergedPedido);
+      await axios.post('http://localhost:3007/api/pedidos/merge', mergedPedido);
       Swal.fire('Éxito', 'Pedidos fusionados correctamente', 'success');
       setSelectedPedidos([]);
     } catch (error) {

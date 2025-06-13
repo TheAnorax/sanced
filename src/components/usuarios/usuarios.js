@@ -191,7 +191,7 @@
       const fetchUsuarios = async () => {
         try {
           const response = await axios.get(
-            "http://66.232.105.87:3007/api/usuarios/usuarios"
+            "http://localhost:3007/api/usuarios/usuarios"
           );
           let usuariosFiltrados = response.data;
 
@@ -392,7 +392,7 @@
       const fetchSecciones = async () => {
         try {
           const response = await axios.get(
-            "http://66.232.105.87:3007/api/usuarios/secciones"
+            "http://localhost:3007/api/usuarios/secciones"
           );
           setSecciones(response.data);
         } catch (error) {
@@ -440,14 +440,14 @@
         if (isEditMode) {
           // Actualizar usuario
           await axios.put(
-            `http://66.232.105.87:3007/api/usuarios/usuarios/${selectedUser.id_usu}`,
+            `http://localhost:3007/api/usuarios/usuarios/${selectedUser.id_usu}`,
             userForm
           );
           alert("Usuario actualizado correctamente");
         } else {
           // Crear nuevo usuario
           await axios.post(
-            `http://66.232.105.87:3007/api/usuarios/usuarios`,
+            `http://localhost:3007/api/usuarios/usuarios`,
             userForm
           );
           alert("Usuario creado correctamente");
@@ -468,7 +468,7 @@
 
       try {
         await axios.delete(
-          `http://66.232.105.87:3007/api/usuarios/usuarios/${id_usu}`
+          `http://localhost:3007/api/usuarios/usuarios/${id_usu}`
         );
         alert("Usuario eliminado correctamente");
         //fetchUsuarios(); // Refrescar la lista de usuarios
@@ -489,7 +489,7 @@
       setSelectedUser(usuario);
       try {
         const response = await axios.get(
-          `http://66.232.105.87:3007/api/usuarios/usuarios/${usuario.id_usu}/accesos`
+          `http://localhost:3007/api/usuarios/usuarios/${usuario.id_usu}/accesos`
         );
         console.log(response.data);
         setAccesos(response.data); // Cargar accesos del usuario seleccionado
@@ -530,7 +530,7 @@
     const handleSaveAccess = async () => {
       try {
         await axios.put(
-          `http://66.232.105.87:3007/api/usuarios/usuarios/${selectedUser.id_usu}/accesos`,
+          `http://localhost:3007/api/usuarios/usuarios/${selectedUser.id_usu}/accesos`,
           {
             secciones: accesos,
           }
@@ -585,7 +585,7 @@
     const saveEditablePermissions = async () => {
       try {
         await axios.put(
-          `http://66.232.105.87:3007/api/usuarios/usuarios/${selectedUser.id_usu}/permisos`,
+          `http://localhost:3007/api/usuarios/usuarios/${selectedUser.id_usu}/permisos`,
           { permisos: editablePermissions }
         );
         alert("Permisos actualizados correctamente");
@@ -605,7 +605,7 @@
     const generarPDF = async () => {
       try {
         const response = await axios.get(
-          "http://66.232.105.87:3007/api/usuarios/usuarios"
+          "http://localhost:3007/api/usuarios/usuarios"
         );
         const usuariosPorTurno = response.data;
 

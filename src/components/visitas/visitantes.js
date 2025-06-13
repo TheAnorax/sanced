@@ -93,11 +93,11 @@ import 'dayjs/locale/es'
 import EscPosEncoder from 'esc-pos-encoder';
 
 dayjs.locale('es');
-//const api = "http://66.232.105.87:3007/api/visitas";
-//const foto = "http://66.232.105.87:3007/api/fotos";
+//const api = "http://localhost:3007/api/visitas";
+//const foto = "http://localhost:3007/api/fotos";
 function Visitantes() {
-const api = "http://66.232.105.87:3007/api/visitas";
-const foto = "http://66.232.105.87:3007/api/fotos";
+const api = "http://localhost:3007/api/visitas";
+const foto = "http://localhost:3007/api/fotos";
 
   
   const navigate = useNavigate();

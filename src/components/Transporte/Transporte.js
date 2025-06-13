@@ -14,6 +14,7 @@ import { CloudUpload } from "@mui/icons-material";
 import CompareArrowsIcon from "@mui/icons-material/CompareArrows";
 import { Tooltip } from "@mui/material";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
+import EmailIcon from '@mui/icons-material/Email';
 import moment from "moment";
 
 import { NumerosALetras } from "numero-a-letras";
@@ -260,7 +261,7 @@ function Transporte() {
 
     try {
       const response = await axios.post(
-        `http://66.232.105.87:3007/api/Trasporte/status`,
+        `http://localhost:3007/api/Trasporte/status`,
         { orderNumbers }
       );
 
@@ -356,7 +357,7 @@ function Transporte() {
 
     try {
       const response = await axios.post(
-        `http://66.232.105.87:3007/api/Trasporte/fusion`,
+        `http://localhost:3007/api/Trasporte/fusion`,
         { orderNumbers }
       );
 
@@ -367,11 +368,11 @@ function Transporte() {
         prevData.map((route) =>
           fusionMap[route["NO ORDEN"]]
             ? {
-                ...route,
-                fusionWith: fusionMap[route["NO ORDEN"]].fusionWith || null,
-                fusionState: fusionMap[route["NO ORDEN"]].estado,
-                fusionTable: fusionMap[route["NO ORDEN"]].tabla,
-              }
+              ...route,
+              fusionWith: fusionMap[route["NO ORDEN"]].fusionWith || null,
+              fusionState: fusionMap[route["NO ORDEN"]].estado,
+              fusionTable: fusionMap[route["NO ORDEN"]].tabla,
+            }
             : route
         )
       );
@@ -381,9 +382,9 @@ function Transporte() {
         prevData.map((route) =>
           fusionMap[route["NO ORDEN"]]
             ? {
-                ...route,
-                fusionWith: fusionMap[route["NO ORDEN"]].fusionWith || null,
-              }
+              ...route,
+              fusionWith: fusionMap[route["NO ORDEN"]].fusionWith || null,
+            }
             : route
         )
       );
@@ -391,9 +392,9 @@ function Transporte() {
         prevData.map((route) =>
           fusionMap[route["NO ORDEN"]]
             ? {
-                ...route,
-                fusionWith: fusionMap[route["NO ORDEN"]].fusionWith || null,
-              }
+              ...route,
+              fusionWith: fusionMap[route["NO ORDEN"]].fusionWith || null,
+            }
             : route
         )
       );
@@ -401,9 +402,9 @@ function Transporte() {
         prevData.map((route) =>
           fusionMap[route["NO ORDEN"]]
             ? {
-                ...route,
-                fusionWith: fusionMap[route["NO ORDEN"]].fusionWith || null,
-              }
+              ...route,
+              fusionWith: fusionMap[route["NO ORDEN"]].fusionWith || null,
+            }
             : route
         )
       );
@@ -522,8 +523,8 @@ function Transporte() {
         } else {
           console.warn(
             "⚠️ No se guardó 'sentRoutesData': excede los 5MB (~" +
-              sizeInKB.toFixed(2) +
-              "KB)"
+            sizeInKB.toFixed(2) +
+            "KB)"
           );
         }
 
@@ -675,9 +676,8 @@ function Transporte() {
       ) || 0,
     PARTIDAS: Number(row["Partidas"] || row["__EMPTY_22"] || 0),
     PIEZAS: Number(row["Cantidad"] || row["__EMPTY_23"] || 0),
-    DIRECCION: `${row["Calle"] || ""} ${row["Colonia"] || ""} ${
-      row["Municipio"] || ""
-    } ${row["Codigo Postal"] || ""} ${row["Estado"] || ""}`,
+    DIRECCION: `${row["Calle"] || ""} ${row["Colonia"] || ""} ${row["Municipio"] || ""
+      } ${row["Codigo Postal"] || ""} ${row["Estado"] || ""}`,
     CORREO: row["E-mail"] || "",
     TELEFONO: row["No. Telefonico"] || "",
     "EJECUTIVO VTAS": row["Ejecutico Vtas"] || "",
@@ -1033,8 +1033,7 @@ function Transporte() {
       updatedGroupedData[newRoute].PIEZAS += item.PIEZAS;
 
       console.log(
-        `✅ Pedido ${item["NO ORDEN"]} movido de ${
-          oldRoute || "Ninguna"
+        `✅ Pedido ${item["NO ORDEN"]} movido de ${oldRoute || "Ninguna"
         } a ${newRoute}`
       );
 
@@ -1330,7 +1329,7 @@ function Transporte() {
     mes = "",
   } = {}) => {
     try {
-      let url = `http://66.232.105.87:3007/api/Trasporte/rutas?expandir=true`;
+      let url = `http://localhost:3007/api/Trasporte/rutas?expandir=true`;
 
       if (filtro) url += `&guia=${filtro}`;
       if (desde && hasta) url += `&desde=${desde}&hasta=${hasta}`;
@@ -1379,7 +1378,7 @@ function Transporte() {
 
   const fetchAdditionalData = async (noOrden) => {
     try {
-      const url = `http://66.232.105.87:3007/api/Trasporte/pedido/detalles/${noOrden}`; // Usamos el parámetro en la URL
+      const url = `http://localhost:3007/api/Trasporte/pedido/detalles/${noOrden}`; // Usamos el parámetro en la URL
       const response = await fetch(url);
       const data = await response.json();
 
@@ -1411,7 +1410,7 @@ function Transporte() {
 
     try {
       const response = await axios.post(
-        "http://66.232.105.87:3007/api/Trasporte/clientes/observaciones",
+        "http://localhost:3007/api/Trasporte/clientes/observaciones",
         { clientes: clientesUnicos }
       );
 
@@ -1512,7 +1511,7 @@ function Transporte() {
 
       try {
         const response = await fetch(
-          "http://66.232.105.87:3007/api/Trasporte/insertarRutas",
+          "http://localhost:3007/api/Trasporte/insertarRutas",
           {
             method: "POST",
             headers: {
@@ -1617,7 +1616,7 @@ function Transporte() {
     }
 
     try {
-      const url = `http://66.232.105.87:3007/api/Trasporte/paqueteria/actualizar-guia/${selectedId}`;
+      const url = `http://localhost:3007/api/Trasporte/paqueteria/actualizar-guia/${selectedId}`;
 
       const response = await fetch(url, {
         method: "PUT",
@@ -2193,6 +2192,28 @@ function Transporte() {
 
   // ✅ Versión con tabla de IMPORTE AGREGADA al final (corregida)
 
+  const [referenciasClientes, setReferenciasClientes] = useState([]);
+
+  useEffect(() => {
+    axios.get("http://localhost:3007/api/Trasporte/referencias")
+      .then(res => setReferenciasClientes(res.data))
+      .catch(err => console.error("Error cargando referencias", err));
+  }, []);
+
+  function buscarReferenciaCliente(numCliente, nombreCliente, referencias) {
+    // 1. Busca por número (asegura trims y mismo tipo)
+    let ref = referencias.find(r =>
+      String(r.Num_Cliente).trim() === String(numCliente).trim()
+    );
+    if (ref) return ref.REFERENCIA;
+
+    // 2. Si no existe, busca por nombre
+    ref = referencias.find(r =>
+      r.Nombre_cliente.trim().toUpperCase() === (nombreCliente || '').trim().toUpperCase()
+    );
+    return ref ? ref.REFERENCIA : "";
+  }
+
   const totalPagesExp = "___total_pages___";
 
   function addPageNumber(doc) {
@@ -2225,7 +2246,7 @@ function Transporte() {
   const generatePDF = async (pedido) => {
     try {
       const responseRoutes = await fetch(
-        "http://66.232.105.87:3007/api/Trasporte/ruta-unica"
+        "http://localhost:3007/api/Trasporte/ruta-unica"
       );
       const routesData = await responseRoutes.json();
       const route = routesData.find(
@@ -2234,7 +2255,7 @@ function Transporte() {
       if (!route) return alert("No se encontró la ruta");
 
       const responseEmbarque = await fetch(
-        `http://66.232.105.87:3007/api/Trasporte/embarque/${pedido}`
+        `http://localhost:3007/api/Trasporte/embarque/${pedido}`
       );
       const data = await responseEmbarque.json();
       if (!data || !Array.isArray(data) || data.length === 0)
@@ -2286,6 +2307,7 @@ function Transporte() {
       const numero = route["NUM. CLIENTE"] || "No disponible";
       const telefono = route["TELEFONO"] || "Sin número";
       const rawTotal = route["TOTAL"];
+      const referenciaCliente = buscarReferenciaCliente(numero, nombreCliente, referenciasClientes);
       let totalImporte = 0;
       if (
         rawTotal &&
@@ -2309,7 +2331,7 @@ function Transporte() {
         currentY
       );
       currentY += 4;
-      doc.text(`VT: ${pedido}-${tipo_original}`, marginLeft, currentY);
+      doc.text(`No Orden: ${pedido}-${tipo_original}`, marginLeft, currentY);
       currentY += 4;
       doc.text(`FACTURA No.: ${numeroFactura}`, marginLeft, currentY);
       currentY += 4;
@@ -2323,7 +2345,7 @@ function Transporte() {
       doc.text("INFORMACIÓN IMPORTANTE", 105, infoY + 4, { align: "center" });
       doc.setFontSize(5.3);
       doc.text(
-        "En caso de detectar cualquier irregularidad (daños, faltantes, o manipulaciones), Favor de comunicarse de inmediato al departamento de atención al cliente al número:(55) 58727290 EXT.: (8815, 8819)",
+        "En caso de detectar cualquier irregularidad (daños, faltantes,cajas mojadas o manipulaciones), Favor de comunicarse de inmediato al departamento de atención al cliente al número:(55) 58727290 EXT.: (8815, 8819)",
         105,
         infoY + 9,
         { align: "center", maxWidth: 180 }
@@ -2737,7 +2759,112 @@ function Transporte() {
 
       currentY = doc.lastAutoTable.finalY + 0;
       currentY = verificarEspacio(doc, currentY, 5);
-      doc.addImage(infoBancaria, "JPEG", 10, currentY, 190, 35);
+
+      //informacion bancaria
+      // === Información Bancaria + Observaciones alineadas ===
+
+      const tablaBancosY = currentY + 10; // Ajusta el +3 si lo quieres más arriba o abajo
+
+
+      // Muestra la referencia bancaria arriba de la tabla
+      doc.setFontSize(10);
+      doc.text('Referencia bancaria:', 20, tablaBancosY - 5, { styles: { fontStyle: 'bold' } });
+      doc.setFont(undefined, 'bold');
+      doc.text(`${referenciaCliente}`, 75, tablaBancosY - 5, { align: 'right', styles: { fontStyle: 'bold' } }); // Ajusta la posición x para alinearlo a la derecha
+      doc.setFont(undefined, 'normal');
+
+      // TABLA DE BANCOS
+      doc.autoTable({
+        startY: tablaBancosY,
+        head: [[
+          { content: 'BANCO', styles: { halign: 'left', fontStyle: 'bold', fontSize: 8 } },
+          { content: 'NO. DE CUENTA', styles: { halign: 'center', fontStyle: 'bold', fontSize: 8 } },
+          { content: 'SUCURSAL', styles: { halign: 'center', fontStyle: 'bold', fontSize: 8 } },
+          { content: 'CLABE', styles: { halign: 'center', fontStyle: 'bold', fontSize: 8 } }
+        ]],
+
+        body: [
+          ['BANAMEX', '6860432', '7006', '002180700668604325'],
+          [
+            { content: 'BANORTE' },
+            { content: '0890771176' },
+            { content: '04' },
+            { content: '072180008907711766' }
+          ],
+          ['BANCOMER', 'CIE 2476827', '1838']
+        ],
+        startY: tablaBancosY, // tu variable de Y si la usas
+        theme: 'plain', // O 'grid' si quieres líneas de tabla
+        headStyles: {
+          fillColor: [0, 0, 0],      // Fondo negro
+          textColor: [255, 255, 255],// Texto blanco
+          fontStyle: 'bold',
+          fontSize: 8,
+          halign: 'center',
+          valign: 'middle',
+        },
+        // Opcional: para que las celdas no tengan borde
+        styles: {
+          lineWidth: 0.2,
+          lineColor: [0, 0, 0],
+          fontSize: 8,
+        },
+
+        theme: 'plain', // Sin bordes, puro alineado como quieres
+        styles: { fontSize: 8, cellPadding: 1, halign: 'center' },
+        margin: { left: 10 },
+        tableWidth: 115, // ajusta a 115-120 según el ancho de tu hoja, eso te da espacio a la derecha para observaciones
+        headStyles: { textColor: [0, 0, 0], fontStyle: 'bold' },
+        bodyStyles: { textColor: [0, 0, 0] },
+      });
+
+      // CAJA OBSERVACIONES (alineada a la derecha)
+      // =============== CAJA DE OBSERVACIONES ===============
+      const obsBoxX = 133;
+      const obsBoxY = tablaBancosY;
+      const obsBoxWidth = 65;
+      const obsBoxHeight = 28;
+
+      // Dibuja el recuadro
+      doc.setDrawColor(120, 120, 120);
+      doc.setLineWidth(0.3);
+      doc.rect(obsBoxX, obsBoxY, obsBoxWidth, obsBoxHeight);
+
+      // Título
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.text('Observaciones:', obsBoxX + 3, obsBoxY + 7);
+
+      // Líneas punteadas dentro del recuadro, bien alineadas
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+
+      const numLineas = 4;
+      const leftPadding = 5; // padding izquierdo dentro de la caja
+      const rightPadding = 5;
+      const lineaAncho = obsBoxWidth - leftPadding - rightPadding;
+      for (let i = 0; i < numLineas; i++) {
+        // Empieza un poco debajo del título y separadas
+        const lineaY = obsBoxY + 11 + i * 5.3;
+        doc.text(
+          '...'.repeat(Math.floor(lineaAncho / 2.5)), // Ajusta el divisor para el largo de puntos
+          obsBoxX + leftPadding,
+          lineaY
+        );
+      }
+
+      // Poner leyenda final justo abajo, centrado
+      const leyendaY = obsBoxY + obsBoxHeight + 7; // Ajusta el +7 para el espaciado
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.5);
+      doc.text(
+        'A la firma/sello del presente documento se tiene por recibida de conformidad la mercancía y aceptado el monto a pagar aquí descrita.',
+        10,
+        leyendaY
+      );
+
+      currentY = leyendaY + 4; // Si necesitas continuar después
+
 
       addPageNumber(doc);
       doc.save(`PackingList_de_${pedido}.pdf`);
@@ -2747,6 +2874,10 @@ function Transporte() {
       alert("Hubo un error al generar el PDF.");
     }
   };
+
+
+
+
 
   useEffect(() => {
     // console.log("Observaciones actuales:", observacionesPorRegistro);
@@ -2904,7 +3035,7 @@ function Transporte() {
   const fetchTransportistas = async () => {
     try {
       const response = await axios.get(
-        "http://66.232.105.87:3007/api/Trasporte/transportistas"
+        "http://localhost:3007/api/Trasporte/transportistas"
       );
       // console.log("Datos de transportistas:", response.data); // Verifica que contenga datos
       setTransportistaData(response.data);
@@ -2916,7 +3047,7 @@ function Transporte() {
   const fetchEmpresas = async () => {
     try {
       const response = await axios.get(
-        "http://66.232.105.87:3007/api/Trasporte/transportistas/empresas"
+        "http://localhost:3007/api/Trasporte/transportistas/empresas"
       );
 
       // console.log("Datos de empresa:", response.data); // Verifica que contenga datos
@@ -3013,7 +3144,7 @@ function Transporte() {
 
       // Enviar la solicitud al backend
       const response = await axios.post(
-        "http://66.232.105.87:3007/api/Trasporte/insertar-visita",
+        "http://localhost:3007/api/Trasporte/insertar-visita",
         dataToSend
       );
 
@@ -3040,7 +3171,7 @@ function Transporte() {
     try {
       setLoading(true); // Muestra el loading
       const response = await axios.delete(
-        `http://66.232.105.87:3007/api/Trasporte/ruta/eliminar/${noOrden}`
+        `http://localhost:3007/api/Trasporte/ruta/eliminar/${noOrden}`
       );
       alert(response.data.message); // Muestra el mensaje de éxito
       // Aquí puedes también actualizar el estado para eliminar la ruta de la vista sin necesidad de recargar
@@ -3093,7 +3224,7 @@ function Transporte() {
     }));
   };
 
-  useEffect(() => {}, [observacionesPorRegistro, groupedData]);
+  useEffect(() => { }, [observacionesPorRegistro, groupedData]);
 
   const getTransportUrl = (transport) => {
     const cleanedTransport = transport
@@ -3137,7 +3268,7 @@ function Transporte() {
     }
     try {
       const response = await axios.get(
-        "http://66.232.105.87:3007/api/Trasporte/historico"
+        "http://localhost:3007/api/Trasporte/historico"
       );
       setHistoricoData(response.data);
     } catch (error) {
@@ -3154,7 +3285,7 @@ function Transporte() {
 
     try {
       const response = await axios.get(
-        "http://66.232.105.87:3007/api/Trasporte/historico",
+        "http://localhost:3007/api/Trasporte/historico",
         {
           params: {
             cliente: selectedCliente || "",
@@ -3174,7 +3305,7 @@ function Transporte() {
   const fetchClientesRegistrados = async () => {
     try {
       const response = await axios.get(
-        "http://66.232.105.87:3007/api/Trasporte/historico_clientes"
+        "http://localhost:3007/api/Trasporte/historico_clientes"
       );
 
       // Limpiar comillas innecesarias en nombres de clientes
@@ -3200,7 +3331,7 @@ function Transporte() {
   const fetchColumnasDisponibles = async () => {
     try {
       const response = await axios.get(
-        "http://66.232.105.87:3007/api/Trasporte/historico_columnas"
+        "http://localhost:3007/api/Trasporte/historico_columnas"
       );
       setColumnasDisponibles(response.data);
     } catch (error) {
@@ -3566,7 +3697,7 @@ function Transporte() {
       console.log("Llamando a la API con No Ordenes:", noOrdenes);
       // Construimos la URL, uniendo los pedidos con comas
       const response = await axios.get(
-        `http://66.232.105.87:3007/api/Trasporte/pedido/ultimas-fechas-embarque?pedidos=${noOrdenes.join(
+        `http://localhost:3007/api/Trasporte/pedido/ultimas-fechas-embarque?pedidos=${noOrdenes.join(
           ","
         )}`
       );
@@ -3629,7 +3760,7 @@ function Transporte() {
 
     try {
       const response = await fetch(
-        "http://66.232.105.87:3007/api/Trasporte/subir-excel",
+        "http://localhost:3007/api/Trasporte/subir-excel",
         {
           method: "POST",
           body: formData,
@@ -3685,7 +3816,7 @@ function Transporte() {
         queryParams.append("numeroFacturaLT", facturaNormalizada);
 
       const response = await fetch(
-        `http://66.232.105.87:3007/api/Trasporte/rutas?${queryParams.toString()}`
+        `http://localhost:3007/api/Trasporte/rutas?${queryParams.toString()}`
       );
       const data = await response.json();
 
@@ -3829,7 +3960,7 @@ function Transporte() {
 
     try {
       const response = await fetch(
-        `http://66.232.105.87:3007/api/Trasporte/actualizar-por-guia/${guia}`,
+        `http://localhost:3007/api/Trasporte/actualizar-por-guia/${guia}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -3894,7 +4025,7 @@ function Transporte() {
       for (const route of rutasArray) {
         try {
           const response = await axios.post(
-            "http://66.232.105.87:3007/api/Trasporte/rutas",
+            "http://localhost:3007/api/Trasporte/rutas",
             {
               nombre: route,
             }
@@ -3939,7 +4070,7 @@ function Transporte() {
 
           try {
             const response = await axios.post(
-              "http://66.232.105.87:3007/api/Trasporte/rutas/pedidos",
+              "http://localhost:3007/api/Trasporte/rutas/pedidos",
               mappedPedido
             );
             console.log("✅ Pedido sincronizado:", response.data);
@@ -3993,7 +4124,7 @@ function Transporte() {
   const fetchRutasConPedidos = async () => {
     try {
       const response = await axios.get(
-        "http://66.232.105.87:3007/api/Trasporte/Rutasconpedido"
+        "http://localhost:3007/api/Trasporte/Rutasconpedido"
       );
       console.log("✅ Rutas obtenidas:", response.data);
       setRutasConPedidos(response.data);
@@ -4014,7 +4145,7 @@ function Transporte() {
 
     try {
       const response = await axios.post(
-        `http://66.232.105.87:3007/api/Trasporte/status`,
+        `http://localhost:3007/api/Trasporte/status`,
         { orderNumbers: ordenes }
       );
 
@@ -4042,9 +4173,9 @@ function Transporte() {
         prev.map((r) =>
           r.id === ruta.id
             ? {
-                ...r,
-                pedidos: pedidosActualizados,
-              }
+              ...r,
+              pedidos: pedidosActualizados,
+            }
             : r
         )
       );
@@ -4101,7 +4232,7 @@ function Transporte() {
     const fetchResumenDelDia = async () => {
       try {
         const response = await axios.get(
-          "http://66.232.105.87:3007/api/Trasporte/resumen-dia"
+          "http://localhost:3007/api/Trasporte/resumen-dia"
         );
         setResumen(response.data);
       } catch (error) {
@@ -4245,7 +4376,7 @@ function Transporte() {
     for (const orden of ordenes) {
       try {
         const response = await fetch(
-          `http://66.232.105.87:3007/api/Trasporte/actualizar-guia-completa/${orden}`, // 🔥 nueva ruta aquí
+          `http://localhost:3007/api/Trasporte/actualizar-guia-completa/${orden}`, // 🔥 nueva ruta aquí
           {
             method: "PUT",
             headers: {
@@ -4298,25 +4429,23 @@ function Transporte() {
 
   // mandar correo
 
-  const handleEnviarCorreo = async (noOrden) => {
+  const handleEnviarCorreo = async (noOrden, tipo_original) => {
     try {
-      const response = await axios.post(
-        "http://66.232.105.87:3007/api/Trasporte/enviar",
-        {
-          noOrden,
-        }
-      );
+      const response = await axios.post('http://localhost:3007/api/Trasporte/enviar-correo-asignacion', {
+        noOrden,
+        tipo_original
+      });
 
       if (response.data.success) {
-        alert(`✅ Correo enviado para la orden ${noOrden}`);
+        alert(`✅ ${response.data.message}`);
       } else {
-        alert(`⚠️ Error: ${response.data.message}`);
+        alert(`⚠️ ${response.data.message}`);
       }
     } catch (error) {
-      console.error("❌ Error al enviar correo:", error);
-      alert("❌ No se pudo enviar el correo.");
+      alert('❌ Error al enviar el correo');
     }
   };
+
 
   // calcular por status
 
@@ -4577,7 +4706,7 @@ function Transporte() {
 
     try {
       const response = await axios.post(
-        "http://66.232.105.87:3007/api/Trasporte/actualizar-tipo-original",
+        "http://localhost:3007/api/Trasporte/actualizar-tipo-original",
         formData
       );
 
@@ -4588,6 +4717,10 @@ function Transporte() {
       alert("Error al subir el archivo.");
     }
   };
+
+  //Enviar el correo 
+
+
 
   return (
     <Paper elevation={3} style={{ padding: "20px" }}>
@@ -4609,1478 +4742,1458 @@ function Transporte() {
       </AppBar>
 
       {/* Primer Tab: Mostrar rutas y detalles */}
-      {tabIndex === 0 &&
-        (user?.role === "Admin" ||
-          user?.role === "Master" ||
-          user?.role === "Trans" ||
-          user?.role === "Control" ||
-          user?.role === "Embar") && (
-          <Box marginTop={2}>
-            <Typography variant="h5">Cargar Archivo Excel</Typography>
+      {tabIndex === 0 && (user?.role === "Admin" || user?.role === "Master" || user?.role === "Trans" || user?.role === "Control" || user?.role === "Embar") && (<Box marginTop={2}>
+        <Typography variant="h5">Cargar Archivo Excel</Typography>
 
-            <TextField
-              label="Buscar No. Orden"
-              variant="outlined"
-              size="small"
-              value={filterOrderValue}
-              onChange={(e) => setFilterOrderValue(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  handleBuscarPorOrden(); // Función que definimos abajo
-                }
-              }}
-              style={{ marginRight: 10 }}
+        <TextField
+          label="Buscar No. Orden"
+          variant="outlined"
+          size="small"
+          value={filterOrderValue}
+          onChange={(e) => setFilterOrderValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              handleBuscarPorOrden(); // Función que definimos abajo
+            }
+          }}
+          style={{ marginRight: 10 }}
+        />
+        <Button variant="contained" onClick={handleBuscarPorOrden}>
+          Buscar Orden
+        </Button>
+
+        <Button
+          variant="contained"
+          color="error"
+          onClick={() => {
+            const keysToClear = [
+              "sentRoutesData",
+              "transporteTimestamp",
+              "observacionesPorRegistro",
+              "totalClientes",
+              "totalPedidos",
+              "totalGeneral",
+            ];
+
+            keysToClear.forEach((key) => localStorage.removeItem(key));
+
+            alert(
+              "🧹 Se limpiaron todos los datos de localStorage utilizados."
+            );
+            window.location.reload(); // Opcional para forzar recarga del componente
+          }}
+        >
+          Limpiar LocalStorage
+        </Button>
+
+        <Box marginTop={2} display="flex" alignItems="center" gap={2}>
+          <label htmlFor="file-upload">
+            <input
+              id="file-upload"
+              type="file"
+              accept=".xlsx, .xls"
+              onChange={handleFileUpload}
+              style={{ display: "none" }}
             />
-            <Button variant="contained" onClick={handleBuscarPorOrden}>
-              Buscar Orden
-            </Button>
 
             <Button
               variant="contained"
-              color="error"
-              onClick={() => {
-                const keysToClear = [
-                  "sentRoutesData",
-                  "transporteTimestamp",
-                  "observacionesPorRegistro",
-                  "totalClientes",
-                  "totalPedidos",
-                  "totalGeneral",
-                ];
-
-                keysToClear.forEach((key) => localStorage.removeItem(key));
-
-                alert(
-                  "🧹 Se limpiaron todos los datos de localStorage utilizados."
-                );
-                window.location.reload(); // Opcional para forzar recarga del componente
+              component="span"
+              color="primary"
+              sx={{
+                textTransform: "none",
+                backgroundColor: "#1976D2",
+                "&:hover": {
+                  backgroundColor: "#135BA1",
+                },
               }}
             >
-              Limpiar LocalStorage
+              📂 Subir Archivo
             </Button>
+          </label>
 
-            <Box marginTop={2} display="flex" alignItems="center" gap={2}>
-              <label htmlFor="file-upload">
-                <input
-                  id="file-upload"
-                  type="file"
-                  accept=".xlsx, .xls"
-                  onChange={handleFileUpload}
-                  style={{ display: "none" }}
+          <Button
+            onClick={clearLocalStorage}
+            variant="contained"
+            color="secondary"
+          >
+            Limpiar Datos
+          </Button>
+
+          <Autocomplete
+            freeSolo
+            value={newRoute || ""}
+            onChange={(event, newValue) => {
+              if (newValue && !options.includes(newValue)) {
+                setOptions((prevOptions) => [...prevOptions, newValue]);
+              }
+              setNewRoute(newValue || ""); // asegurar que no sea null
+            }}
+            inputValue={newRoute || ""}
+            onInputChange={(event, newInputValue) => {
+              setNewRoute(newInputValue || ""); // prevenir null
+            }}
+            id="autocomplete-routes"
+            options={options}
+            sx={{ width: 300, marginRight: "10px" }}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Nueva Ruta"
+                variant="outlined"
+              />
+            )}
+          />
+
+          <Button
+            onClick={addRoute}
+            variant="contained"
+            sx={{
+              backgroundColor: "#FF9800", // Color de fondo personalizado (naranja)
+              color: "white", // Color del texto
+              "&:hover": {
+                backgroundColor: "#FB8C00", // Color de fondo cuando el cursor está encima (naranja oscuro)
+              },
+            }}
+          >
+            Agregar Ruta
+          </Button>
+
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => {
+              setTipoRuta("paqueteria"); // Establecer el tipo de ruta como "paquetería"
+              setConfirmSendModalOpen(true); // Abrir el modal
+              handleGenerateRoutes();
+            }}
+            style={{
+              backgroundColor:
+                tipoRuta === "paqueteria" ? "#1976D2" : "#E3F2FD",
+              color: tipoRuta === "paqueteria" ? "white" : "black",
+            }}
+          >
+            Paquetería
+          </Button>
+
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => {
+              setTipoRuta("Directa"); // Establecer el tipo de ruta como "ruta1"
+              setConfirmSendModalOpen(true); // Abrir el modal
+              handleGenerateRoutes();
+            }}
+            style={{
+              backgroundColor:
+                tipoRuta === "Directa" ? "#FF5722" : "#FFCCBC",
+              color: tipoRuta === "ruta1" ? "white" : "black",
+            }}
+          >
+            Directa
+          </Button>
+
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => {
+              setTipoRuta("venta empleado"); // Establecer el tipo de ruta como "venta empleado"
+              setConfirmSendModalOpen(true); // Abrir el modal
+              handleGenerateRoutes();
+            }}
+            style={{
+              backgroundColor:
+                tipoRuta === "venta empleado" ? "#4CAF50" : "#C8E6C9",
+              color: tipoRuta === "venta empleado" ? "white" : "black",
+            }}
+          >
+            Venta Empleado
+          </Button>
+
+          <Button
+            onClick={syncRoutesToDB}
+            variant="contained"
+            sx={{
+              backgroundColor: "#1976D2",
+              color: "white",
+              "&:hover": { backgroundColor: "#1565C0" },
+              marginTop: "10px",
+            }}
+            disabled={loadingSync} // 🔹 Deshabilita si está sincronizando
+          >
+            {loadingSync ? "Sincronizando..." : "Sincronizar Rutas"}
+          </Button>
+
+          {/* Botón para abrir el modal */}
+          {user?.role === "Admin" || user?.role === "Master" ? (
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleOpenHistoricoModal}
+            >
+              Histórico 2024
+            </Button>
+          ) : null}
+
+          <Dialog
+            open={historicoModalOpen}
+            onClose={handleCloseHistoricoModal}
+            maxWidth="md"
+            fullWidth
+          >
+            <DialogTitle>Histórico 2024</DialogTitle>
+            <DialogContent>
+              {/* Selección de Cliente */}
+              <FormControl fullWidth>
+                <InputLabel>Selecciona un Cliente</InputLabel>
+
+                {/* 🔍 Input para buscar clientes */}
+                <TextField
+                  label="Buscar Cliente"
+                  variant="outlined"
+                  fullWidth
+                  margin="dense"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
                 />
 
-                <Button
-                  variant="contained"
-                  component="span"
-                  color="primary"
-                  sx={{
-                    textTransform: "none",
-                    backgroundColor: "#1976D2",
-                    "&:hover": {
-                      backgroundColor: "#135BA1",
-                    },
-                  }}
-                >
-                  📂 Subir Archivo
-                </Button>
-              </label>
-
-              <Button
-                onClick={clearLocalStorage}
-                variant="contained"
-                color="secondary"
-              >
-                Limpiar Datos
-              </Button>
-
-              <Autocomplete
-                freeSolo
-                value={newRoute || ""}
-                onChange={(event, newValue) => {
-                  if (newValue && !options.includes(newValue)) {
-                    setOptions((prevOptions) => [...prevOptions, newValue]);
+                {/* 📋 Selector con paginación */}
+                <Select
+                  value={selectedCliente}
+                  onChange={(event) =>
+                    setSelectedCliente(event.target.value)
                   }
-                  setNewRoute(newValue || ""); // asegurar que no sea null
-                }}
-                inputValue={newRoute || ""}
-                onInputChange={(event, newInputValue) => {
-                  setNewRoute(newInputValue || ""); // prevenir null
-                }}
-                id="autocomplete-routes"
-                options={options}
-                sx={{ width: 300, marginRight: "10px" }}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Nueva Ruta"
-                    variant="outlined"
-                  />
-                )}
-              />
-
-              <Button
-                onClick={addRoute}
-                variant="contained"
-                sx={{
-                  backgroundColor: "#FF9800", // Color de fondo personalizado (naranja)
-                  color: "white", // Color del texto
-                  "&:hover": {
-                    backgroundColor: "#FB8C00", // Color de fondo cuando el cursor está encima (naranja oscuro)
-                  },
-                }}
-              >
-                Agregar Ruta
-              </Button>
-
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={() => {
-                  setTipoRuta("paqueteria"); // Establecer el tipo de ruta como "paquetería"
-                  setConfirmSendModalOpen(true); // Abrir el modal
-                  handleGenerateRoutes();
-                }}
-                style={{
-                  backgroundColor:
-                    tipoRuta === "paqueteria" ? "#1976D2" : "#E3F2FD",
-                  color: tipoRuta === "paqueteria" ? "white" : "black",
-                }}
-              >
-                Paquetería
-              </Button>
-
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={() => {
-                  setTipoRuta("Directa"); // Establecer el tipo de ruta como "ruta1"
-                  setConfirmSendModalOpen(true); // Abrir el modal
-                  handleGenerateRoutes();
-                }}
-                style={{
-                  backgroundColor:
-                    tipoRuta === "Directa" ? "#FF5722" : "#FFCCBC",
-                  color: tipoRuta === "ruta1" ? "white" : "black",
-                }}
-              >
-                Directa
-              </Button>
-
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={() => {
-                  setTipoRuta("venta empleado"); // Establecer el tipo de ruta como "venta empleado"
-                  setConfirmSendModalOpen(true); // Abrir el modal
-                  handleGenerateRoutes();
-                }}
-                style={{
-                  backgroundColor:
-                    tipoRuta === "venta empleado" ? "#4CAF50" : "#C8E6C9",
-                  color: tipoRuta === "venta empleado" ? "white" : "black",
-                }}
-              >
-                Venta Empleado
-              </Button>
-
-              <Button
-                onClick={syncRoutesToDB}
-                variant="contained"
-                sx={{
-                  backgroundColor: "#1976D2",
-                  color: "white",
-                  "&:hover": { backgroundColor: "#1565C0" },
-                  marginTop: "10px",
-                }}
-                disabled={loadingSync} // 🔹 Deshabilita si está sincronizando
-              >
-                {loadingSync ? "Sincronizando..." : "Sincronizar Rutas"}
-              </Button>
-
-              {/* Botón para abrir el modal */}
-              {user?.role === "Admin" || user?.role === "Master" ? (
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={handleOpenHistoricoModal}
+                  displayEmpty
                 >
-                  Histórico 2024
-                </Button>
-              ) : null}
-
-              <Dialog
-                open={historicoModalOpen}
-                onClose={handleCloseHistoricoModal}
-                maxWidth="md"
-                fullWidth
-              >
-                <DialogTitle>Histórico 2024</DialogTitle>
-                <DialogContent>
-                  {/* Selección de Cliente */}
-                  <FormControl fullWidth>
-                    <InputLabel>Selecciona un Cliente</InputLabel>
-
-                    {/* 🔍 Input para buscar clientes */}
-                    <TextField
-                      label="Buscar Cliente"
-                      variant="outlined"
-                      fullWidth
-                      margin="dense"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-
-                    {/* 📋 Selector con paginación */}
-                    <Select
-                      value={selectedCliente}
-                      onChange={(event) =>
-                        setSelectedCliente(event.target.value)
-                      }
-                      displayEmpty
-                    >
-                      {filteredClientes
-                        .slice(page * rowsPerPage, (page + 1) * rowsPerPage)
-                        .map((cliente) => (
-                          <MenuItem
-                            key={cliente.noCliente}
-                            value={cliente.noCliente}
-                          >
-                            {cliente.noCliente} - {cliente.nombreCliente}
-                          </MenuItem>
-                        ))}
-                    </Select>
-
-                    {/* 📌 Paginación de 10 en 10 */}
-                    <TablePagination
-                      component="div"
-                      count={filteredClientes.length}
-                      page={page}
-                      rowsPerPage={rowsPerPage}
-                      onPageChange={(event, newPage) => setPage(newPage)}
-                      rowsPerPageOptions={[10]}
-                    />
-                  </FormControl>
-
-                  {/* Selección de Columnas */}
-                  <FormControl fullWidth margin="dense">
-                    <InputLabel>Selecciona Columnas</InputLabel>
-                    <Select
-                      multiple
-                      value={selectedColumns}
-                      onChange={(event) =>
-                        setSelectedColumns(event.target.value)
-                      }
-                      onClose={() =>
-                        console.log("Selector de columnas cerrado")
-                      }
-                      renderValue={(selected) =>
-                        selected.length
-                          ? selected.join(", ")
-                          : "Selecciona columnas"
-                      }
-                    >
-                      {columnasDisponibles.map((col) => (
-                        <MenuItem key={col} value={col}>
-                          {col}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-
-                  {/* Selector de Mes (solo si "FECHA" está seleccionada) */}
-                  {selectedColumns.includes("FECHA") && (
-                    <FormControl fullWidth margin="dense">
-                      <InputLabel>Selecciona un Mes</InputLabel>
-                      <Select
-                        value={selectedMonth}
-                        onChange={(event) =>
-                          setSelectedMonth(event.target.value)
-                        }
+                  {filteredClientes
+                    .slice(page * rowsPerPage, (page + 1) * rowsPerPage)
+                    .map((cliente) => (
+                      <MenuItem
+                        key={cliente.noCliente}
+                        value={cliente.noCliente}
                       >
-                        {meses.map((mes) => (
-                          <MenuItem key={mes.value} value={mes.value}>
-                            {mes.label}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  )}
-
-                  {/* Botones de Acción */}
-                  <div
-                    style={{ display: "flex", gap: "10px", marginTop: "10px" }}
-                  >
-                    <Button
-                      variant="contained"
-                      color="primary"
-                      onClick={handleFetchHistoricoData}
-                    >
-                      Buscar
-                    </Button>
-
-                    <Button
-                      variant="outlined"
-                      color="secondary"
-                      onClick={resetFilters}
-                    >
-                      Reiniciar
-                    </Button>
-                  </div>
-
-                  {/* Tabla de Datos */}
-                  <TableContainer
-                    component={Paper}
-                    style={{ marginTop: "20px" }}
-                  >
-                    <Table>
-                      <TableHead>
-                        <TableRow>
-                          {selectedColumns.map((col) => (
-                            <TableCell key={col}>{col}</TableCell>
-                          ))}
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {historicoData.map((row, index) => (
-                          <TableRow key={index}>
-                            {selectedColumns.map((col) => (
-                              <TableCell key={col}>{row[col]}</TableCell>
-                            ))}
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                </DialogContent>
-
-                {/* Acciones del Modal */}
-                <DialogActions>
-                  <Button onClick={handleCloseHistoricoModal} color="secondary">
-                    Cerrar
-                  </Button>
-                </DialogActions>
-              </Dialog>
-
-              <Snackbar
-                open={snackbarOpen}
-                autoHideDuration={6000}
-                onClose={handleSnackbarClose}
-                message={snackbarMessage}
-                action={
-                  <IconButton
-                    size="small"
-                    color="inherit"
-                    onClick={handleSnackbarClose}
-                  >
-                    <CloseIcon fontSize="small" />
-                  </IconButton>
-                }
-              />
-            </Box>
-
-            {(user?.role === "Admin" ||
-              user?.role === "Control" ||
-              user?.role === "Embar" ||
-              user?.role === "") && (
-              <Box>
-                <Typography variant="h6" gutterBottom>
-                  Rutas Disponibles
-                </Typography>
-
-                <Grid container spacing={2}>
-                  {rutasConPedidos.length > 0 ? (
-                    rutasConPedidos.map((ruta) => {
-                      const totalRuta =
-                        ruta.pedidos?.reduce(
-                          (acc, pedido) => acc + pedido.total,
-                          0
-                        ) || 0;
-                      const statusCount = getStatusCountForRuta(
-                        ruta.pedidos || []
-                      );
-
-                      return (
-                        <Grid item key={ruta.id} xs={12} sm={6} md={4}>
-                          <Card
-                            sx={{
-                              bgcolor: "#f5f5f5",
-                              borderRadius: "8px",
-                              p: 2,
-                            }}
-                          >
-                            <CardContent>
-                              <Typography variant="h6" textAlign="center">
-                                {ruta.nombre}
-                              </Typography>
-                              <Typography variant="body2" color="textSecondary">
-                                Pedidos: {ruta.pedidos?.length || 0}
-                              </Typography>
-
-                              {/* Resumen de estatus */}
-                              {Object.entries(statusCount).map(
-                                ([status, count]) =>
-                                  count > 0 ? (
-                                    <Typography key={status} variant="body2">
-                                      {status}: {count}
-                                    </Typography>
-                                  ) : null
-                              )}
-                            </CardContent>
-
-                            <CardActions sx={{ justifyContent: "center" }}>
-                              <Button
-                                variant="contained"
-                                color="primary"
-                                onClick={() => {
-                                  openDetallesRuta?.(ruta.nombre); // Si la usas
-                                  openPedidosDeBDModal?.(ruta); // Si la usas
-                                  setModalRoute(ruta.nombre);
-                                  setSelectedRuta(ruta);
-                                }}
-                              >
-                                Ver Pedidos
-                              </Button>
-                            </CardActions>
-                          </Card>
-                        </Grid>
-                      );
-                    })
-                  ) : (
-                    <Typography>No hay rutas disponibles.</Typography>
-                  )}
-                </Grid>
-
-                {/* Modal para mostrar pedidos de la ruta seleccionada */}
-                <Modal
-                  open={!!selectedRuta}
-                  onClose={() => setSelectedRuta(null)}
-                >
-                  <Box
-                    sx={{
-                      position: "absolute",
-                      top: "50%",
-                      left: "50%",
-                      transform: "translate(-50%, -50%)",
-                      width: "80%",
-                      maxHeight: "80vh",
-                      overflowY: "auto",
-                      bgcolor: "white",
-                      boxShadow: 24,
-                      p: 4,
-                      borderRadius: "12px",
-                    }}
-                  >
-                    <Typography variant="h6" gutterBottom>
-                      Pedidos de la Ruta: {selectedRuta?.nombre} -{" "}
-                      {formatCurrency(getTotalRuta(selectedRuta))}
-                    </Typography>
-
-                    {getPedidosRuta(selectedRuta?.nombre).length > 0 ? (
-                      <TableContainer component={Paper}>
-                        <Button
-                          onClick={() =>
-                            reactivarRuta(
-                              selectedRuta.nombre,
-                              getPedidosRuta(selectedRuta.nombre)
-                            )
-                          }
-                          sx={{ mb: 2 }}
-                        >
-                          Reactivar como Ruta
-                        </Button>
-
-                        <Table>
-                          <TableHead>
-                            <TableRow>
-                              <TableCell>No. Orden</TableCell>
-                              <TableCell>Tipo Orden</TableCell>
-                              <TableCell>Cliente</TableCell>
-                              <TableCell>Municipio</TableCell>
-                              <TableCell>Estado</TableCell>
-                              <TableCell>Total</TableCell>
-                              <TableCell>Partidas</TableCell>
-                              <TableCell>Piezas</TableCell>
-                              <TableCell>Fecha Emisión</TableCell>
-                              <TableCell>Observaciones</TableCell>
-                              <TableCell>Status</TableCell>
-                            </TableRow>
-                          </TableHead>
-
-                          <TableBody>
-                            {getPedidosRuta(selectedRuta?.nombre).map(
-                              (pedido) => (
-                                <TableRow key={pedido.id}>
-                                  <TableCell>{pedido.no_orden}</TableCell>
-                                  <TableCell>
-                                    {pedido.tipo || "Sin tipo"}
-                                  </TableCell>
-                                  <TableCell>{pedido.nombre_cliente}</TableCell>
-                                  <TableCell>{pedido.municipio}</TableCell>
-                                  <TableCell>{pedido.estado}</TableCell>
-                                  <TableCell>
-                                    {formatCurrency(Number(pedido.total) || 0)}
-                                  </TableCell>
-                                  <TableCell>{pedido.partidas}</TableCell>
-                                  <TableCell>{pedido.piezas}</TableCell>
-                                  <TableCell>{pedido.fecha_emision}</TableCell>
-                                  <TableCell>{pedido.observaciones}</TableCell>
-                                  <TableCell>
-                                    <Typography
-                                      variant="body2"
-                                      style={{ color: pedido.color }}
-                                    >
-                                      {pedido.statusText}
-                                    </Typography>
-
-                                    {pedido.fusionWith && (
-                                      <Typography
-                                        variant="caption"
-                                        style={{
-                                          color: "#800080",
-                                          fontWeight: "bold",
-                                        }}
-                                      >
-                                        (Fusionado con {pedido.fusionWith})
-                                      </Typography>
-                                    )}
-                                  </TableCell>
-                                </TableRow>
-                              )
-                            )}
-                          </TableBody>
-                        </Table>
-                      </TableContainer>
-                    ) : (
-                      <Typography color="textSecondary">
-                        No hay pedidos en esta ruta.
-                      </Typography>
-                    )}
-                  </Box>
-                </Modal>
-              </Box>
-            )}
-
-            <center>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                {/* Contenedor de la tabla */}
-                <div
-                  id="data-to-capture"
-                  style={{
-                    padding: "10px",
-                    maxWidth: "600px",
-                    fontSize: "14px",
-                  }}
-                >
-                  <table
-                    style={{
-                      width: "100%",
-                      borderCollapse: "collapse",
-                      borderColor: "black",
-                      borderRadius: "1px",
-                      fontSize: "14px",
-                    }}
-                  >
-                    <thead>
-                      <tr style={{ backgroundColor: "#FFEB3B" }}>
-                        <th
-                          style={{
-                            padding: "6px",
-                            fontWeight: "bold",
-                            textAlign: "center",
-                          }}
-                        >
-                          CLIENTES
-                        </th>
-                        <th
-                          style={{
-                            padding: "6px",
-                            fontWeight: "bold",
-                            textAlign: "center",
-                          }}
-                        >
-                          PEDIDOS
-                        </th>
-                        <th
-                          style={{
-                            padding: "6px",
-                            fontWeight: "bold",
-                            textAlign: "center",
-                          }}
-                        >
-                          TOTAL
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td style={{ padding: "6px", textAlign: "center" }}>
-                          {resumen ? resumen.totalClientes : "Cargando..."}
-                        </td>
-                        <td style={{ padding: "6px", textAlign: "center" }}>
-                          {resumen ? resumen.totalPedidos : "Cargando..."}
-                        </td>
-                        <td style={{ padding: "6px", textAlign: "center" }}>
-                          {resumen
-                            ? formatCurrency(resumen.totalGeneral)
-                            : "Cargando..."}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Contenedor de los botones al lado derecho */}
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "5px",
-                    marginLeft: "10px",
-                  }}
-                >
-                  {/* Botón para limpiar localStorage */}
-                  <IconButton
-                    style={{
-                      backgroundColor: "red",
-                      color: "white",
-                      borderRadius: "5px",
-                    }}
-                    onClick={() => {
-                      localStorage.removeItem("totalClientes");
-                      localStorage.removeItem("totalPedidos");
-                      localStorage.removeItem("totalGeneral");
-                      setResumen({
-                        totalClientes: 0,
-                        totalPedidos: 0,
-                        totalGeneral: 0,
-                      });
-                    }}
-                  >
-                    🗑️
-                  </IconButton>
-
-                  {/* Botón para descargar */}
-                  <IconButton
-                    style={{
-                      backgroundColor: "#1976D2",
-                      color: "white",
-                      borderRadius: "5px",
-                    }}
-                    onClick={() => {
-                      // Aquí debe ir tu función exportToImage
-                    }}
-                  >
-                    ⬇️
-                  </IconButton>
-                </div>
-              </div>
-            </center>
-
-            {Object.keys(groupedData).length <= MAX_VISIBLE_ROUTES ? (
-              <>
-                <Box
-                  sx={{
-                    display: "flex",
-                    overflowX: "auto",
-                    whiteSpace: "nowrap",
-                    padding: "10px",
-                    gap: "10px",
-                    maxWidth: "100%",
-                  }}
-                >
-                  {Object.keys(groupedData)
-                    .filter((route) => !hiddenRoutes.includes(route)) // 👈 filtra rutas ocultas
-                    .map((route) => {
-                      const totals = calculateTotals(route);
-                      const pedidosOrdenes = groupedData[route].rows
-                        .map((pedido) => pedido["NO ORDEN"])
-                        .join(", ");
-
-                      return (
-                        <Tooltip
-                          key={route}
-                          title={
-                            <Typography
-                              sx={{
-                                fontSize: "16px",
-                                fontWeight: "bold",
-                                p: 1,
-                              }}
-                            >
-                              Órdenes:{" "}
-                              {pedidosOrdenes.length > 0
-                                ? pedidosOrdenes
-                                : "Sin pedidos"}
-                            </Typography>
-                          }
-                          arrow
-                          sx={{
-                            "& .MuiTooltip-tooltip": {
-                              fontSize: "16px",
-                              maxWidth: "300px",
-                              backgroundColor: "#333",
-                              color: "white",
-                              padding: "10px",
-                            },
-                          }}
-                        >
-                          <Box
-                            sx={{
-                              minWidth: "200px",
-                              maxWidth: "200px",
-                              textAlign: "center",
-                              padding: "10px",
-                              border: "1px solid #ddd",
-                              borderRadius: "5px",
-                              backgroundColor: "#fff",
-                              boxShadow: "2px 2px 5px rgba(0,0,0,0.1)",
-                              position: "relative",
-                              cursor: "pointer",
-                            }}
-                          >
-                            {/* Botón para ocultar ruta */}
-                            <Box
-                              sx={{
-                                position: "absolute",
-                                top: "5px",
-                                right: "5px",
-                                display: "flex",
-                                flexDirection: "row",
-                                gap: "4px",
-                              }}
-                            >
-                              {/* Ocultar */}
-                              <IconButton
-                                size="small"
-                                color="warning"
-                                onClick={() =>
-                                  setHiddenRoutes((prev) => [...prev, route])
-                                }
-                              >
-                                <VisibilityOffIcon />
-                              </IconButton>
-
-                              {/* Eliminar */}
-                              <IconButton
-                                size="small"
-                                color="error"
-                                onClick={() => removeRoute(route)}
-                              >
-                                <CloseIcon />
-                              </IconButton>
-                            </Box>
-
-                            <Checkbox
-                              checked={selectedRoutes.includes(route)}
-                              onChange={() => handleSelectRoute(route)}
-                            />
-                            <Typography variant="h6" fontWeight="bold">
-                              Ruta: {route}
-                            </Typography>
-                            <Typography variant="body2">
-                              <strong>Total:</strong>{" "}
-                              {formatCurrency(totals.TOTAL)}
-                            </Typography>
-                            <Typography variant="body2">
-                              <strong>Partidas:</strong> {totals.PARTIDAS}
-                            </Typography>
-                            <Typography variant="body2">
-                              <strong>Piezas:</strong> {totals.PIEZAS}
-                            </Typography>
-                            <Button
-                              onClick={() => openModal(route)}
-                              size="small"
-                              color="primary"
-                            >
-                              Ver Detalles
-                            </Button>
-                          </Box>
-                        </Tooltip>
-                      );
-                    })}
-                </Box>
-
-                {/* Sección para mostrar rutas ocultas */}
-                {hiddenRoutes.length > 0 && (
-                  <Box mt={2}>
-                    <Typography fontWeight="bold">Rutas ocultas:</Typography>
-                    {hiddenRoutes.map((route) => (
-                      <Box
-                        key={route}
-                        display="flex"
-                        alignItems="center"
-                        gap={1}
-                        mt={1}
-                      >
-                        <Typography>{route}</Typography>
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          onClick={() =>
-                            setHiddenRoutes((prev) =>
-                              prev.filter((r) => r !== route)
-                            )
-                          }
-                        >
-                          Mostrar
-                        </Button>
-                      </Box>
+                        {cliente.noCliente} - {cliente.nombreCliente}
+                      </MenuItem>
                     ))}
-                  </Box>
-                )}
-              </>
-            ) : (
-              <FormControl fullWidth style={{ marginTop: "20px" }}>
-                <InputLabel>Seleccionar Ruta</InputLabel>
+                </Select>
+
+                {/* 📌 Paginación de 10 en 10 */}
+                <TablePagination
+                  component="div"
+                  count={filteredClientes.length}
+                  page={page}
+                  rowsPerPage={rowsPerPage}
+                  onPageChange={(event, newPage) => setPage(newPage)}
+                  rowsPerPageOptions={[10]}
+                />
+              </FormControl>
+
+              {/* Selección de Columnas */}
+              <FormControl fullWidth margin="dense">
+                <InputLabel>Selecciona Columnas</InputLabel>
                 <Select
                   multiple
-                  value={selectedRoutes}
-                  onChange={(e) => setSelectedRoutes(e.target.value)}
-                  renderValue={(selected) => selected.join(", ")}
+                  value={selectedColumns}
+                  onChange={(event) =>
+                    setSelectedColumns(event.target.value)
+                  }
+                  onClose={() =>
+                    console.log("Selector de columnas cerrado")
+                  }
+                  renderValue={(selected) =>
+                    selected.length
+                      ? selected.join(", ")
+                      : "Selecciona columnas"
+                  }
                 >
-                  {Object.keys(groupedData).map((route) => (
-                    <MenuItem key={route} value={route}>
-                      <Checkbox checked={selectedRoutes.includes(route)} />
-                      {route}
+                  {columnasDisponibles.map((col) => (
+                    <MenuItem key={col} value={col}>
+                      {col}
                     </MenuItem>
                   ))}
                 </Select>
               </FormControl>
-            )}
 
-            {/* Modal para mandar a paqueteria */}
-            <Modal
-              open={confirmSendModalOpen}
-              onClose={() => setConfirmSendModalOpen(false)}
-              aria-labelledby="confirm-send-modal-title"
-              aria-describedby="confirm-send-modal-description"
-            >
-              <Box
-                padding="20px"
-                backgroundColor="white"
-                margin="50px auto"
-                maxWidth="400px"
-                textAlign="center"
-                borderRadius="8px"
-              >
-                <Typography variant="h6" id="confirm-send-modal-title">
-                  ¿Está seguro de mandar estas rutas?
-                </Typography>
-
-                <Typography variant="body1" style={{ marginTop: 20 }}>
-                  Rutas seleccionadas: {selectedRoutes.join(", ")}
-                </Typography>
-
-                <Box
-                  position="relative"
-                  style={{
-                    padding: "20px",
-                    backgroundColor: "#f5f5f5",
-                    borderRadius: "8px",
-                  }}
-                ></Box>
-
-                <Box marginTop={2}>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={handleSendRoutes}
+              {/* Selector de Mes (solo si "FECHA" está seleccionada) */}
+              {selectedColumns.includes("FECHA") && (
+                <FormControl fullWidth margin="dense">
+                  <InputLabel>Selecciona un Mes</InputLabel>
+                  <Select
+                    value={selectedMonth}
+                    onChange={(event) =>
+                      setSelectedMonth(event.target.value)
+                    }
                   >
-                    Sí
-                  </Button>
+                    {meses.map((mes) => (
+                      <MenuItem key={mes.value} value={mes.value}>
+                        {mes.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
 
-                  <Button
-                    variant="outlined"
-                    color="secondary"
-                    onClick={() => setConfirmSendModalOpen(false)}
-                    style={{ marginLeft: 10 }}
-                  >
-                    No
-                  </Button>
-                </Box>
-              </Box>
-            </Modal>
-
-            {/* Modal para mostrar detalles de la ruta */}
-            <Modal open={modalOpen} onClose={closeModal}>
-              <Box
-                padding="30px"
-                backgroundColor="white"
-                margin="20px auto"
-                maxWidth="90%"
-                maxHeight="90%"
-                overflow="auto"
-                borderRadius="12px"
-                boxShadow="0 4px 20px rgba(0, 0, 0, 0.1)"
+              {/* Botones de Acción */}
+              <div
+                style={{ display: "flex", gap: "10px", marginTop: "10px" }}
               >
-                <Box display="flex" alignItems="center" gap={1}>
-                  {editingRoute === selectedRoute ? (
-                    <>
-                      <TextField
-                        value={newRouteName}
-                        onChange={(e) => setNewRouteName(e.target.value)}
-                        onBlur={() => {
-                          renameRoute(selectedRoute, newRouteName);
-                          setEditingRoute(null);
-                        }}
-                        autoFocus
-                        size="small"
-                      />
-                      <Button
-                        onClick={() => renameRoute(selectedRoute, newRouteName)}
-                      >
-                        Guardar
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <Typography variant="h6">
-                        Detalles de la Ruta: {selectedRoute}
-                      </Typography>
-                      <IconButton
-                        onClick={() => {
-                          setEditingRoute(selectedRoute);
-                          setNewRouteName(selectedRoute);
-                        }}
-                      >
-                        <BorderColorIcon fontSize="small" />
-                      </IconButton>
-                    </>
-                  )}
-                </Box>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={handleFetchHistoricoData}
+                >
+                  Buscar
+                </Button>
 
-                {selectedRoute &&
-                groupedData[selectedRoute]?.rows?.length > 0 ? (
-                  <>
-                    <TableContainer>
-                      <Grid
-                        item
-                        xs={12}
-                        sm={4}
-                        style={{ marginBottom: "20px" }}
-                      >
-                        <TextField
-                          label="Buscar por No Orden"
-                          variant="outlined"
-                          value={filterOrderValue}
-                          onChange={handleOrderFilterChange}
-                          fullWidth
-                          size="small"
-                          style={{ maxWidth: "300px" }}
-                        />
+                <Button
+                  variant="outlined"
+                  color="secondary"
+                  onClick={resetFilters}
+                >
+                  Reiniciar
+                </Button>
+              </div>
+
+              {/* Tabla de Datos */}
+              <TableContainer
+                component={Paper}
+                style={{ marginTop: "20px" }}
+              >
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      {selectedColumns.map((col) => (
+                        <TableCell key={col}>{col}</TableCell>
+                      ))}
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {historicoData.map((row, index) => (
+                      <TableRow key={index}>
+                        {selectedColumns.map((col) => (
+                          <TableCell key={col}>{row[col]}</TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </DialogContent>
+
+            {/* Acciones del Modal */}
+            <DialogActions>
+              <Button onClick={handleCloseHistoricoModal} color="secondary">
+                Cerrar
+              </Button>
+            </DialogActions>
+          </Dialog>
+
+          <Snackbar
+            open={snackbarOpen}
+            autoHideDuration={6000}
+            onClose={handleSnackbarClose}
+            message={snackbarMessage}
+            action={
+              <IconButton
+                size="small"
+                color="inherit"
+                onClick={handleSnackbarClose}
+              >
+                <CloseIcon fontSize="small" />
+              </IconButton>
+            }
+          />
+        </Box>
+
+        {(user?.role === "Admin" ||
+          user?.role === "Control" ||
+          user?.role === "Embar" ||
+          user?.role === "") && (
+            <Box>
+              <Typography variant="h6" gutterBottom>
+                Rutas Disponibles
+              </Typography>
+
+              <Grid container spacing={2}>
+                {rutasConPedidos.length > 0 ? (
+                  rutasConPedidos.map((ruta) => {
+                    const totalRuta =
+                      ruta.pedidos?.reduce(
+                        (acc, pedido) => acc + pedido.total,
+                        0
+                      ) || 0;
+                    const statusCount = getStatusCountForRuta(
+                      ruta.pedidos || []
+                    );
+
+                    return (
+                      <Grid item key={ruta.id} xs={12} sm={6} md={4}>
+                        <Card
+                          sx={{
+                            bgcolor: "#f5f5f5",
+                            borderRadius: "8px",
+                            p: 2,
+                          }}
+                        >
+                          <CardContent>
+                            <Typography variant="h6" textAlign="center">
+                              {ruta.nombre}
+                            </Typography>
+                            <Typography variant="body2" color="textSecondary">
+                              Pedidos: {ruta.pedidos?.length || 0}
+                            </Typography>
+
+                            {/* Resumen de estatus */}
+                            {Object.entries(statusCount).map(
+                              ([status, count]) =>
+                                count > 0 ? (
+                                  <Typography key={status} variant="body2">
+                                    {status}: {count}
+                                  </Typography>
+                                ) : null
+                            )}
+                          </CardContent>
+
+                          <CardActions sx={{ justifyContent: "center" }}>
+                            <Button
+                              variant="contained"
+                              color="primary"
+                              onClick={() => {
+                                openDetallesRuta?.(ruta.nombre); // Si la usas
+                                openPedidosDeBDModal?.(ruta); // Si la usas
+                                setModalRoute(ruta.nombre);
+                                setSelectedRuta(ruta);
+                              }}
+                            >
+                              Ver Pedidos
+                            </Button>
+                          </CardActions>
+                        </Card>
                       </Grid>
+                    );
+                  })
+                ) : (
+                  <Typography>No hay rutas disponibles.</Typography>
+                )}
+              </Grid>
 
-                      <Table
-                        size="small"
-                        sx={{
-                          "& td, & th": {
-                            padding: "4px 8px",
-                            fontSize: "12px",
-                          },
-                          "& tr": { height: "36px" },
-                        }}
+              {/* Modal para mostrar pedidos de la ruta seleccionada */}
+              <Modal
+                open={!!selectedRuta}
+                onClose={() => setSelectedRuta(null)}
+              >
+                <Box
+                  sx={{
+                    position: "absolute",
+                    top: "50%",
+                    left: "50%",
+                    transform: "translate(-50%, -50%)",
+                    width: "80%",
+                    maxHeight: "80vh",
+                    overflowY: "auto",
+                    bgcolor: "white",
+                    boxShadow: 24,
+                    p: 4,
+                    borderRadius: "12px",
+                  }}
+                >
+                  <Typography variant="h6" gutterBottom>
+                    Pedidos de la Ruta: {selectedRuta?.nombre} -{" "}
+                    {formatCurrency(getTotalRuta(selectedRuta))}
+                  </Typography>
+
+                  {getPedidosRuta(selectedRuta?.nombre).length > 0 ? (
+                    <TableContainer component={Paper}>
+                      <Button
+                        onClick={() =>
+                          reactivarRuta(
+                            selectedRuta.nombre,
+                            getPedidosRuta(selectedRuta.nombre)
+                          )
+                        }
+                        sx={{ mb: 2 }}
                       >
+                        Reactivar como Ruta
+                      </Button>
+
+                      <Table>
                         <TableHead>
                           <TableRow>
-                            <TableCell>Movimientos</TableCell>
-                            <TableCell>FECHA</TableCell>
-                            <TableCell>NO ORDEN</TableCell>
-                            <TableCell>TIPO ORDEN</TableCell>
-                            <TableCell>NO FACTURA</TableCell>
-                            <TableCell>NUM. CLIENTE</TableCell>
-                            <TableCell>NOMBRE DEL CLIENTE</TableCell>
-                            <TableCell>ZONA</TableCell>
-                            <TableCell>MUNICIPIO</TableCell>
-                            <TableCell>ESTADO</TableCell>
-                            <TableCell>OBSERVACIONES</TableCell>
-                            <TableCell>TOTAL</TableCell>
-                            <TableCell>PARTIDAS</TableCell>
-                            <TableCell>PIEZAS</TableCell>
-                            <TableCell>ACCIONES</TableCell>
+                            <TableCell>No. Orden</TableCell>
+                            <TableCell>Tipo Orden</TableCell>
+                            <TableCell>Cliente</TableCell>
+                            <TableCell>Municipio</TableCell>
+                            <TableCell>Estado</TableCell>
+                            <TableCell>Total</TableCell>
+                            <TableCell>Partidas</TableCell>
+                            <TableCell>Piezas</TableCell>
+                            <TableCell>Fecha Emisión</TableCell>
+                            <TableCell>Observaciones</TableCell>
+                            <TableCell>Status</TableCell>
                           </TableRow>
                         </TableHead>
 
                         <TableBody>
-                          {groupedData[selectedRoute].rows.map((row, index) => (
-                            <TableRow
-                              key={row["NO ORDEN"]}
-                              style={{
-                                backgroundColor:
-                                  highlightedRow === row["NO ORDEN"]
-                                    ? "#fff59d"
-                                    : "transparent",
-                              }}
-                            >
-                              <TableCell>
-                                {index !== 0 && (
-                                  <IconButton
-                                    onClick={() =>
-                                      moverPedido(
-                                        selectedRoute,
-                                        index,
-                                        "arriba"
-                                      )
-                                    }
+                          {getPedidosRuta(selectedRuta?.nombre).map(
+                            (pedido) => (
+                              <TableRow key={pedido.id}>
+                                <TableCell>{pedido.no_orden}</TableCell>
+                                <TableCell>
+                                  {pedido.tipo || "Sin tipo"}
+                                </TableCell>
+                                <TableCell>{pedido.nombre_cliente}</TableCell>
+                                <TableCell>{pedido.municipio}</TableCell>
+                                <TableCell>{pedido.estado}</TableCell>
+                                <TableCell>
+                                  {formatCurrency(Number(pedido.total) || 0)}
+                                </TableCell>
+                                <TableCell>{pedido.partidas}</TableCell>
+                                <TableCell>{pedido.piezas}</TableCell>
+                                <TableCell>{pedido.fecha_emision}</TableCell>
+                                <TableCell>{pedido.observaciones}</TableCell>
+                                <TableCell>
+                                  <Typography
+                                    variant="body2"
+                                    style={{ color: pedido.color }}
                                   >
-                                    <ArrowUpwardIcon
-                                      color="primary"
-                                      fontSize="small"
-                                    />
-                                  </IconButton>
-                                )}
-                                {index !==
-                                  groupedData[selectedRoute].rows.length -
-                                    1 && (
-                                  <IconButton
-                                    onClick={() =>
-                                      moverPedido(selectedRoute, index, "abajo")
-                                    }
-                                  >
-                                    <ArrowDownwardIcon
-                                      color="primary"
-                                      fontSize="small"
-                                    />
-                                  </IconButton>
-                                )}
-                              </TableCell>
+                                    {pedido.statusText}
+                                  </Typography>
 
-                              <TableCell>{row["FECHA"]}</TableCell>
-                              <TableCell>
-                                {row["NO ORDEN"] || row.no_orden}
-                              </TableCell>
-                              <TableCell>
-                                {row.tipo || row["TIPO ORIGINAL"] || "Sin dato"}
-                              </TableCell>
-                              <TableCell>{row["NO FACTURA"]}</TableCell>
-                              <TableCell>
-                                {row["NUM. CLIENTE"] || row.num_cliente}
-                              </TableCell>
-                              <TableCell>
-                                {" "}
-                                {row["NOMBRE DEL CLIENTE"] ||
-                                  row.nombre_cliente}
-                              </TableCell>
-                              <TableCell>{row["ZONA"]}</TableCell>
-                              <TableCell>
-                                {row["MUNICIPIO"] || row.municipio}
-                              </TableCell>
-                              <TableCell>
-                                {row["ESTADO"] || row.estado}
-                              </TableCell>
-
-                              <TableCell>
-                                {editingObservationId ===
-                                row["NUM. CLIENTE"] ? (
-                                  <TextField
-                                    value={
-                                      modalObservaciones[row["NUM. CLIENTE"]] ||
-                                      row["OBSERVACIONES"] ||
-                                      ""
-                                    }
-                                    onChange={(e) =>
-                                      handleSaveModalObservation(
-                                        row["NUM. CLIENTE"],
-                                        e.target.value
-                                      )
-                                    }
-                                    variant="outlined"
-                                    size="small"
-                                    autoFocus
-                                    onKeyDown={(e) => {
-                                      if (e.key === "Enter")
-                                        setEditingObservationId(null);
-                                    }}
-                                  />
-                                ) : (
-                                  <span
-                                    onDoubleClick={() =>
-                                      handleEditModalObservation(
-                                        row["NUM. CLIENTE"]
-                                      )
-                                    }
-                                    style={{ cursor: "pointer" }}
-                                  >
-                                    {modalObservaciones[row["NUM. CLIENTE"]] ||
-                                      row["OBSERVACIONES"] ||
-                                      "Sin observaciones"}
-                                  </span>
-                                )}
-                              </TableCell>
-
-                              <TableCell>{formatCurrency(row.TOTAL)}</TableCell>
-                              <TableCell>{row.PARTIDAS}</TableCell>
-                              <TableCell>{row.PIEZAS}</TableCell>
-
-                              <TableCell>
-                                {editRouteIndex === index ? (
-                                  <FormControl fullWidth size="small">
-                                    <InputLabel>Cambiar Ruta</InputLabel>
-                                    <Select
-                                      value={selectedRoute}
-                                      onChange={(e) => {
-                                        assignToRoute(row, e.target.value);
-                                        setEditRouteIndex(null);
+                                  {pedido.fusionWith && (
+                                    <Typography
+                                      variant="caption"
+                                      style={{
+                                        color: "#800080",
+                                        fontWeight: "bold",
                                       }}
-                                      displayEmpty
                                     >
-                                      <MenuItem disabled value="">
-                                        Seleccionar Ruta
-                                      </MenuItem>
-                                      {Object.keys(groupedData).map((route) => (
-                                        <MenuItem key={route} value={route}>
-                                          {route}
-                                        </MenuItem>
-                                      ))}
-                                    </Select>
-                                  </FormControl>
-                                ) : (
-                                  <IconButton
-                                    onClick={() => setEditRouteIndex(index)}
-                                  >
-                                    <CompareArrowsIcon />
-                                  </IconButton>
-                                )}
-                                <IconButton
-                                  color="error"
-                                  onClick={() =>
-                                    removeFromRoute(row, selectedRoute)
-                                  }
-                                >
-                                  <DeleteIcon />
-                                </IconButton>
-                              </TableCell>
-                            </TableRow>
-                          ))}
+                                      (Fusionado con {pedido.fusionWith})
+                                    </Typography>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            )
+                          )}
                         </TableBody>
                       </Table>
                     </TableContainer>
-                  </>
-                ) : (
-                  <Typography>
-                    No hay datos disponibles para esta ruta.
-                  </Typography>
-                )}
-
-                <Box textAlign="right" marginTop={2}>
-                  <Button onClick={closeModal} variant="contained" size="small">
-                    Cerrar
-                  </Button>
-                </Box>
-              </Box>
-            </Modal>
-
-            {/* Tabla de datos cargados */}
-            <TableContainer component={Paper} style={{ marginTop: "20px" }}>
-              {/* Filtros */}
-              <Grid
-                container
-                spacing={1}
-                marginBottom={2}
-                style={{ marginTop: "20px" }}
-              >
-                <Grid item xs={12} sm={4}>
-                  <TextField
-                    label="Buscar por No Orden"
-                    variant="outlined"
-                    name="noOrden"
-                    value={filter.noOrden}
-                    onChange={handleFilterChange}
-                    fullWidth
-                    size="small" // Ajuste del tamaño
-                    style={{ maxWidth: "200px" }} // Limitar la longitud
-                  />
-                </Grid>
-
-                <Grid item xs={12} sm={4}>
-                  <TextField
-                    label="Buscar por Num Cliente"
-                    variant="outlined"
-                    name="numCliente"
-                    value={filter.numCliente}
-                    onChange={handleFilterChange}
-                    fullWidth
-                    size="small" // Ajuste del tamaño
-                    style={{ maxWidth: "200px" }} // Limitar la longitud
-                  />
-                </Grid>
-
-                <Grid item xs={12} sm={4}>
-                  <TextField
-                    label="Buscar por Estado"
-                    variant="outlined"
-                    name="estado"
-                    value={filter.estado}
-                    onChange={handleFilterChange}
-                    fullWidth
-                    size="small" // Ajuste del tamaño
-                    style={{ maxWidth: "200px" }} // Limitar la longitud
-                  />
-                </Grid>
-              </Grid>
-
-              {tabIndex === 0 &&
-                selectedOrders.length > 0 &&
-                ["Admin", "Master", "Trans"].includes(user?.role) && (
-                  <Box display="flex" alignItems="center" gap={2} mb={2}>
-                    <FormControl
-                      variant="outlined"
-                      size="small"
-                      style={{ minWidth: 200 }}
-                    >
-                      <InputLabel>Seleccionar Ruta</InputLabel>
-                      <Select
-                        value={selectedMassRoute}
-                        onChange={(e) => setSelectedMassRoute(e.target.value)}
-                        label="Seleccionar Ruta"
-                      >
-                        {Object.keys(groupedData).map((ruta) => (
-                          <MenuItem key={ruta} value={ruta}>
-                            {ruta}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-
-                    <Button
-                      variant="contained"
-                      color="primary"
-                      disabled={!selectedMassRoute}
-                      onClick={handleAssignMultipleToRoute}
-                    >
-                      Asignar
-                    </Button>
-                  </Box>
-                )}
-
-              <TablePagination
-                component="div"
-                count={filteredData.length} // Se asegura de que `count` es válido
-                rowsPerPage={rowsPerPage}
-                page={Math.min(
-                  page,
-                  Math.floor(filteredData.length / rowsPerPage)
-                )}
-                onPageChange={(event, newPage) => setPage(newPage)}
-                labelRowsPerPage=""
-                rowsPerPageOptions={[]}
-              />
-
-              {/* Tabla */}
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Seleccionar</TableCell>
-                    <TableCell>FECHA</TableCell>
-                    <TableCell>NO ORDEN</TableCell>
-                    <TableCell>TIPO ORDEN</TableCell>
-                    <TableCell>NUM. CLIENTE</TableCell>
-                    <TableCell>NOMBRE DEL CLIENTE</TableCell>
-                    <TableCell>Codigo Postal</TableCell>
-                    <TableCell>MUNICIPIO</TableCell>
-                    <TableCell>ESTADO</TableCell>
-                    <TableCell>OBSERVACIONES</TableCell>
-                    <TableCell>TOTAL</TableCell>
-                    <TableCell>PARTIDAS</TableCell>
-                    <TableCell>PIEZAS</TableCell>
-                    <TableCell>Acciones</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {paginatedData.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={12} style={{ textAlign: "center" }}>
-                        No hay datos disponibles.
-                      </TableCell>
-                    </TableRow>
                   ) : (
-                    paginatedData.map((row, index) => (
-                      <TableRow key={index}>
-                        <TableCell padding="checkbox">
-                          <Checkbox
-                            checked={selectedOrders.includes(row["NO ORDEN"])}
-                            onChange={() => handleToggleOrderSelection(row)}
-                          />
-                        </TableCell>
-                        <TableCell>{row.FECHA}</TableCell>
-                        <TableCell>{row["NO ORDEN"]}</TableCell>
-                        <TableCell>
-                          {row["TIPO ORIGINAL"] || "Sin dato"}
-                        </TableCell>
-                        <TableCell>{row["NUM. CLIENTE"]}</TableCell>
-                        <TableCell>{row["NOMBRE DEL CLIENTE"]}</TableCell>
-                        <TableCell>{row["Codigo_Postal"]}</TableCell>
-                        <TableCell>
-                          {row.MUNICIPIO || "Sin Municipio"}
-                        </TableCell>
-                        <TableCell>{row.ESTADO}</TableCell>
-
-                        <TableCell>
-                          {editingClientId === row["NUM. CLIENTE"] ? (
-                            <TextField
-                              value={
-                                observacionesPorRegistro[row["NUM. CLIENTE"]] ||
-                                "Sin observaciones disponibles"
-                              }
-                              onChange={(e) =>
-                                handleSaveObservation(
-                                  row["NUM. CLIENTE"],
-                                  e.target.value
-                                )
-                              }
-                              variant="outlined"
-                              size="small"
-                            />
-                          ) : (
-                            <span
-                              onClick={() =>
-                                handleEditObservation(row["NUM. CLIENTE"])
-                              }
-                            >
-                              {observacionesPorRegistro[row["NUM. CLIENTE"]] ||
-                                "Sin observaciones"}
-                            </span>
-                          )}
-                        </TableCell>
-
-                        <TableCell>{formatCurrency(row.TOTAL)}</TableCell>
-                        <TableCell>{row.PARTIDAS}</TableCell>
-                        <TableCell>{row.PIEZAS}</TableCell>
-                        <TableCell>
-                          <FormControl fullWidth>
-                            <InputLabel>Seleccionar Ruta</InputLabel>
-                            <Select
-                              value=""
-                              onChange={(e) =>
-                                assignToRoute(row, e.target.value)
-                              }
-                              displayEmpty
-                            >
-                              <MenuItem disabled value="">
-                                Seleccionar Ruta
-                              </MenuItem>
-                              {Object.keys(groupedData).map((route) => (
-                                <MenuItem key={route} value={route}>
-                                  {route}
-                                </MenuItem>
-                              ))}
-                            </Select>
-                          </FormControl>
-                        </TableCell>
-                      </TableRow>
-                    ))
+                    <Typography color="textSecondary">
+                      No hay pedidos en esta ruta.
+                    </Typography>
                   )}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Box>
-        )}
+                </Box>
+              </Modal>
+            </Box>
+          )}
 
-      {/* Segundo Tab: Otra información o tabla */}
-      {tabIndex === 1 &&
-        (user?.role === "Admin" ||
-          user?.role === "Master" ||
-          user?.role === "Trans" ||
-          user?.role === "PQ1" ||
-          user?.role === "Control" ||
-          user?.role === "EB1" ||
-          user?.role === "Paquet" ||
-          user?.role === "Embar" ||
-          user?.role === "Rep" ||
-          user?.role === "Tran",
-        "Rep") && (
-          <Box marginTop={2}>
-            <Typography variant="h5" style={{ textAlign: "center" }}>
-              Tipos de rutas
-            </Typography>
+        <center>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            {/* Contenedor de la tabla */}
+            <div
+              id="data-to-capture"
+              style={{
+                padding: "10px",
+                maxWidth: "600px",
+                fontSize: "14px",
+              }}
+            >
+              <table
+                style={{
+                  width: "100%",
+                  borderCollapse: "collapse",
+                  borderColor: "black",
+                  borderRadius: "1px",
+                  fontSize: "14px",
+                }}
+              >
+                <thead>
+                  <tr style={{ backgroundColor: "#FFEB3B" }}>
+                    <th
+                      style={{
+                        padding: "6px",
+                        fontWeight: "bold",
+                        textAlign: "center",
+                      }}
+                    >
+                      CLIENTES
+                    </th>
+                    <th
+                      style={{
+                        padding: "6px",
+                        fontWeight: "bold",
+                        textAlign: "center",
+                      }}
+                    >
+                      PEDIDOS
+                    </th>
+                    <th
+                      style={{
+                        padding: "6px",
+                        fontWeight: "bold",
+                        textAlign: "center",
+                      }}
+                    >
+                      TOTAL
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style={{ padding: "6px", textAlign: "center" }}>
+                      {resumen ? resumen.totalClientes : "Cargando..."}
+                    </td>
+                    <td style={{ padding: "6px", textAlign: "center" }}>
+                      {resumen ? resumen.totalPedidos : "Cargando..."}
+                    </td>
+                    <td style={{ padding: "6px", textAlign: "center" }}>
+                      {resumen
+                        ? formatCurrency(resumen.totalGeneral)
+                        : "Cargando..."}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
 
-            {tabIndex === 1 &&
-              (user?.role === "Admin" ||
-                user?.role === "Master" ||
-                user?.role === "Tran") && (
-                <Card
-                  sx={{
-                    padding: 2,
-                    marginBottom: 2,
-                    boxShadow: 2,
-                    borderRadius: 2,
-                    maxWidth: "600px",
-                    mx: "auto",
-                  }}
-                >
-                  <Typography
-                    variant="h6"
-                    color="black"
-                    sx={{ fontSize: "16px", marginBottom: 1 }}
-                  >
-                    Subir archivo de facturas
-                  </Typography>
+            {/* Contenedor de los botones al lado derecho */}
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "5px",
+                marginLeft: "10px",
+              }}
+            >
+              {/* Botón para limpiar localStorage */}
+              <IconButton
+                style={{
+                  backgroundColor: "red",
+                  color: "white",
+                  borderRadius: "5px",
+                }}
+                onClick={() => {
+                  localStorage.removeItem("totalClientes");
+                  localStorage.removeItem("totalPedidos");
+                  localStorage.removeItem("totalGeneral");
+                  setResumen({
+                    totalClientes: 0,
+                    totalPedidos: 0,
+                    totalGeneral: 0,
+                  });
+                }}
+              >
+                🗑️
+              </IconButton>
 
-                  {/* Contenedor de carga de archivo */}
-                  <Box
-                    display="flex"
-                    alignItems="center"
-                    gap={1}
-                    marginBottom={1}
-                  >
-                    <Button
-                      variant="contained"
-                      component="label"
-                      startIcon={<CloudUpload />}
+              {/* Botón para descargar */}
+              <IconButton
+                style={{
+                  backgroundColor: "#1976D2",
+                  color: "white",
+                  borderRadius: "5px",
+                }}
+                onClick={() => {
+                  // Aquí debe ir tu función exportToImage
+                }}
+              >
+                ⬇️
+              </IconButton>
+            </div>
+          </div>
+        </center>
+
+        {Object.keys(groupedData).length <= MAX_VISIBLE_ROUTES ? (
+          <>
+            <Box
+              sx={{
+                display: "flex",
+                overflowX: "auto",
+                whiteSpace: "nowrap",
+                padding: "10px",
+                gap: "10px",
+                maxWidth: "100%",
+              }}
+            >
+              {Object.keys(groupedData)
+                .filter((route) => !hiddenRoutes.includes(route)) // 👈 filtra rutas ocultas
+                .map((route) => {
+                  const totals = calculateTotals(route);
+                  const pedidosOrdenes = groupedData[route].rows
+                    .map((pedido) => pedido["NO ORDEN"])
+                    .join(", ");
+
+                  return (
+                    <Tooltip
+                      key={route}
+                      title={
+                        <Typography
+                          sx={{
+                            fontSize: "16px",
+                            fontWeight: "bold",
+                            p: 1,
+                          }}
+                        >
+                          Órdenes:{" "}
+                          {pedidosOrdenes.length > 0
+                            ? pedidosOrdenes
+                            : "Sin pedidos"}
+                        </Typography>
+                      }
+                      arrow
                       sx={{
-                        background:
-                          "linear-gradient(to right, #ff6b6b, #ff8e53)",
-                        color: "white",
-                        fontSize: "12px",
-                        padding: "6px 12px",
-                        borderRadius: "6px",
-                        minWidth: "auto",
-                        "&:hover": {
-                          background:
-                            "linear-gradient(to right, #ff3b3b, #ff6b6b)",
+                        "& .MuiTooltip-tooltip": {
+                          fontSize: "16px",
+                          maxWidth: "300px",
+                          backgroundColor: "#333",
+                          color: "white",
+                          padding: "10px",
                         },
                       }}
                     >
-                      Subir Archivo
-                      <input
-                        type="file"
-                        accept=".xlsx, .xls"
-                        hidden
-                        onChange={(e) => setFile(e.target.files[0])}
-                      />
-                    </Button>
+                      <Box
+                        sx={{
+                          minWidth: "200px",
+                          maxWidth: "200px",
+                          textAlign: "center",
+                          padding: "10px",
+                          border: "1px solid #ddd",
+                          borderRadius: "5px",
+                          backgroundColor: "#fff",
+                          boxShadow: "2px 2px 5px rgba(0,0,0,0.1)",
+                          position: "relative",
+                          cursor: "pointer",
+                        }}
+                      >
+                        {/* Botón para ocultar ruta */}
+                        <Box
+                          sx={{
+                            position: "absolute",
+                            top: "5px",
+                            right: "5px",
+                            display: "flex",
+                            flexDirection: "row",
+                            gap: "4px",
+                          }}
+                        >
+                          {/* Ocultar */}
+                          <IconButton
+                            size="small"
+                            color="warning"
+                            onClick={() =>
+                              setHiddenRoutes((prev) => [...prev, route])
+                            }
+                          >
+                            <VisibilityOffIcon />
+                          </IconButton>
 
+                          {/* Eliminar */}
+                          <IconButton
+                            size="small"
+                            color="error"
+                            onClick={() => removeRoute(route)}
+                          >
+                            <CloseIcon />
+                          </IconButton>
+                        </Box>
+
+                        <Checkbox
+                          checked={selectedRoutes.includes(route)}
+                          onChange={() => handleSelectRoute(route)}
+                        />
+                        <Typography variant="h6" fontWeight="bold">
+                          Ruta: {route}
+                        </Typography>
+                        <Typography variant="body2">
+                          <strong>Total:</strong>{" "}
+                          {formatCurrency(totals.TOTAL)}
+                        </Typography>
+                        <Typography variant="body2">
+                          <strong>Partidas:</strong> {totals.PARTIDAS}
+                        </Typography>
+                        <Typography variant="body2">
+                          <strong>Piezas:</strong> {totals.PIEZAS}
+                        </Typography>
+                        <Button
+                          onClick={() => openModal(route)}
+                          size="small"
+                          color="primary"
+                        >
+                          Ver Detalles
+                        </Button>
+                      </Box>
+                    </Tooltip>
+                  );
+                })}
+            </Box>
+
+            {/* Sección para mostrar rutas ocultas */}
+            {hiddenRoutes.length > 0 && (
+              <Box mt={2}>
+                <Typography fontWeight="bold">Rutas ocultas:</Typography>
+                {hiddenRoutes.map((route) => (
+                  <Box
+                    key={route}
+                    display="flex"
+                    alignItems="center"
+                    gap={1}
+                    mt={1}
+                  >
+                    <Typography>{route}</Typography>
                     <Button
-                      variant="contained"
-                      color="primary"
-                      onClick={updateFacturas}
-                      disabled={!file || uploading}
-                      sx={{
-                        textTransform: "none",
-                        fontSize: "12px",
-                        padding: "6px 12px",
-                        borderRadius: "6px",
-                        minWidth: "auto",
-                        boxShadow: "1px 1px 3px rgba(0, 0, 0, 0.2)",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "6px",
-                      }}
+                      size="small"
+                      variant="outlined"
+                      onClick={() =>
+                        setHiddenRoutes((prev) =>
+                          prev.filter((r) => r !== route)
+                        )
+                      }
                     >
-                      {uploading ? (
-                        <CircularProgress size={16} color="inherit" />
-                      ) : (
-                        "Actualizar"
-                      )}
+                      Mostrar
                     </Button>
                   </Box>
+                ))}
+              </Box>
+            )}
+          </>
+        ) : (
+          <FormControl fullWidth style={{ marginTop: "20px" }}>
+            <InputLabel>Seleccionar Ruta</InputLabel>
+            <Select
+              multiple
+              value={selectedRoutes}
+              onChange={(e) => setSelectedRoutes(e.target.value)}
+              renderValue={(selected) => selected.join(", ")}
+            >
+              {Object.keys(groupedData).map((route) => (
+                <MenuItem key={route} value={route}>
+                  <Checkbox checked={selectedRoutes.includes(route)} />
+                  {route}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        )}
 
-                  <Box mt={2}>
+        {/* Modal para mandar a paqueteria */}
+        <Modal
+          open={confirmSendModalOpen}
+          onClose={() => setConfirmSendModalOpen(false)}
+          aria-labelledby="confirm-send-modal-title"
+          aria-describedby="confirm-send-modal-description"
+        >
+          <Box
+            padding="20px"
+            backgroundColor="white"
+            margin="50px auto"
+            maxWidth="400px"
+            textAlign="center"
+            borderRadius="8px"
+          >
+            <Typography variant="h6" id="confirm-send-modal-title">
+              ¿Está seguro de mandar estas rutas?
+            </Typography>
+
+            <Typography variant="body1" style={{ marginTop: 20 }}>
+              Rutas seleccionadas: {selectedRoutes.join(", ")}
+            </Typography>
+
+            <Box
+              position="relative"
+              style={{
+                padding: "20px",
+                backgroundColor: "#f5f5f5",
+                borderRadius: "8px",
+              }}
+            ></Box>
+
+            <Box marginTop={2}>
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={handleSendRoutes}
+              >
+                Sí
+              </Button>
+
+              <Button
+                variant="outlined"
+                color="secondary"
+                onClick={() => setConfirmSendModalOpen(false)}
+                style={{ marginLeft: 10 }}
+              >
+                No
+              </Button>
+            </Box>
+          </Box>
+        </Modal>
+
+        {/* Modal para mostrar detalles de la ruta */}
+        <Modal open={modalOpen} onClose={closeModal}>
+          <Box
+            padding="30px"
+            backgroundColor="white"
+            margin="20px auto"
+            maxWidth="90%"
+            maxHeight="90%"
+            overflow="auto"
+            borderRadius="12px"
+            boxShadow="0 4px 20px rgba(0, 0, 0, 0.1)"
+          >
+            <Box display="flex" alignItems="center" gap={1}>
+              {editingRoute === selectedRoute ? (
+                <>
+                  <TextField
+                    value={newRouteName}
+                    onChange={(e) => setNewRouteName(e.target.value)}
+                    onBlur={() => {
+                      renameRoute(selectedRoute, newRouteName);
+                      setEditingRoute(null);
+                    }}
+                    autoFocus
+                    size="small"
+                  />
+                  <Button
+                    onClick={() => renameRoute(selectedRoute, newRouteName)}
+                  >
+                    Guardar
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Typography variant="h6">
+                    Detalles de la Ruta: {selectedRoute}
+                  </Typography>
+                  <IconButton
+                    onClick={() => {
+                      setEditingRoute(selectedRoute);
+                      setNewRouteName(selectedRoute);
+                    }}
+                  >
+                    <BorderColorIcon fontSize="small" />
+                  </IconButton>
+                </>
+              )}
+            </Box>
+
+            {selectedRoute &&
+              groupedData[selectedRoute]?.rows?.length > 0 ? (
+              <>
+                <TableContainer>
+                  <Grid
+                    item
+                    xs={12}
+                    sm={4}
+                    style={{ marginBottom: "20px" }}
+                  >
+                    <TextField
+                      label="Buscar por No Orden"
+                      variant="outlined"
+                      value={filterOrderValue}
+                      onChange={handleOrderFilterChange}
+                      fullWidth
+                      size="small"
+                      style={{ maxWidth: "300px" }}
+                    />
+                  </Grid>
+
+                  <Table
+                    size="small"
+                    sx={{
+                      "& td, & th": {
+                        padding: "4px 8px",
+                        fontSize: "12px",
+                      },
+                      "& tr": { height: "36px" },
+                    }}
+                  >
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Movimientos</TableCell>
+                        <TableCell>FECHA</TableCell>
+                        <TableCell>NO ORDEN</TableCell>
+                        <TableCell>TIPO ORDEN</TableCell>
+                        <TableCell>NO FACTURA</TableCell>
+                        <TableCell>NUM. CLIENTE</TableCell>
+                        <TableCell>NOMBRE DEL CLIENTE</TableCell>
+                        <TableCell>ZONA</TableCell>
+                        <TableCell>MUNICIPIO</TableCell>
+                        <TableCell>ESTADO</TableCell>
+                        <TableCell>OBSERVACIONES</TableCell>
+                        <TableCell>TOTAL</TableCell>
+                        <TableCell>PARTIDAS</TableCell>
+                        <TableCell>PIEZAS</TableCell>
+                        <TableCell>ACCIONES</TableCell>
+                      </TableRow>
+                    </TableHead>
+
+                    <TableBody>
+                      {groupedData[selectedRoute].rows.map((row, index) => (
+                        <TableRow
+                          key={row["NO ORDEN"]}
+                          style={{
+                            backgroundColor:
+                              highlightedRow === row["NO ORDEN"]
+                                ? "#fff59d"
+                                : "transparent",
+                          }}
+                        >
+                          <TableCell>
+                            {index !== 0 && (
+                              <IconButton
+                                onClick={() =>
+                                  moverPedido(
+                                    selectedRoute,
+                                    index,
+                                    "arriba"
+                                  )
+                                }
+                              >
+                                <ArrowUpwardIcon
+                                  color="primary"
+                                  fontSize="small"
+                                />
+                              </IconButton>
+                            )}
+                            {index !==
+                              groupedData[selectedRoute].rows.length -
+                              1 && (
+                                <IconButton
+                                  onClick={() =>
+                                    moverPedido(selectedRoute, index, "abajo")
+                                  }
+                                >
+                                  <ArrowDownwardIcon
+                                    color="primary"
+                                    fontSize="small"
+                                  />
+                                </IconButton>
+                              )}
+                          </TableCell>
+
+                          <TableCell>{row["FECHA"]}</TableCell>
+                          <TableCell>
+                            {row["NO ORDEN"] || row.no_orden}
+                          </TableCell>
+                          <TableCell>
+                            {row.tipo || row["TIPO ORIGINAL"] || "Sin dato"}
+                          </TableCell>
+                          <TableCell>{row["NO FACTURA"]}</TableCell>
+                          <TableCell>
+                            {row["NUM. CLIENTE"] || row.num_cliente}
+                          </TableCell>
+                          <TableCell>
+                            {" "}
+                            {row["NOMBRE DEL CLIENTE"] ||
+                              row.nombre_cliente}
+                          </TableCell>
+                          <TableCell>{row["ZONA"]}</TableCell>
+                          <TableCell>
+                            {row["MUNICIPIO"] || row.municipio}
+                          </TableCell>
+                          <TableCell>
+                            {row["ESTADO"] || row.estado}
+                          </TableCell>
+
+                          <TableCell>
+                            {editingObservationId ===
+                              row["NUM. CLIENTE"] ? (
+                              <TextField
+                                value={
+                                  modalObservaciones[row["NUM. CLIENTE"]] ||
+                                  row["OBSERVACIONES"] ||
+                                  ""
+                                }
+                                onChange={(e) =>
+                                  handleSaveModalObservation(
+                                    row["NUM. CLIENTE"],
+                                    e.target.value
+                                  )
+                                }
+                                variant="outlined"
+                                size="small"
+                                autoFocus
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter")
+                                    setEditingObservationId(null);
+                                }}
+                              />
+                            ) : (
+                              <span
+                                onDoubleClick={() =>
+                                  handleEditModalObservation(
+                                    row["NUM. CLIENTE"]
+                                  )
+                                }
+                                style={{ cursor: "pointer" }}
+                              >
+                                {modalObservaciones[row["NUM. CLIENTE"]] ||
+                                  row["OBSERVACIONES"] ||
+                                  "Sin observaciones"}
+                              </span>
+                            )}
+                          </TableCell>
+
+                          <TableCell>{formatCurrency(row.TOTAL)}</TableCell>
+                          <TableCell>{row.PARTIDAS}</TableCell>
+                          <TableCell>{row.PIEZAS}</TableCell>
+
+                          <TableCell>
+                            {editRouteIndex === index ? (
+                              <FormControl fullWidth size="small">
+                                <InputLabel>Cambiar Ruta</InputLabel>
+                                <Select
+                                  value={selectedRoute}
+                                  onChange={(e) => {
+                                    assignToRoute(row, e.target.value);
+                                    setEditRouteIndex(null);
+                                  }}
+                                  displayEmpty
+                                >
+                                  <MenuItem disabled value="">
+                                    Seleccionar Ruta
+                                  </MenuItem>
+                                  {Object.keys(groupedData).map((route) => (
+                                    <MenuItem key={route} value={route}>
+                                      {route}
+                                    </MenuItem>
+                                  ))}
+                                </Select>
+                              </FormControl>
+                            ) : (
+                              <IconButton
+                                onClick={() => setEditRouteIndex(index)}
+                              >
+                                <CompareArrowsIcon />
+                              </IconButton>
+                            )}
+                            <IconButton
+                              color="error"
+                              onClick={() =>
+                                removeFromRoute(row, selectedRoute)
+                              }
+                            >
+                              <DeleteIcon />
+                            </IconButton>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </>
+            ) : (
+              <Typography>
+                No hay datos disponibles para esta ruta.
+              </Typography>
+            )}
+
+            <Box textAlign="right" marginTop={2}>
+              <Button onClick={closeModal} variant="contained" size="small">
+                Cerrar
+              </Button>
+            </Box>
+          </Box>
+        </Modal>
+
+        {/* Tabla de datos cargados */}
+        <TableContainer component={Paper} style={{ marginTop: "20px" }}>
+          {/* Filtros */}
+          <Grid
+            container
+            spacing={1}
+            marginBottom={2}
+            style={{ marginTop: "20px" }}
+          >
+            <Grid item xs={12} sm={4}>
+              <TextField
+                label="Buscar por No Orden"
+                variant="outlined"
+                name="noOrden"
+                value={filter.noOrden}
+                onChange={handleFilterChange}
+                fullWidth
+                size="small" // Ajuste del tamaño
+                style={{ maxWidth: "200px" }} // Limitar la longitud
+              />
+            </Grid>
+
+            <Grid item xs={12} sm={4}>
+              <TextField
+                label="Buscar por Num Cliente"
+                variant="outlined"
+                name="numCliente"
+                value={filter.numCliente}
+                onChange={handleFilterChange}
+                fullWidth
+                size="small" // Ajuste del tamaño
+                style={{ maxWidth: "200px" }} // Limitar la longitud
+              />
+            </Grid>
+
+            <Grid item xs={12} sm={4}>
+              <TextField
+                label="Buscar por Estado"
+                variant="outlined"
+                name="estado"
+                value={filter.estado}
+                onChange={handleFilterChange}
+                fullWidth
+                size="small" // Ajuste del tamaño
+                style={{ maxWidth: "200px" }} // Limitar la longitud
+              />
+            </Grid>
+          </Grid>
+
+          {tabIndex === 0 &&
+            selectedOrders.length > 0 &&
+            ["Admin", "Master", "Trans"].includes(user?.role) && (
+              <Box display="flex" alignItems="center" gap={2} mb={2}>
+                <FormControl
+                  variant="outlined"
+                  size="small"
+                  style={{ minWidth: 200 }}
+                >
+                  <InputLabel>Seleccionar Ruta</InputLabel>
+                  <Select
+                    value={selectedMassRoute}
+                    onChange={(e) => setSelectedMassRoute(e.target.value)}
+                    label="Seleccionar Ruta"
+                  >
+                    {Object.keys(groupedData).map((ruta) => (
+                      <MenuItem key={ruta} value={ruta}>
+                        {ruta}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                <Button
+                  variant="contained"
+                  color="primary"
+                  disabled={!selectedMassRoute}
+                  onClick={handleAssignMultipleToRoute}
+                >
+                  Asignar
+                </Button>
+              </Box>
+            )}
+
+          <TablePagination
+            component="div"
+            count={filteredData.length} // Se asegura de que `count` es válido
+            rowsPerPage={rowsPerPage}
+            page={Math.min(
+              page,
+              Math.floor(filteredData.length / rowsPerPage)
+            )}
+            onPageChange={(event, newPage) => setPage(newPage)}
+            labelRowsPerPage=""
+            rowsPerPageOptions={[]}
+          />
+
+          {/* Tabla */}
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Seleccionar</TableCell>
+                <TableCell>FECHA</TableCell>
+                <TableCell>NO ORDEN</TableCell>
+                <TableCell>TIPO ORDEN</TableCell>
+                <TableCell>NUM. CLIENTE</TableCell>
+                <TableCell>NOMBRE DEL CLIENTE</TableCell>
+                <TableCell>Codigo Postal</TableCell>
+                <TableCell>MUNICIPIO</TableCell>
+                <TableCell>ESTADO</TableCell>
+                <TableCell>OBSERVACIONES</TableCell>
+                <TableCell>TOTAL</TableCell>
+                <TableCell>PARTIDAS</TableCell>
+                <TableCell>PIEZAS</TableCell>
+                <TableCell>Acciones</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {paginatedData.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={12} style={{ textAlign: "center" }}>
+                    No hay datos disponibles.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                paginatedData.map((row, index) => (
+                  <TableRow key={index}>
+                    <TableCell padding="checkbox">
+                      <Checkbox
+                        checked={selectedOrders.includes(row["NO ORDEN"])}
+                        onChange={() => handleToggleOrderSelection(row)}
+                      />
+                    </TableCell>
+                    <TableCell>{row.FECHA}</TableCell>
+                    <TableCell>{row["NO ORDEN"]}</TableCell>
+                    <TableCell>
+                      {row["TIPO ORIGINAL"] || "Sin dato"}
+                    </TableCell>
+                    <TableCell>{row["NUM. CLIENTE"]}</TableCell>
+                    <TableCell>{row["NOMBRE DEL CLIENTE"]}</TableCell>
+                    <TableCell>{row["Codigo_Postal"]}</TableCell>
+                    <TableCell>
+                      {row.MUNICIPIO || "Sin Municipio"}
+                    </TableCell>
+                    <TableCell>{row.ESTADO}</TableCell>
+
+                    <TableCell>
+                      {editingClientId === row["NUM. CLIENTE"] ? (
+                        <TextField
+                          value={
+                            observacionesPorRegistro[row["NUM. CLIENTE"]] ||
+                            "Sin observaciones disponibles"
+                          }
+                          onChange={(e) =>
+                            handleSaveObservation(
+                              row["NUM. CLIENTE"],
+                              e.target.value
+                            )
+                          }
+                          variant="outlined"
+                          size="small"
+                        />
+                      ) : (
+                        <span
+                          onClick={() =>
+                            handleEditObservation(row["NUM. CLIENTE"])
+                          }
+                        >
+                          {observacionesPorRegistro[row["NUM. CLIENTE"]] ||
+                            "Sin observaciones"}
+                        </span>
+                      )}
+                    </TableCell>
+
+                    <TableCell>{formatCurrency(row.TOTAL)}</TableCell>
+                    <TableCell>{row.PARTIDAS}</TableCell>
+                    <TableCell>{row.PIEZAS}</TableCell>
+                    <TableCell>
+                      <FormControl fullWidth>
+                        <InputLabel>Seleccionar Ruta</InputLabel>
+                        <Select
+                          value=""
+                          onChange={(e) =>
+                            assignToRoute(row, e.target.value)
+                          }
+                          displayEmpty
+                        >
+                          <MenuItem disabled value="">
+                            Seleccionar Ruta
+                          </MenuItem>
+                          {Object.keys(groupedData).map((route) => (
+                            <MenuItem key={route} value={route}>
+                              {route}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Box>
+      )}
+
+      {/* Segundo Tab: Otra información o tabla */}
+      {tabIndex === 1 && (user?.role === "Admin" || user?.role === "Master" || user?.role === "Trans" || user?.role === "PQ1" || user?.role === "Control" || user?.role === "EB1" || user?.role === "Paquet" || user?.role === "Embar" || user?.role === "Rep" || user?.role === "Tran", "Rep") && (
+        <Box marginTop={2}>
+          <Typography variant="h5" style={{ textAlign: "center" }}>
+            Tipos de rutas
+          </Typography>
+
+          {tabIndex === 1 && (user?.role === "Admin" || user?.role === "Master" || user?.role === "Tran") && (
+            <Card
+              sx={{
+                padding: 2,
+                marginBottom: 2,
+                boxShadow: 2,
+                borderRadius: 2,
+                maxWidth: "600px",
+                mx: "auto",
+              }}
+            >
+              <Typography
+                variant="h6"
+                color="black"
+                sx={{ fontSize: "16px", marginBottom: 1 }}
+              >
+                Subir archivo de facturas
+              </Typography>
+
+              {/* Contenedor de carga de archivo */}
+              <Box
+                display="flex"
+                alignItems="center"
+                gap={1}
+                marginBottom={1}
+              >
+                <Button
+                  variant="contained"
+                  component="label"
+                  startIcon={<CloudUpload />}
+                  sx={{
+                    background:
+                      "linear-gradient(to right, #ff6b6b, #ff8e53)",
+                    color: "white",
+                    fontSize: "12px",
+                    padding: "6px 12px",
+                    borderRadius: "6px",
+                    minWidth: "auto",
+                    "&:hover": {
+                      background:
+                        "linear-gradient(to right, #ff3b3b, #ff6b6b)",
+                    },
+                  }}
+                >
+                  Subir Archivo
+                  <input
+                    type="file"
+                    accept=".xlsx, .xls"
+                    hidden
+                    onChange={(e) => setFile(e.target.files[0])}
+                  />
+                </Button>
+
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={updateFacturas}
+                  disabled={!file || uploading}
+                  sx={{
+                    textTransform: "none",
+                    fontSize: "12px",
+                    padding: "6px 12px",
+                    borderRadius: "6px",
+                    minWidth: "auto",
+                    boxShadow: "1px 1px 3px rgba(0, 0, 0, 0.2)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                  }}
+                >
+                  {uploading ? (
+                    <CircularProgress size={16} color="inherit" />
+                  ) : (
+                    "Actualizar"
+                  )}
+                </Button>
+              </Box>
+
+              {/* <Box mt={2}>
                     <Typography variant="h6">
                       Actualizar tipo original desde Excel
                     </Typography>
@@ -6099,96 +6212,94 @@ function Transporte() {
                     >
                       Subir Excel
                     </Button>
-                  </Box>
+                  </Box> */}
 
-                  {uploadMessage && (
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        color: uploading ? "gray" : "green",
-                        marginBottom: 1,
-                        fontSize: "12px",
-                      }}
-                    >
-                      {uploadMessage}
-                    </Typography>
-                  )}
-
-                  {/* Lista de órdenes actualizadas */}
-                  {updatedOrders.length > 0 && (
-                    <Card
-                      sx={{
-                        padding: 1,
-                        backgroundColor: "#f5f5f5",
-                        borderRadius: 2,
-                        fontSize: "12px",
-                      }}
-                    >
-                      <Typography
-                        variant="subtitle2"
-                        color="textSecondary"
-                        sx={{ fontSize: "12px" }}
-                      >
-                        Órdenes actualizadas:
-                      </Typography>
-                      <Box
-                        sx={{
-                          maxHeight: "100px",
-                          overflowY: "auto",
-                          padding: "3px",
-                        }}
-                      >
-                        {updatedOrders.map((order, index) => (
-                          <Typography
-                            key={index}
-                            variant="body2"
-                            sx={{
-                              fontWeight: "bold",
-                              color: "#333",
-                              fontSize: "12px",
-                            }}
-                          >
-                            {order}
-                          </Typography>
-                        ))}
-                      </Box>
-                    </Card>
-                  )}
-                </Card>
+              {uploadMessage && (
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: uploading ? "gray" : "green",
+                    marginBottom: 1,
+                    fontSize: "12px",
+                  }}
+                >
+                  {uploadMessage}
+                </Typography>
               )}
 
-            {["Admin", "Master", "Tran", "Trans", "Rep"].includes(
-              user?.role
-            ) && (
-              <Box display="flex" gap={2} mb={2}>
-                <Button
-                  variant="contained"
-                  color="error"
-                  onClick={handleOpenModalGuia}
-                  sx={{ fontWeight: "bold" }}
+              {/* Lista de órdenes actualizadas */}
+              {updatedOrders.length > 0 && (
+                <Card
+                  sx={{
+                    padding: 1,
+                    backgroundColor: "#f5f5f5",
+                    borderRadius: 2,
+                    fontSize: "12px",
+                  }}
                 >
-                  PRORRATEO
-                </Button>
+                  <Typography
+                    variant="subtitle2"
+                    color="textSecondary"
+                    sx={{ fontSize: "12px" }}
+                  >
+                    Órdenes actualizadas:
+                  </Typography>
+                  <Box
+                    sx={{
+                      maxHeight: "100px",
+                      overflowY: "auto",
+                      padding: "3px",
+                    }}
+                  >
+                    {updatedOrders.map((order, index) => (
+                      <Typography
+                        key={index}
+                        variant="body2"
+                        sx={{
+                          fontWeight: "bold",
+                          color: "#333",
+                          fontSize: "12px",
+                        }}
+                      >
+                        {order}
+                      </Typography>
+                    ))}
+                  </Box>
+                </Card>
+              )}
+            </Card>
+          )}
 
-                <Button
-                  variant="contained"
-                  color="warning"
-                  onClick={() => setBulkGuiaModalOpen(true)}
-                  sx={{ fontWeight: "bold" }}
-                >
-                  Actualizar Guías
-                </Button>
+          {["Admin", "Master", "Tran", "Trans", "Rep"].includes(user?.role) && (
+            <Box display="flex" gap={2} mb={2}>
+              <Button
+                variant="contained"
+                color="error"
+                onClick={handleOpenModalGuia}
+                sx={{ fontWeight: "bold" }}
+              >
+                PRORRATEO
+              </Button>
 
-                <Button
-                  variant="contained"
-                  color="success"
-                  onClick={handleExportarPorMes}
-                  style={{ marginLeft: 10 }}
-                >
-                  EXPORTAR PAQUETERÍA POR MES
-                </Button>
+              <Button
+                variant="contained"
+                color="warning"
+                onClick={() => setBulkGuiaModalOpen(true)}
+                sx={{ fontWeight: "bold" }}
+              >
+                Actualizar Guías
+              </Button>
 
-                {/* <select
+              <Button
+                variant="contained"
+                color="success"
+                onClick={handleExportarPorMes}
+                style={{ marginLeft: 10 }}
+              >
+                EXPORTAR PAQUETERÍA POR MES
+              </Button>
+
+              {/* <select
                   value={mesSeleccionado}
                   onChange={(e) => setMesSeleccionado(e.target.value)}
                   style={{
@@ -6220,556 +6331,555 @@ function Transporte() {
                   <option value="11">Noviembre</option>
                   <option value="12">Diciembre</option>
                 </select> */}
-              </Box>
-            )}
+            </Box>
+          )}
 
-            <select
-              value={mesSeleccionado}
-              onChange={handleChangeMes}
-              className="form-select"
-            >
-              <option value="">Últimos 3 días</option>
-              <option value="1">Enero</option>
-              <option value="2">Febrero</option>
-              <option value="3">Marzo</option>
-              <option value="4">Abril</option>
-              <option value="5">Mayo</option>
-              {/*  <option value="6">Junio</option>
-                <option value="7">Julio</option>
+          <select
+            value={mesSeleccionado}
+            onChange={handleChangeMes}
+            className="form-select"
+          >
+            <option value="">Últimos 3 días</option>
+            <option value="1">Enero</option>
+            <option value="2">Febrero</option>
+            <option value="3">Marzo</option>
+            <option value="4">Abril</option>
+            <option value="5">Mayo</option>
+            <option value="6">Junio</option>
+            {/*  <option value="7">Julio</option>
                 <option value="8">Agosto</option>
                 <option value="9">Septiembre</option>
                 <option value="10">Octubre</option>
                 <option value="11">Noviembre</option>
                 <option value="12">Diciembre</option> */}
-            </select>
+          </select>
 
-            {/* Modal para actualizar las guias */}
+          {/* Modal para actualizar las guias */}
 
-            <Dialog
-              open={bulkGuiaModalOpen}
-              onClose={() => setBulkGuiaModalOpen(false)}
-              maxWidth="sm"
-              fullWidth
-            >
-              <DialogTitle>Actualizar Guía y Transporte</DialogTitle>
-              <DialogContent>
-                <TextField
-                  label="Números de Orden (separados por comas)"
-                  fullWidth
-                  multiline
-                  minRows={2}
-                  value={bulkNoOrdenes}
-                  onChange={(e) => setBulkNoOrdenes(e.target.value)}
-                  margin="normal"
-                />
-                <TextField
-                  label="Nueva Guía"
-                  fullWidth
-                  value={bulkGuiaValue}
-                  onChange={(e) => setBulkGuiaValue(e.target.value)}
-                  margin="normal"
-                />
-                <TextField
-                  label="Transportista"
-                  fullWidth
-                  value={bulkTransportePaqueteriaValue}
-                  onChange={(e) =>
-                    setBulkTransportePaqueteriaValue(e.target.value)
-                  }
-                  margin="normal"
-                />
-              </DialogContent>
-              <DialogActions>
-                <Button onClick={() => setBulkGuiaModalOpen(false)}>
-                  Cancelar
-                </Button>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={handleBulkGuiaUpdate}
-                >
-                  Actualizar
-                </Button>
-              </DialogActions>
-            </Dialog>
+          <Dialog
+            open={bulkGuiaModalOpen}
+            onClose={() => setBulkGuiaModalOpen(false)}
+            maxWidth="sm"
+            fullWidth
+          >
+            <DialogTitle>Actualizar Guía y Transporte</DialogTitle>
+            <DialogContent>
+              <TextField
+                label="Números de Orden (separados por comas)"
+                fullWidth
+                multiline
+                minRows={2}
+                value={bulkNoOrdenes}
+                onChange={(e) => setBulkNoOrdenes(e.target.value)}
+                margin="normal"
+              />
+              <TextField
+                label="Nueva Guía"
+                fullWidth
+                value={bulkGuiaValue}
+                onChange={(e) => setBulkGuiaValue(e.target.value)}
+                margin="normal"
+              />
+              <TextField
+                label="Transportista"
+                fullWidth
+                value={bulkTransportePaqueteriaValue}
+                onChange={(e) =>
+                  setBulkTransportePaqueteriaValue(e.target.value)
+                }
+                margin="normal"
+              />
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setBulkGuiaModalOpen(false)}>
+                Cancelar
+              </Button>
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={handleBulkGuiaUpdate}
+              >
+                Actualizar
+              </Button>
+            </DialogActions>
+          </Dialog>
 
-            {/* Modal dentro de Transporte.js */}
+          {/* Modal dentro de Transporte.js */}
 
-            <Dialog
-              open={modalGuiaOpen}
-              onClose={handleCloseModalGuia}
-              fullWidth
-              maxWidth="md"
-            >
-              <DialogTitle>Ingresar Guía</DialogTitle>
-              <DialogContent>
-                <Grid container spacing={3}>
-                  <Grid item xs={12}>
-                    <TextField
-                      label="Número de Guía"
-                      fullWidth
-                      value={guia}
-                      onChange={(e) => setGuia(e.target.value)}
-                      margin="dense"
-                    />
-                  </Grid>
+          <Dialog
+            open={modalGuiaOpen}
+            onClose={handleCloseModalGuia}
+            fullWidth
+            maxWidth="md"
+          >
+            <DialogTitle>Ingresar Guía</DialogTitle>
+            <DialogContent>
+              <Grid container spacing={3}>
+                <Grid item xs={12}>
+                  <TextField
+                    label="Número de Guía"
+                    fullWidth
+                    value={guia}
+                    onChange={(e) => setGuia(e.target.value)}
+                    margin="dense"
+                  />
+                </Grid>
 
-                  <Grid item xs={12}>
-                    <Button
-                      onClick={buscarPedidosPorGuia}
-                      variant="contained"
-                      color="primary"
-                      fullWidth
+                <Grid item xs={12}>
+                  <Button
+                    onClick={buscarPedidosPorGuia}
+                    variant="contained"
+                    color="primary"
+                    fullWidth
+                  >
+                    Buscar Pedidos
+                  </Button>
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="Número de Factura LT"
+                    fullWidth
+                    value={numeroFacturaLT}
+                    onChange={(e) => setNumeroFacturaLT(e.target.value)}
+                    margin="dense"
+                  />
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    label="Total Factura LT"
+                    type="number"
+                    fullWidth
+                    value={totalFacturaLT}
+                    onChange={handleTotalFacturaLTChange}
+                    margin="dense"
+                  />
+                </Grid>
+
+                <Grid item xs={12}>
+                  <TextField
+                    label="Suma Total Pedidos"
+                    value={`$${sumaTotalPedidos.toFixed(2)}`}
+                    InputProps={{ readOnly: true }}
+                    fullWidth
+                  />
+                </Grid>
+
+                {pedidos.length > 0 &&
+                  pedidos.map((pedido, index) => (
+                    <Grid
+                      item
+                      xs={12}
+                      key={`${pedido["NO ORDEN"]}-${index}`}
+                      sx={{
+                        display: "flex",
+                        justifyContent: "center",
+                        marginBottom: 3,
+                      }}
                     >
-                      Buscar Pedidos
-                    </Button>
-                  </Grid>
-
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      label="Número de Factura LT"
-                      fullWidth
-                      value={numeroFacturaLT}
-                      onChange={(e) => setNumeroFacturaLT(e.target.value)}
-                      margin="dense"
-                    />
-                  </Grid>
-
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      label="Total Factura LT"
-                      type="number"
-                      fullWidth
-                      value={totalFacturaLT}
-                      onChange={handleTotalFacturaLTChange}
-                      margin="dense"
-                    />
-                  </Grid>
-
-                  <Grid item xs={12}>
-                    <TextField
-                      label="Suma Total Pedidos"
-                      value={`$${sumaTotalPedidos.toFixed(2)}`}
-                      InputProps={{ readOnly: true }}
-                      fullWidth
-                    />
-                  </Grid>
-
-                  {pedidos.length > 0 &&
-                    pedidos.map((pedido, index) => (
-                      <Grid
-                        item
-                        xs={12}
-                        key={`${pedido["NO ORDEN"]}-${index}`}
+                      <Box
                         sx={{
-                          display: "flex",
-                          justifyContent: "center",
-                          marginBottom: 3,
+                          width: "100%",
+                          maxWidth: 900,
+                          padding: 3,
+                          border: "1px solid #ddd",
+                          borderRadius: "16px",
+                          backgroundColor: "#fff",
+                          boxShadow: 3,
+                          position: "relative",
                         }}
                       >
-                        <Box
+                        {/* Botón X */}
+                        <IconButton
+                          size="small"
+                          onClick={() => {
+                            const nuevos = [...pedidos];
+                            nuevos.splice(index, 1);
+                            setPedidos(nuevos);
+                          }}
                           sx={{
-                            width: "100%",
-                            maxWidth: 900,
-                            padding: 3,
-                            border: "1px solid #ddd",
-                            borderRadius: "16px",
-                            backgroundColor: "#fff",
-                            boxShadow: 3,
-                            position: "relative",
+                            position: "absolute",
+                            top: 8,
+                            right: 8,
+                            color: "#f44336",
                           }}
                         >
-                          {/* Botón X */}
-                          <IconButton
-                            size="small"
-                            onClick={() => {
-                              const nuevos = [...pedidos];
-                              nuevos.splice(index, 1);
-                              setPedidos(nuevos);
-                            }}
-                            sx={{
-                              position: "absolute",
-                              top: 8,
-                              right: 8,
-                              color: "#f44336",
-                            }}
-                          >
-                            <CloseIcon fontSize="small" />
-                          </IconButton>
+                          <CloseIcon fontSize="small" />
+                        </IconButton>
 
-                          <Grid container spacing={2}>
-                            {/* Fila 1 */}
-                            <Grid item xs={12} sm={4}>
-                              <TextField
-                                label="Pedido"
-                                value={`${pedido["NO ORDEN"]} - ${
-                                  pedido.tipo_original || "tipo no definido"
+                        <Grid container spacing={2}>
+                          {/* Fila 1 */}
+                          <Grid item xs={12} sm={4}>
+                            <TextField
+                              label="Pedido"
+                              value={`${pedido["NO ORDEN"]} - ${pedido.tipo_original || "tipo no definido"
                                 }`}
-                                fullWidth
-                                disabled
-                              />
-                            </Grid>
-                            <Grid item xs={12} sm={4}>
-                              <TextField
-                                label="Total Pedido"
-                                value={`$${pedido.TOTAL}`}
-                                fullWidth
-                                disabled
-                              />
-                            </Grid>
-                            <Grid item xs={12} sm={4}>
-                              <TextField
-                                label="Prorrateo Factura LT"
-                                value={pedido.prorrateoFacturaLT}
-                                onChange={(e) => {
-                                  const nuevos = [...pedidos];
-                                  nuevos[index].prorrateoFacturaLT =
-                                    e.target.value;
-                                  setPedidos(nuevos);
-                                }}
-                                fullWidth
-                              />
-                            </Grid>
-
-                            {/* Fila 2 */}
-                            <Grid item xs={12} sm={4}>
-                              <TextField
-                                label="Suma Flete"
-                                value={`$${pedido.sumaFlete}`}
-                                fullWidth
-                                disabled
-                              />
-                            </Grid>
-                            <Grid item xs={12} sm={4}>
-                              <TextField
-                                label="Gastos Extras"
-                                value={pedido.gastosExtras || ""}
-                                onChange={(e) =>
-                                  handleGastosExtrasChange(
-                                    index,
-                                    e.target.value
-                                  )
-                                }
-                                fullWidth
-                              />
-                            </Grid>
-                            <Grid item xs={12} sm={4}>
-                              <TextField
-                                label="% Envío"
-                                value={pedido.porcentajeEnvio || ""}
-                                fullWidth
-                                disabled
-                              />
-                            </Grid>
-
-                            {/* Fila 3 */}
-                            <Grid item xs={12} sm={6}>
-                              <TextField
-                                label="% Paquetería"
-                                value={pedido.porcentajePaqueteria}
-                                fullWidth
-                                disabled
-                              />
-                            </Grid>
-                            <Grid item xs={12} sm={6}>
-                              <TextField
-                                label="% Global"
-                                value={pedido.porcentajeGlobal}
-                                fullWidth
-                                disabled
-                              />
-                            </Grid>
+                              fullWidth
+                              disabled
+                            />
                           </Grid>
-                        </Box>
-                      </Grid>
-                    ))}
-                </Grid>
-              </DialogContent>
-              <DialogActions
-                sx={{ padding: "16px", justifyContent: "space-between" }}
-              >
-                <Button
-                  onClick={guardarPorGuia}
-                  variant="contained"
-                  color="primary"
-                  fullWidth
-                  sx={{
-                    fontSize: "1rem",
-                    padding: "10px",
-                    backgroundColor: "#F44336",
-                  }}
-                >
-                  GUARDAR
-                </Button>
-                <Button
-                  onClick={handleCloseModalGuia}
-                  color="secondary"
-                  sx={{
-                    fontSize: "0.9rem",
-                    color: "#F44336",
-                    textTransform: "uppercase",
-                    fontWeight: "bold",
-                  }}
-                >
-                  CANCELAR
-                </Button>
-              </DialogActions>
-            </Dialog>
+                          <Grid item xs={12} sm={4}>
+                            <TextField
+                              label="Total Pedido"
+                              value={`$${pedido.TOTAL}`}
+                              fullWidth
+                              disabled
+                            />
+                          </Grid>
+                          <Grid item xs={12} sm={4}>
+                            <TextField
+                              label="Prorrateo Factura LT"
+                              value={pedido.prorrateoFacturaLT}
+                              onChange={(e) => {
+                                const nuevos = [...pedidos];
+                                nuevos[index].prorrateoFacturaLT =
+                                  e.target.value;
+                                setPedidos(nuevos);
+                              }}
+                              fullWidth
+                            />
+                          </Grid>
 
-            <br />
+                          {/* Fila 2 */}
+                          <Grid item xs={12} sm={4}>
+                            <TextField
+                              label="Suma Flete"
+                              value={`$${pedido.sumaFlete}`}
+                              fullWidth
+                              disabled
+                            />
+                          </Grid>
+                          <Grid item xs={12} sm={4}>
+                            <TextField
+                              label="Gastos Extras"
+                              value={pedido.gastosExtras || ""}
+                              onChange={(e) =>
+                                handleGastosExtrasChange(
+                                  index,
+                                  e.target.value
+                                )
+                              }
+                              fullWidth
+                            />
+                          </Grid>
+                          <Grid item xs={12} sm={4}>
+                            <TextField
+                              label="% Envío"
+                              value={pedido.porcentajeEnvio || ""}
+                              fullWidth
+                              disabled
+                            />
+                          </Grid>
 
-            {/* Pestañas internas para Paquetería, Directa, Venta Empleado */}
-            <Tabs value={subTabIndex} onChange={handleChangeSubTab} centered>
-              <Tab label="Paquetería" />
-              <Tab label="Directa" />
-              <Tab label="Recoge" />
-              <Tab label="Asignacion" />
-            </Tabs>
-
-            {/* Sub-tab de PAQUETERIA */}
-            {subTabIndex === 0 && (
-              <TableContainer component={Paper} style={{ marginTop: "20px" }}>
-                <Typography variant="h6">Paquetería</Typography>
-
-                <TextField
-                  label="Buscar por No Orden o Num Cliente"
-                  value={filtroGeneral}
-                  onChange={(e) => setFiltroGeneral(e.target.value)}
-                  variant="outlined"
-                  size="small"
-                />
-
-                <TextField
-                  label="Buscar por Estado"
-                  value={filtroEstado}
-                  onChange={(e) => setFiltroEstado(e.target.value)}
-                  variant="outlined"
-                  size="small"
-                />
-
-                <FormControl
-                  variant="outlined"
-                  style={{ minWidth: 200, marginBottom: 10 }}
-                >
-                  <InputLabel>Filtrar por Paquetería</InputLabel>
-                  <Select
-                    value={paqueteriaSeleccionada}
-                    onChange={handlePaqueteriaChange}
-                    label="Filtrar por Paquetería"
-                  >
-                    <MenuItem value="">Todas</MenuItem>
-                    <MenuItem value="PITIC">PITIC</MenuItem>
-                    <MenuItem value="TRESGUERRAS">TRESGUERRAS</MenuItem>
-                    <MenuItem value="EXPRESS">EXPRESS</MenuItem>
-                  </Select>
-                </FormControl>
-
-                {/* 🔹 Botón para mostrar solo las filas sin guía */}
-                <Button
-                  variant="contained"
-                  color={mostrarSinGuia ? "secondary" : "primary"}
-                  onClick={toggleMostrarSinGuia}
-                  style={{ marginBottom: 10 }}
-                >
-                  {mostrarSinGuia ? "Mostrar Todas" : "Mostrar Sin Guía"}
-                </Button>
-
-                <FormControl
-                  variant="outlined"
-                  style={{ minWidth: 200, marginBottom: 10 }}
-                >
-                  <InputLabel>Filtrar por Estatus</InputLabel>
-                  <Select
-                    value={estatusSeleccionado}
-                    onChange={handleEstatusChange}
-                    label="Filtrar por Estatus"
-                  >
-                    <MenuItem value="">Todos</MenuItem>
-                    <MenuItem value="Por Asignar">Por Asignar</MenuItem>
-                    <MenuItem value="Surtiendo">Surtiendo</MenuItem>
-                    <MenuItem value="Embarcando">Embarcando</MenuItem>
-                    <MenuItem value="Pedido Finalizado">
-                      Pedido Finalizado
-                    </MenuItem>
-                  </Select>
-                </FormControl>
-
-                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, mb: 2 }}>
-                  {ordenEstatus.map((estatus) => {
-                    const cantidad = conteoEstatus[estatus] || 0;
-
-                    return (
-                      <Box
-                        key={estatus}
-                        sx={{
-                          backgroundColor: colorPorEstatus[estatus] || "#ccc",
-                          color: "#fff",
-                          borderRadius: 2,
-                          padding: "6px 12px",
-                          fontSize: 14,
-                          boxShadow: 1,
-                        }}
-                      >
-                        <strong>{estatus}:</strong> {cantidad}
+                          {/* Fila 3 */}
+                          <Grid item xs={12} sm={6}>
+                            <TextField
+                              label="% Paquetería"
+                              value={pedido.porcentajePaqueteria}
+                              fullWidth
+                              disabled
+                            />
+                          </Grid>
+                          <Grid item xs={12} sm={6}>
+                            <TextField
+                              label="% Global"
+                              value={pedido.porcentajeGlobal}
+                              fullWidth
+                              disabled
+                            />
+                          </Grid>
+                        </Grid>
                       </Box>
-                    );
-                  })}
-                </Box>
+                    </Grid>
+                  ))}
+              </Grid>
+            </DialogContent>
+            <DialogActions
+              sx={{ padding: "16px", justifyContent: "space-between" }}
+            >
+              <Button
+                onClick={guardarPorGuia}
+                variant="contained"
+                color="primary"
+                fullWidth
+                sx={{
+                  fontSize: "1rem",
+                  padding: "10px",
+                  backgroundColor: "#F44336",
+                }}
+              >
+                GUARDAR
+              </Button>
+              <Button
+                onClick={handleCloseModalGuia}
+                color="secondary"
+                sx={{
+                  fontSize: "0.9rem",
+                  color: "#F44336",
+                  textTransform: "uppercase",
+                  fontWeight: "bold",
+                }}
+              >
+                CANCELAR
+              </Button>
+            </DialogActions>
+          </Dialog>
 
-                <TablePagination
-                  component="div"
-                  count={paqueteriaFiltrada.length} // O usa directaFiltrada.length o ventaEmpleadoFiltrada.length según la tabla
-                  rowsPerPage={10} // Fijado en 10 filas por página
-                  page={page}
-                  onPageChange={(event, newPage) => setPage(newPage)}
-                  labelRowsPerPage="" // Oculta "Rows per page"
-                  rowsPerPageOptions={[]} // Elimina el selector de filas
-                  style={{ textAlign: "right" }}
-                />
+          <br />
 
-                <Table>
-                  <TableBody>
+          {/* Pestañas internas para Paquetería, Directa, Venta Empleado */}
+          <Tabs value={subTabIndex} onChange={handleChangeSubTab} centered>
+            <Tab label="Paquetería" />
+            <Tab label="Directa" />
+            <Tab label="Recoge" />
+            <Tab label="Asignacion" />
+          </Tabs>
+
+          {/* Sub-tab de PAQUETERIA */}
+          {subTabIndex === 0 && (
+            <TableContainer component={Paper} style={{ marginTop: "20px" }}>
+              <Typography variant="h6">Paquetería</Typography>
+
+              <TextField
+                label="Buscar por No Orden o Num Cliente"
+                value={filtroGeneral}
+                onChange={(e) => setFiltroGeneral(e.target.value)}
+                variant="outlined"
+                size="small"
+              />
+
+              <TextField
+                label="Buscar por Estado"
+                value={filtroEstado}
+                onChange={(e) => setFiltroEstado(e.target.value)}
+                variant="outlined"
+                size="small"
+              />
+
+              <FormControl
+                variant="outlined"
+                style={{ minWidth: 200, marginBottom: 10 }}
+              >
+                <InputLabel>Filtrar por Paquetería</InputLabel>
+                <Select
+                  value={paqueteriaSeleccionada}
+                  onChange={handlePaqueteriaChange}
+                  label="Filtrar por Paquetería"
+                >
+                  <MenuItem value="">Todas</MenuItem>
+                  <MenuItem value="PITIC">PITIC</MenuItem>
+                  <MenuItem value="TRESGUERRAS">TRESGUERRAS</MenuItem>
+                  <MenuItem value="EXPRESS">EXPRESS</MenuItem>
+                </Select>
+              </FormControl>
+
+              {/* 🔹 Botón para mostrar solo las filas sin guía */}
+              <Button
+                variant="contained"
+                color={mostrarSinGuia ? "secondary" : "primary"}
+                onClick={toggleMostrarSinGuia}
+                style={{ marginBottom: 10 }}
+              >
+                {mostrarSinGuia ? "Mostrar Todas" : "Mostrar Sin Guía"}
+              </Button>
+
+              <FormControl
+                variant="outlined"
+                style={{ minWidth: 200, marginBottom: 10 }}
+              >
+                <InputLabel>Filtrar por Estatus</InputLabel>
+                <Select
+                  value={estatusSeleccionado}
+                  onChange={handleEstatusChange}
+                  label="Filtrar por Estatus"
+                >
+                  <MenuItem value="">Todos</MenuItem>
+                  <MenuItem value="Por Asignar">Por Asignar</MenuItem>
+                  <MenuItem value="Surtiendo">Surtiendo</MenuItem>
+                  <MenuItem value="Embarcando">Embarcando</MenuItem>
+                  <MenuItem value="Pedido Finalizado">
+                    Pedido Finalizado
+                  </MenuItem>
+                </Select>
+              </FormControl>
+
+              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, mb: 2 }}>
+                {ordenEstatus.map((estatus) => {
+                  const cantidad = conteoEstatus[estatus] || 0;
+
+                  return (
+                    <Box
+                      key={estatus}
+                      sx={{
+                        backgroundColor: colorPorEstatus[estatus] || "#ccc",
+                        color: "#fff",
+                        borderRadius: 2,
+                        padding: "6px 12px",
+                        fontSize: 14,
+                        boxShadow: 1,
+                      }}
+                    >
+                      <strong>{estatus}:</strong> {cantidad}
+                    </Box>
+                  );
+                })}
+              </Box>
+
+              <TablePagination
+                component="div"
+                count={paqueteriaFiltrada.length} // O usa directaFiltrada.length o ventaEmpleadoFiltrada.length según la tabla
+                rowsPerPage={10} // Fijado en 10 filas por página
+                page={page}
+                onPageChange={(event, newPage) => setPage(newPage)}
+                labelRowsPerPage="" // Oculta "Rows per page"
+                rowsPerPageOptions={[]} // Elimina el selector de filas
+                style={{ textAlign: "right" }}
+              />
+
+              <Table>
+                <TableBody>
+                  <TableRow>
+                    {visibleColumns.includes("NO ORDEN") && (
+                      <TableCell>NO ORDEN</TableCell>
+                    )}
+                    {visibleColumns.includes("NO ORDEN") && (
+                      <TableCell>Estado del Pedido</TableCell>
+                    )}
+                    {visibleColumns.includes("FECHA") && (
+                      <TableCell>FECHA</TableCell>
+                    )}
+                    {visibleColumns.includes("NUM CLIENTE") && (
+                      <TableCell>NUM CLIENTE</TableCell>
+                    )}
+                    {visibleColumns.includes("NOMBRE DEL CLIENTE") && (
+                      <TableCell>NOMBRE DEL CLIENTE</TableCell>
+                    )}
+                    {visibleColumns.includes("MUNICIPIO") && (
+                      <TableCell>MUNICIPIO</TableCell>
+                    )}
+                    {visibleColumns.includes("ESTADO") && (
+                      <TableCell>ESTADO</TableCell>
+                    )}
+                    {visibleColumns.includes("OBSERVACIONES") && (
+                      <TableCell>OBSERVACIONES</TableCell>
+                    )}
+                    {visibleColumns.includes("TOTAL") && (
+                      <TableCell>TOTAL</TableCell>
+                    )}
+                    {visibleColumns.includes("TOTAL FACTURA LT") && (
+                      <TableCell>TOTAL FACTURA LT</TableCell>
+                    )}
+                    {visibleColumns.includes("NUMERO DE FACTURA") && (
+                      <TableCell>NUMERO DE FACTURA</TableCell>
+                    )}
+                    {visibleColumns.includes("PARTIDAS") && (
+                      <TableCell>PARTIDAS</TableCell>
+                    )}
+                    {visibleColumns.includes("PIEZAS") && (
+                      <TableCell>PIEZAS</TableCell>
+                    )}
+                    {visibleColumns.includes("FECHA DE FACTURA") && (
+                      <TableCell>FECHA DE FACTURA</TableCell>
+                    )}
+                    {visibleColumns.includes("TRANSPORTE") && (
+                      <TableCell>TRANSPORTE</TableCell>
+                    )}
+                    {visibleColumns.includes("PAQUETERIA") && (
+                      <TableCell>PAQUETERIA</TableCell>
+                    )}
+                    {visibleColumns.includes("GUIA") && (
+                      <TableCell>GUIA</TableCell>
+                    )}
+                    {visibleColumns.includes(
+                      "FECHA DE ENTREGA (CLIENTE)"
+                    ) && <TableCell>FECHA DE ENTREGA</TableCell>}
+                    {visibleColumns.includes("Acciones") && (
+                      <TableCell>Acciones</TableCell>
+                    )}
+                  </TableRow>
+                  {paqueteriaData.length === 0 ? (
                     <TableRow>
-                      {visibleColumns.includes("NO ORDEN") && (
-                        <TableCell>NO ORDEN</TableCell>
-                      )}
-                      {visibleColumns.includes("NO ORDEN") && (
-                        <TableCell>Estado del Pedido</TableCell>
-                      )}
-                      {visibleColumns.includes("FECHA") && (
-                        <TableCell>FECHA</TableCell>
-                      )}
-                      {visibleColumns.includes("NUM CLIENTE") && (
-                        <TableCell>NUM CLIENTE</TableCell>
-                      )}
-                      {visibleColumns.includes("NOMBRE DEL CLIENTE") && (
-                        <TableCell>NOMBRE DEL CLIENTE</TableCell>
-                      )}
-                      {visibleColumns.includes("MUNICIPIO") && (
-                        <TableCell>MUNICIPIO</TableCell>
-                      )}
-                      {visibleColumns.includes("ESTADO") && (
-                        <TableCell>ESTADO</TableCell>
-                      )}
-                      {visibleColumns.includes("OBSERVACIONES") && (
-                        <TableCell>OBSERVACIONES</TableCell>
-                      )}
-                      {visibleColumns.includes("TOTAL") && (
-                        <TableCell>TOTAL</TableCell>
-                      )}
-                      {visibleColumns.includes("TOTAL FACTURA LT") && (
-                        <TableCell>TOTAL FACTURA LT</TableCell>
-                      )}
-                      {visibleColumns.includes("NUMERO DE FACTURA") && (
-                        <TableCell>NUMERO DE FACTURA</TableCell>
-                      )}
-                      {visibleColumns.includes("PARTIDAS") && (
-                        <TableCell>PARTIDAS</TableCell>
-                      )}
-                      {visibleColumns.includes("PIEZAS") && (
-                        <TableCell>PIEZAS</TableCell>
-                      )}
-                      {visibleColumns.includes("FECHA DE FACTURA") && (
-                        <TableCell>FECHA DE FACTURA</TableCell>
-                      )}
-                      {visibleColumns.includes("TRANSPORTE") && (
-                        <TableCell>TRANSPORTE</TableCell>
-                      )}
-                      {visibleColumns.includes("PAQUETERIA") && (
-                        <TableCell>PAQUETERIA</TableCell>
-                      )}
-                      {visibleColumns.includes("GUIA") && (
-                        <TableCell>GUIA</TableCell>
-                      )}
-                      {visibleColumns.includes(
-                        "FECHA DE ENTREGA (CLIENTE)"
-                      ) && <TableCell>FECHA DE ENTREGA</TableCell>}
-                      {visibleColumns.includes("Acciones") && (
-                        <TableCell>Acciones</TableCell>
-                      )}
+                      <TableCell
+                        colSpan={visibleColumns.length}
+                        style={{ textAlign: "center" }}
+                      >
+                        No hay datos disponibles.
+                      </TableCell>
                     </TableRow>
-                    {paqueteriaData.length === 0 ? (
-                      <TableRow>
-                        <TableCell
-                          colSpan={visibleColumns.length}
-                          style={{ textAlign: "center" }}
+                  ) : (
+                    paqueteriaFiltrada
+                      .slice(
+                        page * rowsPerPage,
+                        page * rowsPerPage + rowsPerPage
+                      )
+                      .map((routeData, index) => (
+                        <TableRow
+                          key={index}
+                          onClick={() => handleRowClick(routeData)}
                         >
-                          No hay datos disponibles.
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      paqueteriaFiltrada
-                        .slice(
-                          page * rowsPerPage,
-                          page * rowsPerPage + rowsPerPage
-                        )
-                        .map((routeData, index) => (
-                          <TableRow
-                            key={index}
-                            onClick={() => handleRowClick(routeData)}
-                          >
-                            {visibleColumns.includes("NO ORDEN") && (
-                              <TableCell>
-                                {routeData["NO ORDEN"]} -{" "}
-                                {routeData["tipo_original"]}
-                              </TableCell>
-                            )}
-
+                          {visibleColumns.includes("NO ORDEN") && (
                             <TableCell>
-                              {/* Estado del pedido con color */}
-                              <Typography
-                                variant="body2"
-                                style={{ color: routeData.color }}
-                              >
-                                {routeData.statusText}
-                              </Typography>
-
-                              {/* Si el pedido está fusionado, mostrarlo debajo en morado */}
-                              {routeData.fusionWith && (
-                                <Typography
-                                  variant="caption"
-                                  style={{
-                                    color: "#800080",
-                                    fontWeight: "bold",
-                                  }}
-                                >
-                                  ({routeData.fusionWith})
-                                </Typography>
-                              )}
+                              {routeData["NO ORDEN"]} -{" "}
+                              {routeData["tipo_original"]}
                             </TableCell>
+                          )}
 
-                            {visibleColumns.includes("FECHA") && (
-                              <TableCell>
-                                {formatDate(routeData.FECHA)}
-                              </TableCell>
+                          <TableCell>
+                            {/* Estado del pedido con color */}
+                            <Typography
+                              variant="body2"
+                              style={{ color: routeData.color }}
+                            >
+                              {routeData.statusText}
+                            </Typography>
+
+                            {/* Si el pedido está fusionado, mostrarlo debajo en morado */}
+                            {routeData.fusionWith && (
+                              <Typography
+                                variant="caption"
+                                style={{
+                                  color: "#800080",
+                                  fontWeight: "bold",
+                                }}
+                              >
+                                ({routeData.fusionWith})
+                              </Typography>
                             )}
-                            {visibleColumns.includes("NUM CLIENTE") && (
-                              <TableCell>{routeData["NUM. CLIENTE"]}</TableCell>
-                            )}
-                            {visibleColumns.includes("NOMBRE DEL CLIENTE") && (
-                              <TableCell>
-                                {" "}
-                                {routeData["NOMBRE DEL CLIENTE"]}{" "}
-                              </TableCell>
-                            )}
-                            {visibleColumns.includes("MUNICIPIO") && (
-                              <TableCell>{routeData.MUNICIPIO}</TableCell>
-                            )}
-                            {visibleColumns.includes("ESTADO") && (
-                              <TableCell>{routeData.ESTADO}</TableCell>
-                            )}
-                            {visibleColumns.includes("OBSERVACIONES") && (
-                              <TableCell>{routeData.OBSERVACIONES}</TableCell>
-                            )}
-                            {visibleColumns.includes("TOTAL") && (
-                              <TableCell>
-                                {" "}
-                                {formatCurrency(routeData.TOTAL)}{" "}
-                              </TableCell>
-                            )}
-                            {visibleColumns.includes("TOTAL FACTURA LT") && (
-                              <TableCell>
-                                {routeData.TOTAL_FACTURA_LT &&
+                          </TableCell>
+
+                          {visibleColumns.includes("FECHA") && (
+                            <TableCell>
+                              {formatDate(routeData.FECHA)}
+                            </TableCell>
+                          )}
+                          {visibleColumns.includes("NUM CLIENTE") && (
+                            <TableCell>{routeData["NUM. CLIENTE"]}</TableCell>
+                          )}
+                          {visibleColumns.includes("NOMBRE DEL CLIENTE") && (
+                            <TableCell>
+                              {" "}
+                              {routeData["NOMBRE DEL CLIENTE"]}{" "}
+                            </TableCell>
+                          )}
+                          {visibleColumns.includes("MUNICIPIO") && (
+                            <TableCell>{routeData.MUNICIPIO}</TableCell>
+                          )}
+                          {visibleColumns.includes("ESTADO") && (
+                            <TableCell>{routeData.ESTADO}</TableCell>
+                          )}
+                          {visibleColumns.includes("OBSERVACIONES") && (
+                            <TableCell>{routeData.OBSERVACIONES}</TableCell>
+                          )}
+                          {visibleColumns.includes("TOTAL") && (
+                            <TableCell>
+                              {" "}
+                              {formatCurrency(routeData.TOTAL)}{" "}
+                            </TableCell>
+                          )}
+                          {visibleColumns.includes("TOTAL FACTURA LT") && (
+                            <TableCell>
+                              {routeData.TOTAL_FACTURA_LT &&
                                 !isNaN(
                                   parseFloat(
                                     routeData.TOTAL_FACTURA_LT.toString().replace(
@@ -6778,44 +6888,44 @@ function Transporte() {
                                     )
                                   )
                                 )
-                                  ? formatCurrency(
-                                      parseFloat(
-                                        routeData.TOTAL_FACTURA_LT.toString().replace(
-                                          /,/g,
-                                          ""
-                                        )
-                                      )
+                                ? formatCurrency(
+                                  parseFloat(
+                                    routeData.TOTAL_FACTURA_LT.toString().replace(
+                                      /,/g,
+                                      ""
                                     )
-                                  : "$0.00"}
-                              </TableCell>
-                            )}
+                                  )
+                                )
+                                : "$0.00"}
+                            </TableCell>
+                          )}
 
-                            {visibleColumns.includes("NUMERO DE FACTURA") && (
-                              <TableCell>{routeData["NO_FACTURA"]}</TableCell>
-                            )}
-                            {visibleColumns.includes("PARTIDAS") && (
-                              <TableCell>{routeData.PARTIDAS}</TableCell>
-                            )}
-                            {visibleColumns.includes("PIEZAS") && (
-                              <TableCell>{routeData.PIEZAS}</TableCell>
-                            )}
-                            {visibleColumns.includes("FECHA DE FACTURA") && (
-                              <TableCell>
-                                {formatDate(routeData.FECHA_DE_FACTURA)}
-                              </TableCell>
-                            )}
-                            {visibleColumns.includes("TRANSPORTE") && (
-                              <TableCell>{routeData.TRANSPORTE}</TableCell>
-                            )}
-                            {visibleColumns.includes("PAQUETERIA") && (
-                              <TableCell>{routeData.PAQUETERIA}</TableCell>
-                            )}
-                            {visibleColumns.includes("GUIA") && (
-                              <TableCell>{routeData.GUIA}</TableCell>
-                            )}
-                            {visibleColumns.includes(
-                              "FECHA DE ENTREGA (CLIENTE)"
-                            ) && (
+                          {visibleColumns.includes("NUMERO DE FACTURA") && (
+                            <TableCell>{routeData["NO_FACTURA"]}</TableCell>
+                          )}
+                          {visibleColumns.includes("PARTIDAS") && (
+                            <TableCell>{routeData.PARTIDAS}</TableCell>
+                          )}
+                          {visibleColumns.includes("PIEZAS") && (
+                            <TableCell>{routeData.PIEZAS}</TableCell>
+                          )}
+                          {visibleColumns.includes("FECHA DE FACTURA") && (
+                            <TableCell>
+                              {formatDate(routeData.FECHA_DE_FACTURA)}
+                            </TableCell>
+                          )}
+                          {visibleColumns.includes("TRANSPORTE") && (
+                            <TableCell>{routeData.TRANSPORTE}</TableCell>
+                          )}
+                          {visibleColumns.includes("PAQUETERIA") && (
+                            <TableCell>{routeData.PAQUETERIA}</TableCell>
+                          )}
+                          {visibleColumns.includes("GUIA") && (
+                            <TableCell>{routeData.GUIA}</TableCell>
+                          )}
+                          {visibleColumns.includes(
+                            "FECHA DE ENTREGA (CLIENTE)"
+                          ) && (
                               <TableCell>
                                 {" "}
                                 {formatDate(
@@ -6824,26 +6934,26 @@ function Transporte() {
                               </TableCell>
                             )}
 
-                            <TableCell>
-                              <Grid
-                                container
-                                spacing={1}
-                                justifyContent="flex-start"
-                                alignItems="center"
-                              >
-                                <Grid item>
-                                  <IconButton
-                                    style={{ color: "#1976D2" }} // Azul
-                                    onClick={() => openDirectaModal(routeData)}
-                                  >
-                                    <BorderColorIcon />
-                                  </IconButton>
-                                </Grid>
+                          <TableCell>
+                            <Grid
+                              container
+                              spacing={1}
+                              justifyContent="flex-start"
+                              alignItems="center"
+                            >
+                              <Grid item>
+                                <IconButton
+                                  style={{ color: "#1976D2" }} // Azul
+                                  onClick={() => openDirectaModal(routeData)}
+                                >
+                                  <BorderColorIcon />
+                                </IconButton>
+                              </Grid>
 
-                                <Grid item>
-                                  {(user?.role === "Admin" ||
-                                    user?.role === "Master" ||
-                                    user?.role === "Trans") && (
+                              <Grid item>
+                                {(user?.role === "Admin" ||
+                                  user?.role === "Master" ||
+                                  user?.role === "Trans") && (
                                     <IconButton
                                       onClick={() => {
                                         const url = getTransportUrl(
@@ -6858,23 +6968,23 @@ function Transporte() {
                                       <AirportShuttleIcon />
                                     </IconButton>
                                   )}
-                                </Grid>
+                              </Grid>
 
-                                <Grid item>
-                                  <IconButton
-                                    variant="contained"
-                                    style={{ color: "black" }} // Negro con texto blanco
-                                    onClick={() =>
-                                      generatePDF(routeData["NO ORDEN"])
-                                    }
-                                  >
-                                    <ArticleIcon />
-                                  </IconButton>
-                                </Grid>
+                              <Grid item>
+                                <IconButton
+                                  variant="contained"
+                                  style={{ color: "black" }} // Negro con texto blanco
+                                  onClick={() =>
+                                    generatePDF(routeData["NO ORDEN"])
+                                  }
+                                >
+                                  <ArticleIcon />
+                                </IconButton>
+                              </Grid>
 
-                                <Grid item>
-                                  {(user?.role === "Admin" ||
-                                    user?.role === "Trans") && (
+                              <Grid item>
+                                {(user?.role === "Admin" ||
+                                  user?.role === "Trans") && (
                                     <IconButton
                                       color="error"
                                       onClick={() =>
@@ -6885,100 +6995,100 @@ function Transporte() {
                                       <DeleteIcon />
                                     </IconButton>
                                   )}
-                                </Grid>
                               </Grid>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                    )}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
+                            </Grid>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
 
-            {/* Sub-tab de Directa */}
-            {subTabIndex === 1 && (
-              <TableContainer component={Paper} style={{ marginTop: "20px" }}>
-                <Typography variant="h6">Directa</Typography>
+          {/* Sub-tab de Directa */}
+          {subTabIndex === 1 && (
+            <TableContainer component={Paper} style={{ marginTop: "20px" }}>
+              <Typography variant="h6">Directa</Typography>
 
+              <TextField
+                label="Buscar por No Orden o Nombre del Cliente"
+                value={filtroGeneral}
+                onChange={(e) => setFiltroGeneral(e.target.value)}
+                variant="outlined"
+                size="small"
+                sx={{ mr: 2 }}
+              />
+
+              <TextField
+                label="Buscar por Estado"
+                value={filtroEstado}
+                onChange={(e) => setFiltroEstado(e.target.value)}
+                variant="outlined"
+                size="small"
+              />
+
+              <FormControl
+                variant="outlined"
+                style={{ minWidth: 200, marginRight: 10 }}
+              >
+                <InputLabel>Filtrar por Factura</InputLabel>
                 <TextField
-                  label="Buscar por No Orden o Nombre del Cliente"
-                  value={filtroGeneral}
-                  onChange={(e) => setFiltroGeneral(e.target.value)}
+                  label="Filtrar por Factura"
                   variant="outlined"
-                  size="small"
-                  sx={{ mr: 2 }}
-                />
-
-                <TextField
-                  label="Buscar por Estado"
-                  value={filtroEstado}
-                  onChange={(e) => setFiltroEstado(e.target.value)}
-                  variant="outlined"
-                  size="small"
-                />
-
-                <FormControl
-                  variant="outlined"
+                  value={facturaSeleccionada}
+                  onChange={(e) => setFacturaSeleccionada(e.target.value)}
                   style={{ minWidth: 200, marginRight: 10 }}
-                >
-                  <InputLabel>Filtrar por Factura</InputLabel>
-                  <TextField
-                    label="Filtrar por Factura"
-                    variant="outlined"
-                    value={facturaSeleccionada}
-                    onChange={(e) => setFacturaSeleccionada(e.target.value)}
-                    style={{ minWidth: 200, marginRight: 10 }}
-                  />
-                </FormControl>
-
-                <br />
-
-                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, mb: 2 }}>
-                  {ordenEstatus.map((estatus) => {
-                    const cantidad = conteoEstatus[estatus] || 0;
-
-                    return (
-                      <Box
-                        key={estatus}
-                        sx={{
-                          backgroundColor: colorPorEstatus[estatus] || "#ccc",
-                          color: "#fff",
-                          borderRadius: 2,
-                          padding: "6px 12px",
-                          fontSize: 14,
-                          boxShadow: 1,
-                        }}
-                      >
-                        <strong>{estatus}:</strong> {cantidad}
-                      </Box>
-                    );
-                  })}
-                </Box>
-
-                <TablePagination
-                  component="div"
-                  count={directaFiltrada.length} // O usa directaFiltrada.length o ventaEmpleadoFiltrada.length según la tabla
-                  rowsPerPage={10} // Fijado en 10 filas por página
-                  page={page}
-                  onPageChange={(event, newPage) => setPage(newPage)}
-                  labelRowsPerPage="" // Oculta "Rows per page"
-                  rowsPerPageOptions={[]} // Elimina el selector de filas
-                  style={{ textAlign: "right" }}
                 />
+              </FormControl>
 
-                {(user?.role === "Admin" ||
-                  user?.role === "Master" ||
-                  user?.role === "Trans") && (
+              <br />
+
+              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, mb: 2 }}>
+                {ordenEstatus.map((estatus) => {
+                  const cantidad = conteoEstatus[estatus] || 0;
+
+                  return (
+                    <Box
+                      key={estatus}
+                      sx={{
+                        backgroundColor: colorPorEstatus[estatus] || "#ccc",
+                        color: "#fff",
+                        borderRadius: 2,
+                        padding: "6px 12px",
+                        fontSize: 14,
+                        boxShadow: 1,
+                      }}
+                    >
+                      <strong>{estatus}:</strong> {cantidad}
+                    </Box>
+                  );
+                })}
+              </Box>
+
+              <TablePagination
+                component="div"
+                count={directaFiltrada.length} // O usa directaFiltrada.length o ventaEmpleadoFiltrada.length según la tabla
+                rowsPerPage={10} // Fijado en 10 filas por página
+                page={page}
+                onPageChange={(event, newPage) => setPage(newPage)}
+                labelRowsPerPage="" // Oculta "Rows per page"
+                rowsPerPageOptions={[]} // Elimina el selector de filas
+                style={{ textAlign: "right" }}
+              />
+
+              {(user?.role === "Admin" ||
+                user?.role === "Master" ||
+                user?.role === "Trans") && (
                   <Button onClick={() => handleGenerateExcel(createdAt)}>
                     Exportar Datos
                   </Button>
                 )}
 
-                {(user?.role === "Admin" ||
-                  user?.role === "Master" ||
-                  user?.role === "Trans" ||
-                  user?.role === "Embar") && (
+              {(user?.role === "Admin" ||
+                user?.role === "Master" ||
+                user?.role === "Trans" ||
+                user?.role === "Embar") && (
                   <FormControl
                     variant="outlined"
                     style={{ minWidth: 200, marginBottom: 10 }}
@@ -7000,177 +7110,177 @@ function Transporte() {
                   </FormControl>
                 )}
 
-                <Table>
-                  <TableHead>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    {visibleColumns.includes("NO ORDEN") && (
+                      <TableCell>NO ORDEN</TableCell>
+                    )}
+                    {visibleColumns.includes("ESTADO") && (
+                      <TableCell>Estado del Pedido</TableCell>
+                    )}
+                    {visibleColumns.includes("FECHA") && (
+                      <TableCell>FECHA</TableCell>
+                    )}
+                    {visibleColumns.includes("NUM CLIENTE") && (
+                      <TableCell>NUM CLIENTE</TableCell>
+                    )}
+                    {visibleColumns.includes("NOMBRE DEL CLIENTE") && (
+                      <TableCell>NOMBRE DEL CLIENTE</TableCell>
+                    )}
+                    {visibleColumns.includes("MUNICIPIO") && (
+                      <TableCell>MUNICIPIO</TableCell>
+                    )}
+                    {visibleColumns.includes("ESTADO") && (
+                      <TableCell>ESTADO</TableCell>
+                    )}
+                    {visibleColumns.includes("OBSERVACIONES") && (
+                      <TableCell>OBSERVACIONES</TableCell>
+                    )}
+                    {visibleColumns.includes("TOTAL") && (
+                      <TableCell>TOTAL</TableCell>
+                    )}
+                    {visibleColumns.includes("NUMERO DE FACTURA") && (
+                      <TableCell>NUMERO DE FACTURA</TableCell>
+                    )}
+                    {visibleColumns.includes("FECHA DE FACTURA") && (
+                      <TableCell>FECHA DE FACTURA</TableCell>
+                    )}
+                    {visibleColumns.includes("PARTIDAS") && (
+                      <TableCell>PARTIDAS</TableCell>
+                    )}
+                    {visibleColumns.includes("PIEZAS") && (
+                      <TableCell>PIEZAS</TableCell>
+                    )}
+                    {visibleColumns.includes("TRANSPORTE") && (
+                      <TableCell>TRANSPORTE</TableCell>
+                    )}
+                    {visibleColumns.includes("PAQUETERIA") && (
+                      <TableCell>TIPO DE RUTA</TableCell>
+                    )}
+                    {visibleColumns.includes(
+                      "FECHA DE ENTREGA (CLIENTE)"
+                    ) && <TableCell>FECHA DE ENTREGA (CLIENTE)</TableCell>}
+                    {visibleColumns.includes("Acciones") && (
+                      <TableCell>Acciones</TableCell>
+                    )}
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {directaData.length === 0 ? (
                     <TableRow>
-                      {visibleColumns.includes("NO ORDEN") && (
-                        <TableCell>NO ORDEN</TableCell>
-                      )}
-                      {visibleColumns.includes("ESTADO") && (
-                        <TableCell>Estado del Pedido</TableCell>
-                      )}
-                      {visibleColumns.includes("FECHA") && (
-                        <TableCell>FECHA</TableCell>
-                      )}
-                      {visibleColumns.includes("NUM CLIENTE") && (
-                        <TableCell>NUM CLIENTE</TableCell>
-                      )}
-                      {visibleColumns.includes("NOMBRE DEL CLIENTE") && (
-                        <TableCell>NOMBRE DEL CLIENTE</TableCell>
-                      )}
-                      {visibleColumns.includes("MUNICIPIO") && (
-                        <TableCell>MUNICIPIO</TableCell>
-                      )}
-                      {visibleColumns.includes("ESTADO") && (
-                        <TableCell>ESTADO</TableCell>
-                      )}
-                      {visibleColumns.includes("OBSERVACIONES") && (
-                        <TableCell>OBSERVACIONES</TableCell>
-                      )}
-                      {visibleColumns.includes("TOTAL") && (
-                        <TableCell>TOTAL</TableCell>
-                      )}
-                      {visibleColumns.includes("NUMERO DE FACTURA") && (
-                        <TableCell>NUMERO DE FACTURA</TableCell>
-                      )}
-                      {visibleColumns.includes("FECHA DE FACTURA") && (
-                        <TableCell>FECHA DE FACTURA</TableCell>
-                      )}
-                      {visibleColumns.includes("PARTIDAS") && (
-                        <TableCell>PARTIDAS</TableCell>
-                      )}
-                      {visibleColumns.includes("PIEZAS") && (
-                        <TableCell>PIEZAS</TableCell>
-                      )}
-                      {visibleColumns.includes("TRANSPORTE") && (
-                        <TableCell>TRANSPORTE</TableCell>
-                      )}
-                      {visibleColumns.includes("PAQUETERIA") && (
-                        <TableCell>TIPO DE RUTA</TableCell>
-                      )}
-                      {visibleColumns.includes(
-                        "FECHA DE ENTREGA (CLIENTE)"
-                      ) && <TableCell>FECHA DE ENTREGA (CLIENTE)</TableCell>}
-                      {visibleColumns.includes("Acciones") && (
-                        <TableCell>Acciones</TableCell>
-                      )}
+                      <TableCell
+                        colSpan={visibleColumns.length}
+                        style={{ textAlign: "center" }}
+                      >
+                        No hay datos disponibles.
+                      </TableCell>
                     </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {directaData.length === 0 ? (
-                      <TableRow>
-                        <TableCell
-                          colSpan={visibleColumns.length}
-                          style={{ textAlign: "center" }}
-                        >
-                          No hay datos disponibles.
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      directaFiltrada
-                        .slice(
-                          page * rowsPerPage,
-                          page * rowsPerPage + rowsPerPage
-                        ) // ✅ PAGINACIÓN SIN AFECTAR FILTROS
-                        .map((routeData, index) => (
-                          <TableRow key={index}>
-                            {visibleColumns.includes("NO ORDEN") && (
-                              <TableCell>
-                                {routeData["NO ORDEN"]} -{" "}
-                                {routeData["tipo_original"]}
-                              </TableCell>
-                            )}
-
+                  ) : (
+                    directaFiltrada
+                      .slice(
+                        page * rowsPerPage,
+                        page * rowsPerPage + rowsPerPage
+                      ) // ✅ PAGINACIÓN SIN AFECTAR FILTROS
+                      .map((routeData, index) => (
+                        <TableRow key={index}>
+                          {visibleColumns.includes("NO ORDEN") && (
                             <TableCell>
-                              {/* Estado del pedido con color */}
-                              <Typography
-                                variant="body2"
-                                style={{ color: routeData.color }}
-                              >
-                                {routeData.statusText}
-                              </Typography>
-
-                              {/* Si el pedido está fusionado, mostrarlo debajo en morado */}
-                              {routeData.fusionWith && (
-                                <Typography
-                                  variant="caption"
-                                  style={{
-                                    color: "#800080",
-                                    fontWeight: "bold",
-                                  }}
-                                >
-                                  ({routeData.fusionWith})
-                                </Typography>
-                              )}
+                              {routeData["NO ORDEN"]} -{" "}
+                              {routeData["tipo_original"]}
                             </TableCell>
+                          )}
 
-                            {visibleColumns.includes("FECHA") && (
-                              <TableCell>
-                                {formatDate(routeData.FECHA)}
-                              </TableCell>
+                          <TableCell>
+                            {/* Estado del pedido con color */}
+                            <Typography
+                              variant="body2"
+                              style={{ color: routeData.color }}
+                            >
+                              {routeData.statusText}
+                            </Typography>
+
+                            {/* Si el pedido está fusionado, mostrarlo debajo en morado */}
+                            {routeData.fusionWith && (
+                              <Typography
+                                variant="caption"
+                                style={{
+                                  color: "#800080",
+                                  fontWeight: "bold",
+                                }}
+                              >
+                                ({routeData.fusionWith})
+                              </Typography>
                             )}
-                            {visibleColumns.includes("NUM CLIENTE") && (
-                              <TableCell>{routeData["NUM. CLIENTE"]}</TableCell>
-                            )}
-                            {visibleColumns.includes("NOMBRE DEL CLIENTE") && (
-                              <TableCell>
-                                {routeData["NOMBRE DEL CLIENTE"]}
-                              </TableCell>
-                            )}
-                            {visibleColumns.includes("MUNICIPIO") && (
-                              <TableCell>{routeData.MUNICIPIO}</TableCell>
-                            )}
-                            {visibleColumns.includes("ESTADO") && (
-                              <TableCell>{routeData.ESTADO}</TableCell>
-                            )}
-                            {visibleColumns.includes("OBSERVACIONES") && (
-                              <TableCell>{routeData.OBSERVACIONES}</TableCell>
-                            )}
-                            {visibleColumns.includes("TOTAL") && (
-                              <TableCell>
-                                {formatCurrency(routeData.TOTAL)}
-                              </TableCell>
-                            )}
-                            {visibleColumns.includes("NUMERO DE FACTURA") && (
-                              <TableCell>{routeData["NO_FACTURA"]}</TableCell>
-                            )}
-                            {visibleColumns.includes("FECHA DE FACTURA") && (
-                              <TableCell>
-                                {formatDate(routeData.FECHA_DE_FACTURA)}
-                              </TableCell>
-                            )}
-                            {visibleColumns.includes("PARTIDAS") && (
-                              <TableCell>{routeData.PARTIDAS}</TableCell>
-                            )}
-                            {visibleColumns.includes("PIEZAS") && (
-                              <TableCell>{routeData.PIEZAS}</TableCell>
-                            )}
-                            {visibleColumns.includes("TRANSPORTE") && (
-                              <TableCell>{routeData.TRANSPORTE}</TableCell>
-                            )}
-                            {visibleColumns.includes("PAQUETERIA") && (
-                              <TableCell>{routeData.PAQUETERIA}</TableCell>
-                            )}
-                            {visibleColumns.includes(
-                              "FECHA DE ENTREGA (CLIENTE)"
-                            ) && (
+                          </TableCell>
+
+                          {visibleColumns.includes("FECHA") && (
+                            <TableCell>
+                              {formatDate(routeData.FECHA)}
+                            </TableCell>
+                          )}
+                          {visibleColumns.includes("NUM CLIENTE") && (
+                            <TableCell>{routeData["NUM. CLIENTE"]}</TableCell>
+                          )}
+                          {visibleColumns.includes("NOMBRE DEL CLIENTE") && (
+                            <TableCell>
+                              {routeData["NOMBRE DEL CLIENTE"]}
+                            </TableCell>
+                          )}
+                          {visibleColumns.includes("MUNICIPIO") && (
+                            <TableCell>{routeData.MUNICIPIO}</TableCell>
+                          )}
+                          {visibleColumns.includes("ESTADO") && (
+                            <TableCell>{routeData.ESTADO}</TableCell>
+                          )}
+                          {visibleColumns.includes("OBSERVACIONES") && (
+                            <TableCell>{routeData.OBSERVACIONES}</TableCell>
+                          )}
+                          {visibleColumns.includes("TOTAL") && (
+                            <TableCell>
+                              {formatCurrency(routeData.TOTAL)}
+                            </TableCell>
+                          )}
+                          {visibleColumns.includes("NUMERO DE FACTURA") && (
+                            <TableCell>{routeData["NO_FACTURA"]}</TableCell>
+                          )}
+                          {visibleColumns.includes("FECHA DE FACTURA") && (
+                            <TableCell>
+                              {formatDate(routeData.FECHA_DE_FACTURA)}
+                            </TableCell>
+                          )}
+                          {visibleColumns.includes("PARTIDAS") && (
+                            <TableCell>{routeData.PARTIDAS}</TableCell>
+                          )}
+                          {visibleColumns.includes("PIEZAS") && (
+                            <TableCell>{routeData.PIEZAS}</TableCell>
+                          )}
+                          {visibleColumns.includes("TRANSPORTE") && (
+                            <TableCell>{routeData.TRANSPORTE}</TableCell>
+                          )}
+                          {visibleColumns.includes("PAQUETERIA") && (
+                            <TableCell>{routeData.PAQUETERIA}</TableCell>
+                          )}
+                          {visibleColumns.includes(
+                            "FECHA DE ENTREGA (CLIENTE)"
+                          ) && (
                               <TableCell>
                                 {formatDate(routeData.FECHA_DE_ENTREGA_CLIENTE)}
                               </TableCell>
                             )}
-                            {visibleColumns.includes("Acciones") && (
-                              <TableCell>
-                                <Grid
-                                  container
-                                  spacing={1}
-                                  justifyContent="flex-start"
-                                  alignItems="center"
-                                >
+                          {visibleColumns.includes("Acciones") && (
+                            <TableCell>
+                              <Grid
+                                container
+                                spacing={1}
+                                justifyContent="flex-start"
+                                alignItems="center"
+                              >
+                                <Grid item>
                                   <Grid item>
-                                    <Grid item>
-                                      {(user?.role === "Admin" ||
-                                        user?.role === "Master" ||
-                                        user?.role === "Trans") && (
+                                    {(user?.role === "Admin" ||
+                                      user?.role === "Master" ||
+                                      user?.role === "Trans") && (
                                         <IconButton
                                           onClick={() => {
                                             window.open(
@@ -7184,33 +7294,33 @@ function Transporte() {
                                           <AirportShuttleIcon />
                                         </IconButton>
                                       )}
-                                    </Grid>
-
-                                    <IconButton
-                                      style={{ color: "#1976D2" }} // Azul
-                                      onClick={() =>
-                                        openDirectaModal(routeData)
-                                      }
-                                    >
-                                      <BorderColorIcon />
-                                    </IconButton>
                                   </Grid>
 
-                                  <Grid item>
-                                    <IconButton
-                                      variant="contained"
-                                      style={{ color: "black" }} // Negro con texto blanco
-                                      onClick={() =>
-                                        generatePDF(routeData["NO ORDEN"])
-                                      }
-                                    >
-                                      <ArticleIcon />
-                                    </IconButton>
-                                  </Grid>
+                                  <IconButton
+                                    style={{ color: "#1976D2" }} // Azul
+                                    onClick={() =>
+                                      openDirectaModal(routeData)
+                                    }
+                                  >
+                                    <BorderColorIcon />
+                                  </IconButton>
+                                </Grid>
 
-                                  <Grid item>
-                                    {(user?.role === "Admin" ||
-                                      user?.role === "Trans") && (
+                                <Grid item>
+                                  <IconButton
+                                    variant="contained"
+                                    style={{ color: "black" }} // Negro con texto blanco
+                                    onClick={() =>
+                                      generatePDF(routeData["NO ORDEN"])
+                                    }
+                                  >
+                                    <ArticleIcon />
+                                  </IconButton>
+                                </Grid>
+
+                                <Grid item>
+                                  {(user?.role === "Admin" ||
+                                    user?.role === "Trans") && (
                                       <IconButton
                                         color="error"
                                         onClick={() =>
@@ -7221,189 +7331,189 @@ function Transporte() {
                                         <DeleteIcon />
                                       </IconButton>
                                     )}
-                                  </Grid>
                                 </Grid>
-                              </TableCell>
-                            )}
-                          </TableRow>
-                        ))
-                    )}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
-
-            {/* Sub-tab de Venta Empleado */}
-            {subTabIndex === 2 && (
-              <TableContainer component={Paper} style={{ marginTop: "20px" }}>
-                <Typography variant="h6">Venta Empleado</Typography>
-                <br />
-
-                <TextField
-                  label="Buscar por No Orden o Nombre del Cliente"
-                  value={filtroGeneral}
-                  onChange={(e) => setFiltroGeneral(e.target.value)}
-                  variant="outlined"
-                  size="small"
-                  sx={{ mr: 2 }}
-                />
-
-                <TextField
-                  label="Buscar por Estado"
-                  value={filtroEstado}
-                  onChange={(e) => setFiltroEstado(e.target.value)}
-                  variant="outlined"
-                  size="small"
-                />
-
-                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, mb: 2 }}>
-                  {ordenEstatus.map((estatus) => {
-                    const cantidad = conteoEstatus[estatus] || 0;
-
-                    return (
-                      <Box
-                        key={estatus}
-                        sx={{
-                          backgroundColor: colorPorEstatus[estatus] || "#ccc",
-                          color: "#fff",
-                          borderRadius: 2,
-                          padding: "6px 12px",
-                          fontSize: 14,
-                          boxShadow: 1,
-                        }}
-                      >
-                        <strong>{estatus}:</strong> {cantidad}
-                      </Box>
-                    );
-                  })}
-                </Box>
-
-                <TablePagination
-                  component="div"
-                  count={ventaEmpleadoFiltrada.length} // O usa directaFiltrada.length o ventaEmpleadoFiltrada.length según la tabla
-                  rowsPerPage={10} // Fijado en 10 filas por página
-                  page={page}
-                  onPageChange={(event, newPage) => setPage(newPage)}
-                  labelRowsPerPage="" // Oculta "Rows per page"
-                  rowsPerPageOptions={[]} // Elimina el selector de filas
-                  style={{ textAlign: "right" }}
-                />
-
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      {visibleColumns.includes("NO ORDEN") && (
-                        <TableCell>NO ORDEN</TableCell>
-                      )}
-                      {visibleColumns.includes("ESTADO") && (
-                        <TableCell>Estado del Pedido</TableCell>
-                      )}
-                      {visibleColumns.includes("FECHA") && (
-                        <TableCell>FECHA</TableCell>
-                      )}
-                      {visibleColumns.includes("PARTIDAS") && (
-                        <TableCell>PARTIDAS</TableCell>
-                      )}
-                      {visibleColumns.includes("PIEZAS") && (
-                        <TableCell>PIEZAS</TableCell>
-                      )}
-                      {visibleColumns.includes(
-                        "FECHA DE ENTREGA (CLIENTE)"
-                      ) && <TableCell>FECHA DE ENTREGA (CLIENTE)</TableCell>}
-                      {visibleColumns.includes("Acciones") && (
-                        <TableCell>Acciones</TableCell>
-                      )}
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {ventaEmpleadoData.length === 0 ? (
-                      <TableRow>
-                        <TableCell
-                          colSpan={visibleColumns.length}
-                          style={{ textAlign: "center" }}
-                        >
-                          No hay datos disponibles.
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      ventaEmpleadoFiltrada
-                        .slice(
-                          page * rowsPerPage,
-                          page * rowsPerPage + rowsPerPage
-                        ) // ✅ PAGINACIÓN SIN AFECTAR FILTROS
-                        .map((routeData, index) => (
-                          <TableRow key={index}>
-                            {visibleColumns.includes("NO ORDEN") && (
-                              <TableCell>
-                                {routeData["NO ORDEN"]} -{" "}
-                                {routeData["tipo_original"]}
-                              </TableCell>
-                            )}
-                            <TableCell>
-                              {/* Estado del pedido con color */}
-                              <Typography
-                                variant="body2"
-                                style={{ color: routeData.color }}
-                              >
-                                {routeData.statusText}
-                              </Typography>
-
-                              {/* Si el pedido está fusionado, mostrarlo debajo en morado */}
-                              {routeData.fusionWith && (
-                                <Typography
-                                  variant="caption"
-                                  style={{
-                                    color: "#800080",
-                                    fontWeight: "bold",
-                                  }}
-                                >
-                                  ({routeData.fusionWith})
-                                </Typography>
-                              )}
+                              </Grid>
                             </TableCell>
+                          )}
+                        </TableRow>
+                      ))
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
 
-                            {visibleColumns.includes("FECHA") && (
-                              <TableCell>
-                                {formatDate(routeData.FECHA)}
-                              </TableCell>
+          {/* Sub-tab de Venta Empleado */}
+          {subTabIndex === 2 && (
+            <TableContainer component={Paper} style={{ marginTop: "20px" }}>
+              <Typography variant="h6">Venta Empleado</Typography>
+              <br />
+
+              <TextField
+                label="Buscar por No Orden o Nombre del Cliente"
+                value={filtroGeneral}
+                onChange={(e) => setFiltroGeneral(e.target.value)}
+                variant="outlined"
+                size="small"
+                sx={{ mr: 2 }}
+              />
+
+              <TextField
+                label="Buscar por Estado"
+                value={filtroEstado}
+                onChange={(e) => setFiltroEstado(e.target.value)}
+                variant="outlined"
+                size="small"
+              />
+
+              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, mb: 2 }}>
+                {ordenEstatus.map((estatus) => {
+                  const cantidad = conteoEstatus[estatus] || 0;
+
+                  return (
+                    <Box
+                      key={estatus}
+                      sx={{
+                        backgroundColor: colorPorEstatus[estatus] || "#ccc",
+                        color: "#fff",
+                        borderRadius: 2,
+                        padding: "6px 12px",
+                        fontSize: 14,
+                        boxShadow: 1,
+                      }}
+                    >
+                      <strong>{estatus}:</strong> {cantidad}
+                    </Box>
+                  );
+                })}
+              </Box>
+
+              <TablePagination
+                component="div"
+                count={ventaEmpleadoFiltrada.length} // O usa directaFiltrada.length o ventaEmpleadoFiltrada.length según la tabla
+                rowsPerPage={10} // Fijado en 10 filas por página
+                page={page}
+                onPageChange={(event, newPage) => setPage(newPage)}
+                labelRowsPerPage="" // Oculta "Rows per page"
+                rowsPerPageOptions={[]} // Elimina el selector de filas
+                style={{ textAlign: "right" }}
+              />
+
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    {visibleColumns.includes("NO ORDEN") && (
+                      <TableCell>NO ORDEN</TableCell>
+                    )}
+                    {visibleColumns.includes("ESTADO") && (
+                      <TableCell>Estado del Pedido</TableCell>
+                    )}
+                    {visibleColumns.includes("FECHA") && (
+                      <TableCell>FECHA</TableCell>
+                    )}
+                    {visibleColumns.includes("PARTIDAS") && (
+                      <TableCell>PARTIDAS</TableCell>
+                    )}
+                    {visibleColumns.includes("PIEZAS") && (
+                      <TableCell>PIEZAS</TableCell>
+                    )}
+                    {visibleColumns.includes(
+                      "FECHA DE ENTREGA (CLIENTE)"
+                    ) && <TableCell>FECHA DE ENTREGA (CLIENTE)</TableCell>}
+                    {visibleColumns.includes("Acciones") && (
+                      <TableCell>Acciones</TableCell>
+                    )}
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {ventaEmpleadoData.length === 0 ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={visibleColumns.length}
+                        style={{ textAlign: "center" }}
+                      >
+                        No hay datos disponibles.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    ventaEmpleadoFiltrada
+                      .slice(
+                        page * rowsPerPage,
+                        page * rowsPerPage + rowsPerPage
+                      ) // ✅ PAGINACIÓN SIN AFECTAR FILTROS
+                      .map((routeData, index) => (
+                        <TableRow key={index}>
+                          {visibleColumns.includes("NO ORDEN") && (
+                            <TableCell>
+                              {routeData["NO ORDEN"]} -{" "}
+                              {routeData["tipo_original"]}
+                            </TableCell>
+                          )}
+                          <TableCell>
+                            {/* Estado del pedido con color */}
+                            <Typography
+                              variant="body2"
+                              style={{ color: routeData.color }}
+                            >
+                              {routeData.statusText}
+                            </Typography>
+
+                            {/* Si el pedido está fusionado, mostrarlo debajo en morado */}
+                            {routeData.fusionWith && (
+                              <Typography
+                                variant="caption"
+                                style={{
+                                  color: "#800080",
+                                  fontWeight: "bold",
+                                }}
+                              >
+                                ({routeData.fusionWith})
+                              </Typography>
                             )}
-                            {visibleColumns.includes("PARTIDAS") && (
-                              <TableCell>{routeData.PARTIDAS}</TableCell>
-                            )}
-                            {visibleColumns.includes("PIEZAS") && (
-                              <TableCell>{routeData.PIEZAS}</TableCell>
-                            )}
-                            {visibleColumns.includes(
-                              "FECHA DE ENTREGA (CLIENTE)"
-                            ) && (
+                          </TableCell>
+
+                          {visibleColumns.includes("FECHA") && (
+                            <TableCell>
+                              {formatDate(routeData.FECHA)}
+                            </TableCell>
+                          )}
+                          {visibleColumns.includes("PARTIDAS") && (
+                            <TableCell>{routeData.PARTIDAS}</TableCell>
+                          )}
+                          {visibleColumns.includes("PIEZAS") && (
+                            <TableCell>{routeData.PIEZAS}</TableCell>
+                          )}
+                          {visibleColumns.includes(
+                            "FECHA DE ENTREGA (CLIENTE)"
+                          ) && (
                               <TableCell>
                                 {formatDate(routeData.FECHA_DE_ENTREGA_CLIENTE)}
                               </TableCell>
                             )}
 
-                            {visibleColumns.includes("Acciones") && (
-                              <TableCell>
-                                <Grid
-                                  container
-                                  spacing={1}
-                                  justifyContent="flex-start"
-                                  alignItems="center"
-                                >
-                                  <Grid item>
-                                    <IconButton
-                                      variant="contained"
-                                      style={{ color: "black" }} // Negro con texto blanco
-                                      onClick={() =>
-                                        generatePDF(routeData["NO ORDEN"])
-                                      }
-                                    >
-                                      <ArticleIcon />
-                                    </IconButton>
-                                  </Grid>
+                          {visibleColumns.includes("Acciones") && (
+                            <TableCell>
+                              <Grid
+                                container
+                                spacing={1}
+                                justifyContent="flex-start"
+                                alignItems="center"
+                              >
+                                <Grid item>
+                                  <IconButton
+                                    variant="contained"
+                                    style={{ color: "black" }} // Negro con texto blanco
+                                    onClick={() =>
+                                      generatePDF(routeData["NO ORDEN"])
+                                    }
+                                  >
+                                    <ArticleIcon />
+                                  </IconButton>
+                                </Grid>
 
-                                  <Grid item>
-                                    {(user?.role === "Admin" ||
-                                      user?.role === "Trans") && (
+                                <Grid item>
+                                  {(user?.role === "Admin" ||
+                                    user?.role === "Trans") && (
                                       <IconButton
                                         color="error"
                                         onClick={() =>
@@ -7415,10 +7525,10 @@ function Transporte() {
                                       </IconButton>
                                     )}
 
-                                    <Grid item>
-                                      {(user?.role === "Admin" ||
-                                        user?.role === "Trans" ||
-                                        user?.role === "Embar") && (
+                                  <Grid item>
+                                    {(user?.role === "Admin" ||
+                                      user?.role === "Trans" ||
+                                      user?.role === "Embar") && (
                                         <IconButton
                                           style={{ color: "#1976D2" }} // Azul
                                           onClick={() =>
@@ -7428,202 +7538,196 @@ function Transporte() {
                                           <BorderColorIcon />
                                         </IconButton>
                                       )}
-                                    </Grid>
                                   </Grid>
                                 </Grid>
-                              </TableCell>
-                            )}
-                          </TableRow>
-                        ))
-                    )}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
+                              </Grid>
+                            </TableCell>
+                          )}
+                        </TableRow>
+                      ))
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
 
-            {/* Sub-tab de Asignación */}
-            {tabIndex === 1 &&
-              (user?.role === "Admin" ||
-                user?.role === "Master" ||
-                user?.role === "Trans" ||
-                user?.role === "Rep" ||
-                user?.role === "Tran",
-              "Rep") &&
-              subTabIndex === 3 && (
-                <TableContainer
-                  component={Paper}
-                  style={{ marginTop: "20px", padding: "20px" }}
-                >
-                  <Typography variant="h6">
-                    Asignación de transporte / Historico
-                  </Typography>
+          {/* Sub-tab de Asignación */}
+          {tabIndex === 1 && (user?.role === "Admin" || user?.role === "Master" || user?.role === "Trans" || user?.role === "Rep" || user?.role === "Tran", "Rep") &&
+            subTabIndex === 3 && (
+              <TableContainer
+                component={Paper}
+                style={{ marginTop: "20px", padding: "20px" }}
+              >
+                <Typography variant="h6">
+                  Asignación de transporte / Historico
+                </Typography>
 
-                  <TextField
-                    label="Buscar por No. Orden, Cliente o Num. Cliente"
-                    value={filtroGeneralAsignacion}
-                    onChange={(e) => setFiltroGeneralAsignacion(e.target.value)}
-                    variant="outlined"
-                    size="small"
-                    sx={{ mr: 2 }}
-                  />
+                <TextField
+                  label="Buscar por No. Orden, Cliente o Num. Cliente"
+                  value={filtroGeneralAsignacion}
+                  onChange={(e) => setFiltroGeneralAsignacion(e.target.value)}
+                  variant="outlined"
+                  size="small"
+                  sx={{ mr: 2 }}
+                />
 
-                  <TextField
-                    label="Buscar por Estado"
-                    value={filtroEstadoAsignacion}
-                    onChange={(e) => setFiltroEstadoAsignacion(e.target.value)}
-                    variant="outlined"
-                    size="small"
-                  />
+                <TextField
+                  label="Buscar por Estado"
+                  value={filtroEstadoAsignacion}
+                  onChange={(e) => setFiltroEstadoAsignacion(e.target.value)}
+                  variant="outlined"
+                  size="small"
+                />
 
-                  <Table>
-                    <TableHead>
-                      <TableRow>
-                        {visibleColumns.includes("ESTADO") && (
-                          <TableCell>Estado del Pedido</TableCell>
-                        )}
-                        {visibleColumns.includes("FECHA") && (
-                          <TableCell>FECHA</TableCell>
-                        )}
-                        {visibleColumns.includes("NO ORDEN") && (
-                          <TableCell>NO ORDEN</TableCell>
-                        )}
-                        {visibleColumns.includes("NUM CLIENTE") && (
-                          <TableCell>NUM CLIENTE</TableCell>
-                        )}
-                        {visibleColumns.includes("NOMBRE DEL CLIENTE") && (
-                          <TableCell>NOMBRE DEL CLIENTE</TableCell>
-                        )}
-                        {visibleColumns.includes("NUMERO DE FACTURA") && (
-                          <TableCell>NUMERO DE FACTURA</TableCell>
-                        )}
-                        {visibleColumns.includes("GUIA") && (
-                          <TableCell>GUIA</TableCell>
-                        )}
-                        {visibleColumns.includes("TRANSPORTE") && (
-                          <TableCell>TRANSPORTE / RUTA</TableCell>
-                        )}
-                        {visibleColumns.includes("TOTAL") && (
-                          <TableCell>TOTAL</TableCell>
-                        )}
-                        {visibleColumns.includes("TOTAL FACTURA LT") && (
-                          <TableCell>COSTO DEL FLETE</TableCell>
-                        )}
-                        {visibleColumns.includes("FECHA DE FACTURA") && (
-                          <TableCell>FECHA DE FACTURA</TableCell>
-                        )}
-                        {visibleColumns.includes("FECHA DE EMBARQUE") && (
-                          <TableCell>FECHA DE EMBARQUE</TableCell>
-                        )}
-                        {visibleColumns.includes(
-                          "FECHA DE ENTREGA (CLIENTE)"
-                        ) && <TableCell>FECHA DE ENTREGA CLIENTE</TableCell>}
-                        {visibleColumns.includes("PARTIDAS") && (
-                          <TableCell>PARTIDAS</TableCell>
-                        )}
-                        {visibleColumns.includes("PIEZAS") && (
-                          <TableCell>PIEZAS</TableCell>
-                        )}
-                        {visibleColumns.includes("CAJAS") && (
-                          <TableCell>CAJAS</TableCell>
-                        )}
-                        {visibleColumns.includes("DIA EN QUE ESTA EN RUTA") && (
-                          <TableCell>DIA EN QUE ESTA EN RUTA</TableCell>
-                        )}
-                        {visibleColumns.includes("DIAS DE ENTREGA") && (
-                          <TableCell>DIAS DE ENTREGA</TableCell>
-                        )}
-                        {visibleColumns.includes(
-                          "ENTREGA SATISFACTORIA O NO SATISFACTORIA"
-                        ) && (
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      {visibleColumns.includes("ESTADO") && (
+                        <TableCell>Estado del Pedido</TableCell>
+                      )}
+                      {visibleColumns.includes("FECHA") && (
+                        <TableCell>FECHA</TableCell>
+                      )}
+                      {visibleColumns.includes("NO ORDEN") && (
+                        <TableCell>NO ORDEN</TableCell>
+                      )}
+                      {visibleColumns.includes("NUM CLIENTE") && (
+                        <TableCell>NUM CLIENTE</TableCell>
+                      )}
+                      {visibleColumns.includes("NOMBRE DEL CLIENTE") && (
+                        <TableCell>NOMBRE DEL CLIENTE</TableCell>
+                      )}
+                      {visibleColumns.includes("NUMERO DE FACTURA") && (
+                        <TableCell>NUMERO DE FACTURA</TableCell>
+                      )}
+                      {visibleColumns.includes("GUIA") && (
+                        <TableCell>GUIA</TableCell>
+                      )}
+                      {visibleColumns.includes("TRANSPORTE") && (
+                        <TableCell>TRANSPORTE / RUTA</TableCell>
+                      )}
+                      {visibleColumns.includes("TOTAL") && (
+                        <TableCell>TOTAL</TableCell>
+                      )}
+                      {visibleColumns.includes("TOTAL FACTURA LT") && (
+                        <TableCell>COSTO DEL FLETE</TableCell>
+                      )}
+                      {visibleColumns.includes("FECHA DE FACTURA") && (
+                        <TableCell>FECHA DE FACTURA</TableCell>
+                      )}
+                      {visibleColumns.includes("FECHA DE EMBARQUE") && (
+                        <TableCell>FECHA DE EMBARQUE</TableCell>
+                      )}
+                      {visibleColumns.includes(
+                        "FECHA DE ENTREGA (CLIENTE)"
+                      ) && <TableCell>FECHA DE ENTREGA CLIENTE</TableCell>}
+                      {visibleColumns.includes("PARTIDAS") && (
+                        <TableCell>PARTIDAS</TableCell>
+                      )}
+                      {visibleColumns.includes("PIEZAS") && (
+                        <TableCell>PIEZAS</TableCell>
+                      )}
+                      {visibleColumns.includes("CAJAS") && (
+                        <TableCell>CAJAS</TableCell>
+                      )}
+                      {visibleColumns.includes("DIA EN QUE ESTA EN RUTA") && (
+                        <TableCell>DIA EN QUE ESTA EN RUTA</TableCell>
+                      )}
+                      {visibleColumns.includes("DIAS DE ENTREGA") && (
+                        <TableCell>DIAS DE ENTREGA</TableCell>
+                      )}
+                      {visibleColumns.includes(
+                        "ENTREGA SATISFACTORIA O NO SATISFACTORIA"
+                      ) && (
                           <TableCell>
                             ENTREGA SATISFACTORIA O NO SATISFACTORIA
                           </TableCell>
                         )}
-                        {visibleColumns.includes("MOTIVO") && (
-                          <TableCell>MOTIVO</TableCell>
-                        )}
-                        {visibleColumns.includes("DIFERENCIA") && (
-                          <TableCell>DIFERENCIA</TableCell>
-                        )}
-                        {visibleColumns.includes("Acciones") && (
-                          <TableCell>Acciones</TableCell>
-                        )}
+                      {visibleColumns.includes("MOTIVO") && (
+                        <TableCell>MOTIVO</TableCell>
+                      )}
+                      {visibleColumns.includes("DIFERENCIA") && (
+                        <TableCell>DIFERENCIA</TableCell>
+                      )}
+                      {visibleColumns.includes("Acciones") && (
+                        <TableCell>Acciones</TableCell>
+                      )}
+                    </TableRow>
+                  </TableHead>
+
+                  <TableBody>
+                    {paginatedAsignacion.length === 0 ? (
+                      <TableRow>
+                        <TableCell
+                          colSpan={visibleColumns.length}
+                          style={{ textAlign: "center" }}
+                        >
+                          No hay datos disponibles.
+                        </TableCell>
                       </TableRow>
-                    </TableHead>
+                    ) : (
+                      paginatedAsignacion.map((routeData, index) => (
+                        <TableRow key={index}>
+                          <TableCell>
+                            {/* Estado del pedido con color */}
+                            <Typography
+                              variant="body2"
+                              style={{ color: routeData.color }}
+                            >
+                              {routeData.statusText}
+                            </Typography>
 
-                    <TableBody>
-                      {paginatedAsignacion.length === 0 ? (
-                        <TableRow>
-                          <TableCell
-                            colSpan={visibleColumns.length}
-                            style={{ textAlign: "center" }}
-                          >
-                            No hay datos disponibles.
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        paginatedAsignacion.map((routeData, index) => (
-                          <TableRow key={index}>
-                            <TableCell>
-                              {/* Estado del pedido con color */}
+                            {/* Si el pedido está fusionado, mostrarlo debajo en morado */}
+                            {routeData.fusionWith && (
                               <Typography
-                                variant="body2"
-                                style={{ color: routeData.color }}
+                                variant="caption"
+                                style={{
+                                  color: "#800080",
+                                  fontWeight: "bold",
+                                }}
                               >
-                                {routeData.statusText}
+                                ({routeData.fusionWith})
                               </Typography>
+                            )}
+                          </TableCell>
 
-                              {/* Si el pedido está fusionado, mostrarlo debajo en morado */}
-                              {routeData.fusionWith && (
-                                <Typography
-                                  variant="caption"
-                                  style={{
-                                    color: "#800080",
-                                    fontWeight: "bold",
-                                  }}
-                                >
-                                  ({routeData.fusionWith})
-                                </Typography>
-                              )}
+                          {visibleColumns.includes("FECHA") && (
+                            <TableCell>
+                              {formatDate(routeData.FECHA)}
                             </TableCell>
+                          )}
+                          {visibleColumns.includes("NO ORDEN") && (
+                            <TableCell>
+                              {routeData["NO ORDEN"]} -{" "}
+                              {routeData["tipo_original"]}
+                            </TableCell>
+                          )}
+                          {visibleColumns.includes("NUM CLIENTE") && (
+                            <TableCell>{routeData["NUM. CLIENTE"]}</TableCell>
+                          )}
+                          {visibleColumns.includes("NOMBRE DEL CLIENTE") && (
+                            <TableCell>
+                              {routeData["NOMBRE DEL CLIENTE"]}
+                            </TableCell>
+                          )}
+                          {visibleColumns.includes("NUMERO DE FACTURA") && (
+                            <TableCell>{routeData["NO_FACTURA"]}</TableCell>
+                          )}
+                          {visibleColumns.includes("GUIA") && (
+                            <TableCell>{routeData.GUIA}</TableCell>
+                          )}
+                          {visibleColumns.includes("PAQUETERIA") && (
+                            <TableCell>{routeData.PAQUETERIA}</TableCell>
+                          )}
+                          {visibleColumns.includes("TOTAL") && (
+                            <TableCell>
+                              {formatCurrency(routeData.TOTAL)}
+                            </TableCell>
+                          )}
 
-                            {visibleColumns.includes("FECHA") && (
-                              <TableCell>
-                                {formatDate(routeData.FECHA)}
-                              </TableCell>
-                            )}
-                            {visibleColumns.includes("NO ORDEN") && (
-                              <TableCell>
-                                {routeData["NO ORDEN"]} -{" "}
-                                {routeData["tipo_original"]}
-                              </TableCell>
-                            )}
-                            {visibleColumns.includes("NUM CLIENTE") && (
-                              <TableCell>{routeData["NUM. CLIENTE"]}</TableCell>
-                            )}
-                            {visibleColumns.includes("NOMBRE DEL CLIENTE") && (
-                              <TableCell>
-                                {routeData["NOMBRE DEL CLIENTE"]}
-                              </TableCell>
-                            )}
-                            {visibleColumns.includes("NUMERO DE FACTURA") && (
-                              <TableCell>{routeData["NO_FACTURA"]}</TableCell>
-                            )}
-                            {visibleColumns.includes("GUIA") && (
-                              <TableCell>{routeData.GUIA}</TableCell>
-                            )}
-                            {visibleColumns.includes("PAQUETERIA") && (
-                              <TableCell>{routeData.PAQUETERIA}</TableCell>
-                            )}
-                            {visibleColumns.includes("TOTAL") && (
-                              <TableCell>
-                                {formatCurrency(routeData.TOTAL)}
-                              </TableCell>
-                            )}
-
-                            {visibleColumns.includes("TOTAL FACTURA LT") && (
-                              <TableCell>
-                                {routeData.TOTAL_FACTURA_LT &&
+                          {visibleColumns.includes("TOTAL FACTURA LT") && (
+                            <TableCell>
+                              {routeData.TOTAL_FACTURA_LT &&
                                 !isNaN(
                                   parseFloat(
                                     routeData.TOTAL_FACTURA_LT.toString().replace(
@@ -7632,146 +7736,143 @@ function Transporte() {
                                     )
                                   )
                                 )
-                                  ? formatCurrency(
-                                      parseFloat(
-                                        routeData.TOTAL_FACTURA_LT.toString().replace(
-                                          /,/g,
-                                          ""
-                                        )
-                                      )
+                                ? formatCurrency(
+                                  parseFloat(
+                                    routeData.TOTAL_FACTURA_LT.toString().replace(
+                                      /,/g,
+                                      ""
                                     )
-                                  : "$0.00"}
-                              </TableCell>
-                            )}
+                                  )
+                                )
+                                : "$0.00"}
+                            </TableCell>
+                          )}
 
-                            {visibleColumns.includes("FECHA DE FACTURA") && (
-                              <TableCell>
-                                {formatDate(routeData.FECHA_DE_FACTURA)}
-                              </TableCell>
-                            )}
-                            {visibleColumns.includes("FECHA DE EMBARQUE") && (
-                              <TableCell>
-                                {loading
-                                  ? "Cargando..."
-                                  : fechasEmbarque[routeData["NO ORDEN"]]
+                          {visibleColumns.includes("FECHA DE FACTURA") && (
+                            <TableCell>
+                              {formatDate(routeData.FECHA_DE_FACTURA)}
+                            </TableCell>
+                          )}
+                          {visibleColumns.includes("FECHA DE EMBARQUE") && (
+                            <TableCell>
+                              {loading
+                                ? "Cargando..."
+                                : fechasEmbarque[routeData["NO ORDEN"]]
                                   ? formatDate(
-                                      fechasEmbarque[routeData["NO ORDEN"]]
-                                    )
+                                    fechasEmbarque[routeData["NO ORDEN"]]
+                                  )
                                   : "Sin fecha"}
-                              </TableCell>
-                            )}
-                            {visibleColumns.includes(
-                              "FECHA DE ENTREGA (CLIENTE)"
-                            ) && (
+                            </TableCell>
+                          )}
+                          {visibleColumns.includes(
+                            "FECHA DE ENTREGA (CLIENTE)"
+                          ) && (
                               <TableCell>
                                 {formatDate(routeData.FECHA_DE_ENTREGA_CLIENTE)}
                               </TableCell>
                             )}
-                            {visibleColumns.includes("PARTIDAS") && (
-                              <TableCell>{routeData.PARTIDAS}</TableCell>
-                            )}
-                            {visibleColumns.includes("PIEZAS") && (
-                              <TableCell>{routeData.PIEZAS}</TableCell>
-                            )}
-                            {visibleColumns.includes("CAJAS") && (
-                              <TableCell>{routeData.totalCajas}</TableCell>
-                            )}
-                            {visibleColumns.includes(
-                              "DIA EN QUE ESTA EN RUTA"
-                            ) && (
+                          {visibleColumns.includes("PARTIDAS") && (
+                            <TableCell>{routeData.PARTIDAS}</TableCell>
+                          )}
+                          {visibleColumns.includes("PIEZAS") && (
+                            <TableCell>{routeData.PIEZAS}</TableCell>
+                          )}
+                          {visibleColumns.includes("CAJAS") && (
+                            <TableCell>{routeData.totalCajas}</TableCell>
+                          )}
+                          {visibleColumns.includes(
+                            "DIA EN QUE ESTA EN RUTA"
+                          ) && (
                               <TableCell>
                                 {formatDate(routeData.ultimaFechaEmbarque)}
                               </TableCell>
                             )}
-                            {visibleColumns.includes("DIAS DE ENTREGA") && (
-                              <TableCell>{routeData.DIAS_DE_ENTREGA}</TableCell>
-                            )}
-                            {visibleColumns.includes(
-                              "ENTREGA SATISFACTORIA O NO SATISFACTORIA"
-                            ) && (
+                          {visibleColumns.includes("DIAS DE ENTREGA") && (
+                            <TableCell>{routeData.DIAS_DE_ENTREGA}</TableCell>
+                          )}
+                          {visibleColumns.includes(
+                            "ENTREGA SATISFACTORIA O NO SATISFACTORIA"
+                          ) && (
                               <TableCell>
                                 {
                                   routeData.ENTREGA_SATISFACTORIA_O_NO_SATISFACTORIA
                                 }
                               </TableCell>
                             )}
-                            {visibleColumns.includes("MOTIVO") && (
-                              <TableCell>{routeData.MOTIVO}</TableCell>
-                            )}
-                            {visibleColumns.includes("DIFERENCIA") && (
-                              <TableCell>{routeData.DIFERENCIA}</TableCell>
-                            )}
+                          {visibleColumns.includes("MOTIVO") && (
+                            <TableCell>{routeData.MOTIVO}</TableCell>
+                          )}
+                          {visibleColumns.includes("DIFERENCIA") && (
+                            <TableCell>{routeData.DIFERENCIA}</TableCell>
+                          )}
 
-                            {visibleColumns.includes("Acciones") && (
-                              <TableCell>
-                                <Grid item>
-                                  <IconButton
-                                    onClick={() => {
-                                      const url = getTransportUrl(
-                                        routeData.PAQUETERIA
-                                      );
-                                      window.open(url, "_blank");
-                                    }}
-                                    size="small"
-                                    style={{ color: "#616161" }}
-                                  >
-                                    <AirportShuttleIcon />
-                                  </IconButton>
-                                </Grid>
+                          {visibleColumns.includes("Acciones") && (
+                            <TableCell>
+                              <Grid item>
+                                <IconButton
+                                  onClick={() => {
+                                    const url = getTransportUrl(
+                                      routeData.PAQUETERIA
+                                    );
+                                    window.open(url, "_blank");
+                                  }}
+                                  size="small"
+                                  style={{ color: "#616161" }}
+                                >
+                                  <AirportShuttleIcon />
+                                </IconButton>
+                              </Grid>
 
-                                <Grid item>
-                                  <IconButton
-                                    variant="contained"
-                                    style={{ color: "black" }}
-                                    onClick={() =>
-                                      generatePDF(routeData["NO ORDEN"])
-                                    }
-                                  >
-                                    <ArticleIcon />
-                                  </IconButton>
-                                </Grid>
-
-                                {/* <Grid item>
-                              <Button
-                                variant="outlined"
-                                color="primary"
-                                size="small"
-                                startIcon={<EmailIcon />}
-                                onClick={() => {
-                                  if (!routeData.CORREO) {
-                                    alert("⚠️ Este pedido no tiene correo.");
-                                    return;
+                              <Grid item>
+                                <IconButton
+                                  variant="contained"
+                                  style={{ color: "black" }}
+                                  onClick={() =>
+                                    generatePDF(routeData["NO ORDEN"])
                                   }
-                                  handleEnviarCorreo(routeData["NO ORDEN"]);
-                                }}
-                              >
-                                Enviar Correo
-                              </Button>
+                                >
+                                  <ArticleIcon />
+                                </IconButton>
+                              </Grid>
 
-                            </Grid> */}
-                              </TableCell>
-                            )}
-                          </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
+                              <Grid item>
+                                <Button
+                                  variant="outlined"
+                                  color="primary"
+                                  size="small"
+                                  startIcon={<EmailIcon />}
+                                  onClick={() => {
+                                    handleEnviarCorreo(routeData["NO ORDEN"], routeData.tipo_original);
+                                  }}
+                                >
+                                  Enviar Correo
+                                </Button>
 
-                  <TablePagination
-                    component="div"
-                    count={filteredAsignacion.length}
-                    rowsPerPage={rowsPerPage}
-                    page={page}
-                    onPageChange={(event, newPage) => setPage(newPage)}
-                    onRowsPerPageChange={(event) => {
-                      setRowsPerPage(parseInt(event.target.value, 10));
-                      setPage(0);
-                    }}
-                  />
-                </TableContainer>
-              )}
-          </Box>
-        )}
+
+                              </Grid>
+                            </TableCell>
+                          )}
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+
+                <TablePagination
+                  component="div"
+                  count={filteredAsignacion.length}
+                  rowsPerPage={rowsPerPage}
+                  page={page}
+                  onPageChange={(event, newPage) => setPage(newPage)}
+                  onRowsPerPageChange={(event) => {
+                    setRowsPerPage(parseInt(event.target.value, 10));
+                    setPage(0);
+                  }}
+                />
+              </TableContainer>
+            )}
+        </Box>
+      )}
 
       {/* El Modal para actualizar la guía */}
       <Modal open={directaModalOpen} onClose={closeDirectaModal}>
@@ -7928,23 +8029,23 @@ function Transporte() {
             {visibleColumns.includes(
               "ENTREGA SATISFACTORIA O NO SATISFACTORIA"
             ) && (
-              <Grid item xs={12} sm={6}>
-                <FormControl variant="outlined" fullWidth>
-                  <InputLabel>Entrega Satisfactoria</InputLabel>
-                  <Select
-                    value={entregaSatisfactoria}
-                    onChange={(e) => setEntregaSatisfactoria(e.target.value)}
-                    label="Entrega Satisfactoria"
-                  >
-                    <MenuItem value="">Selecciona una opción</MenuItem>
-                    <MenuItem value="SATISFACTORIA">SATISFACTORIA</MenuItem>
-                    <MenuItem value="NO SATISFACTORIA">
-                      NO SATISFACTORIA
-                    </MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-            )}
+                <Grid item xs={12} sm={6}>
+                  <FormControl variant="outlined" fullWidth>
+                    <InputLabel>Entrega Satisfactoria</InputLabel>
+                    <Select
+                      value={entregaSatisfactoria}
+                      onChange={(e) => setEntregaSatisfactoria(e.target.value)}
+                      label="Entrega Satisfactoria"
+                    >
+                      <MenuItem value="">Selecciona una opción</MenuItem>
+                      <MenuItem value="SATISFACTORIA">SATISFACTORIA</MenuItem>
+                      <MenuItem value="NO SATISFACTORIA">
+                        NO SATISFACTORIA
+                      </MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+              )}
 
             {visibleColumns.includes("MOTIVO") && (
               <Grid item xs={12} sm={6}>

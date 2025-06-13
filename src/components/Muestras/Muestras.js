@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
+import moment from "moment";
 import AddShoppingCartIcon from "@mui/icons-material/AddShoppingCart";
 import {
   TextField,
@@ -36,6 +37,7 @@ import { pdfTemplate } from "./pdfTemplate";
 import { pdfUbicacionesTemplate } from "./pdfUbicacionesTemplate";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
+
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import IconButton from "@mui/material/IconButton";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -47,6 +49,13 @@ import Swal from "sweetalert2";
 import CancelIcon from "@mui/icons-material/Cancel";
 import CloseIcon from "@mui/icons-material/Close";
 import ExitToAppIcon from "@mui/icons-material/ExitToApp";
+import Pagination from "@mui/material/Pagination";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import DoNotDisturbIcon from "@mui/icons-material/DoNotDisturb";
+
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
+import DownloadIcon from "@mui/icons-material/Download";
 
 const capitalize = (str) =>
   str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
@@ -80,6 +89,8 @@ function Muestras() {
   const [solicitudModalFolio, setSolicitudModalFolio] = useState(null);
   const [solicitudSeleccionada, setSolicitudSeleccionada] = useState(null);
   const [enviandoSolicitud, setEnviandoSolicitud] = useState(false);
+  const [mostrarObservaciones, setMostrarObservaciones] = useState(false);
+  const [observaciones, setObservaciones] = useState("");
 
   let timeoutId = useRef(null);
 
@@ -105,7 +116,7 @@ function Muestras() {
     if (productos.length > 0) {
       try {
         const response = await axios.get(
-          `http://66.232.105.87:3007/api/muestras/ubicaciones/${productos[0].codigo}`
+          `http://localhost:3007/api/muestras/ubicaciones/${productos[0].codigo}`
         );
         setUbicaciones(response.data.map((u) => u.ubicacion));
       } catch (error) {
@@ -126,7 +137,7 @@ function Muestras() {
   const obtenerDepartamentos = async () => {
     try {
       const response = await axios.get(
-        "http://66.232.105.87:3007/api/muestras/departamentos"
+        "http://localhost:3007/api/muestras/departamentos"
       );
 
       let deps = response.data.map((d) => {
@@ -191,6 +202,18 @@ function Muestras() {
       return;
     }
 
+    // ✅ Validación nueva: forzar a elegir una opción de entrega
+    const recogeSolicitante = detalleEnvio === `Se entrega a ${user.name}`;
+    const envioRequerido = requiereEnvio && detalleEnvio.trim() !== "";
+
+    if (!recogeSolicitante && !envioRequerido && !mostrarObservaciones) {
+      setAlerta(true);
+      setAlertaMessage(
+        "Debe seleccionar si recoge el solicitante o si requiere envío."
+      );
+      return;
+    }
+
     const motivoFinal = uso === "Laboratorio/Certificacion" ? motivo : uso;
 
     const nuevaSolicitud = {
@@ -203,21 +226,20 @@ function Muestras() {
         uso === "Laboratorio/Certificacion" ? organismo : null,
       regresaArticulo,
       fecha: regresaArticulo ? fecha : null,
-      requiereEnvio: regresaArticulo ? requiereEnvio : false,
+      requiereEnvio: envioRequerido, // ✅ esto se asegura de que sí sea true solo si aplica
       detalleEnvio: detalleEnvio || "",
-      carrito: solicitudes[indiceSolicitudActiva]?.carrito || [], // ✅ recupera si ya existe
+      carrito: solicitudes[indiceSolicitudActiva]?.carrito || [],
       autorizado: false,
       enviadoParaAutorizar: false,
+      observaciones: observaciones || "",
     };
 
     let nuevasSolicitudes;
 
     if (indiceSolicitudActiva !== null) {
-      // ✅ Actualiza la solicitud activa
       nuevasSolicitudes = [...solicitudes];
       nuevasSolicitudes[indiceSolicitudActiva] = nuevaSolicitud;
     } else {
-      // 🔄 Si es nueva
       nuevasSolicitudes = [...solicitudes, nuevaSolicitud];
       setIndiceSolicitudActiva(nuevasSolicitudes.length - 1);
     }
@@ -247,7 +269,7 @@ function Muestras() {
 
     try {
       const response = await axios.get(
-        `http://66.232.105.87:3007/api/muestras/producto/${codigo}`
+        `http://localhost:3007/api/muestras/producto/${codigo}`
       );
 
       // Verifica la estructura de la respuesta
@@ -323,7 +345,7 @@ function Muestras() {
     try {
       // Actualiza en el backend
       await axios.patch(
-        `http://66.232.105.87:3007/api/muestras/solicitudes/${folio}`,
+        `http://localhost:3007/api/muestras/solicitudes/${folio}`,
         {
           autorizado: true,
           enviadoParaAutorizar: true,
@@ -371,7 +393,7 @@ function Muestras() {
 
       if (confirmacion.isConfirmed) {
         await axios.delete(
-          `http://66.232.105.87:3007/api/muestras/solicitudes/${folio}`
+          `http://localhost:3007/api/muestras/solicitudes/${folio}`
         );
 
         // 🔁 ACTUALIZA EL ESTADO PARA QUE LA TABLA SE REFRESQUE
@@ -412,7 +434,7 @@ function Muestras() {
 
       try {
         await axios.post(
-          "http://66.232.105.87:3007/api/muestras/solicitudes",
+          "http://localhost:3007/api/muestras/solicitudes",
           lastSolicitud
         );
 
@@ -437,7 +459,7 @@ function Muestras() {
     setSolicitudes(arr);
     try {
       await axios.post(
-        "http://66.232.105.87:3007/api/muestras/solicitudes",
+        "http://localhost:3007/api/muestras/solicitudes",
         arr[arr.length - 1]
       );
     } catch (error) {
@@ -451,7 +473,7 @@ function Muestras() {
     setSolicitudesAutorizadas(arr);
     try {
       await axios.post(
-        "http://66.232.105.87:3007/api/muestras/solicitudes",
+        "http://localhost:3007/api/muestras/solicitudes",
         arr
       );
     } catch (error) {
@@ -464,7 +486,7 @@ function Muestras() {
   };
 
   const removeProduct = async (codigo, folio) => {
-    setOpenModal(false); // 🔒 Cierra temporalmente el modal para evitar superposición visual
+    setOpenModal(false); // 🔒 Cierra temporalmente el modal
     setReabrirModal(true); // 🔁 Indica que debe reabrirse si se cancela
 
     const confirmacion = await Swal.fire({
@@ -488,7 +510,7 @@ function Muestras() {
       // 🔥 Eliminar del backend solo si ya fue guardado
       if (folio) {
         await axios.delete(
-          `http://66.232.105.87:3007/api/muestras/solicitudes/${folio}/producto/${codigo}`
+          `http://localhost:3007/api/muestras/solicitudes/${folio}/producto/${codigo}`
         );
       }
 
@@ -501,7 +523,6 @@ function Muestras() {
         nuevasSolicitudes[index].carrito = productosActualizados;
 
         setSolicitudes(nuevasSolicitudes);
-        guardarSolicitudes(nuevasSolicitudes);
         setProductosModal(productosActualizados);
       }
 
@@ -524,7 +545,7 @@ function Muestras() {
     const cargarSolicitudes = async () => {
       try {
         const response = await axios.get(
-          "http://66.232.105.87:3007/api/muestras/solicitudes"
+          "http://localhost:3007/api/muestras/solicitudes"
         );
         setSolicitudes(response.data);
       } catch (error) {
@@ -541,12 +562,13 @@ function Muestras() {
       requiereEnvio: s.requiere_envio === 1,
       detalleEnvio: s.detalle_envio,
       regresaArticulo: s.regresa_articulo === 1,
+      sin_material: s.sin_material === 1,
     }));
 
   const obtenerSolicitudes = async () => {
     try {
       const response = await axios.get(
-        "http://66.232.105.87:3007/api/muestras/solicitudes"
+        "http://localhost:3007/api/muestras/solicitudes"
       );
       const normalizadas = normalizarSolicitudes(response.data);
       setSolicitudes(normalizadas);
@@ -558,7 +580,7 @@ function Muestras() {
   const obtenerSolicitudesAutorizadas = async () => {
     try {
       const response = await axios.get(
-        "http://66.232.105.87:3007/api/muestras/autorizadas"
+        "http://localhost:3007/api/muestras/autorizadas"
       );
       const normalizadas = normalizarSolicitudes(response.data);
       setSolicitudesAutorizadas(normalizadas);
@@ -580,7 +602,7 @@ function Muestras() {
 
       if (confirmacion.isConfirmed) {
         await axios.delete(
-          `http://66.232.105.87:3007/api/muestras/solicitudes/${folio}`
+          `http://localhost:3007/api/muestras/solicitudes/${folio}`
         );
 
         // 🔁 ACTUALIZA EL ESTADO PARA QUE LA TABLA SE REFRESQUE
@@ -605,7 +627,7 @@ function Muestras() {
   const cancelarSolicitud = async (folio) => {
     try {
       await axios.patch(
-        `http://66.232.105.87:3007/api/muestras/solicitudes/${folio}`,
+        `http://localhost:3007/api/muestras/solicitudes/${folio}`,
         {
           autorizado: 2, // ❌ Cancelado
           enviadoParaAutorizar: true,
@@ -676,7 +698,7 @@ function Muestras() {
       };
 
       await axios.post(
-        "http://66.232.105.87:3007/api/muestras/surtido",
+        "http://localhost:3007/api/muestras/surtido",
         payload
       );
 
@@ -724,7 +746,7 @@ function Muestras() {
         if (!confirmar.isConfirmed) return;
 
         await axios.patch(
-          `http://66.232.105.87:3007/api/muestras/embarque/${folio}`,
+          `http://localhost:3007/api/muestras/embarque/${folio}`,
           {
             fin_embarcado_por: user.name,
           }
@@ -752,7 +774,7 @@ function Muestras() {
       if (!confirmarSalida.isConfirmed) return;
 
       await axios.patch(
-        `http://66.232.105.87:3007/api/muestras/salida/${folio}`,
+        `http://localhost:3007/api/muestras/salida/${folio}`,
         {
           salida_por: user.name,
         }
@@ -793,6 +815,12 @@ function Muestras() {
       usos: ["Campo abierto"],
       motivos: {
         "Campo abierto": [],
+      },
+    },
+    Desarrollo: {
+      usos: ["Pruebas de funcionamiento"],
+      motivos: {
+        "Pruebas de funcionamiento": [],
       },
     },
     Departamental: {
@@ -1019,7 +1047,7 @@ function Muestras() {
     for (const item of solicitud.carrito) {
       try {
         const res = await axios.get(
-          `http://66.232.105.87:3007/api/muestras/ubicaciones/${item.codigo}`
+          `http://localhost:3007/api/muestras/ubicaciones/${item.codigo}`
         );
         const ubicaciones = res.data.map((u) => u.ubi);
         ubicacionesTemp[item.codigo] =
@@ -1047,27 +1075,44 @@ function Muestras() {
       return;
     }
 
-    const generar = async (html, nombreArchivo) => {
+    const generar = async (solicitud, template, nombreArchivo) => {
+      const html = template(solicitud); // ahora el template ya genera todas las páginas .page
+
       const iframe = document.createElement("iframe");
-      document.body.appendChild(iframe);
       iframe.style.width = "210mm";
       iframe.style.height = "297mm";
+      iframe.style.position = "absolute";
+      iframe.style.top = "-9999px";
+      document.body.appendChild(iframe);
+
       iframe.contentDocument.open();
       iframe.contentDocument.write(html);
       iframe.contentDocument.close();
 
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
       const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
       const iframeBody = iframeDoc.body;
-      const canvas = await html2canvas(iframeBody, { scale: 2 });
 
-      const imgData = canvas.toDataURL("image/png");
       const pdf = new jsPDF("p", "mm", "a4");
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-      pdf.save(nombreArchivo);
+      const pages = iframeBody.querySelectorAll(".page");
+
+      for (let j = 0; j < pages.length; j++) {
+        const canvas = await html2canvas(pages[j], {
+          scale: 2,
+          useCORS: true,
+        });
+
+        const imgData = canvas.toDataURL("image/png");
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+        if (j > 0) pdf.addPage();
+        pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+      }
 
       document.body.removeChild(iframe);
+      pdf.save(nombreArchivo);
     };
 
     try {
@@ -1077,7 +1122,7 @@ function Muestras() {
           solicitud.carrito.map(async (item) => {
             try {
               const res = await axios.get(
-                `http://66.232.105.87:3007/api/muestras/ubicaciones/${item.codigo}`
+                `http://localhost:3007/api/muestras/ubicaciones/${item.codigo}`
               );
               const ubicaciones = res.data.map((u) => u.ubi).join(" | ");
               return { ...item, ubicacion: ubicaciones || "N/A" };
@@ -1093,17 +1138,23 @@ function Muestras() {
           carrito: carritoConUbicaciones,
         };
 
-        const html = pdfUbicacionesTemplate(solicitudConUbicaciones);
-        await generar(html, `Ubicaciones_${solicitud.folio}.pdf`);
+        await generar(
+          solicitudConUbicaciones,
+          pdfUbicacionesTemplate,
+          `Ubicaciones_${solicitud.folio}.pdf`
+        );
       } else if (pdfCount === 1) {
         // 🔵 SEGUNDO PDF – FINAL
-        const html = pdfTemplate(solicitud);
-        await generar(html, `Solicitud_${solicitud.folio}.pdf`);
+        await generar(
+          solicitud,
+          pdfTemplate,
+          `Solicitud_${solicitud.folio}.pdf`
+        );
       }
 
       // 🔄 Actualiza contador
       await axios.put(
-        `http://66.232.105.87:3007/api/muestras/contador-pdf/${solicitud.folio}`
+        `http://localhost:3007/api/muestras/contador-pdf/${solicitud.folio}`
       );
       await obtenerSolicitudesAutorizadas();
     } catch (error) {
@@ -1112,17 +1163,163 @@ function Muestras() {
     }
   };
 
+  const [paginaAutorizadas, setPaginaAutorizadas] = useState(1);
+  const [paginaCanceladas, setPaginaCanceladas] = useState(1);
+  const registrosPorPagina = 4;
+
+  useEffect(() => {
+    setPaginaAutorizadas(1);
+    setPaginaCanceladas(1);
+  }, [departamentoFiltrado]);
+
+  const autorizadasFiltradas = solicitudesAutorizadas.filter(
+    (sol) =>
+      sol.autorizado === 1 &&
+      (departamentoFiltrado === "" ||
+        sol.departamento?.toLowerCase() === departamentoFiltrado.toLowerCase())
+  );
+
+  const canceladasFiltradas = solicitudesAutorizadas.filter(
+    (sol) =>
+      sol.autorizado === 2 &&
+      (departamentoFiltrado === "" ||
+        sol.departamento?.toLowerCase() === departamentoFiltrado.toLowerCase())
+  );
+
+  const totalPaginasAutorizadas = Math.ceil(
+    autorizadasFiltradas.length / registrosPorPagina
+  );
+  const totalPaginasCanceladas = Math.ceil(
+    canceladasFiltradas.length / registrosPorPagina
+  );
+
+  const autorizadasPaginadas = autorizadasFiltradas.slice(
+    (paginaAutorizadas - 1) * registrosPorPagina,
+    paginaAutorizadas * registrosPorPagina
+  );
+
+  const canceladasPaginadas = canceladasFiltradas.slice(
+    (paginaCanceladas - 1) * registrosPorPagina,
+    paginaCanceladas * registrosPorPagina
+  );
+
+  // Dentro de tu componente Muestras, justo donde defines las funciones:
+  const exportarExcel = () => {
+    try {
+      const filas = autorizadasFiltradas.flatMap((sol) =>
+        sol.carrito.map((prod) => ({
+          Fecha: moment(sol.created_at).format("DD/MM/YYYY"),
+          Código: prod.codigo,
+          Descripción: prod.descripcion,
+          "Cantidad solicitada": prod.cantidad,
+          UM: prod.um || "",
+          "Cantidad Surtida": prod.cantidad_surtida ?? "",
+          "UM ": prod.um || "",
+          Área: sol.departamento,
+          Folio: sol.folio,
+          Uso: sol.motivo || sol.uso || "",
+          Solicitó: sol.nombre,
+          Autorizó: sol.autorizado_por || "",
+          "Movimiento JDE": "58826", // fijo, o sol.movimiento_jde si lo tienes
+          "Fecha de entrega": sol.fin_embarcado_at
+            ? moment(sol.fin_embarcado_at).format("DD/MM/YYYY")
+            : "",
+          Comentario: sol.comentario || `Muestras ${sol.departamento}`,
+        }))
+      );
+
+      if (filas.length === 0) {
+        alert("No hay filas para exportar.");
+        return;
+      }
+
+      const headers = [
+        "Fecha",
+        "Código",
+        "Descripción",
+        "Cantidad solicitada",
+        "UM",
+        "Cantidad Surtida",
+        "UM ",
+        "Área",
+        "Folio",
+        "Uso",
+        "Solicitó",
+        "Autorizó",
+        "Movimiento JDE",
+        "Fecha de entrega",
+        "Comentario",
+      ];
+
+      const ws = XLSX.utils.json_to_sheet(filas, { header: headers });
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Surtido");
+
+      const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+      saveAs(
+        new Blob([wbout], { type: "application/octet-stream" }),
+        "Surtido_Solicitudes.xlsx"
+      );
+    } catch (err) {
+      console.error("Error al exportar Excel:", err);
+      alert("Hubo un problema al generar el Excel.");
+    }
+  };
+
+  useEffect(() => {
+    if (user?.name) {
+      const depUsuario = usuariosFijos[user.name];
+
+      const departamentosLibres = ["Direccion"]; // departamentos que pueden ver todo
+
+      if (depUsuario && !departamentosLibres.includes(depUsuario)) {
+        setDepartamento(depUsuario);
+        setDepartamentoBloqueado(true);
+        setDepartamentoFiltrado(depUsuario); // Forzar el filtro
+      } else {
+        setDepartamento("");
+        setDepartamentoBloqueado(false);
+        setDepartamentoFiltrado(""); // Libre elección
+      }
+    }
+  }, [user]);
+
+  // sin material
+
+  const [marcandoSinMaterial, setMarcandoSinMaterial] = useState(false);
+
+  const marcarSinMaterial = async (folio) => {
+    setMarcandoSinMaterial(true);
+    try {
+      await axios.post(
+        `http://localhost:3007/api/muestras/sin-material/${folio}`,
+        { sin_material_por: user.name } // Aquí mandas el nombre correctamente
+      );
+      Swal.fire(
+        "Sin material",
+        "La solicitud fue marcada como SIN MATERIAL.",
+        "info"
+      );
+      await obtenerSolicitudesAutorizadas(); // Recarga la tabla
+    } catch (error) {
+      console.error(error);
+      Swal.fire("Error", "No se pudo marcar como sin material.", "error");
+    }
+    setMarcandoSinMaterial(false);
+  };
+
   return (
-    <Container component="main" maxWidth="lg">
+    <Container component="main" maxWidth="auto">
       <Tabs value={currentTab} onChange={handleTabChange} centered>
         {/* Solo Admin, INV y Master pueden ver "Formulario y Carrito" */}
         <Tab
-          label="Formulario y Carrito"
+          label="Formulario"
           disabled={
             user?.role !== "Admin" &&
             user?.role !== "INV" &&
             user?.role !== "Master" &&
             user?.role !== "Mue" &&
+            user?.role !== "Mues" &&
             user?.role !== "Audi" &&
             user?.role !== "Nac2" &&
             user?.role !== "Ins" &&
@@ -1136,7 +1333,7 @@ function Muestras() {
         />
         {/* Solo Admin e INV pueden ver "Imprimir" */}
         <Tab
-          label="Imprimir"
+          label="Reportes"
           disabled={
             user?.role !== "Admin" &&
             user?.role !== "INV" &&
@@ -1145,6 +1342,7 @@ function Muestras() {
             user?.role !== "Audi" &&
             user?.role !== "Nac2" &&
             user?.role !== "Ins" &&
+            user?.role !== "Mues" &&
             user?.role !== "Nac"
           }
         />
@@ -1271,18 +1469,91 @@ function Muestras() {
 
                     {/* Ambos campos visibles, sin dependencias */}
                     <Grid item xs={12}>
-                      <FormControlLabel
-                        control={
-                          <Checkbox
-                            checked={regresaArticulo}
-                            onChange={(e) =>
-                              setRegresaArticulo(e.target.checked)
+                      <Grid
+                        container
+                        spacing={2}
+                        direction="row"
+                        alignItems="center"
+                      >
+                        <Grid item>
+                          <FormControlLabel
+                            control={
+                              <Checkbox
+                                checked={mostrarObservaciones}
+                                onChange={(e) => {
+                                  setMostrarObservaciones(e.target.checked);
+                                  if (!e.target.checked) {
+                                    setObservaciones("");
+                                  }
+                                }}
+                                color="primary"
+                              />
                             }
-                            color="primary"
+                            label="Observaciones"
                           />
-                        }
-                        label="¿Regresa artículo?"
-                      />
+                        </Grid>
+
+                        <Grid item>
+                          <FormControlLabel
+                            control={
+                              <Checkbox
+                                checked={regresaArticulo}
+                                onChange={(e) =>
+                                  setRegresaArticulo(e.target.checked)
+                                }
+                                color="primary"
+                              />
+                            }
+                            label="¿Regresa artículo?"
+                          />
+                        </Grid>
+
+                        <Grid item>
+                          <FormControlLabel
+                            control={
+                              <Checkbox
+                                checked={
+                                  detalleEnvio === `Se entrega a ${user?.name}`
+                                }
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setDetalleEnvio(
+                                      `Se entrega a ${user?.name}`
+                                    );
+                                    setRequiereEnvio(false);
+                                  } else {
+                                    setDetalleEnvio("");
+                                  }
+                                }}
+                                color="primary"
+                              />
+                            }
+                            label="¿Recoge el solicitante?"
+                          />
+                        </Grid>
+
+                        {["DIRECCION", "DEPARTAMENTAL"].includes(
+                          departamento.toUpperCase()
+                        ) && (
+                            <Grid item>
+                              <FormControlLabel
+                                control={
+                                  <Checkbox
+                                    checked={requiereEnvio}
+                                    onChange={(e) => {
+                                      setRequiereEnvio(e.target.checked);
+                                      if (e.target.checked) {
+                                        setDetalleEnvio("");
+                                      }
+                                    }}
+                                    color="primary"
+                                  />
+                                }
+                                label="¿Requiere envío?"
+                              />
+                            </Grid>
+                          )}
+                      </Grid>
                     </Grid>
 
                     {/* Si "Regresa artículo" está seleccionado, muestra la fecha de devolución */}
@@ -1300,41 +1571,41 @@ function Muestras() {
                       </Grid>
                     )}
 
-                    <Grid item xs={12}>
-                      <FormControlLabel
-                        control={
-                          <Checkbox
-                            checked={
+                    {(requiereEnvio ||
+                      detalleEnvio === `Se entrega a ${user?.name}`) && (
+                        <Grid item xs={12}>
+                          <TextField
+                            label={
                               detalleEnvio === `Se entrega a ${user?.name}`
+                                ? "Lugar de entrega"
+                                : "Cómo se envía"
                             }
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setDetalleEnvio(`Se entrega a ${user?.name}`);
-                              } else {
-                                setDetalleEnvio(""); // Limpiar si se desmarca
-                              }
+                            variant="outlined"
+                            fullWidth
+                            required
+                            value={detalleEnvio}
+                            onChange={(e) => setDetalleEnvio(e.target.value)}
+                            InputProps={{
+                              readOnly:
+                                detalleEnvio === `Se entrega a ${user?.name}`,
                             }}
-                            color="primary"
                           />
-                        }
-                        label="¿Recoge el solicitante?"
-                      />
-                    </Grid>
+                        </Grid>
+                      )}
 
-                    <Grid item xs={12}>
-                      <TextField
-                        label="Observaciones"
-                        variant="outlined"
-                        fullWidth
-                        required
-                        value={detalleEnvio}
-                        onChange={(e) => setDetalleEnvio(e.target.value)}
-                        InputProps={{
-                          readOnly:
-                            detalleEnvio === `Se entrega a ${user?.name}`,
-                        }}
-                      />
-                    </Grid>
+                    {mostrarObservaciones && (
+                      <Grid item xs={12}>
+                        <TextField
+                          label="Observaciones"
+                          variant="outlined"
+                          fullWidth
+                          multiline
+                          rows={3}
+                          value={observaciones}
+                          onChange={(e) => setObservaciones(e.target.value)}
+                        />
+                      </Grid>
+                    )}
 
                     <Grid item xs={12}>
                       <Button
@@ -1582,7 +1853,7 @@ function Muestras() {
           </Paper>
         )}
 
-        {currentTab === 1 && (
+        {currentTab === 1 && (user?.role === "Admin" || user?.role === "Master") && (
           <Paper elevation={3} style={{ padding: "20px" }}>
             <Typography variant="h5" align="center" gutterBottom>
               Autorizar Solicitudes
@@ -1593,109 +1864,105 @@ function Muestras() {
                 (s.enviadoParaAutorizar || s.enviado_para_autorizar === 1) &&
                 s.autorizado !== 2 // ⛔ ocultar canceladas
             ).length === 0 && (
-              <Typography>No hay solicitudes para autorizar.</Typography>
-            )}
+                <Typography>No hay solicitudes para autorizar.</Typography>
+              )}
 
             {solicitudes.filter(
               (s) =>
                 (s.enviadoParaAutorizar || s.enviado_para_autorizar === 1) &&
                 s.autorizado !== 2 // ⛔ ocultar canceladas
             ).length > 0 && (
-              <TableContainer component={Paper} style={{ marginTop: "20px" }}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Folio</TableCell>
-                      <TableCell>Nombre</TableCell>
-                      <TableCell>Departamento</TableCell>
-                      <TableCell>Motivo</TableCell>
-                      <TableCell>Fecha Devolución</TableCell>
-                      <TableCell>Informacion de entrega o de Envio</TableCell>
-                      <TableCell>Artículos</TableCell>
-                      <TableCell>Autorizado</TableCell>
-                      <TableCell>Acciones</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {solicitudes
-                      .filter(
-                        (s) =>
-                          s.enviadoParaAutorizar ||
-                          s.enviado_para_autorizar === 1
-                      )
-                      .map((sol) => (
-                        <TableRow key={sol.folio}>
-                          <TableCell>{sol.folio}</TableCell>
-                          <TableCell>{sol.nombre}</TableCell>
-                          <TableCell>{sol.departamento}</TableCell>
-                          <TableCell>{sol.motivo}</TableCell>
-                          <TableCell>
-                            {sol.fecha
-                              ? new Date(sol.fecha).toLocaleDateString("es-MX")
-                              : "N/A"}
-                          </TableCell>
-                          <TableCell>{sol.detalle_envio || "N/A"}</TableCell>
-                          <TableCell>{sol.carrito?.length || 0}</TableCell>
-                          <TableCell>{sol.autorizado ? "Sí" : "No"}</TableCell>
+                <TableContainer component={Paper} style={{ marginTop: "20px" }}>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Fecha</TableCell>
+                        <TableCell>Folio</TableCell>
+                        <TableCell>Nombre</TableCell>
+                        <TableCell>Departamento</TableCell>
+                        <TableCell>Motivo</TableCell>
+                        <TableCell>Fecha Devolución</TableCell>
+                        <TableCell>Informacion de entrega o de Envio</TableCell>
+                        <TableCell>Observaciones</TableCell>
+                        <TableCell>Artículos</TableCell>
+                        <TableCell>Autorizado</TableCell>
+                        <TableCell>Acciones</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {solicitudes
+                        .filter(
+                          (s) =>
+                            s.enviadoParaAutorizar ||
+                            s.enviado_para_autorizar === 1
+                        )
+                        .map((sol) => (
+                          <TableRow key={sol.folio}>
+                            <TableCell>
+                              {moment(sol.created_at).format("DD/MM/YYYY")}
+                            </TableCell>
+                            <TableCell>{sol.folio}</TableCell>
+                            <TableCell>{sol.nombre}</TableCell>
+                            <TableCell>{sol.departamento}</TableCell>
+                            <TableCell>{sol.motivo}</TableCell>
+                            <TableCell>
+                              {sol.fecha
+                                ? new Date(sol.fecha).toLocaleDateString("es-MX")
+                                : "N/A"}
+                            </TableCell>
+                            <TableCell>{sol.detalle_envio || "N/A"}</TableCell>
+                            <TableCell>{sol.observaciones || "N/A"}</TableCell>
+                            <TableCell>{sol.carrito?.length || 0}</TableCell>
+                            <TableCell>{sol.autorizado ? "Sí" : "No"}</TableCell>
 
-                          <TableCell>
-                            <Box
-                              display="flex"
-                              justifyContent="flex-start"
-                              alignItems="center"
-                            >
-                              {sol.autorizado === 0 && (
-                                <>
-                                  {/* Botón verde: Autorizar */}
-                                  <IconButton
-                                    onClick={() =>
-                                      autorizarSolicitud(sol.folio)
-                                    }
-                                    color="success"
-                                    title="Autorizar y Generar PDF"
-                                    style={{ marginRight: "10px" }}
-                                  >
-                                    <AddTaskIcon />
-                                  </IconButton>
-
-                                  {/* Botón gris: Cancelar / Negar */}
-                                  <IconButton
-                                    onClick={() => cancelarSolicitud(sol.folio)}
-                                    color="error"
-                                    title="Cancelar solicitud"
-                                  >
-                                    <CancelIcon />
-                                  </IconButton>
-                                </>
-                              )}
-
-                              <IconButton
-                                onClick={() =>
-                                  handleOpenModal(sol.carrito, sol.folio)
-                                }
-                                sx={{ color: "orange" }}
-                                title="Ver productos"
+                            <TableCell>
+                              <Box
+                                display="flex"
+                                justifyContent="flex-start"
+                                alignItems="center"
                               >
-                                <VisibilityIcon />
-                              </IconButton>
+                                {sol.autorizado === 0 && (
+                                  <>
+                                    {/* Botón verde: Autorizar */}
+                                    <IconButton
+                                      onClick={() =>
+                                        autorizarSolicitud(sol.folio)
+                                      }
+                                      color="success"
+                                      title="Autorizar y Generar PDF"
+                                      style={{ marginRight: "10px" }}
+                                    >
+                                      <AddTaskIcon />
+                                    </IconButton>
 
-                              {!sol.autorizado && (
+                                    {/* Botón gris: Cancelar / Negar */}
+                                    <IconButton
+                                      onClick={() => cancelarSolicitud(sol.folio)}
+                                      color="error"
+                                      title="Cancelar solicitud"
+                                    >
+                                      <CancelIcon />
+                                    </IconButton>
+                                  </>
+                                )}
+
                                 <IconButton
-                                  onClick={() => borrarSolicitud(sol.folio)}
-                                  color="error"
-                                  title="Eliminar solicitud"
+                                  onClick={() =>
+                                    handleOpenModal(sol.carrito, sol.folio)
+                                  }
+                                  sx={{ color: "orange" }}
+                                  title="Ver productos"
                                 >
-                                  <DeleteIcon />
+                                  <VisibilityIcon />
                                 </IconButton>
-                              )}
-                            </Box>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
+                              </Box>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
           </Paper>
         )}
 
@@ -1711,60 +1978,79 @@ function Muestras() {
                 value={departamentoFiltrado}
                 label="Filtrar por Departamento"
                 onChange={(e) => setDepartamentoFiltrado(e.target.value)}
+                disabled={departamentoBloqueado} // bloqueado si departamento es fijo
               >
-                <MenuItem value="">Todos los departamentos</MenuItem>
-                {departamentos.map((dep) => (
-                  <MenuItem key={dep.value} value={dep.label}>
-                    {dep.label}
+                {departamentoBloqueado ? (
+                  <MenuItem value={departamentoFiltrado}>
+                    {departamentoFiltrado}
                   </MenuItem>
-                ))}
+                ) : (
+                  [
+                    <MenuItem key="" value="">
+                      Todos los departamentos
+                    </MenuItem>,
+                    ...departamentos.map((dep) => (
+                      <MenuItem key={dep.value} value={dep.label}>
+                        {dep.label}
+                      </MenuItem>
+                    )),
+                  ]
+                )}
               </Select>
             </FormControl>
 
-            {/* Sección de AUTORIZADAS */}
+            {/* AUTORIZADAS */}
             <Typography variant="h6" gutterBottom>
               Solicitudes Autorizadas
             </Typography>
 
-            {solicitudesAutorizadas.filter(
-              (sol) =>
-                sol.autorizado === 1 &&
-                (departamentoFiltrado === "" ||
-                  sol.departamento?.toLowerCase() ===
-                    departamentoFiltrado.toLowerCase())
-            ).length > 0 ? (
-              <TableContainer
-                component={Paper}
-                style={{ marginBottom: "30px" }}
-              >
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Folio</TableCell>
-                      <TableCell>Nombre</TableCell>
-                      <TableCell>Departamento</TableCell>
-                      <TableCell>Motivo</TableCell>
-                      <TableCell>Fecha Devolución</TableCell>
-                      <TableCell>Detalles de entrega o de Envio</TableCell>
-                      <TableCell>Artículos</TableCell>
-                      <TableCell>Autorizado</TableCell>
-                      <TableCell>Embarcado</TableCell>
-                      <TableCell>Autorizo Salida</TableCell>
+            <Button
+              variant="outlined"
+              color="success"
+              startIcon={<DownloadIcon />}
+              onClick={exportarExcel}
+              sx={{
+                mb: 2,
+                px: 4,
+                py: 1,
+                textTransform: "none",
+              }}
+            >
+              Exportar a Excel
+            </Button>
 
-                      <TableCell>Acciones</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {solicitudesAutorizadas
-                      .filter(
-                        (sol) =>
-                          sol.autorizado === 1 &&
-                          (departamentoFiltrado === "" ||
-                            sol.departamento?.toLowerCase() ===
-                              departamentoFiltrado.toLowerCase())
-                      )
-                      .map((sol) => (
+            {autorizadasFiltradas.length > 0 ? (
+              <>
+                <TableContainer
+                  component={Paper}
+                  style={{ marginBottom: "10px" }}
+                >
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>#. IT</TableCell>
+                        <TableCell>Fecha</TableCell>
+                        <TableCell>Folio</TableCell>
+                        <TableCell>Nombre</TableCell>
+                        <TableCell>Departamento</TableCell>
+                        <TableCell>Motivo</TableCell>
+                        <TableCell>Fecha Devolución</TableCell>
+                        <TableCell>Detalles de Envio</TableCell>
+                        <TableCell>Observaciones</TableCell>
+                        <TableCell>Artículos</TableCell>
+                        <TableCell>Autorizado por</TableCell>
+                        <TableCell>Embarcado</TableCell>
+                        <TableCell>Autorizo Salida</TableCell>
+                        <TableCell>Acciones</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {autorizadasPaginadas.map((sol) => (
                         <TableRow key={sol.folio}>
+                          <TableCell>58826</TableCell>
+                          <TableCell>
+                            {moment(sol.created_at).format("DD/MM/YYYY")}
+                          </TableCell>
                           <TableCell>{sol.folio}</TableCell>
                           <TableCell>{sol.nombre}</TableCell>
                           <TableCell>{sol.departamento}</TableCell>
@@ -1775,117 +2061,163 @@ function Muestras() {
                               : "N/A"}
                           </TableCell>
                           <TableCell>{sol.detalleEnvio || "N/A"}</TableCell>
+                          <TableCell>{sol.observaciones || "N/A"}</TableCell>
                           <TableCell>{sol.carrito?.length || 0}</TableCell>
-                          <TableCell>Sí</TableCell>
+                          <TableCell>{sol.autorizado_por || "N/A"}</TableCell>
                           <TableCell>
                             {sol.fin_embarcado_por
                               ? `${sol.fin_embarcado_por} - ${new Date(
-                                  sol.fin_embarcado_at
-                                ).toLocaleTimeString("es-MX")}`
+                                sol.fin_embarcado_at
+                              ).toLocaleTimeString("es-MX")}`
                               : "Pendiente"}
                           </TableCell>
                           <TableCell>{sol.salida_por || "Pendiente"}</TableCell>
+
                           <TableCell>
-                            <Tooltip
-                              title={`Generar PDF (${sol.pdf_generado}/2)`}
-                            >
-                              <span>
-                                <IconButton
-                                  onClick={() => handleGenerarPDF(sol)}
-                                  disabled={sol.pdf_generado >= 2}
+                            {/* Si está marcada como SIN MATERIAL */}
+                            {sol.sin_material ? (
+                              <Tooltip title="Sin material disponible">
+                                <CancelIcon color="error" fontSize="large" />
+                              </Tooltip>
+                            ) : sol.salida_por ? (
+                              <CheckCircleIcon
+                                color="success"
+                                titleAccess="Finalizado"
+                              />
+                            ) : (
+                              <>
+                                <Tooltip
+                                  title={`Generar PDF (${sol.pdf_generado}/2)`}
                                 >
-                                  <LocalPrintshopIcon />
-                                </IconButton>
-                              </span>
-                            </Tooltip>
+                                  <span>
+                                    {(sol.pdf_generado < 2 ||
+                                      user?.role === "Admin" ||
+                                      user?.role === "Master" ||
+                                      user?.role === "admin Audi") && (
+                                        <IconButton
+                                          onClick={() => handleGenerarPDF(sol)}
+                                          title="Generar PDF"
+                                        >
+                                          <LocalPrintshopIcon />
+                                        </IconButton>
+                                      )}
+                                  </span>
+                                </Tooltip>
 
-                            {(user?.role === "Admin" ||
-                              user?.role === "Master") && (
-                              <IconButton
-                                onClick={() => borrarSolicitud(sol.folio)}
-                                color="error"
-                                title="Eliminar solicitud"
-                              >
-                                <DeleteIcon />
-                              </IconButton>
+                                {(user?.role === "Admin" ||
+                                  user?.role === "Master" ||
+                                  user?.role === "INV") && (
+                                    <IconButton
+                                      onClick={() => handleOpenSurtidoModal(sol)}
+                                      color="info"
+                                      title="Registrar cantidades surtidas"
+                                    >
+                                      <VisibilityIcon />
+                                    </IconButton>
+                                  )}
+
+                                {(!sol.fin_embarcado_at || !sol.salida_por) &&
+                                  (user?.role === "INV" ||
+                                    user?.role === "Admin") && (
+                                    <IconButton
+                                      onClick={() => registrarSalida(sol.folio)}
+                                      color="success"
+                                      title={
+                                        !sol.fin_embarcado_at
+                                          ? "Registrar fin de embarque"
+                                          : "Registrar salida"
+                                      }
+                                    >
+                                      <ExitToAppIcon />
+                                    </IconButton>
+                                  )}
+
+                                {/* SOLO SI NO es sin_material ni salida ni fin embarque */}
+                                {(user?.role === "INV" ||
+                                  user?.role === "Admin") &&
+                                  !sol.sin_material &&
+                                  !sol.salida_por && (
+                                    <Tooltip title="Marcar como SIN MATERIAL">
+                                      <IconButton
+                                        color="primary"
+                                        size="large"
+                                        disabled={marcandoSinMaterial}
+                                        onClick={() =>
+                                          Swal.fire({
+                                            title: "¿Marcar como SIN MATERIAL?",
+                                            text: "Esto notificará al solicitante que NO hay material disponible.",
+                                            icon: "warning",
+                                            showCancelButton: true,
+                                            confirmButtonText: "Sí, marcar",
+                                            cancelButtonText: "Cancelar",
+                                          }).then((result) => {
+                                            if (result.isConfirmed)
+                                              marcarSinMaterial(sol.folio);
+                                          })
+                                        }
+                                      >
+                                        <DoNotDisturbIcon
+                                          sx={{
+                                            color: "#f51b05",
+                                            fontSize: 28,
+                                          }}
+                                        />
+                                      </IconButton>
+                                    </Tooltip>
+                                  )}
+                              </>
                             )}
-
-                            {(user?.role === "Admin" || user?.role === "Master" || user?.role === "INV") && (
-                              <IconButton
-                                onClick={() => handleOpenSurtidoModal(sol)}
-                                color="info"
-                                title="Registrar cantidades surtidas"
-                              >
-                                <VisibilityIcon />
-                              </IconButton>
-                            )}
-
-                            {(!sol.fin_embarcado_at || !sol.salida_por) &&
-                              (user?.role === "INV" ||
-                                user?.role === "Admin") && (
-                                <IconButton
-                                  onClick={() => registrarSalida(sol.folio)}
-                                  color="success"
-                                  title={
-                                    !sol.fin_embarcado_at
-                                      ? "Registrar fin de embarque"
-                                      : "Registrar salida"
-                                  }
-                                >
-                                  <ExitToAppIcon />
-                                </IconButton>
-                              )}
                           </TableCell>
                         </TableRow>
                       ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+
+                <Box display="flex" justifyContent="center" mt={2}>
+                  <Pagination
+                    count={totalPaginasAutorizadas}
+                    page={paginaAutorizadas}
+                    onChange={(event, value) => setPaginaAutorizadas(value)}
+                    color="primary"
+                  />
+                </Box>
+              </>
             ) : (
               <Typography>No hay solicitudes autorizadas.</Typography>
             )}
 
-            {/* Sección de CANCELADAS */}
+            {/* CANCELADAS */}
             <Typography variant="h5" align="center" gutterBottom>
               Solicitudes Canceladas
             </Typography>
 
-            {solicitudesAutorizadas.filter(
-              (sol) =>
-                sol.autorizado === 2 &&
-                (departamentoFiltrado === "" ||
-                  sol.departamento?.toLowerCase() ===
-                    departamentoFiltrado.toLowerCase())
-            ).length > 0 ? (
-              <TableContainer component={Paper}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Folio</TableCell>
-                      <TableCell>Nombre</TableCell>
-                      <TableCell>Departamento</TableCell>
-                      <TableCell>Motivo</TableCell>
-                      <TableCell>Fecha Devolución</TableCell>
-                      <TableCell>Detalles Envío</TableCell>
-                      <TableCell>Artículos</TableCell>
-                      <TableCell>Cancelado por</TableCell>
-                      <TableCell>Acciones</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {solicitudesAutorizadas
-                      .filter(
-                        (sol) =>
-                          sol.autorizado === 2 &&
-                          (departamentoFiltrado === "" ||
-                            sol.departamento?.toLowerCase() ===
-                              departamentoFiltrado.toLowerCase())
-                      )
-                      .map((sol) => (
+            {canceladasFiltradas.length > 0 ? (
+              <>
+                <TableContainer component={Paper}>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Fecha</TableCell>
+                        <TableCell>Folio</TableCell>
+                        <TableCell>Nombre</TableCell>
+                        <TableCell>Departamento</TableCell>
+                        <TableCell>Motivo</TableCell>
+                        <TableCell>Fecha Devolución</TableCell>
+                        <TableCell>Detalles Envío</TableCell>
+                        <TableCell>Artículos</TableCell>
+                        <TableCell>Cancelado por</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {canceladasPaginadas.map((sol) => (
                         <TableRow
                           key={sol.folio}
                           sx={{ backgroundColor: "#f2f2f2" }}
                         >
+                          <TableCell>
+                            {moment(sol.created_at).format("DD/MM/YYYY")}
+                          </TableCell>
                           <TableCell>{sol.folio}</TableCell>
                           <TableCell>{sol.nombre}</TableCell>
                           <TableCell>{sol.departamento}</TableCell>
@@ -1898,24 +2230,31 @@ function Muestras() {
                           <TableCell>{sol.detalleEnvio || "N/A"}</TableCell>
                           <TableCell>{sol.carrito?.length || 0}</TableCell>
                           <TableCell>{sol.autorizado_por || "N/A"}</TableCell>
-                          <TableCell>
-                            {["Admin", "Master", "Master2", "Master3"].includes(
-                              user?.role
-                            ) && (
+                          {/* <TableCell>
+                            {["Admin", "Master", "Master2", "Master3"].includes(user?.role) && (
                               <IconButton
                                 onClick={() => borrarSolicitud(sol.folio)}
                                 color="error"
-                                title="Eliminar solicitud"
                               >
                                 <DeleteIcon />
                               </IconButton>
                             )}
-                          </TableCell>
+                          </TableCell> */}
                         </TableRow>
                       ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+
+                <Box display="flex" justifyContent="center" mt={2}>
+                  <Pagination
+                    count={totalPaginasCanceladas}
+                    page={paginaCanceladas}
+                    onChange={(event, value) => setPaginaCanceladas(value)}
+                    color="primary"
+                  />
+                </Box>
+              </>
             ) : (
               <Typography>No hay solicitudes canceladas.</Typography>
             )}
@@ -1981,7 +2320,6 @@ function Muestras() {
         </Dialog>
 
         {/* modal se confirmar piesas  */}
-
         <Dialog
           open={modalSurtidoOpen}
           onClose={() => setModalSurtidoOpen(false)}
@@ -2029,7 +2367,7 @@ function Muestras() {
 
                       <TableCell>
                         {ubicacionesPorCodigo[item.codigo] &&
-                        ubicacionesPorCodigo[item.codigo].length > 0 ? (
+                          ubicacionesPorCodigo[item.codigo].length > 0 ? (
                           <Tooltip
                             title={
                               <ul style={{ margin: 0, padding: 0 }}>

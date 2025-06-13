@@ -62,7 +62,7 @@ function ProyectoQueretaro() {
 
     useEffect(() => {
         if (currentDay && selectedRuta) {
-            axios.get(`http://66.232.105.87:3007/api/Queretaro/proyectoqueretaro?dia_visita=${currentDay}&ruta=${selectedRuta}`)
+            axios.get(`http://localhost:3007/api/Queretaro/proyectoqueretaro?dia_visita=${currentDay}&ruta=${selectedRuta}`)
                 .then((response) => {
                     const ordenados = response.data.sort((a, b) => (a.orden_visita || 9999) - (b.orden_visita || 9999));
                     setData(ordenados);
@@ -169,7 +169,7 @@ function ProyectoQueretaro() {
             });
 
         // Promesa: datos por categoría y segmento
-        const promDatosCategoria = axios.get(`http://66.232.105.87:3007/api/Queretaro/category/${encodedGiro}/${encodedPortafolio}/${encodedSegmento}`)
+        const promDatosCategoria = axios.get(`http://localhost:3007/api/Queretaro/category/${encodedGiro}/${encodedPortafolio}/${encodedSegmento}`)
             .then((response) => {
                 if (response.data.data && response.data.data.length > 0) {
                     console.log('📦 Datos por categoría y segmento:', response.data.data);
@@ -222,7 +222,7 @@ function ProyectoQueretaro() {
         setSelectedZone(zone);
 
         // Filtrar los proyectos según la zona seleccionada
-        axios.get(`http://66.232.105.87:3007/api/Queretaro/proyectoqueretaro?zona=${zone}`)
+        axios.get(`http://localhost:3007/api/Queretaro/proyectoqueretaro?zona=${zone}`)
             .then((response) => {
                 setFilteredData(response.data);
                 setPage(0); // Reset the page when changing the filter
@@ -282,7 +282,7 @@ function ProyectoQueretaro() {
 
     const enviarOrdenAlServidor = async (nuevoOrdenIds) => {
         try {
-            await axios.post('http://66.232.105.87:3007/api/Queretaro/proyectoqueretaro/ordenar', {
+            await axios.post('http://localhost:3007/api/Queretaro/proyectoqueretaro/ordenar', {
                 orden: nuevoOrdenIds
             });
             alert('Orden guardado correctamente');
@@ -471,6 +471,12 @@ function ProyectoQueretaro() {
                                 />
                                 <Typography variant="body1" sx={{ fontWeight: 500 }}>
                                     {selectedProject.status}
+                                </Typography>
+                                <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                                    /
+                                </Typography>
+                                <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                                    {selectedProject.Num_cliente}
                                 </Typography>
                             </Box>
                         ) : (
@@ -1196,7 +1202,7 @@ function ProyectoQueretaro() {
         const diaManana = getTomorrowName();
 
         if (selectedRuta) {
-            axios.get(`http://66.232.105.87:3007/api/Queretaro/proyectoqueretaro?dia_visita=${diaManana}&ruta=${selectedRuta}`)
+            axios.get(`http://localhost:3007/api/Queretaro/proyectoqueretaro?dia_visita=${diaManana}&ruta=${selectedRuta}`)
                 .then((response) => {
                     const ordenados = response.data.sort((a, b) => (a.orden_visita || 9999) - (b.orden_visita || 9999));
                     setOrdenData(ordenados); // <- aquí llenas el ordenData correctamente

@@ -37,7 +37,7 @@ export default function SignInSide() {
     event.preventDefault();
 
     try {
-      const response = await axios.post('http://66.232.105.87:3007/api/login', { email, password });
+      const response = await axios.post('http://localhost:3007/api/login', { email, password });
       const { token, user } = response.data;
 
       login({ ...user, token });

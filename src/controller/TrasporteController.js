@@ -259,7 +259,7 @@ const obtenerRutasParaPDF = async (req, res) => {
              OBSERVACIONES, TOTAL, PARTIDAS, PIEZAS, TARIMAS, TRANSPORTE, 
              PAQUETERIA, GUIA, FECHA_DE_ENTREGA_CLIENTE, DIAS_DE_ENTREGA,
              TIPO, DIRECCION, TELEFONO, TOTAL_FACTURA_LT, ENTREGA_SATISFACTORIA_O_NO_SATISFACTORIA,
-             created_at, MOTIVO, NUMERO_DE_FACTURA_LT, FECHA_DE_ENTREGA_CLIENTE
+             created_at, MOTIVO, NUMERO_DE_FACTURA_LT, FECHA_DE_ENTREGA_CLIENTE,tipo_original
       FROM paqueteria
       WHERE 1 = 1
     `;
@@ -2130,7 +2130,282 @@ const actualizarGuiaCompleta = async (req, res) => {
   }
 };
 
+
+const getReferenciasClientes = async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT `Num_Cliente`, `Nombre_cliente`, `REFERENCIA` FROM referencias');
+    res.json(rows);
+  } catch (error) {
+    console.error("Error al obtener referencias:", error.message);
+    res.status(500).json({ message: "Error al obtener referencias de clientes" });
+  }
+};
+
+
+// MaNdar los Correos
+
+const nodemailer = require('nodemailer');
+const fs = require("fs");
+const path = require("path");
+
+
+
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: 'seguimiento.traking@gmail.com',
+    pass: 'pjqa mivc vbfn hwpb'
+  }
+});
+
+const enviarCorreoAsignacion = async (req, res) => {
+  try {
+    const { noOrden, tipo_original } = req.body;
+    if (!noOrden || !tipo_original) {
+      return res.status(400).json({ success: false, message: "Faltan parámetros." });
+    }
+
+    // Consulta el pedido
+    const [rows] = await pool.query(
+      "SELECT * FROM paqueteria WHERE `NO ORDEN` = ? AND tipo_original = ?",
+      [noOrden, tipo_original]
+    );
+    if (rows.length === 0) {
+      return res.status(404).json({ success: false, message: "Pedido no encontrado." });
+    }
+    const pedido = rows[0];
+
+    const correo = (pedido.CORREO || pedido.correo || '').trim();
+    if (!correo) {
+      return res.status(400).json({ success: false, message: "El pedido no tiene correo." });
+    }
+
+    // Contador de correos enviados
+    let correosEnviados = pedido.correos_enviados || 0;
+    if (correosEnviados >= 3) {
+      return res.status(400).json({ success: false, message: "Ya se enviaron los 3 correos para este pedido." });
+    }
+
+    // Selecciona plantilla según el número de correo enviado
+    const plantillaMapeo = [
+      'correo_asignacion_1.html',
+      'correo_asignacion_2.html',
+      'correo_asignacion_3.html'
+    ];
+    const nombrePlantilla = plantillaMapeo[correosEnviados];
+    const rutaPlantilla = path.join(__dirname, 'templates', nombrePlantilla);
+
+    let html;
+    try {
+      html = fs.readFileSync(rutaPlantilla, 'utf8');
+    } catch (err) {
+      return res.status(500).json({ success: false, message: `No se encontró la plantilla ${nombrePlantilla}` });
+    }
+
+    // ---- NUEVO: CÁLCULO DE FECHA DE ENTREGA ----
+    let fechaEntrega = '';
+    if (pedido['FECHA']) {
+      fechaEntrega = moment(pedido['FECHA']).add(2, 'days').format('MMMM D, YYYY'); // Ej: "junio 13, 2025"
+
+    }
+
+    // ---- NUEVO: LIMPIEZA DE DIRECCIÓN ----
+    let direccion = (pedido['DIRECCION'] || '').replace(/\s+/g, ' ').trim();
+
+    // ---- REEMPLAZO DE VARIABLES ----
+    html = html
+      .replace('{{NOMBRE_CLIENTE}}', pedido['NOMBRE DEL CLIENTE'] || '')
+      .replace('{{NO_ORDEN}}', pedido['NO ORDEN'] || '')
+      .replace('{{FECHA}}', pedido['FECHA'] || '')
+      .replace('{{TOTAL}}', pedido.TOTAL || '')
+      .replace('{{DIRECCION}}', direccion)
+      .replace('{{FECHA_ENTREGA}}', fechaEntrega)
+      .replace('{{FECHA_ENTREGA_ESTIMADA}}', fechaEntrega);
+
+    // ---- ADJUNTOS POR PLANTILLA ----
+    const attachmentsPorPlantilla = {
+
+      'correo_asignacion_1.html': [
+        {
+          filename: 'LOGO TRACKING SANTUL.png',
+          path: path.join(__dirname, 'templates', 'imagenes', 'LOGO TRACKING SANTUL.png'),
+          cid: 'logo_tracking'
+        },
+        {
+          filename: 'BARRA 1ER PASO.png',
+          path: path.join(__dirname, 'templates', 'imagenes', 'BARRA 1ER PASO.png'),
+          cid: 'barra_paso'
+        },
+        {
+          filename: 'DOCUMENTO ON.png',
+          path: path.join(__dirname, 'templates', 'imagenes', 'DOCUMENTO ON.png'),
+          cid: 'icono_levantamiento_on'
+        },
+        {
+          filename: 'DOWNLOAD PACKING LIST.png',
+          path: path.join(__dirname, 'templates', 'imagenes', 'DOWNLOAD PACKING LIST.png'),
+          cid: 'icono_packing_off'
+        },
+        {
+          filename: 'CAMION OFF.png',
+          path: path.join(__dirname, 'templates', 'imagenes', 'CAMION OFF.png'),
+          cid: 'icono_camion'
+        },
+        {
+          filename: 'ENTREGA OFF.png',
+          path: path.join(__dirname, 'templates', 'imagenes', 'ENTREGA OFF.png'),
+          cid: 'icono_entrega'
+        },
+        {
+          filename: 'BARRA LOGOS.jpg',
+          path: path.join(__dirname, 'templates', 'imagenes', 'BARRA LOGOS.jpg'),
+          cid: 'barra_logos'
+        }
+      ],
+
+      'correo_asignacion_2.html': [
+        {
+          filename: 'LOGO TRACKING SANTUL.png',
+          path: path.join(__dirname, 'templates', 'imagenes', 'LOGO TRACKING SANTUL.png'),
+          cid: 'logo_tracking'
+        },
+        {
+          filename: 'BARRA 2DO PASO.png',
+          path: path.join(__dirname, 'templates', 'imagenes', 'BARRA 2DO PASO.png'),
+          cid: 'barra_paso'
+        },
+        {
+          filename: 'DOCUMENTO OFF.png',
+          path: path.join(__dirname, 'templates', 'imagenes', 'DOCUMENTO OFF.png'),
+          cid: 'icono_levantamiento_on'
+        },
+        {
+          filename: 'CAMION ON.png',
+          path: path.join(__dirname, 'templates', 'imagenes', 'CAMION ON.png'),
+          cid: 'icono_camion'
+        },
+        {
+          filename: 'DOWNLOAD PACKING LIST.png',
+          path: path.join(__dirname, 'templates', 'imagenes', 'DOWNLOAD PACKING LIST.png'),
+          cid: 'icono_packing_off'
+        },
+        {
+          filename: 'DOWNLOAD FACTURA.png',
+          path: path.join(__dirname, 'templates', 'imagenes', 'DOWNLOAD FACTURA.png'),
+          cid: 'icono_factura_off'
+        },
+        {
+          filename: 'DOWNLOAD PACKING LIST.png',
+          path: path.join(__dirname, 'templates', 'imagenes', 'DOWNLOAD PACKING LIST.png'),
+          cid: 'icono_packing_on'
+        },
+        {
+          filename: 'ENTREGA OFF.png',
+          path: path.join(__dirname, 'templates', 'imagenes', 'ENTREGA OFF.png'),
+          cid: 'icono_entrega'
+        },
+        {
+          filename: 'BARRA LOGOS.jpg',
+          path: path.join(__dirname, 'templates', 'imagenes', 'BARRA LOGOS.jpg'),
+          cid: 'barra_logos'
+        }
+      ],
+
+      'correo_asignacion_3.html': [
+        {
+          filename: 'LOGO TRACKING SANTUL.png',
+          path: path.join(__dirname, 'templates', 'imagenes', 'LOGO TRACKING SANTUL.png'),
+          cid: 'logo_tracking'
+        },
+        {
+          filename: 'BARRA 3ER PASO.png',
+          path: path.join(__dirname, 'templates', 'imagenes', 'BARRA 3ER PASO.png'),
+          cid: 'barra_paso'
+        },
+        {
+          filename: 'DOCUMENTO OFF.png',
+          path: path.join(__dirname, 'templates', 'imagenes', 'DOCUMENTO OFF.png'),
+          cid: 'icono_levantamiento_on'
+        },
+        {
+          filename: 'CAMION OFF.png',
+          path: path.join(__dirname, 'templates', 'imagenes', 'CAMION OFF.png'),
+          cid: 'icono_camion'
+        },
+        {
+          filename: 'DOWNLOAD PACKING LIST.png',
+          path: path.join(__dirname, 'templates', 'imagenes', 'DOWNLOAD PACKING LIST.png'),
+          cid: 'icono_packing_off'
+        },
+        {
+          filename: 'DOWNLOAD FACTURA.png',
+          path: path.join(__dirname, 'templates', 'imagenes', 'DOWNLOAD FACTURA.png'),
+          cid: 'icono_factura_off'
+        },
+        {
+          filename: 'DOWNLOAD PACKING LIST.png',
+          path: path.join(__dirname, 'templates', 'imagenes', 'DOWNLOAD PACKING LIST.png'),
+          cid: 'icono_packing_on'
+        },
+        {
+          filename: 'ENTREGA ON.png',
+          path: path.join(__dirname, 'templates', 'imagenes', 'ENTREGA ON.png'),
+          cid: 'icono_entrega'
+        },
+        {
+          filename: 'PEDIDO OK.png',
+          path: path.join(__dirname, 'templates', 'imagenes', 'PEDIDO OK.png'),
+          cid: 'validar'
+        },
+        {
+          filename: 'BARRA LOGOS.jpg',
+          path: path.join(__dirname, 'templates', 'imagenes', 'BARRA LOGOS.jpg'),
+          cid: 'barra_logos'
+        }
+      ]
+
+    };
+
+    // Define los asuntos por cada correo/en etapa
+    const titulosCorreo = [
+      'Levantamiento de pedido',
+      'Salida del pedido',
+      'Entrega del pedido'
+    ];
+    const tituloEtapa = titulosCorreo[correosEnviados] || 'Seguimiento de pedido';
+
+
+    // Configura el mailOptions
+    const mailOptions = {
+      from: '"Seguimiento Tracking" <seguimiento.traking@gmail.com>',
+      to: correo,
+      subject: `${tituloEtapa} | Pedido ${noOrden}`,
+      html,
+      attachments: attachmentsPorPlantilla[nombrePlantilla] || []
+    };
+
+    // Envía el correo
+    await transporter.sendMail(mailOptions);
+
+    // Actualiza el contador
+    await pool.query(
+      "UPDATE paqueteria SET correos_enviados = IFNULL(correos_enviados, 0) + 1 WHERE `NO ORDEN` = ? AND tipo_original = ?",
+      [noOrden, tipo_original]
+    );
+
+    res.json({ success: true, message: `Correo ${correosEnviados + 1} enviado a ${correo}` });
+  } catch (error) {
+    console.error("❌ Error al enviar correo de asignación:", error);
+    res.status(500).json({ success: false, message: "Error al enviar el correo" });
+  }
+};
+
+
+
+
 module.exports = {
+  getReferenciasClientes,
+  enviarCorreoAsignacion,
   actualizarTipoOriginalDesdeExcel,
   getPaqueteriaData,
   getObservacionesPorClientes,

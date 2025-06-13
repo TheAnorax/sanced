@@ -17,5 +17,5 @@ io.on('connection', (socket) => {
 });
 
 server.listen(port, () => {
-  console.log(`Servidor escuchando en http://66.232.105.87:${port}`);
+  console.log(`Servidor escuchando en http://localhost:${port}`);
 });

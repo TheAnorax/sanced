@@ -49,7 +49,7 @@ function Finalizados() {
     const fetchPedidos = async () => {
       try {
         const response = await axios.get(
-          "http://66.232.105.87:3007/api/finalizados/pedidos-finalizados"
+          "http://localhost:3007/api/finalizados/pedidos-finalizados"
         );
         const dataWithFormattedTimes = response.data.map((pedido) => ({
           id: `${pedido.pedido}-${pedido.tipo}`, // Identificador único basado en pedido y tipo
@@ -95,7 +95,7 @@ function Finalizados() {
       const hasta = rangoFin.format("YYYY-MM-DD");
 
       const res = await axios.get(
-        `http://66.232.105.87:3007/api/finalizados/pedidos-finalizados/motivos`,
+        `http://localhost:3007/api/finalizados/pedidos-finalizados/motivos`,
         {
           params: { desde, hasta },
         }
@@ -114,7 +114,7 @@ function Finalizados() {
     const fetchBahias = async () => {
       try {
         const res = await axios.get(
-          "http://66.232.105.87:3007/api/pedidos/bahias"
+          "http://localhost:3007/api/pedidos/bahias"
         );
         setBahias(res.data);
       } catch (err) {
@@ -160,7 +160,7 @@ function Finalizados() {
     const combined = selectedBahias.map((b) => b.bahia).join(", ");
     try {
       await axios.put(
-        `http://66.232.105.87:3007/api/pedidos-surtidos/pedidos-surtido-finalizado/${selectedPedido.pedido}/${selectedPedido.tipo}/bahias`,
+        `http://localhost:3007/api/pedidos-surtidos/pedidos-surtido-finalizado/${selectedPedido.pedido}/${selectedPedido.tipo}/bahias`,
         { ubi_bahia: combined }
       );
 
@@ -196,9 +196,9 @@ function Finalizados() {
 
   const handleOpenModal = async (pedido) => {
     try {
-      // const response = await axios.get(`http://66.232.105.87:3007/api/finalizados/pedido/${pedido.pedido}`);
+      // const response = await axios.get(`http://localhost:3007/api/finalizados/pedido/${pedido.pedido}`);
       const response = await axios.get(
-        `http://66.232.105.87:3007/api/finalizados/pedido/${pedido.pedido}/${pedido.tipo}`
+        `http://localhost:3007/api/finalizados/pedido/${pedido.pedido}/${pedido.tipo}`
       );
       const detallesOrdenados = response.data
         .sort((a, b) => {

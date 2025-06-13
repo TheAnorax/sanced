@@ -142,7 +142,7 @@ function Compras() {
       if (result.isConfirmed) {
         // Si se confirma, actualizar el estado en la base de datos
         const response = await axios.put(
-          `http://66.232.105.87:3007/api/compras/compras/cancelar/${id_recibo}`, // URL corregida
+          `http://localhost:3007/api/compras/compras/cancelar/${id_recibo}`, // URL corregida
           { estado: "Cancelado" } // Parámetro enviado para actualizar el estado
         );
 
@@ -195,7 +195,7 @@ function Compras() {
       if (result.isConfirmed) {
         // Realizar la llamada a la API para actualizar los datos en la base de datos
         const response = await axios.put(
-          `http://66.232.105.87:3007/api/compras/compras/recibo/${selectedProduct.id_recibo}`,
+          `http://localhost:3007/api/compras/compras/recibo/${selectedProduct.id_recibo}`,
           {
             almacen7050: almacen1, // Almacén 7050
             almacen7066: almacen2, // Almacén 7066
@@ -253,7 +253,7 @@ function Compras() {
       if (result.isConfirmed) {
         // Realizar la asignación automática de todas las unidades al almacén 7050
         const response = await axios.put(
-          `http://66.232.105.87:3007/api/compras/compras/recibo/${compra.id_recibo}`,
+          `http://localhost:3007/api/compras/compras/recibo/${compra.id_recibo}`,
           {
             almacen7050: "7050", // Almacén 7050
             almacen7066: "7066", // Almacén 7066 predefinido (puede ser opcional)
@@ -354,7 +354,7 @@ function Compras() {
   const fetchCompras2 = async () => {
     try {
       const response = await axios.get(
-        `http://66.232.105.87:3007/api/compras/compras?tipo=${tipo}`
+        `http://localhost:3007/api/compras/compras?tipo=${tipo}`
       );
 
       setCompras(response.data);
@@ -379,7 +379,7 @@ function Compras() {
       const fetchCompras = async () => {
         try {
           const response = await axios.get(
-            `http://66.232.105.87:3007/api/compras/compras?tipo=${tipo}`
+            `http://localhost:3007/api/compras/compras?tipo=${tipo}`
           );
 
           setCompras(response.data);
@@ -400,7 +400,7 @@ function Compras() {
       const fetchProductos = async () => {
         try {
           const response = await axios.get(
-            "http://66.232.105.87:3007/api/productos"
+            "http://localhost:3007/api/productos"
           );
           setProductos(response.data);
         } catch (error) {
@@ -503,7 +503,7 @@ function Compras() {
         // Enviar cada lote por separado
         for (const batch of batches) {
           await axios.post(
-            "http://66.232.105.87:3007/api/compras/compras/upload-excel",
+            "http://localhost:3007/api/compras/compras/upload-excel",
             batch
           );
         }
@@ -511,7 +511,7 @@ function Compras() {
 
         // Refrescar la tabla de compras después de la carga
         const response = await axios.get(
-          `http://66.232.105.87:3007/api/compras/compras?tipo=${tipo}`
+          `http://localhost:3007/api/compras/compras?tipo=${tipo}`
         );
         setCompras(response.data);
       } catch (error) {
@@ -606,7 +606,7 @@ function Compras() {
   //   setLoading(true);
   //   try {
   //     await axios.post(
-  //       "http://66.232.105.87:3007/api/compras/compras/upload-pdfsOC",
+  //       "http://localhost:3007/api/compras/compras/upload-pdfsOC",
   //       formData,
   //       {
   //         headers: { "Content-Type": "multipart/form-data" },
@@ -675,7 +675,7 @@ function Compras() {
 
     try {
       const response = await axios.post(
-        "http://66.232.105.87:3007/api/compras/compras/upload-pdfs",
+        "http://localhost:3007/api/compras/compras/upload-pdfs",
         formData,
         {
           headers: { "Content-Type": "multipart/form-data" },
@@ -806,7 +806,7 @@ function Compras() {
       if (result.isConfirmed) {
         if (isEditing) {
           await axios.put(
-            `http://66.232.105.87:3007/api/compras/recibo/${selectedProduct.id_recibo}`,
+            `http://localhost:3007/api/compras/recibo/${selectedProduct.id_recibo}`,
             {
               oc,
               cantidad,
@@ -827,7 +827,7 @@ function Compras() {
           );
         } else {
           const userId = user?.id_usu;
-          await axios.post("http://66.232.105.87:3007/api/compras/recibo", {
+          await axios.post("http://localhost:3007/api/compras/recibo", {
             oc,
             cantidad,
             recepcion: recepcionFormatted,
@@ -848,7 +848,7 @@ function Compras() {
         }
 
         const response = await axios.get(
-          `http://66.232.105.87:3007/api/compras/compras?tipo=${tipo}`
+          `http://localhost:3007/api/compras/compras?tipo=${tipo}`
         );
         setCompras(response.data);
 
@@ -1655,7 +1655,7 @@ function Compras() {
               {detalleData?.pdf_1 ? (
                 <div>
                   <Button
-                    href={`http://66.232.105.87:3011/docs/${detalleData.pdf_1}`}
+                    href={`http://localhost:3011/docs/${detalleData.pdf_1}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     variant="contained"
@@ -1722,7 +1722,7 @@ function Compras() {
                   {detalleData.pdf_2.split(",").map((pdfName, index) => (
                     <Button
                       key={index}
-                      href={`http://66.232.105.87:3011/docs/${pdfName.trim()}`}
+                      href={`http://localhost:3011/docs/${pdfName.trim()}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       variant="contained"
@@ -1797,7 +1797,7 @@ function Compras() {
               {detalleData?.pdf_3 ? (
                 <div>
                   <Button
-                    href={`http://66.232.105.87:3011/docs/${detalleData.pdf_3}`}
+                    href={`http://localhost:3011/docs/${detalleData.pdf_3}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     variant="contained"
@@ -1864,7 +1864,7 @@ function Compras() {
                   {detalleData.pdf_4.split(",").map((pdfName, index) => (
                     <Button
                       key={index}
-                      href={`http://66.232.105.87:3011/docs/${pdfName.trim()}`}
+                      href={`http://localhost:3011/docs/${pdfName.trim()}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       variant="contained"
@@ -1938,7 +1938,7 @@ function Compras() {
               {detalleData?.pdf_5 ? (
                 <div>
                   <Button
-                    href={`http://66.232.105.87:3011/docs/${detalleData.pdf_5}`}
+                    href={`http://localhost:3011/docs/${detalleData.pdf_5}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     variant="contained"

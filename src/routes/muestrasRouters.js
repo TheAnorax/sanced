@@ -1,19 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const {
-  Departamentos,
-  buscarProducto,
-  guardarSolicitudes,
-  obtenerSolicitudes,
-  obtenerAutorizadas,
-  actualizarSolicitud,
-  eliminarSolicitud,
-  eliminarProductoDeSolicitud,
-  guardarCantidadSurtida,
-  marcarSalida,
-  obtenerUbicacionesPorCodigo,
-  registrarFinEmbarque,
-  actualizarContadorPDF,
+  Departamentos, buscarProducto, guardarSolicitudes, obtenerSolicitudes, obtenerAutorizadas, actualizarSolicitud, eliminarSolicitud,
+  eliminarProductoDeSolicitud, guardarCantidadSurtida, marcarSalida, obtenerUbicacionesPorCodigo, registrarFinEmbarque, actualizarContadorPDF,  obtenerPreciosLista, marcarSinMaterial
 } = require("../controller/muestrasController");
 
 router.get("/departamentos", Departamentos);
@@ -47,5 +36,9 @@ router.patch("/embarque/:folio", registrarFinEmbarque);
 router.get("/ubicaciones/:codigo", obtenerUbicacionesPorCodigo);
 
 router.put("/contador-pdf/:folio", actualizarContadorPDF);
+
+router.post('/precio-lista', obtenerPreciosLista);
+
+router.post('/sin-material/:folio', marcarSinMaterial);
 
 module.exports = router;

@@ -12,7 +12,7 @@ app.use(express.json());
 
 const connectToDatabase = async () => {
   return mysql.createPool({
-    host: '66.232.105.87',
+    host: 'localhost',
     user: 'root',
     password: '',
     database: 'savawms',
@@ -1688,6 +1688,6 @@ app.post('/update_inventory', (req, res) => {
 
 // Iniciar el servidor
 server.listen(port, () => {
-  console.log(`Servidor escuchando en http://66.232.105.87:${port}`);
+  console.log(`Servidor escuchando en http://localhost:${port}`);
 });
 

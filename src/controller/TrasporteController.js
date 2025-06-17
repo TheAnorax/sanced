@@ -2142,12 +2142,13 @@ const getReferenciasClientes = async (req, res) => {
 };
 
 
-// MaNdar los Correos
+// Mandar los Correos
+
+
 
 const nodemailer = require('nodemailer');
 const fs = require("fs");
 const path = require("path");
-
 
 
 const transporter = nodemailer.createTransport({
@@ -2157,6 +2158,7 @@ const transporter = nodemailer.createTransport({
     pass: 'pjqa mivc vbfn hwpb'
   }
 });
+
 
 const enviarCorreoAsignacion = async (req, res) => {
   try {
@@ -2374,6 +2376,16 @@ const enviarCorreoAsignacion = async (req, res) => {
     ];
     const tituloEtapa = titulosCorreo[correosEnviados] || 'Seguimiento de pedido';
 
+    let attachments = attachmentsPorPlantilla[nombrePlantilla] || [];
+
+    // Adjunta el PDF si lo recibió el backend
+    if (req.file && (correosEnviados === 1 || correosEnviados === 2)) {
+      attachments.push({
+        filename: req.file.originalname || `PackingList_${noOrden}.pdf`,
+        content: req.file.buffer,
+        contentType: req.file.mimetype,
+      });
+    }
 
     // Configura el mailOptions
     const mailOptions = {
@@ -2381,7 +2393,7 @@ const enviarCorreoAsignacion = async (req, res) => {
       to: correo,
       subject: `${tituloEtapa} | Pedido ${noOrden}`,
       html,
-      attachments: attachmentsPorPlantilla[nombrePlantilla] || []
+      attachments: attachments   // <-- Cambia aquí, usa tu arreglo modificado
     };
 
     // Envía el correo
@@ -2399,7 +2411,6 @@ const enviarCorreoAsignacion = async (req, res) => {
     res.status(500).json({ success: false, message: "Error al enviar el correo" });
   }
 };
-
 
 
 

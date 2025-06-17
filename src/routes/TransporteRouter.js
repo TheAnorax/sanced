@@ -50,11 +50,7 @@ router.post("/status", getOrderStatus);
 
 router.post("/fusion", getFusionInfo);
 
-router.post(
-  "/subir-excel",
-  upload.single("archivo"),
-  actualizarFacturasDesdeExcel
-);
+router.post("/subir-excel", upload.single("archivo"), actualizarFacturasDesdeExcel);
 
 router.post("/actualizar-tipo-original", upload.single("archivo"), actualizarTipoOriginalDesdeExcel);
 
@@ -77,6 +73,6 @@ router.put("/actualizar-guia-completa/:noOrden", actualizarGuiaCompleta);
 router.get('/referencias', getReferenciasClientes);
 
 // POST: Enviar correo de asignación (con intentos)
-router.post('/enviar-correo-asignacion', enviarCorreoAsignacion);
+router.post('/enviar-correo-asignacion', upload.single('pdf'), enviarCorreoAsignacion);
 
 module.exports = router;

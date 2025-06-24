@@ -126,62 +126,69 @@ const getProgresoValidacion = async (req, res) => {
 
 const getProductividadEmpaquetadores = async (req, res) => {
   try {
-    // Ejecutar la consulta para obtener los datos generales
+    // Ejecutar la consulta para obtener los datos generales incluyendo total de pedidos
     const [rows] = await pool.query(`
-        SELECT 
-    us.name AS usuario,
-    us.role,
-    COUNT(DISTINCT combined.codigo_ped) AS partidas, -- Cantidad de partidas distintas realizadas por el usuario
-    SUM(combined._pz + combined._pq + combined._inner + combined._master) AS cantidad_piezas, -- Sumatoria de las cantidades en cada pedido
-    MIN(combined.inicio_embarque) AS primer_inicio_embarque, -- Primer inicio de embarque del día
-    MAX(combined.fin_embarque) AS ultimo_fin_embarque, -- Último fin de embarque del día
-    TIMEDIFF(MAX(combined.fin_embarque), MIN(combined.inicio_embarque)) AS tiempo_total_trabajo -- Diferencia entre el primer inicio y el último fin
-FROM 
-    (
       SELECT 
-          p.id_usuario_paqueteria,
-          p.codigo_ped,
-          p._pz,
-          p._pq,
-          p._inner,
-          p._master,
-          p.inicio_embarque,
-          p.fin_embarque
-      FROM pedido_embarque p
-      WHERE p.estado = 'F'
-        AND p.id_usuario_paqueteria IS NOT NULL
-        AND DATE(p.inicio_embarque) = CURDATE()
+          us.name AS usuario,
+          us.role,
+          COUNT(DISTINCT combined.codigo_ped) AS partidas,
+          COUNT(DISTINCT combined.pedido) AS pedidos, -- ← nuevo campo agregado
+          SUM(combined._pz + combined._pq + combined._inner + combined._master) AS cantidad_piezas,
+          MIN(combined.inicio_embarque) AS primer_inicio_embarque,
+          MAX(combined.fin_embarque) AS ultimo_fin_embarque,
+          TIMEDIFF(MAX(combined.fin_embarque), MIN(combined.inicio_embarque)) AS tiempo_total_trabajo
+      FROM 
+          ( 
+            SELECT 
+                p.id_usuario_paqueteria,
+                p.codigo_ped,
+                p.pedido, -- ← incluir campo pedido
+                p._pz,
+                p._pq,
+                p._inner,
+                p._master,
+                p.inicio_embarque,
+                p.fin_embarque
+            FROM pedido_embarque p
+            WHERE p.estado = 'F'
+              AND p.id_usuario_paqueteria IS NOT NULL
+              AND DATE(p.inicio_embarque) = CURDATE()
 
-      UNION ALL
+            UNION ALL
 
-      SELECT 
-          pf.id_usuario_paqueteria,
-          pf.codigo_ped,
-          pf._pz,
-          pf._pq,
-          pf._inner,
-          pf._master,
-          pf.inicio_embarque,
-          pf.fin_embarque
-      FROM pedido_finalizado pf
-      WHERE pf.estado = 'F'
-        AND pf.id_usuario_paqueteria IS NOT NULL
-        AND DATE(pf.inicio_embarque) = CURDATE()
-    ) AS combined
-LEFT JOIN 
-    usuarios us ON combined.id_usuario_paqueteria = us.id_usu
-GROUP BY 
-    us.name, us.role;
+            SELECT 
+                pf.id_usuario_paqueteria,
+                pf.codigo_ped,
+                pf.pedido, -- ← incluir campo pedido
+                pf._pz,
+                pf._pq,
+                pf._inner,
+                pf._master,
+                pf.inicio_embarque,
+                pf.fin_embarque
+            FROM pedido_finalizado pf
+            WHERE pf.estado = 'F'
+              AND pf.id_usuario_paqueteria IS NOT NULL
+              AND DATE(pf.inicio_embarque) = CURDATE()
+          ) AS combined
+      LEFT JOIN 
+          usuarios us ON combined.id_usuario_paqueteria = us.id_usu
+      GROUP BY 
+          us.name, us.role;
     `);
 
-    // Filtrar solo los usuarios cuyo role contenga 'PQ'
+    // Filtrar solo usuarios cuyo rol contenga 'PQ'
     const filteredRows = rows.filter(row => row.role && row.role.includes('PQ'));
 
-    // Enviar la respuesta con los datos de productividad filtrados
+    // Respuesta con datos de productividad filtrados
     res.json(filteredRows);
+
   } catch (error) {
     console.error('Error al obtener la productividad de empaquetadores:', error);
-    res.status(500).json({ message: 'Error al obtener la productividad de empaquetadores', error: error.message });
+    res.status(500).json({
+      message: 'Error al obtener la productividad de empaquetadores',
+      error: error.message
+    });
   }
 };
 

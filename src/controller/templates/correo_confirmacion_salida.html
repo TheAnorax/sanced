@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Confirmación de Salida</title>
+</head>
+
+<body style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px;">
+    <table
+        style="max-width: 600px; margin: auto; background-color: white; border-radius: 8px; box-shadow: 0 0 10px #ccc;">
+
+        <tr>
+            <td style="text-align: center; padding: 20px;">
+                <img src="cid:logo_sanced" alt="Logo Sanced" width="180"
+                    style="width: 180px !important; height: auto !important; max-width: 100%; display: block; margin: 0 auto;" />
+            </td>
+        </tr>
+
+        <tr>
+            <td style="background-color: #0d6efd; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+                <h2 style="margin: 0;">🎉 Tus muestras han sido entregadas</h2>
+            </td>
+        </tr>
+        <tr>
+            <td style="padding: 20px;">
+                <p>Hola <strong>{{nombre}}</strong>,</p>
+                <p>Confirmamos que tu solicitud de muestras con el folio <strong>{{folio}}</strong> ya fue entregada
+                    correctamente en CEDIS.</p>
+                <p><strong>Fecha de salida:</strong> {{fecha}}</p>
+
+                <p style="font-size: 12px; color: #888;">Este mensaje fue generado automáticamente por el sistema de
+                    muestras.</p>
+            </td>
+        </tr>
+    </table>
+</body>
+
+</html>

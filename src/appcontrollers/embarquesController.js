@@ -171,7 +171,7 @@ const obtenerEmbarquesNew = async (req, res) => {
           usuario: row.usuario,
           mac_print: row.mac_print,
           ultima_caja: row.ultima_caja,
-          total_cajas: row.total_cajas,
+          total_cajas: row.ultima_caja,
           datos: []
         };
       }

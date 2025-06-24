@@ -143,7 +143,7 @@
         const response = await axios.get(
           "http://66.232.105.87:3007/api/inventarios/inventarios/obtenerUbiAlma"
         );
-  
+   
         const data = response.data.resultado.list.map((item) => ({
           Ubicación: item.ubi,
           "Código Producto": item.code_prod,
@@ -709,7 +709,8 @@
           pasillo: updateData.pasillo || null,
           lote: updateData.lote || null,
           almacen: updateData.almacen || null,
-          estado: updateData.estado || null,
+          estado: updateData.estado || null,          
+          user_id: user.id_usu,
         };
 
         console.log("Datos a actualizar:", filteredData);
@@ -2410,7 +2411,6 @@
               <Button onClick={handleClose}>Cancelar</Button>
               <Button
                 onClick={() => {
-                  handleInsert();
                   handleUpdate();
                 }}
               >

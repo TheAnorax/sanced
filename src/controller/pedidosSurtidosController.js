@@ -681,18 +681,46 @@ const updateUMLogic = async () => {
     await connection.beginTransaction();
 
     for (const row of rows) {
-      const { pedido, codigo_ped, cantidad, min_pz, min_pq, min_inner, min_master } = row;
-
-      // Calcular las unidades correctas
-      const correctedUnits = calculateUnits(
+      const {
+        pedido,
+        codigo_ped,
         cantidad,
+        cant_surti,
+        _pz,
+        _pq,
+        _inner,
+        _master,
+        min_pz,
+        min_pq,
+        min_inner,
+        min_master
+      } = row;
+
+      // Usar cant_surti como base si es menor y mayor que 0
+      const cantidadReal = (cant_surti > 0 && cant_surti < cantidad)
+        ? cant_surti
+        : cantidad;
+
+      // Calcular unidades corregidas
+      const correctedUnits = calculateUnits(
+        cantidadReal,
         min_pz,
         min_pq,
         min_inner,
         min_master
       );
 
-      // Actualizar las unidades en la base de datos
+      // Evitar update si ya están bien
+      if (
+        correctedUnits._pz === _pz &&
+        correctedUnits._pq === _pq &&
+        correctedUnits._inner === _inner &&
+        correctedUnits._master === _master
+      ) {
+        continue;
+      }
+
+      // Realizar actualización
       await connection.query(
         `
         UPDATE pedido_embarque 
@@ -723,6 +751,7 @@ const updateUMLogic = async () => {
     connection.release();
   }
 };
+
 
 
 

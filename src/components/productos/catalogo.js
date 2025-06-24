@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useContext} from "react";
 import {
   Box,
   Typography,
@@ -8,20 +8,21 @@ import {
   Modal,
   Button,
   Grid,
-  Paper,
+  Paper, 
   Stack,
   CircularProgress,
   TextField,
   Snackbar,
   Alert,
   useMediaQuery,
-  Dialog
+  Dialog,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import SaveIcon from "@mui/icons-material/Save";
 import { DataGrid } from "@mui/x-data-grid";
 import Barcode from "react-barcode";
 import CancelIcon from "@mui/icons-material/Cancel";
+import { UserContext } from "../context/UserContext";
 const styleModal = {
   position: "absolute",
   top: "50%",
@@ -46,6 +47,7 @@ function Catalogo() {
   const [open, setOpen] = useState(false);
   const [cargandoDetalle, setCargandoDetalle] = useState(false);
   const [modoEdicion, setModoEdicion] = useState(false);
+  const { user } = useContext(UserContext);
   const [alerta, setAlerta] = useState({
     open: false,
     mensaje: "",
@@ -81,21 +83,23 @@ function Catalogo() {
     }
   };
 
-
   const obtenerInventarioSantul = async () => {
     try {
-      const response = await fetch("http://santul.verpedidos.com:9010/Santul/Inventarios/", {
-        method: "POST",
-        body: JSON.stringify({ petición: "Inventario" }),
-      });
+      const response = await fetch(
+        "http://santul.verpedidos.com:9010/Santul/Inventarios/",
+        {
+          method: "POST",
+          body: JSON.stringify({ petición: "Inventario" }),
+        }
+      );
       const data = await response.json();
-  
+
       // Convertir en objeto clave => cantidad
       const inventarioMap = {};
       data.forEach((item) => {
         inventarioMap[item.Clave] = item.Cant;
       });
-  
+
       // Mezclar con productos
       setProductos((prev) =>
         prev.map((prod) => ({
@@ -107,7 +111,7 @@ function Catalogo() {
       console.error("Error al obtener inventario Santul:", error);
     }
   };
-  
+
   const handleSearchChange = (e) => {
     setSearch(e.target.value);
     filterProductos(e.target.value);
@@ -163,31 +167,39 @@ function Catalogo() {
   };
 
   const handleGuardarCambios = async () => {
-    try {
-      const res = await fetch(
-        "http://66.232.105.87:3007/api/productos/catalogo-detall-update",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(detalleProducto),
-        }
-      );
-      const result = await res.json();
-      setModoEdicion(false);
-      setAlerta({
-        open: true,
-        mensaje: "¡Datos actualizados correctamente!",
-        tipo: "success",
-      });
-    } catch (error) {
-      console.error("Error al guardar:", error);
-      setAlerta({
-        open: true,
-        mensaje: "Error al guardar los datos.",
-        tipo: "error",
-      });
-    }
-  };
+  try {
+    const payload = {
+      ...detalleProducto,
+      id_usuario: user.id_usu, // ⬅️ enviar el ID del usuario logeado
+    };
+
+    const res = await fetch(
+      "http://66.232.105.87:3007/api/productos/catalogo-detall-update",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      }
+    );
+
+    const result = await res.json();
+
+    setModoEdicion(false);
+    setAlerta({
+      open: true,
+      mensaje: "¡Datos actualizados correctamente!",
+      tipo: "success",
+    });
+  } catch (error) {
+    console.error("Error al guardar:", error);
+    setAlerta({
+      open: true,
+      mensaje: "Error al guardar los datos.",
+      tipo: "error",
+    });
+  }
+};
+
 
   const handleGuardarImagenes = async () => {
     const formData = new FormData();
@@ -251,7 +263,6 @@ function Catalogo() {
       obtenerInventarioSantul(); // ⬅ después de cargar productos
     });
   }, []);
-  
 
   const columnas = [
     {
@@ -275,9 +286,9 @@ function Catalogo() {
     { field: "des", headerName: "Descripción", width: 300 },
     { field: "_pz", headerName: "PZ", width: 70 },
     { field: "_inner", headerName: "Inner", width: 70 },
-    { field: "_master", headerName: "Master", width: 80 },    
+    { field: "_master", headerName: "Master", width: 80 },
     { field: "ubi", headerName: "Ubicacion", width: 150 },
-    { field: "stock_almacen", headerName: "Almacenamiento", width: 100 },    
+    { field: "stock_almacen", headerName: "Almacenamiento", width: 100 },
     { field: "stock_picking", headerName: "Picking", width: 150 },
     { field: "stock_total", headerName: "Total", width: 100 },
     {
@@ -285,7 +296,7 @@ function Catalogo() {
       headerName: "Cant. Santul",
       width: 120,
     },
-    
+
     {
       field: "acciones",
       headerName: "Acciones",
@@ -322,32 +333,31 @@ function Catalogo() {
             }}
           />
           <Box sx={{ height: "auto", width: "100%", overflowX: "auto" }}>
-          <DataGrid
-  rows={search ? filteredProductos : productos}
-  columns={columnas}
-  autoHeight
-  pageSize={20}
-  rowsPerPageOptions={[10, 20, 50]}
-  disableSelectionOnClick
-  sx={{
-    minWidth: 1000,
-    borderRadius: 2,
-    rowSpacing: 2, // <-- Espacio entre filas
-    "& .MuiDataGrid-columnHeaders": {
-      backgroundColor: "#f0f2f5", // Fondo header más elegante
-      fontWeight: "bold",
-      fontSize: "16px",
-      color: "#333",
-    },
-    "& .MuiDataGrid-cell": {
-      fontSize: "14px",
-    },
-    "& .MuiDataGrid-row:hover": {
-      backgroundColor: "#f9f9f9", // Efecto hover suave en filas
-    },
-  }}
-/>
-
+            <DataGrid
+              rows={search ? filteredProductos : productos}
+              columns={columnas}
+              autoHeight
+              pageSize={20}
+              rowsPerPageOptions={[10, 20, 50]}
+              disableSelectionOnClick
+              sx={{
+                minWidth: 1000,
+                borderRadius: 2,
+                rowSpacing: 2, // <-- Espacio entre filas
+                "& .MuiDataGrid-columnHeaders": {
+                  backgroundColor: "#f0f2f5", // Fondo header más elegante
+                  fontWeight: "bold",
+                  fontSize: "16px",
+                  color: "#333",
+                },
+                "& .MuiDataGrid-cell": {
+                  fontSize: "14px",
+                },
+                "& .MuiDataGrid-row:hover": {
+                  backgroundColor: "#f9f9f9", // Efecto hover suave en filas
+                },
+              }}
+            />
           </Box>
         </CardContent>
       </Card>
@@ -486,26 +496,25 @@ function Catalogo() {
                             />
                           ) : (
                             // Puedes mover esto a un archivo config.js si gustas
-<img
-  src={`http://66.232.105.87:3011/imagenes/img_${suffix}/${detalleProducto?.codigo_pro}.jpg`}
-  alt={`${unidad}`}
-  style={{
-    width: 120,
-    height: 120,
-    objectFit: "contain",
-    cursor: "zoom-in",
-  }}
-  onClick={() =>
-    setImagenZoom(
-      `http://66.232.105.87:3011/imagenes/img_${suffix}/${detalleProducto?.codigo_pro}.jpg`
-    )
-  }
-  onError={(e) => {
-    e.target.onerror = null;
-    e.target.src = `http://66.232.105.87:3011/imagenes/img_${suffix}/noimage.png`;
-  }}
-/>
-
+                            <img
+                              src={`http://66.232.105.87:3011/imagenes/img_${suffix}/${detalleProducto?.codigo_pro}.jpg`}
+                              alt={`${unidad}`}
+                              style={{
+                                width: 120,
+                                height: 120,
+                                objectFit: "contain",
+                                cursor: "zoom-in",
+                              }}
+                              onClick={() =>
+                                setImagenZoom(
+                                  `http://66.232.105.87:3011/imagenes/img_${suffix}/${detalleProducto?.codigo_pro}.jpg`
+                                )
+                              }
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = `http://66.232.105.87:3011/imagenes/img_${suffix}/noimage.png`;
+                              }}
+                            />
                           )}
                         </Box>
 
@@ -647,31 +656,30 @@ function Catalogo() {
         </Box>
       </Modal>
       <Dialog
-  open={!!imagenZoom}
-  onClose={() => setImagenZoom(null)}
-  maxWidth="md"
-  fullWidth
-  PaperProps={{
-    style: {
-      maxHeight: "90vh",
-      display: "flex",
-      justifyContent: "center",
-      alignItems: "center",
-      padding: 20,
-    },
-  }}
->
-  <img
-    src={imagenZoom}
-    alt="Zoom"
-    style={{
-      maxWidth: "100%",
-      maxHeight: "80vh",
-      objectFit: "contain",
-    }}
-  />
-</Dialog>
-
+        open={!!imagenZoom}
+        onClose={() => setImagenZoom(null)}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          style: {
+            maxHeight: "90vh",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            padding: 20,
+          },
+        }}
+      >
+        <img
+          src={imagenZoom}
+          alt="Zoom"
+          style={{
+            maxWidth: "100%",
+            maxHeight: "80vh",
+            objectFit: "contain",
+          }}
+        />
+      </Dialog>
 
       <Snackbar
         open={alerta.open}

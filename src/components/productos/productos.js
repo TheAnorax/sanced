@@ -1381,7 +1381,7 @@ function ProductoCRUD() {
                 )}
               </Grid>
               <DialogActions>
-                {readOnly && user?.role === "Admin" && (
+                {( user?.role === "Admin" || user?.role === "INV") && (
                   <Button onClick={enableEditing} color="primary">
                     Editar
                   </Button>

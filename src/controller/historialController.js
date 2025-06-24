@@ -103,5 +103,30 @@ const getHistorialPorFecha = async (req, res) => {
 };
 
 
+const getModificaciones = async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT
+        us.name,
+        m.id_modi,
+        m.id_usuario,
+        m.codigo,
+        m.tabla,
+        m.campo,
+        m.valor_anterior,
+        m.valor_nuevo,
+        m.fecha_modificacion 
+      FROM modificaciones m
+      LEFT JOIN usuarios us ON m.id_usuario = us.id_usu
+      ORDER BY m.fecha_modificacion DESC
+    `);
 
-module.exports = { getHistorial, almacenamiento, getHistorialPorFecha};
+    res.json(rows);
+  } catch (error) {
+    res.status(500).json({ message: 'Error al obtener modificaciones', error: error.message });
+  }
+};
+
+
+
+module.exports = { getHistorial, almacenamiento, getHistorialPorFecha, getModificaciones };

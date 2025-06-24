@@ -76,6 +76,7 @@ export const mainListItems = (user) => {
         "Audi",
         "Plan",
         "VENT",
+        "VENT2",
         "VENT3",
         "CON",
         "Vent",
@@ -85,6 +86,11 @@ export const mainListItems = (user) => {
         "Rep",
         "embspb",
         "Dep",
+        "Nac2",
+        "Mues",
+        "Nac",
+        "VEN",
+        "CALI",
       ],
       path: "/dashboard/productos",
       icon: <HandymanIcon />,
@@ -97,7 +103,17 @@ export const mainListItems = (user) => {
       text: "Catalogo",
     },
     {
-      role: ["Admin", "Nac", "Nac2", "Imp", "Plan", "Master", "VentAdmin"], // Ajusta los roles que deberían ver esta opción"
+      role: [
+        "Admin",
+        "Nac",
+        "Nac2",
+        "Imp",
+        "Plan",
+        "Master",
+        "VentAdmin",
+        "VEN",
+        "VENT2"
+      ], // Ajusta los roles que deberían ver esta opción"
       external: true,
       path: "http://192.168.3.27:3000/menu/estadisticos",
       icon: <AnalyticsIcon />,
@@ -129,6 +145,7 @@ export const mainListItems = (user) => {
         "Vent",
         "VentAdmin",
         "VENT",
+        "VENT2",
         "VENT3",
         "Tran",
         "Audi",
@@ -165,6 +182,8 @@ export const mainListItems = (user) => {
         "VENT3",
         "VentAdmin",
         "INV",
+        "VEN",
+        "VENT2",
       ],
       path: "/dashboard/pedidos-surtido",
       icon: <ContentPasteIcon />,
@@ -184,32 +203,34 @@ export const mainListItems = (user) => {
         "VENT3",
         "VentAdmin",
         "INV",
+        "VEN",
+        "VENT2",
       ],
       path: "/dashboard/finalizados",
       icon: <PlaylistAddCheckIcon />,
       text: "Finalizados",
     },
     {
-      role: ["Paquet", "Admin"],
+      role: ["Paquet", "Admin", "Master"],
       path: "/dashboard/paqueteria",
       icon: <LocalShippingIcon />,
       text: "Paqueteria",
     },
     {
-      role: ["Admin", "Paquet"],
+      role: ["Admin", "Paquet", "Master"],
       path: "/dashboard/empaquetando",
       icon: <ViewQuiltIcon />,
       text: "Empacando",
     },
 
     {
-      role: ["Embar", "Admin"],
+      role: ["Embar", "Admin", "Master"],
       path: "/dashboard/embarques",
       icon: <LocalShippingIcon />,
       text: "Embarques",
     },
     {
-      role: ["Admin", "Embar"],
+      role: ["Admin", "Embar", "Master"],
       path: "/dashboard/embarcando",
       icon: <ViewQuiltIcon />,
       text: "Embarcando",
@@ -222,7 +243,7 @@ export const mainListItems = (user) => {
     //   text: "Plan",
     // },
     {
-      role: ["Admin", "Control", "Embar", "Master", "Paquet"],
+      role: ["Admin", "Control", "Embar", "Master", "Paquet", "INV"],
       path: "/dashboard/bahias",
       icon: <ViewModuleIcon />,
       text: "Bahias",
@@ -240,7 +261,17 @@ export const mainListItems = (user) => {
       text: "Compras",
     },
     {
-      role: ["Admin", "Master", "Recibo", "INV", "VENT", "VentAdmin", "VENT3"],
+      role: [
+        "Admin",
+        "Master",
+        "Recibo",
+        "INV",
+        "VENT",
+        "VentAdmin",
+        "VENT3",
+        "VEN",
+        "VENT2",
+      ],
       path: "/dashboard/recibo",
       icon: <ReceiptLongIcon />,
       text: "Producto a Recibir ",
@@ -268,7 +299,16 @@ export const mainListItems = (user) => {
       text: "Inventarios ",
     },
     {
-      role: ["Admin", "Nac", "Imp", "INV", "Recibo", "Nac2", "Reporte"],
+      role: [
+        "Admin",
+        "Nac",
+        "Imp",
+        "INV",
+        "Recibo",
+        "Nac2",
+        "Reporte",
+        "Master",
+      ],
       path: "/dashboard/reporter",
       icon: <InventoryIcon />,
       text: "Reporte Recibo ",
@@ -287,7 +327,18 @@ export const mainListItems = (user) => {
     //   text: "Inventario dia 0",
     // },
     {
-      role: ["Admin", "Master", "Master2", "INV", "Nac", "Mue", "Audi", "Nac2", "Ins"],
+      role: [
+        "Admin",
+        "Master",
+        "Master2",
+        "INV",
+        "Nac",
+        "Mue",
+        "Audi",
+        "Nac2",
+        "Ins",
+        "Mues",
+      ],
       path: "/dashboard/muestras",
       icon: <SummarizeIcon />,
       text: "Muestras",
@@ -311,7 +362,7 @@ export const mainListItems = (user) => {
       text: "RH",
     },
     {
-      role: ["Admin", "Master", "Master2","VENT3"],
+      role: ["Admin", "Master", "Master2", "VENT3", "Pro"],
       path: "/dashboard/Queretaro",
       icon: <MapIcon />,
       text: "Proyectos",
@@ -355,16 +406,12 @@ export const mainListItems = (user) => {
       icon: <NavigationIcon />,
       text: "COBERTURA",
     },
-<<<<<<< HEAD
     {
       role: ["Admin"],
       path: "/dashboard/RepoProb",
       icon: <ManageSearchIcon />,
       text: "Reportar Problema",
     },
-    
-=======
->>>>>>> f7163f8c1dd5b8ee7da1f1906cc82ba7db0eddeb
   ];
 
   return (

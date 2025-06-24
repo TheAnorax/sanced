@@ -38,7 +38,7 @@ const autorizarRecibo = async (req, res) => {
     codigo,
     oc,
     cantidad_recibida,
-    fecha_recibo,
+    fecha_recibo, 
     id_recibo_compras,
     userId,
   } = req.body;
@@ -66,31 +66,34 @@ const actualizarUbicacion = async (req, res) => {
   const {
     id_ubi,
     code_prod,
+    ubi,
     cant_stock,
+    pasillo,
     lote,
     almacen,
     estado,
-    new_code_prod,
-    new_cant_stock,
+    user_id,
   } = req.body;
 
-  //console.log("Datos para actualización recibidos:", req.body);
+  console.log("Datos para actualizar Alma :", req.body);  
 
-  // Definir valores en `null` en caso de recibir campos vacíos
   const finalCodeProd = code_prod || null;
   const finalCantStock = cant_stock || null;
   const finalLote = lote || null;
   const finalAlmacen = almacen || null;
   const finalEstado = estado || null;
 
+  // 🔴 Usamos 7050 si almacen es nulo
+  const almacenOrigen = almacen || 7050;
+
+  let connection;
   try {
-    const [result] = await pool.query(
+    connection = await pool.getConnection();
+    await connection.beginTransaction();
+
+    const [result] = await connection.query(
       `UPDATE ubi_alma 
-       SET code_prod = ?,
-           cant_stock = ?,
-           lote = ?,
-           almacen = ?,
-           estado = ?
+       SET code_prod = ?, cant_stock = ?, lote = ?, almacen = ?, estado = ?
        WHERE id_ubi = ?`,
       [
         finalCodeProd,
@@ -102,24 +105,46 @@ const actualizarUbicacion = async (req, res) => {
       ]
     );
 
-    // Verificar si la actualización afectó alguna fila
     if (result.affectedRows > 0) {
-      res.json({ success: true, message: "Actualización exitosa" });
+      await connection.query(
+        `INSERT INTO historial_movimientos 
+          (ubi_origen, ubi_destino, code_prod, cant_stock, lote, almacen_origen, almacen_destino, fecha_movimiento, usuario) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?)`,
+        [
+          'AJUSTE INV.',     // ubi_origen
+          ubi,               // ubi_destino
+          finalCodeProd,
+          finalCantStock,
+          finalLote,
+          almacenOrigen,     // 👈 aquí corregido
+          finalAlmacen || 7050,
+          user_id
+        ]
+      );
+
+      await connection.commit();
+      res.json({ success: true, message: "Actualización y registro en historial exitosos" });
     } else {
+      await connection.rollback();
       res.status(404).json({
         success: false,
         message: "No se encontró la ubicación para actualizar",
       });
     }
   } catch (error) {
+    if (connection) await connection.rollback();
     console.error("Error en la actualización de ubicación:", error);
     res.status(500).json({
       success: false,
       message: "Error en la actualización de ubicación",
       error: error.message,
     });
+  } finally {
+    if (connection) connection.release(); 
   }
 };
+
+
 
 
 const insertNuevaUbicacion = async (req, res) => {
@@ -253,7 +278,7 @@ ORDER BY u.ubi ASC
 
 const updatePeacking = async (req, res) => {
   const { id_ubi, code_prod, cant_stock, pasillo, lote, almacen, user_id, ubi } = req.body;
-  //console.log("Update Pick:", req.body);
+  console.log("Update Pick:", req.body);
 
   // Validación de entrada
   if (!id_ubi || !user_id) {

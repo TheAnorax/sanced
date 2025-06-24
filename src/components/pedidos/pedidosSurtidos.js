@@ -635,8 +635,6 @@ function EnSurtido() {
   };
 
   const authorizePedido = async () => {
-    
-  
     const newIncidences = {};
     const errorMessages = [];
 
@@ -655,14 +653,13 @@ function EnSurtido() {
         );
       }
     }
-    
 
     if (Object.keys(newIncidences).length > 0) {
       setIncidences(newIncidences);
       setSnackbarMessage(
         `No se puede autorizar el pedido debido a las siguientes incidencias:\n${errorMessages.join(
           "\n"
-        )}` 
+        )}`
       );
       setSnackbarSeverity("error");
       setSnackbarOpen(true);
@@ -671,7 +668,7 @@ function EnSurtido() {
 
     try {
       console.log("📦 Pedido:", selectedPedido.pedido);
-  console.log("📄 Tipo:", selectedPedido.tipo);
+      console.log("📄 Tipo:", selectedPedido.tipo);
       const updatedItems = selectedPedido.items.map((item) => ({
         ...item,
         estado: "E",
@@ -718,33 +715,33 @@ function EnSurtido() {
 
   const obtenerRecuentoPorTipo = (items) => {
     const tipoMap = {};
-  
+
     items.forEach((item) => {
       const unificado = item.unificado || "";
-      
+
       // Soporte para separadores: coma o pipe
-      const partes = unificado.split(/[,|]/).map(p => p.trim()).filter(Boolean);
-  
+      const partes = unificado
+        .split(/[,|]/)
+        .map((p) => p.trim())
+        .filter(Boolean);
+
       partes.forEach((parte) => {
         // Extraer solo el tipo antes de los dos puntos (ej. VQ de "VQ:96")
         const tipo = parte.split(":")[0].trim().toUpperCase();
         if (!tipo) return;
-  
+
         if (!tipoMap[tipo]) tipoMap[tipo] = new Set();
         tipoMap[tipo].add(item.codigo_ped); // contar solo códigos únicos por tipo
       });
     });
-  
+
     const resumen = Object.entries(tipoMap)
       .map(([tipo, codigos]) => `${tipo}: ${codigos.size}`)
       .join(" | ");
-  
+
     return resumen;
   };
-  
-  
 
-  
   const generatePDF = (items, pedido) => {
     const drawHeader = (
       doc,
@@ -787,7 +784,7 @@ function EnSurtido() {
       const itemTipo = items[0]?.tipo || "";
       const totalCodigos = items.length;
       const bahiaFromItems = items[0]?.ubi_bahia || "No asignadas";
-      const fusion = items.find(item => item.fusion)?.fusion || "N/A";
+      const fusion = items.find((item) => item.fusion)?.fusion || "N/A";
       const route = items[0]?.routeName || "N/A";
       const tiposFusionValidos = [
         ["VQ", "VT"],
@@ -795,16 +792,13 @@ function EnSurtido() {
         ["VW", "VT"],
         ["VT", "VQ"],
         ["VW", "VQ"],
-        ["VT", "VW"]
+        ["VT", "VW"],
       ];
-      
-      
-      
-    
-    const tipoFusionado = tiposFusionValidos.some((grupo) => {
-      const tiposItem = itemTipo.split(",").map(s => s.trim());
-      return grupo.every(t => tiposItem.includes(t));
-    });
+
+      const tipoFusionado = tiposFusionValidos.some((grupo) => {
+        const tiposItem = itemTipo.split(",").map((s) => s.trim());
+        return grupo.every((t) => tiposItem.includes(t));
+      });
 
       const unidos = items.filter((i) => i.unido === 1);
       const noUnidos = items.filter((i) => i.unido !== 1);
@@ -824,14 +818,18 @@ function EnSurtido() {
         false,
         unidos.length > 0
       );
-      
+
       const resumenUnificado = obtenerRecuentoPorTipo(items);
       if (resumenUnificado) {
         doc.setFontSize(11);
-        doc.text(`Recuento por tipo unificado: ${resumenUnificado}`, 10, startY);
+        doc.text(
+          `Recuento por tipo unificado: ${resumenUnificado}`,
+          10,
+          startY
+        );
         startY += 8;
       }
-      
+
       const tableData = sortedItems.map((item) => {
         const isUnido = item.unido === 1;
         const unificado = isUnido ? "SI" : "";
@@ -857,12 +855,12 @@ function EnSurtido() {
         "Cant Surti",
         "Cant No Enviado",
         "Motivo",
+         "Unido" // 💡 mostrar siempre
       ];
-      
+
       if (items.some((item) => item.tipo.length > 3)) {
         tableHeaders.push("Unificado");
       }
-      
 
       doc.autoTable({
         head: [tableHeaders],
@@ -898,8 +896,7 @@ function EnSurtido() {
       const tipoFusionado = ["VT", "VQ", "VQ, VT", "VT, VQ"].includes(itemTipo);
 
       const filteredItems = items.filter((item) => item.cant_no_env > 0);
-      
-      
+
       let startY = drawHeader(
         doc,
         itemTipo,
@@ -911,16 +908,8 @@ function EnSurtido() {
         tipoFusionado,
         true
       );
-      
-      const resumenUnificado = obtenerRecuentoPorTipo(filteredItems);
-      if (resumenUnificado) {
-        doc.setFontSize(11);
-        doc.text(`Recuento por tipo unificado: ${resumenUnificado}`, 10, startY);
-        startY += 8;
-      }
-      
-      
 
+     
 
       if (filteredItems.length === 0) {
         doc.text("No hay ítems con cantidades no enviadas.", 10, startY);
@@ -1686,36 +1675,48 @@ function EnSurtido() {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                    {Object.keys(usuarios)
-  .map((usuario) => ({
-    nombre: usuario,
-    ...usuarios[usuario],
-  }))
-  .sort((a, b) => (b.productos_surtidos || 0) - (a.productos_surtidos || 0)) // <-- Aquí se ordena de mayor a menor
-  .map((usuario, index) => (
-    <TableRow key={index}>
-      <TableCell>{usuario.nombre}</TableCell>
-      <TableCell>
-        {usuario.productos_surtidos
-          ? Number(usuario.productos_surtidos).toLocaleString("es-MX")
-          : "N/A"}
-      </TableCell>
-      <TableCell>
-        {usuario.pedidos_surtidos
-          ? Number(usuario.pedidos_surtidos).toLocaleString("es-MX")
-          : "N/A"}
-      </TableCell>
-      <TableCell>
-        {usuario.cantidad_total_surti
-          ? Number(usuario.cantidad_total_surti).toLocaleString("es-MX")
-          : "N/A"}
-      </TableCell>
-      <TableCell>{usuario.tiempo_surtido || "N/A"}</TableCell>
-      <TableCell>{usuario.tiempo_general || "N/A"}</TableCell>
-    </TableRow>
-  ))}
-
-                      
+                      {Object.keys(usuarios)
+                        .map((usuario) => ({
+                          nombre: usuario,
+                          ...usuarios[usuario],
+                        }))
+                        .sort(
+                          (a, b) =>
+                            (b.productos_surtidos || 0) -
+                            (a.productos_surtidos || 0)
+                        ) // <-- Aquí se ordena de mayor a menor
+                        .map((usuario, index) => (
+                          <TableRow key={index}>
+                            <TableCell>{usuario.nombre}</TableCell>
+                            <TableCell>
+                              {usuario.productos_surtidos
+                                ? Number(
+                                    usuario.productos_surtidos
+                                  ).toLocaleString("es-MX")
+                                : "N/A"}
+                            </TableCell>
+                            <TableCell>
+                              {usuario.pedidos_surtidos
+                                ? Number(
+                                    usuario.pedidos_surtidos
+                                  ).toLocaleString("es-MX")
+                                : "N/A"}
+                            </TableCell>
+                            <TableCell>
+                              {usuario.cantidad_total_surti
+                                ? Number(
+                                    usuario.cantidad_total_surti
+                                  ).toLocaleString("es-MX")
+                                : "N/A"}
+                            </TableCell>
+                            <TableCell>
+                              {usuario.tiempo_surtido || "N/A"}
+                            </TableCell>
+                            <TableCell>
+                              {usuario.tiempo_general || "N/A"}
+                            </TableCell>
+                          </TableRow>
+                        ))}
                     </TableBody>
                   </Table>
                 </TableContainer>

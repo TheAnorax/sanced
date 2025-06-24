@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8" />
-    <title>Confirmación de Entrega de Muestras</title>
+    <title>Confirmación de Envío de Muestras</title>
 </head>
 
 <body style="background-color: #f4f4f4; padding: 20px; font-family: Arial, sans-serif;">
@@ -16,23 +16,23 @@
             </td>
         </tr>
         <tr>
-            <td style="background-color: #198754; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
-                <h2 style="margin: 0;">✅ Tus muestras están listas para recoger</h2>
+            <td style="background-color: #0d6efd; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+                <h2 style="margin: 0;">🚚 Tus muestras serán enviadas</h2>
             </td>
         </tr>
         <tr>
             <td style="padding: 20px;">
                 <p>Hola <strong>{{nombre}}</strong>,</p>
-                <p>Tu solicitud de muestras con el folio <strong>{{folio}}</strong> ya está lista para ser recogida en
-                    el área de CEDIS.</p>
+                <p>Te notificamos que las muestras correspondientes a tu solicitud con folio <strong>{{folio}}</strong>
+                    serán enviadas según las instrucciones proporcionadas.</p>
 
                 <ul style="padding-left: 20px;">
                     <li><strong>Departamento:</strong> {{departamento}}</li>
                     <li><strong>Motivo:</strong> {{motivo}}</li>
-                    <li><strong>Fecha de entrega:</strong> {{fecha}}</li>
+                    <li><strong>Fecha de envío:</strong> {{fecha}}</li>
                 </ul>
 
-                <p>Recuerda llevar este correo y el folio asignado al área de CEDIS para recoger tus muestras.</p>
+                <p>Pronto recibirás confirmación con los detalles del envío.</p>
 
                 {{tablaProductos}}
 

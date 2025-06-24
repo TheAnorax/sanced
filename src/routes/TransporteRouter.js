@@ -1,8 +1,40 @@
 const express = require("express");
 const router = express.Router();
-const {  getObservacionesPorClientes,  getUltimaFechaEmbarque,  insertarRutas,  obtenerRutasDePaqueteria,  getFechaYCajasPorPedido,  actualizarGuia,  getPedidosEmbarque,  getTransportistas,  getEmpresasTransportistas,  insertarVisita,  guardarDatos,
-  obtenerDatos,  eliminarRuta,  getOrderStatus,  getHistoricoData,  getColumnasHistorico,  getClientesHistorico,  upload,  actualizarFacturasDesdeExcel,  actualizarPorGuia,  crearRuta,  agregarPedidoARuta,  obtenerRutasConPedidos,  obtenerRutaPorId,  obtenerResumenDelDia,
-  getPaqueteriaData,  getPedidosDia,  getFusionInfo,  obtenerRutasParaPDF,actualizarTipoOriginalDesdeExcel, actualizarGuiaCompleta, datosPedidos} = require("../controller/TrasporteController");
+const {
+  getReferenciasClientes,
+  getObservacionesPorClientes,
+  getUltimaFechaEmbarque,
+  insertarRutas,
+  obtenerRutasDePaqueteria,
+  getFechaYCajasPorPedido,
+  actualizarGuia,
+  getPedidosEmbarque,
+  getTransportistas,
+  getEmpresasTransportistas,
+  insertarVisita,
+  guardarDatos,
+  obtenerDatos,
+  eliminarRuta,
+  getOrderStatus,
+  getHistoricoData,
+  getColumnasHistorico,
+  getClientesHistorico,
+  upload,
+  actualizarFacturasDesdeExcel,
+  actualizarPorGuia,
+  crearRuta,
+  agregarPedidoARuta,
+  obtenerRutasConPedidos,
+  obtenerRutaPorId,
+  obtenerResumenDelDia,
+  getPaqueteriaData,
+  getPedidosDia,
+  getFusionInfo,
+  obtenerRutasParaPDF,
+  actualizarTipoOriginalDesdeExcel,
+  actualizarGuiaCompleta,
+  datosPedidos,
+} = require("../controller/TrasporteController");
 
 router.get("/getPaqueteriaData", getPaqueteriaData);
 
@@ -54,7 +86,11 @@ router.post(
   actualizarFacturasDesdeExcel
 );
 
-router.post("/actualizar-tipo-original", upload.single("archivo"), actualizarTipoOriginalDesdeExcel);
+router.post(
+  "/actualizar-tipo-original",
+  upload.single("archivo"),
+  actualizarTipoOriginalDesdeExcel
+);
 
 router.post("/actualizar-por-guia/:guia", actualizarPorGuia);
 
@@ -71,5 +107,7 @@ router.get("/rutas/:id", obtenerRutaPorId);
 router.get("/resumen-dia", obtenerResumenDelDia);
 
 router.put("/actualizar-guia-completa/:noOrden", actualizarGuiaCompleta);
+
+router.get("/referencias", getReferenciasClientes);
 
 module.exports = router;

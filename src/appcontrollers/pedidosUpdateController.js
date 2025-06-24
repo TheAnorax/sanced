@@ -1,7 +1,7 @@
 const pool = require('../config/database');
 
 const actualizarCantidadSurtida = async (req, res) => {
-  console.log("Request received:", req.body);
+  // console.log("Request received:", req.body);
 
   const {
     pedido: pedidoId,

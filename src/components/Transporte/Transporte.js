@@ -2193,6 +2193,31 @@ function Transporte() {
 
   // ✅ Versión con tabla de IMPORTE AGREGADA al final (corregida)
 
+  const [referenciasClientes, setReferenciasClientes] = useState([]);
+
+  useEffect(() => {
+    axios
+      .get("http://66.232.105.87:3007/api/Trasporte/referencias")
+      .then((res) => setReferenciasClientes(res.data))
+      .catch((err) => console.error("Error cargando referencias", err));
+  }, []);
+
+  function buscarReferenciaCliente(numCliente, nombreCliente, referencias) {
+    // 1. Busca por número (asegura trims y mismo tipo)
+    let ref = referencias.find(
+      (r) => String(r.Num_Cliente).trim() === String(numCliente).trim()
+    );
+    if (ref) return ref.REFERENCIA;
+
+    // 2. Si no existe, busca por nombre
+    ref = referencias.find(
+      (r) =>
+        r.Nombre_cliente.trim().toUpperCase() ===
+        (nombreCliente || "").trim().toUpperCase()
+    );
+    return ref ? ref.REFERENCIA : "";
+  }
+
   const totalPagesExp = "___total_pages___";
 
   function addPageNumber(doc) {
@@ -2286,6 +2311,11 @@ function Transporte() {
       const numero = route["NUM. CLIENTE"] || "No disponible";
       const telefono = route["TELEFONO"] || "Sin número";
       const rawTotal = route["TOTAL"];
+      const referenciaCliente = buscarReferenciaCliente(
+        numero,
+        nombreCliente,
+        referenciasClientes
+      );
       let totalImporte = 0;
       if (
         rawTotal &&
@@ -2309,7 +2339,7 @@ function Transporte() {
         currentY
       );
       currentY += 4;
-      doc.text(`VT: ${pedido}-${tipo_original}`, marginLeft, currentY);
+      doc.text(`No Orden: ${pedido}-${tipo_original}`, marginLeft, currentY);
       currentY += 4;
       doc.text(`FACTURA No.: ${numeroFactura}`, marginLeft, currentY);
       currentY += 4;
@@ -2323,7 +2353,7 @@ function Transporte() {
       doc.text("INFORMACIÓN IMPORTANTE", 105, infoY + 4, { align: "center" });
       doc.setFontSize(5.3);
       doc.text(
-        "En caso de detectar cualquier irregularidad (daños, faltantes, o manipulaciones), Favor de comunicarse de inmediato al departamento de atención al cliente al número:(55) 58727290 EXT.: (8815, 8819)",
+        "En caso de detectar cualquier irregularidad (daños, faltantes,cajas mojadas o manipulaciones), Favor de comunicarse de inmediato al departamento de atención al cliente al número:(55) 58727290 EXT.: (8815, 8819)",
         105,
         infoY + 9,
         { align: "center", maxWidth: 180 }
@@ -2332,6 +2362,10 @@ function Transporte() {
 
       const productosConCaja = data.filter((i) => i.caja && i.caja > 0);
       const productosSinCaja = data.filter((i) => !i.caja || i.caja === 0);
+
+      const productosSinCajaAtados = productosSinCaja.filter(
+        (p) => (p.um || "").toUpperCase() === "ATA"
+      );
 
       // ✔️ Primero agrupamos productos por caja original
 
@@ -2353,7 +2387,10 @@ function Transporte() {
       const totalCajas = totalINNER_MASTER + totalCajasArmadas;
 
       const totalTarimas = data.reduce((s, i) => s + (i.tarimas || 0), 0);
-      const totalAtados = data.reduce((s, i) => s + (i.atados || 0), 0);
+      const atadosProductos = data.filter(
+        (i) => (i.um || "").toUpperCase() === "ATA"
+      );
+      const totalAtados = atadosProductos.length;
 
       currentY = verificarEspacio(doc, currentY, 2);
       doc.autoTable({
@@ -2486,6 +2523,99 @@ function Transporte() {
         numeroCajaSecuencial++;
       }
 
+      if (productosSinCajaAtados.length > 0) {
+        currentY = verificarEspacio(doc, currentY, 2);
+        doc.autoTable({
+          startY: currentY,
+          head: [["Lotes Atados"]],
+          body: [],
+          theme: "grid",
+          styles: { halign: "center", fontSize: 9 },
+          margin: { left: 10 },
+          tableWidth: 190,
+          headStyles: {
+            fillColor: [255, 255, 255],
+            textColor: [0, 0, 0],
+            fontStyle: "bold",
+          },
+        });
+        currentY = doc.lastAutoTable.finalY;
+
+        let yaContinua = false;
+
+        doc.autoTable({
+          startY: currentY,
+          head: [
+            [
+              "SKU",
+              "DESCRIPCIÓN",
+              "CANTIDAD",
+              "UM",
+              "PZ",
+              "INNER",
+              "MASTER",
+              "TARIMAS",
+              "ATADOS",
+              "VALIDAR",
+            ],
+          ],
+          body: productosSinCajaAtados.map((item) => [
+            item.codigo_ped || "",
+            item.des || "",
+            item.cantidad || "",
+            item.um || "",
+            item._pz || 0,
+            item._inner || 0,
+            item._master || 0,
+            item.tarimas || 0,
+            item.atados || 0,
+            "",
+          ]),
+          theme: "grid",
+          margin: { left: 10 },
+          tableWidth: 190,
+          styles: {
+            fontSize: 5.5,
+            halign: "center",
+            cellPadding: 2,
+            lineColor: [200, 200, 200],
+            lineWidth: 0.1,
+          },
+          columnStyles: {
+            0: { cellWidth: 15 },
+            1: { cellWidth: 80 },
+            2: { cellWidth: 15 },
+            3: { cellWidth: 10 },
+            4: { cellWidth: 10 },
+            5: { cellWidth: 12 },
+            6: { cellWidth: 12 },
+            7: { cellWidth: 12 },
+            8: { cellWidth: 12 },
+            9: { cellWidth: 12 },
+          },
+          headStyles: {
+            fillColor: [20, 20, 20],
+            textColor: [255, 255, 255],
+            fontSize: 5.5,
+          },
+          didDrawCell: function (data) {
+            if (
+              data.row.index === 0 &&
+              data.section === "body" &&
+              data.cursor.y < 30 &&
+              !yaContinua
+            ) {
+              const text = "Continuación de productos atados sin caja";
+              doc.setFontSize(8);
+              doc.text(text, 105, data.cursor.y - 6, { align: "center" });
+              yaContinua = true;
+            }
+          },
+        });
+
+        currentY = doc.lastAutoTable.finalY + 4;
+      }
+
       if (productosSinCaja.length > 0) {
         // Título principal
         currentY = verificarEspacio(doc, currentY, 2);
@@ -2523,18 +2653,20 @@ function Transporte() {
               "VALIDAR",
             ],
           ],
-          body: productosSinCaja.map((item) => [
-            item.codigo_ped || "",
-            item.des || "",
-            item.cantidad || "",
-            item.um || "",
-            item._pz || 0,
-            item._inner || 0,
-            item._master || 0,
-            item.tarimas || 0,
-            item.atados || 0,
-            "",
-          ]),
+          body: productosSinCaja
+            .filter((item) => (item.um || "").toUpperCase() !== "ATA")
+            .map((item) => [
+              item.codigo_ped || "",
+              item.des || "",
+              item.cantidad || "",
+              item.um || "",
+              item._pz || 0,
+              item._inner || 0,
+              item._master || 0,
+              item.tarimas || 0,
+              item.atados || 0,
+              "",
+            ]),
           theme: "grid",
           margin: { left: 10 },
           tableWidth: 190,
@@ -2737,7 +2869,110 @@ function Transporte() {
 
       currentY = doc.lastAutoTable.finalY + 0;
       currentY = verificarEspacio(doc, currentY, 5);
-      doc.addImage(infoBancaria, "JPEG", 10, currentY, 190, 35);
+
+      //informacion bancaria
+      // === Información Bancaria + Observaciones alineadas ===
+
+      const tablaBancosY = currentY + 10; // Ajusta el +3 si lo quieres más arriba o abajo
+
+      // Muestra la referencia bancaria arriba de la tabla
+      doc.setFontSize(10);
+      doc.text("Referencia bancaria:", 20, tablaBancosY - 5, {
+        styles: { fontStyle: "bold" },
+      });
+      doc.setFont(undefined, "bold");
+      doc.text(`${referenciaCliente}`, 75, tablaBancosY - 5, {
+        align: "right",
+        styles: { fontStyle: "bold" },
+      }); // Ajusta la posición x para alinearlo a la derecha
+      doc.setFont(undefined, "normal");
+
+      // TABLA DE BANCOS
+      doc.autoTable({
+        startY: tablaBancosY,
+        head: [
+          [
+            {
+              content: "BANCO",
+              styles: { halign: "left", fontStyle: "bold", fontSize: 8 },
+            },
+            {
+              content: "NO. DE CUENTA",
+              styles: { halign: "center", fontStyle: "bold", fontSize: 8 },
+            },
+            {
+              content: "SUCURSAL",
+              styles: { halign: "center", fontStyle: "bold", fontSize: 8 },
+            },
+            {
+              content: "CLABE",
+              styles: { halign: "center", fontStyle: "bold", fontSize: 8 },
+            },
+          ],
+        ],
+        body: [
+          ["BANAMEX", "6860432", "7006", "002180700668604325"],
+          [
+            { content: "BANORTE" },
+            { content: "0890771176" },
+            { content: "04" },
+            { content: "072180008907711766" },
+          ],
+          ["BANCOMER", "CIE 2476827", "1838"],
+        ],
+        theme: "plain", // Sin bordes, puro alineado como quieres
+        styles: { fontSize: 8, cellPadding: 1, halign: "center" },
+        margin: { left: 10 },
+        tableWidth: 115, // ajusta a 115-120 según el ancho de tu hoja, eso te da espacio a la derecha para observaciones
+        headStyles: { textColor: [0, 0, 0], fontStyle: "bold" },
+        bodyStyles: { textColor: [0, 0, 0] },
+      });
+      // CAJA OBSERVACIONES (alineada a la derecha)
+      // =============== CAJA DE OBSERVACIONES ===============
+      const obsBoxX = 133;
+      const obsBoxY = tablaBancosY;
+      const obsBoxWidth = 65;
+      const obsBoxHeight = 28;
+
+      // Dibuja el recuadro
+      doc.setDrawColor(120, 120, 120);
+      doc.setLineWidth(0.3);
+      doc.rect(obsBoxX, obsBoxY, obsBoxWidth, obsBoxHeight);
+
+      // Título
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.text("Observaciones:", obsBoxX + 3, obsBoxY + 7);
+
+      // Líneas punteadas dentro del recuadro, bien alineadas
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+
+      const numLineas = 4;
+      const leftPadding = 5; // padding izquierdo dentro de la caja
+      const rightPadding = 5;
+      const lineaAncho = obsBoxWidth - leftPadding - rightPadding;
+      for (let i = 0; i < numLineas; i++) {
+        // Empieza un poco debajo del título y separadas
+        const lineaY = obsBoxY + 11 + i * 5.3;
+        doc.text(
+          "...".repeat(Math.floor(lineaAncho / 2.5)), // Ajusta el divisor para el largo de puntos
+          obsBoxX + leftPadding,
+          lineaY
+        );
+      }
+
+      // Poner leyenda final justo abajo, centrado
+      const leyendaY = obsBoxY + obsBoxHeight + 7; // Ajusta el +7 para el espaciado
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7.5);
+      doc.text(
+        "A la firma/sello del presente documento se tiene por recibida de conformidad la mercancía y aceptado el monto a pagar aquí descrita.",
+        10,
+        leyendaY
+      );
+
+      currentY = leyendaY + 4; // Si necesitas continuar después
 
       addPageNumber(doc);
       doc.save(`PackingList_de_${pedido}.pdf`);
@@ -2747,6 +2982,8 @@ function Transporte() {
       alert("Hubo un error al generar el PDF.");
     }
   };
+
+  //fin del PDF
 
   useEffect(() => {
     // console.log("Observaciones actuales:", observacionesPorRegistro);
@@ -6080,7 +6317,7 @@ function Transporte() {
                     </Button>
                   </Box>
 
-                  <Box mt={2}>
+                  {/* <Box mt={2}>
                     <Typography variant="h6">
                       Actualizar tipo original desde Excel
                     </Typography>
@@ -6099,7 +6336,7 @@ function Transporte() {
                     >
                       Subir Excel
                     </Button>
-                  </Box>
+                  </Box> */}
 
                   {uploadMessage && (
                     <Typography
@@ -6234,8 +6471,8 @@ function Transporte() {
               <option value="3">Marzo</option>
               <option value="4">Abril</option>
               <option value="5">Mayo</option>
-              {/*  <option value="6">Junio</option>
-                <option value="7">Julio</option>
+              <option value="6">Junio</option>
+              {/*  <option value="7">Julio</option>
                 <option value="8">Agosto</option>
                 <option value="9">Septiembre</option>
                 <option value="10">Octubre</option>

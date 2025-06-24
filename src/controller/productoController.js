@@ -190,6 +190,25 @@ const createProduct = async (req, res) => {
   const img_pq = req.files?.img_pq ? req.files.img_pq[0].filename : null;
   const img_inner = req.files?.img_inner ? req.files.img_inner[0].filename : null;
   const img_master = req.files?.img_master ? req.files.img_master[0].filename : null;
+ const campos = {
+  codigo_pro, des, code_pz, code_pq, code_master, code_inner, code_palet,
+  _pz, _pq, _inner, _master, _palet,
+  img_pz, img_pq, img_inner, img_master,
+};
+
+const insertValues = Object.entries(campos)
+  .filter(([_, v]) => v !== undefined && v !== null)
+  .map(([campo, valor_nuevo]) => [
+    req.body.id_usu || null, // debes enviar este en req.body
+    codigo_pro,
+    'productos',
+    campo,
+    null, // valor_anterior es null en creación
+    valor_nuevo
+  ]);
+
+await pool.query('INSERT INTO modificaciones (id_usuario, codigo, tabla, campo, valor_anterior, valor_nuevo) VALUES ?', [insertValues]);
+
 
   try {
     const [result] = await pool.query('INSERT INTO productos (codigo_pro, des, code_pz, code_pq, code_master, code_inner, code_palet, _pz, _pq, _inner, _master, _palet, img_pz, img_pq, img_inner, img_master) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [codigo_pro, des, code_pz, code_pq, code_master, code_inner, code_palet, _pz, _pq, _inner, _master, _palet, img_pz, img_pq, img_inner, img_master]);
@@ -274,7 +293,6 @@ const updateProduct = async (req, res) => {
 
     // Comparar y registrar cambios campo por campo
     compararYRegistrarCambio('codigo_pro', existingProduct.codigo_pro, codigo_pro);
-    compararYRegistrarCambio('clave', existingProduct.clave, clave);
     compararYRegistrarCambio('inventario', existingProduct.inventario, inventario);
     compararYRegistrarCambio('inv_m', existingProduct.inv_m, inv_m);
     compararYRegistrarCambio('inv_i', existingProduct.inv_i, inv_i);
@@ -367,7 +385,7 @@ const deleteProduct = async (req, res) => {
 //     // Actualiza los datos de volumetría
 //     const [result] = await pool.query(
 //       `UPDATE volumetria 
-//        SET cajas_cama = ?, pieza_caja = ?, cajas_tarima = ?, camas_tarima = ?, pieza_tarima = ? 
+//        SET cajas_cama = ?, pieza_caja = ?, cajas_tarima = ?, camas_tarima = ?, pieza_tarima = ?  
 //        WHERE codigo = ?`,
 //       [cajas_cama, pieza_caja, cajas_tarima, camas_tarima, pieza_tarima, codigo]
 //     );
@@ -584,7 +602,8 @@ const updateDetalleCatalogo = async (req, res) => {
     largo_pz, ancho_pz, alto_pz, peso_pz,
     largo_inner, ancho_inner, alto_inner, peso_inner,
     largo_master, ancho_master, alto_master, peso_master,
-    code_pz, code_inner, code_master
+    code_pz, code_inner, code_master,
+    id_usuario // ⬅️ capturamos el ID enviado
   } = req.body;
 
   if (!codigo_pro) {
@@ -592,28 +611,74 @@ const updateDetalleCatalogo = async (req, res) => {
   }
 
   try {
-    const [result] = await pool.query(`
-      UPDATE productos SET
-        _pz = ?, _inner = ?, _master = ?,
-        largo_pz = ?, ancho_pz = ?, alto_pz = ?, peso_pz = ?,
-        largo_inner = ?, ancho_inner = ?, alto_inner = ?, peso_inner = ?,
-        largo_master = ?, ancho_master = ?, alto_master = ?, peso_master = ?,
-        code_pz = ?, code_inner = ?, code_master = ?
-      WHERE codigo_pro = ?
-    `, [
-      _pz || 0, _inner || 0, _master || 0,
-      largo_pz || 0, ancho_pz || 0, alto_pz || 0, peso_pz || 0,
-      largo_inner || 0, ancho_inner || 0, alto_inner || 0, peso_inner || 0,
-      largo_master || 0, ancho_master || 0, alto_master || 0, peso_master || 0,
-      code_pz || 0, code_inner || 0, code_master || 0,
-      codigo_pro
-    ]);
+  const [[productoActual]] = await pool.query(
+    `SELECT * FROM productos WHERE codigo_pro = ?`, [codigo_pro]
+  );
 
-    res.json({ message: "Producto actualizado correctamente", affectedRows: result.affectedRows });
-  } catch (error) {
-    console.error("Error al actualizar producto:", error);
-    res.status(500).json({ message: "Error en la actualización", error: error.message });
+  if (!productoActual) {
+    return res.status(404).json({ message: "Producto no encontrado" });
   }
+
+  const cambios = [];
+
+  const compararCambio = (campo, nuevoValor) => {
+    const actual = productoActual[campo] ?? null;
+    const nuevo = nuevoValor ?? null;
+    if (String(actual) !== String(nuevo)) {
+      cambios.push([id_usuario, codigo_pro, 'productos', campo, actual, nuevo]);
+    }
+  };
+
+  compararCambio('_pz', _pz);
+  compararCambio('_inner', _inner);
+  compararCambio('_master', _master);
+  compararCambio('largo_pz', largo_pz);
+  compararCambio('ancho_pz', ancho_pz);
+  compararCambio('alto_pz', alto_pz);
+  compararCambio('peso_pz', peso_pz);
+  compararCambio('largo_inner', largo_inner);
+  compararCambio('ancho_inner', ancho_inner);
+  compararCambio('alto_inner', alto_inner);
+  compararCambio('peso_inner', peso_inner);
+  compararCambio('largo_master', largo_master);
+  compararCambio('ancho_master', ancho_master);
+  compararCambio('alto_master', alto_master);
+  compararCambio('peso_master', peso_master);
+  compararCambio('code_pz', code_pz);
+  compararCambio('code_inner', code_inner);
+  compararCambio('code_master', code_master);
+
+  await pool.query(`
+    UPDATE productos SET
+      _pz = ?, _inner = ?, _master = ?,
+      largo_pz = ?, ancho_pz = ?, alto_pz = ?, peso_pz = ?,
+      largo_inner = ?, ancho_inner = ?, alto_inner = ?, peso_inner = ?,
+      largo_master = ?, ancho_master = ?, alto_master = ?, peso_master = ?,
+      code_pz = ?, code_inner = ?, code_master = ?
+    WHERE codigo_pro = ?
+  `, [
+    _pz || 0, _inner || 0, _master || 0,
+    largo_pz || 0, ancho_pz || 0, alto_pz || 0, peso_pz || 0,
+    largo_inner || 0, ancho_inner || 0, alto_inner || 0, peso_inner || 0,
+    largo_master || 0, ancho_master || 0, alto_master || 0, peso_master || 0,
+    code_pz || 0, code_inner || 0, code_master || 0,
+    codigo_pro
+  ]);
+
+  if (cambios.length > 0) {
+    await pool.query(`
+      INSERT INTO modificaciones 
+        (id_usuario, codigo, tabla, campo, valor_anterior, valor_nuevo)
+      VALUES ?
+    `, [cambios]);
+  }
+
+  res.json({ message: "Producto actualizado correctamente", cambios: cambios.length });
+} catch (error) {
+  console.error("Error al actualizar producto:", error);
+  res.status(500).json({ message: "Error en la actualización", error: error.message });
+}
+
 };
 
 const updateDetalleCatalogoImg = async (req, res) => {
@@ -650,6 +715,8 @@ const updateDetalleCatalogoImg = async (req, res) => {
       const query = `UPDATE productos SET ${campos} WHERE codigo_pro = ?`;
       await pool.query(query, [...valores, codigo_pro]);
     }
+
+    
 
     res.json({ message: "Imágenes subidas y referencias actualizadas correctamente" });
   } catch (err) {

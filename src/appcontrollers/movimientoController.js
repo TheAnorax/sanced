@@ -47,7 +47,7 @@ const realizarMovimiento = async (req, res) => {
     
         // Ejecutar la consulta adicional para ubicaciones
         const [ubicacionesUpdateResult] = await connection.query(
-          "UPDATE ubicaciones SET code_prod = ?, cant_stock = ?, almacen = ? WHERE code_prod = ?",
+          "UPDATE ubicaciones SET code_prod = ?, cant_stock_real = ?, almacen = ? WHERE code_prod = ?",
           [codigo_producto, cantidad_stock, codigo_almacen, codigo_producto]
         );
     

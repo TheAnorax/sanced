@@ -259,7 +259,7 @@ const obtenerRutasParaPDF = async (req, res) => {
              OBSERVACIONES, TOTAL, PARTIDAS, PIEZAS, TARIMAS, TRANSPORTE, 
              PAQUETERIA, GUIA, FECHA_DE_ENTREGA_CLIENTE, DIAS_DE_ENTREGA,
              TIPO, DIRECCION, TELEFONO, TOTAL_FACTURA_LT, ENTREGA_SATISFACTORIA_O_NO_SATISFACTORIA,
-             created_at, MOTIVO, NUMERO_DE_FACTURA_LT, FECHA_DE_ENTREGA_CLIENTE
+             created_at, MOTIVO, NUMERO_DE_FACTURA_LT, FECHA_DE_ENTREGA_CLIENTE, tipo_original
       FROM paqueteria
       WHERE 1 = 1
     `;
@@ -2000,7 +2000,6 @@ const datosPedidos = async (req, res) => {
         fusion: null,
       },
     });
-
   } catch (error) {
     console.error("❌ Error en datosPedidos:", error.message);
     res.status(500).json({
@@ -2010,7 +2009,6 @@ const datosPedidos = async (req, res) => {
     });
   }
 };
-
 
 //funcion de actualisar
 
@@ -2130,7 +2128,22 @@ const actualizarGuiaCompleta = async (req, res) => {
   }
 };
 
+const getReferenciasClientes = async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      "SELECT `Num_Cliente`, `Nombre_cliente`, `REFERENCIA` FROM referencias"
+    );
+    res.json(rows);
+  } catch (error) {
+    console.error("Error al obtener referencias:", error.message);
+    res
+      .status(500)
+      .json({ message: "Error al obtener referencias de clientes" });
+  }
+};
+
 module.exports = {
+  getReferenciasClientes,
   actualizarTipoOriginalDesdeExcel,
   getPaqueteriaData,
   getObservacionesPorClientes,

@@ -269,20 +269,23 @@ const getPrduPaqueteria = async (req, res) => {
   try {
     const selectedDate = req.query.date || moment().format("YYYY-MM-DD");
 
-    // 1. Obtener los datos de productividad
+    // 1. Consulta principal con total de pedidos por usuario
     const [rows] = await pool.query(
       `
       SELECT 
           us.name AS usuario,
           us.role,
           COUNT(DISTINCT combined.codigo_ped) AS partidas,
+          COUNT(DISTINCT combined.pedido) AS pedidos,
           SUM(combined._pz + combined._pq + combined._inner + combined._master) AS cantidad_piezas,
           MIN(combined.inicio_embarque) AS primer_inicio_embarque,
-          MAX(combined.fin_embarque) AS ultimo_fin_embarque
+          MAX(combined.fin_embarque) AS ultimo_fin_embarque,
+          GROUP_CONCAT(DISTINCT combined.pedido) AS pedidos_ids
       FROM (
           SELECT 
               p.id_usuario_paqueteria,
               p.codigo_ped,
+              p.pedido,
               p._pz,
               p._pq,
               p._inner,
@@ -299,6 +302,7 @@ const getPrduPaqueteria = async (req, res) => {
           SELECT 
               pf.id_usuario_paqueteria,
               pf.codigo_ped,
+              pf.pedido,
               pf._pz,
               pf._pq,
               pf._inner,
@@ -317,39 +321,34 @@ const getPrduPaqueteria = async (req, res) => {
       [selectedDate, selectedDate]
     );
 
-    // 2. Obtener el total facturado desde paqueteria por tipo y fecha
-    const [totalFacturadoRows] = await pool.query(
-      `
-      SELECT FORMAT(SUM(IFNULL(TOTAL, 0)), 2) AS total_facturado
-      FROM paqueteria
-      WHERE tipo = 'paqueteria'
-        AND DATE(created_at) = ?
-      `,
-      [selectedDate]
-    );
+    // 2. Obtener total facturado por relación de pedidos
+    const pedidosList = rows.flatMap(row => (row.pedidos_ids || '').split(',')).filter(p => p);
 
-    // 3. Obtener total de pedidos únicos (NO ORDEN) por tipo = paqueteria
-    const [totalPedidosRows] = await pool.query(
-      `
-      SELECT COUNT(DISTINCT \`NO ORDEN\`) AS total_pedidos
-      FROM paqueteria
-      WHERE tipo = 'paqueteria'
-        AND DATE(created_at) = ?
-      `,
-      [selectedDate]
-    );
+    let total_facturado = "0.00";
 
-    const totalPedidos = totalPedidosRows[0]?.total_pedidos || 0;
+    if (pedidosList.length > 0) {
+      const placeholders = pedidosList.map(() => '?').join(',');
+      const [totalFacturadoRows] = await pool.query(
+        `
+        SELECT FORMAT(SUM(IFNULL(TOTAL, 0)), 2) AS total_facturado
+        FROM paqueteria
+        WHERE tipo = 'paqueteria'
+          AND no_orden_int IN (${placeholders})
+        `,
+        pedidosList
+      );
 
-    // 4. Validar si hay datos
+      total_facturado = totalFacturadoRows[0]?.total_facturado || "0.00";
+    }
+
     if (rows.length === 0) {
       return res.json({
         message: `No hay datos disponibles para la fecha: ${selectedDate}`,
       });
     }
 
-    // 5. Calcular totales generales
     const totalPartidas = rows.reduce((sum, row) => sum + row.partidas, 0);
+    const totalPedidos = rows.reduce((sum, row) => sum + row.pedidos, 0);
     const totalPiezas = rows.reduce((sum, row) => sum + parseInt(row.cantidad_piezas || 0), 0);
 
     const primerInicioEmbarque = rows.reduce(
@@ -366,9 +365,6 @@ const getPrduPaqueteria = async (req, res) => {
     const minutos = String(tiempoTotalTrabajo.getUTCMinutes()).padStart(2, "0");
     const segundos = String(tiempoTotalTrabajo.getUTCSeconds()).padStart(2, "0");
 
-    const total_facturado = totalFacturadoRows[0]?.total_facturado || "0.00";
-
-    // 6. Respuesta final
     res.json({
       total_partidas: totalPartidas,
       total_pedidos: totalPedidos,
@@ -870,7 +866,7 @@ const getPrduPaqueteriaPorrango = async (req, res) => {
       SELECT 
           DATE(combined.inicio_embarque) AS fecha,
           us.name AS usuario,
-          us.role,
+          us.role, 
           combined.codigo_ped,
           combined._pz,
           combined._pq,

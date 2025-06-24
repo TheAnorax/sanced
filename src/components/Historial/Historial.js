@@ -128,7 +128,8 @@ function Historial() {
     setSearchTerm(search);
 
     const filtered = movimientos.filter(movimiento =>
-      movimiento.code_prod.toLowerCase().includes(search)
+      String(movimiento.code_prod).toLowerCase().includes(search)
+
     );
 
     setFilteredMovimientos(filtered);

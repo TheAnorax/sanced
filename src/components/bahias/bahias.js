@@ -44,14 +44,14 @@ function Bahias() {
 
   const handleClickOpen = (bahia) => {
     // Bloquear el evento de click si la bahía comienza con "B" o "C"
-    if (/^B-/.test(bahia.bahia)) {
-      Swal.fire(
-        "Error",
-        "Esta bahía está bloqueada y no se puede liberar.",
-        "error"
-      );
-      return; // No continuar con la liberación si está bloqueada
-    }
+    // if (/^B-/.test(bahia.bahia)) {
+    //   Swal.fire(
+    //     "Error",
+    //     "Esta bahía está bloqueada y no se puede liberar.",
+    //     "error"
+    //   );
+    //   return; // No continuar con la liberación si está bloqueada
+    // }
 
     if (bahia.estado && bahia.id_pdi) {
       setSelectedBahia(bahia);

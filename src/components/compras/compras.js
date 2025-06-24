@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from "react";
 import axios from "axios";
 import Swal from "sweetalert2";
 import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 import {
   TextField,
   Table,
@@ -872,129 +873,72 @@ function Compras() {
       setOpenModal(true);
     }
   };
-  const renderButtonsByRole = () => {
-    if (user?.role === "Imp") {
-      return (
-        <Button
-          variant={tipo === "Importaciones" ? "contained" : "outlined"}
-          onClick={() => setTipo("Importaciones")}
-        >
-          Importaciones
-        </Button>
+
+  const downloadExcel = async () => {
+    try {
+      const response = await fetch(
+        `http://66.232.105.87:3007/api/compras/compras?tipo=${tipo}`,
+        {
+          headers: {
+            Authorization: localStorage.getItem("token"),
+          },
+        }
       );
-    } else if (user?.role === "Nac") {
-      return (
-        <Button
-          variant={tipo === "Nacionales" ? "contained" : "outlined"}
-          onClick={() => setTipo("Nacionales")}
-        >
-          Nacionales
-        </Button>
-      );
-    } else if (user?.role === "Ins") {
-      return (
-        <Button
-          variant={tipo === "Insumos" ? "contained" : "outlined"}
-          onClick={() => setTipo("Insumos")}
-        >
-          Insumos
-        </Button>
-      );
-    } else if (user?.role === "Admin") {
-      return (
-        <>
-          <Button
-            variant={tipo === "Importaciones" ? "contained" : "outlined"}
-            onClick={() => setTipo("Importaciones")}
-          >
-            Importaciones
-          </Button>
-          <Button
-            variant={tipo === "Nacionales" ? "contained" : "outlined"}
-            onClick={() => setTipo("Nacionales")}
-          >
-            Nacionales
-          </Button>
-          <Button
-            variant={tipo === "Insumos" ? "contained" : "outlined"}
-            onClick={() => setTipo("Insumos")}
-          >
-            Insumos
-          </Button>
-        </>
-      );
-    } else if (user?.role === "Recibo") {
-      return (
-        <>
-          <Button
-            variant={tipo === "Importaciones" ? "contained" : "outlined"}
-            onClick={() => setTipo("Importaciones")}
-          >
-            Importaciones
-          </Button>
-          <Button
-            variant={tipo === "Nacionales" ? "contained" : "outlined"}
-            onClick={() => setTipo("Nacionales")}
-          >
-            Nacionales
-          </Button>
-          <Button
-            variant={tipo === "Insumos" ? "contained" : "outlined"}
-            onClick={() => setTipo("Insumos")}
-          >
-            Insumos
-          </Button>
-        </>
-      );
-    } else if (user?.role === "Plan") {
-      return (
-        <>
-          <Button
-            variant={tipo === "Importaciones" ? "contained" : "outlined"}
-            onClick={() => setTipo("Importaciones")}
-          >
-            Importaciones
-          </Button>
-          <Button
-            variant={tipo === "Nacionales" ? "contained" : "outlined"}
-            onClick={() => setTipo("Nacionales")}
-          >
-            Nacionales
-          </Button>
-          <Button
-            variant={tipo === "Insumos" ? "contained" : "outlined"}
-            onClick={() => setTipo("Insumos")}
-          >
-            Insumos
-          </Button>
-        </>
-      );
-    } else if (user?.role === "Nac2") {
-      return (
-        <>
-          <Button
-            variant={tipo === "Importaciones" ? "contained" : "outlined"}
-            onClick={() => setTipo("Importaciones")}
-          >
-            Importaciones
-          </Button>
-          <Button
-            variant={tipo === "Nacionales" ? "contained" : "outlined"}
-            onClick={() => setTipo("Nacionales")}
-          >
-            Nacionales
-          </Button>
-          <Button
-            variant={tipo === "Insumos" ? "contained" : "outlined"}
-            onClick={() => setTipo("Insumos")}
-          >
-            Insumos
-          </Button>
-        </>
-      );
+      if (!response.ok) throw new Error("Error descargando datos");
+      const data = await response.json();
+      const worksheet = XLSX.utils.json_to_sheet(data);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Compras");
+      const excelBuffer = XLSX.write(workbook, {
+        bookType: "xlsx",
+        type: "array",
+      });
+      const file = new Blob([excelBuffer], {
+        type: "application/octet-stream",
+      });
+      saveAs(file, `compras_${tipo}.xlsx`);
+    } catch (error) {
+      alert(error.message);
     }
-    return null;
   };
+
+   const renderButtonsByRole = () => {
+    const botonesTipo = {
+      Imp: ["Importaciones"],
+      Nac: ["Nacionales"],
+      Ins: ["Insumos"],
+      Admin: ["Importaciones", "Nacionales", "Insumos"],
+      Recibo: ["Importaciones", "Nacionales", "Insumos"],
+      Plan: ["Importaciones", "Nacionales", "Insumos"],
+      Nac2: ["Importaciones", "Nacionales", "Insumos"],
+    };
+
+    const tiposOrdenados = ["Importaciones", "Nacionales", "Insumos"];
+    const tipos = botonesTipo[user?.role] || [];
+
+    const botones = tiposOrdenados
+      .filter((t) => tipos.includes(t))
+      .map((tipoBtn) => (
+        <Button
+          key={tipoBtn}
+          variant={tipo === tipoBtn ? "contained" : "outlined"}
+          onClick={() => setTipo(tipoBtn)}
+        >
+          {tipoBtn}
+        </Button>
+      ));
+
+    botones.push(
+      <Button key="excel" onClick={downloadExcel} color="success" variant="outlined">
+        Descargar Excel
+      </Button>
+    );
+
+    return <>{botones}</>;
+  };
+
+  
+
 
   const handleDateChange = (newDate) => {
     setSelectedDate(newDate ? dayjs(newDate) : null);
@@ -2002,7 +1946,7 @@ function Compras() {
                   variant="contained"
                   color="primary"
                   onClick={handleFilesUpload}
-                  startIcon={<UploadFileIcon />} 
+                  startIcon={<UploadFileIcon />}
                 >
                   Subir Archivos
                 </Button>

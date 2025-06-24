@@ -355,7 +355,7 @@ function Tracking() {
         "transporteGroupedData",
         JSON.stringify(groupedData)
       );
-      localStorage.setItem("sentRoutesData", JSON.stringify(sentRoutesData)); // Guardar los datos de la segunda tabla
+      // localStorage.setItem("sentRoutesData", JSON.stringify(sentRoutesData));  Guardar los datos de la segunda tabla
       localStorage.setItem("transporteTimestamp", new Date().getTime());
     }
   }, [data, groupedData, sentRoutesData]);
@@ -1791,6 +1791,31 @@ function Tracking() {
 
   // ✅ Versión con tabla de IMPORTE AGREGADA al final (corregida)
 
+  const [referenciasClientes, setReferenciasClientes] = useState([]);
+
+  useEffect(() => {
+    axios
+      .get("http://66.232.105.87:3007/api/Trasporte/referencias")
+      .then((res) => setReferenciasClientes(res.data))
+      .catch((err) => console.error("Error cargando referencias", err));
+  }, []);
+
+  function buscarReferenciaCliente(numCliente, nombreCliente, referencias) {
+    // 1. Busca por número (asegura trims y mismo tipo)
+    let ref = referencias.find(
+      (r) => String(r.Num_Cliente).trim() === String(numCliente).trim()
+    );
+    if (ref) return ref.REFERENCIA;
+
+    // 2. Si no existe, busca por nombre
+    ref = referencias.find(
+      (r) =>
+        r.Nombre_cliente.trim().toUpperCase() ===
+        (nombreCliente || "").trim().toUpperCase()
+    );
+    return ref ? ref.REFERENCIA : "";
+  }
+
   const totalPagesExp = "___total_pages___";
 
   function addPageNumber(doc) {
@@ -1877,12 +1902,18 @@ function Tracking() {
       doc.line(10, currentY, 200, currentY);
       currentY += 4;
 
+      const tipo_original = route["tipo_original"] || "No definido";
       const nombreCliente = route["NOMBRE DEL CLIENTE"] || "No disponible";
       const numeroFactura = route["NO_FACTURA"] || "No disponible";
       const direccion = cleanAddress(route["DIRECCION"]) || "No disponible";
       const numero = route["NUM. CLIENTE"] || "No disponible";
       const telefono = route["TELEFONO"] || "Sin número";
       const rawTotal = route["TOTAL"];
+      const referenciaCliente = buscarReferenciaCliente(
+        numero,
+        nombreCliente,
+        referenciasClientes
+      );
       let totalImporte = 0;
       if (
         rawTotal &&
@@ -1906,7 +1937,7 @@ function Tracking() {
         currentY
       );
       currentY += 4;
-      doc.text(`VT: ${pedido}`, marginLeft, currentY);
+      doc.text(`No Orden: ${pedido}-${tipo_original}`, marginLeft, currentY);
       currentY += 4;
       doc.text(`FACTURA No.: ${numeroFactura}`, marginLeft, currentY);
       currentY += 4;
@@ -1920,7 +1951,7 @@ function Tracking() {
       doc.text("INFORMACIÓN IMPORTANTE", 105, infoY + 4, { align: "center" });
       doc.setFontSize(5.3);
       doc.text(
-        "En caso de detectar cualquier irregularidad (daños, faltantes, o manipulaciones), Favor de comunicarse de inmediato al departamento de atención al cliente al número:(55) 58727290 EXT.: (8815, 8819)",
+        "En caso de detectar cualquier irregularidad (daños, faltantes,cajas mojadas o manipulaciones), Favor de comunicarse de inmediato al departamento de atención al cliente al número:(55) 58727290 EXT.: (8815, 8819)",
         105,
         infoY + 9,
         { align: "center", maxWidth: 180 }
@@ -2334,7 +2365,100 @@ function Tracking() {
 
       currentY = doc.lastAutoTable.finalY + 0;
       currentY = verificarEspacio(doc, currentY, 5);
-      doc.addImage(infoBancaria, "JPEG", 10, currentY, 190, 35);
+
+      //informacion bancaria
+      // === Información Bancaria + Observaciones alineadas ===
+
+      const tablaBancosY = currentY + 3; // Ajusta el +3 si lo quieres más arriba o abajo
+
+      // TABLA DE BANCOS
+      doc.autoTable({
+        startY: tablaBancosY,
+        head: [
+          [
+            {
+              content: "BANCO",
+              styles: { halign: "left", fontStyle: "bold", fontSize: 8 },
+            },
+            {
+              content: "NO. DE CUENTA",
+              styles: { halign: "center", fontStyle: "bold", fontSize: 8 },
+            },
+            {
+              content: "SUCURSAL",
+              styles: { halign: "center", fontStyle: "bold", fontSize: 8 },
+            },
+            {
+              content: "CLABE",
+              styles: { halign: "center", fontStyle: "bold", fontSize: 8 },
+            },
+          ],
+        ],
+        body: [
+          ["BANAMEX", "6860432", "7006", "002180700668604325"],
+          [
+            { content: "BANORTE ", styles: { fontStyle: "bold" } },
+            { content: "0890771176", styles: { fontStyle: "bold" } },
+            { content: "04", styles: { fontStyle: "bold" } },
+            { content: "072180008907711766", styles: { fontStyle: "bold" } },
+          ],
+          ["        ", "Con. CEI", "    ", "Referencia"],
+          ["BANCOMER", "02476827", "1838", `${referenciaCliente}`],
+        ],
+        theme: "plain", // Sin bordes, puro alineado como quieres
+        styles: { fontSize: 8, cellPadding: 1, halign: "center" },
+        margin: { left: 10 },
+        tableWidth: 115, // ajusta a 115-120 según el ancho de tu hoja, eso te da espacio a la derecha para observaciones
+        headStyles: { textColor: [0, 0, 0], fontStyle: "bold" },
+        bodyStyles: { textColor: [0, 0, 0] },
+      });
+
+      // CAJA OBSERVACIONES (alineada a la derecha)
+      // =============== CAJA DE OBSERVACIONES ===============
+      const obsBoxX = 133;
+      const obsBoxY = tablaBancosY;
+      const obsBoxWidth = 65;
+      const obsBoxHeight = 28;
+
+      // Dibuja el recuadro
+      doc.setDrawColor(120, 120, 120);
+      doc.setLineWidth(0.3);
+      doc.rect(obsBoxX, obsBoxY, obsBoxWidth, obsBoxHeight);
+
+      // Título
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.text("Observaciones:", obsBoxX + 3, obsBoxY + 7);
+
+      // Líneas punteadas dentro del recuadro, bien alineadas
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+
+      const numLineas = 4;
+      const leftPadding = 5; // padding izquierdo dentro de la caja
+      const rightPadding = 5;
+      const lineaAncho = obsBoxWidth - leftPadding - rightPadding;
+      for (let i = 0; i < numLineas; i++) {
+        // Empieza un poco debajo del título y separadas
+        const lineaY = obsBoxY + 11 + i * 5.3;
+        doc.text(
+          "...".repeat(Math.floor(lineaAncho / 2.5)), // Ajusta el divisor para el largo de puntos
+          obsBoxX + leftPadding,
+          lineaY
+        );
+      }
+
+      // Poner leyenda final justo abajo, centrado
+      const leyendaY = obsBoxY + obsBoxHeight + 7; // Ajusta el +7 para el espaciado
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7.5);
+      doc.text(
+        "A la firma/sello del presente documento se tiene por recibida de conformidad la mercancía y aceptado el monto a pagar aquí descrita.",
+        10,
+        leyendaY
+      );
+
+      currentY = leyendaY + 4; // Si necesitas continuar después
 
       addPageNumber(doc);
       doc.save(`PackingList_de_${pedido}.pdf`);
@@ -2344,6 +2468,8 @@ function Tracking() {
       alert("Hubo un error al generar el PDF.");
     }
   };
+
+  //fin del PDF
 
   useEffect(() => {
     // console.log("Observaciones actuales:", observacionesPorRegistro);
@@ -3353,8 +3479,8 @@ function Tracking() {
                 <option value="3">Marzo</option>
                 <option value="4">Abril</option>
                 <option value="5">Mayo</option>
-                {/* <option value="6">Junio</option>
-                <option value="7">Julio</option>
+                <option value="6">Junio</option>
+                {/* <option value="7">Julio</option>
                 <option value="8">Agosto</option>
                 <option value="9">Septiembre</option>
                 <option value="10">Octubre</option>
@@ -3693,8 +3819,8 @@ function Tracking() {
                 <option value="3">Marzo</option>
                 <option value="4">Abril</option>
                 <option value="5">Mayo</option>
-                {/*<option value="6">Junio</option>
-                <option value="7">Julio</option>
+                <option value="6">Junio</option>
+                {/*  <option value="7">Julio</option>
                 <option value="8">Agosto</option>
                 <option value="9">Septiembre</option>
                 <option value="10">Octubre</option>
@@ -4046,7 +4172,9 @@ function Tracking() {
                     .map((routeData, index) => (
                       <TableRow key={index}>
                         {visibleColumns.includes("NO ORDEN") && (
-                          <TableCell>{routeData["NO ORDEN"]}</TableCell>
+                          <TableCell>
+                            {routeData["NO ORDEN"]}-{routeData["tipo_original"]}
+                          </TableCell>
                         )}
 
                         <TableCell>
@@ -4191,8 +4319,8 @@ function Tracking() {
                 <option value="3">Marzo</option>
                 <option value="4">Abril</option>
                 <option value="5">Mayo</option>
-                {/* <option value="6">Junio</option>
-                <option value="7">Julio</option>
+                <option value="6">Junio</option>
+                {/*  <option value="7">Julio</option>
                 <option value="8">Agosto</option>
                 <option value="9">Septiembre</option>
                 <option value="10">Octubre</option>

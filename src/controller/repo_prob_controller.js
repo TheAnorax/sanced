@@ -14,6 +14,7 @@ const Upload_Report_Prob = async (req, res) => {
       desc_prob,
       remitente,
       no_pedido,
+      pzs,
       turno,
       fecha,
       hora,
@@ -31,10 +32,11 @@ const Upload_Report_Prob = async (req, res) => {
         desc_prob,
         remitente,
         no_pedido,
+        pzs,
         turno,
         fecha,
         hora
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     // Ejecutar la consulta con los valores proporcionados
@@ -43,11 +45,12 @@ const Upload_Report_Prob = async (req, res) => {
       motivo,
       encargado,
       area,
-      sku || null, // Si el valor es undefined o null, lo insertamos como NULL
+      sku || null,
       desc_sku || null,
       desc_prob,
       remitente,
       no_pedido || null,
+      pzs || null,
       turno || null,
       fecha,
       hora,

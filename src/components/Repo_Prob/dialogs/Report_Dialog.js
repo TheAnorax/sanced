@@ -35,7 +35,6 @@ const ReportDialog = ({
   selectedStatus,
   handleStatusChange,
 }) => {
-    
   // Función para manejar el clic en "Actualizar Estatus"
   const handleUpdateStatus = async () => {
     if (selectedReport) {
@@ -45,13 +44,16 @@ const ReportDialog = ({
       };
 
       try {
-        const response = await fetch("http://66.232.105.87:3007/api/repo_prob/update-status", {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(updatedData),
-        });
+        const response = await fetch(
+          "http://66.232.105.87:3007/api/repo_prob/update-status",
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(updatedData),
+          }
+        );
 
         if (response.ok) {
           const result = await response.json();
@@ -105,7 +107,9 @@ const ReportDialog = ({
                   >
                     Info del Área
                   </Typography>
-                  <Box sx={{ borderBottom: "2px solid red", marginBottom: 2 }} />
+                  <Box
+                    sx={{ borderBottom: "2px solid red", marginBottom: 2 }}
+                  />
                   <Box
                     sx={{
                       display: "grid",
@@ -143,6 +147,11 @@ const ReportDialog = ({
                         <strong>Turno:</strong> {selectedReport.turno}
                       </Typography>
                     )}
+                    {selectedReport.pzs && (
+                      <Typography>
+                        <strong>No Piezas:</strong> {selectedReport.pzs}
+                      </Typography>
+                    )}
                   </Box>
                 </Box>
 
@@ -160,7 +169,9 @@ const ReportDialog = ({
                   >
                     Descripción del problema
                   </Typography>
-                  <Box sx={{ borderBottom: "2px solid red", marginBottom: 2 }} />
+                  <Box
+                    sx={{ borderBottom: "2px solid red", marginBottom: 2 }}
+                  />
                   <Typography>{selectedReport.desc_prob}</Typography>
                 </Box>
               </Box>
@@ -215,7 +226,11 @@ const ReportDialog = ({
                   }}
                 >
                   {["Completado", "Pendiente", "En Proceso"].map((status) => (
-                    <ListItem key={status} disablePadding sx={{ width: "auto" }}>
+                    <ListItem
+                      key={status}
+                      disablePadding
+                      sx={{ width: "auto" }}
+                    >
                       <ListItemButton
                         selected={selectedStatus === status}
                         onClick={() => handleStatusChange(status)} // Llama a la función pasada como prop

@@ -31,6 +31,7 @@ function Repo_Prob() {
     sku: "",
     noPedido: "",
     turno: "",
+    pzs: "", // Nuevo campo para Piezas
   };
 
   const surtidosData = Array.from({ length: 120 }, (_, index) => ({
@@ -58,115 +59,106 @@ function Repo_Prob() {
     }
   };
 
-const handleSubmit = async () => {
-  // Validar que todos los campos estén llenos
-  const requiredFields = ["indole", "encargado", "area", "descripcion", "remitente"];
-  const newErrors = {};
-
-  // Verificar si algún campo requerido está vacío
-  requiredFields.forEach((field) => {
-    if (!problemData[field] || problemData[field].trim() === "") {
-      newErrors[field] = "Este campo es obligatorio";
-    }
-  });
-
-  // Si el tipo de reporte es "Surtidos", validar campos adicionales
-  if (selectedCheck === "Surtidos") {
-    if (!problemData.sku || problemData.sku.trim() === "") {
-      newErrors.sku = "Debes seleccionar un SKU";
-    }
-    if (!problemData.noPedido || problemData.noPedido.trim() === "") {
-      newErrors.noPedido = "Este campo es obligatorio";
-    }
-    if (!problemData.turno || problemData.turno.trim() === "") {
-      newErrors.turno = "Este campo es obligatorio";
-    }
-  }
-
-  // Si hay errores, actualiza el estado y muestra un mensaje
-  if (Object.keys(newErrors).length > 0) {
-    setErrors(newErrors);
-    alert("Por favor, completa todos los campos obligatorios.");
-    return;
-  }
-
-  try {
-    // Determinar el tipo de reporte
-    const tip_rep = selectedCheck === "General" ? "gen" : "surt";
-
-    // Generar la fecha y hora actuales
-    const now = new Date();
-
-    // Formatear la fecha como "21/Mayo/2025"
-    const meses = [
-      "Enero",
-      "Febrero",
-      "Marzo",
-      "Abril",
-      "Mayo",
-      "Junio",
-      "Julio",
-      "Agosto",
-      "Septiembre",
-      "Octubre",
-      "Noviembre",
-      "Diciembre",
+  const handleSubmit = async () => {
+    const requiredFields = [
+      "indole",
+      "encargado",
+      "area",
+      "descripcion",
+      "remitente",
     ];
-    const dia = now.getDate();
-    const mes = meses[now.getMonth()];
-    const anio = now.getFullYear();
-    const fecha = `${dia}/${mes}/${anio}`;
+    const newErrors = {};
 
-    // Formatear la hora como "01:13 p. m."
-    const horas = now.getHours();
-    const minutos = now.getMinutes();
-    const periodo = horas >= 12 ? "p. m." : "a. m.";
-    const horaFormateada = `${horas % 12 || 12}:${minutos
-      .toString()
-      .padStart(2, "0")} ${periodo}`;
+    requiredFields.forEach((field) => {
+      if (!problemData[field] || problemData[field].trim() === "") {
+        newErrors[field] = "Este campo es obligatorio";
+      }
+    });
 
-    // Crear el objeto de datos para enviar
-    const reportData = {
-      tip_rep,
-      motivo: problemData.indole,
-      encargado: problemData.encargado,
-      area: problemData.area,
-      sku: problemData.sku || null,
-      desc_sku: selectedSurtido ? selectedSurtido.descripcion : null,
-      desc_prob: problemData.descripcion,
-      remitente: problemData.remitente,
-      no_pedido: problemData.noPedido || null,
-      turno: problemData.turno || null,
-      fecha, // Fecha formateada
-      hora: horaFormateada, // Hora formateada
-    };
+    if (selectedCheck === "Surtidos") {
+      if (!problemData.sku || problemData.sku.trim() === "") {
+        newErrors.sku = "Debes seleccionar un SKU";
+      }
+      if (!problemData.noPedido || problemData.noPedido.trim() === "") {
+        newErrors.noPedido = "Este campo es obligatorio";
+      }
+      if (!problemData.turno || problemData.turno.trim() === "") {
+        newErrors.turno = "Este campo es obligatorio";
+      }
+      if (!problemData.pzs || problemData.pzs.trim() === "") {
+        newErrors.pzs = "Este campo es obligatorio";
+      }
+    }
 
-    // Enviar la solicitud POST al backend
-    const response = await axios.post(
-      "http://66.232.105.87:3007/api/repo_prob/upload",
-      reportData
-    );
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      alert("Por favor, completa todos los campos obligatorios.");
+      return;
+    }
 
-    console.log("Reporte enviado exitosamente:", response.data);
+    try {
+      const tip_rep = selectedCheck === "General" ? "gen" : "surt";
+      const now = new Date();
+      const meses = [
+        "Enero",
+        "Febrero",
+        "Marzo",
+        "Abril",
+        "Mayo",
+        "Junio",
+        "Julio",
+        "Agosto",
+        "Septiembre",
+        "Octubre",
+        "Noviembre",
+        "Diciembre",
+      ];
+      const dia = now.getDate();
+      const mes = meses[now.getMonth()];
+      const anio = now.getFullYear();
+      const fecha = `${dia}/${mes}/${anio}`;
+      const horas = now.getHours();
+      const minutos = now.getMinutes();
+      const periodo = horas >= 12 ? "p. m." : "a. m.";
+      const horaFormateada = `${horas % 12 || 12}:${minutos
+        .toString()
+        .padStart(2, "0")} ${periodo}`;
 
-    // Mensaje de éxito
-    alert(
-      `Reporte enviado exitosamente.\nFecha: ${fecha}\nHora: ${horaFormateada}`
-    );
+      const reportData = {
+        tip_rep,
+        motivo: problemData.indole,
+        encargado: problemData.encargado,
+        area: problemData.area,
+        sku: problemData.sku || null,
+        desc_sku: selectedSurtido ? selectedSurtido.descripcion : null,
+        desc_prob: problemData.descripcion,
+        remitente: problemData.remitente,
+        no_pedido: problemData.noPedido || null,
+        turno: problemData.turno || null,
+        pzs: problemData.pzs || null, // Incluye el valor de "pzs"
+        fecha,
+        hora: horaFormateada,
+      };
 
-    // Restablecer el estado del formulario al estado inicial
-    setProblemData(initialState);
-    setErrors({}); // Limpiar errores
-    setSelectedSurtido(null); // Restablecer selección de SKU
-  } catch (error) {
-    console.error("Error al enviar el reporte:", error);
-    alert(
-      "Hubo un error al enviar el reporte. Por favor, inténtalo de nuevo."
-    );
-  }
-};
+      const response = await axios.post(
+        "http://66.232.105.87:3007/api/repo_prob/upload",
+        reportData
+      );
 
-
+      console.log("Reporte enviado exitosamente:", response.data);
+      alert(
+        `Reporte enviado exitosamente.\nFecha: ${fecha}\nHora: ${horaFormateada}`
+      );
+      setProblemData(initialState);
+      setErrors({});
+      setSelectedSurtido(null);
+    } catch (error) {
+      console.error("Error al enviar el reporte:", error);
+      alert(
+        "Hubo un error al enviar el reporte. Por favor, inténtalo de nuevo."
+      );
+    }
+  };
 
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
@@ -378,7 +370,7 @@ const handleSubmit = async () => {
                 />
                 {selectedCheck === "Surtidos" && (
                   <Grid container spacing={2}>
-                    <Grid item xs={6}>
+                    <Grid item xs={4}>
                       <TextField
                         label="No Pedido"
                         variant="outlined"
@@ -386,9 +378,11 @@ const handleSubmit = async () => {
                         name="noPedido"
                         value={problemData.noPedido}
                         onChange={handleChange}
+                        error={!!errors.noPedido}
+                        helperText={errors.noPedido}
                       />
                     </Grid>
-                    <Grid item xs={6}>
+                    <Grid item xs={4}>
                       <TextField
                         label="Turno"
                         variant="outlined"
@@ -396,6 +390,20 @@ const handleSubmit = async () => {
                         name="turno"
                         value={problemData.turno}
                         onChange={handleChange}
+                        error={!!errors.turno}
+                        helperText={errors.turno}
+                      />
+                    </Grid>
+                    <Grid item xs={4}>
+                      <TextField
+                        label="Piezas"
+                        variant="outlined"
+                        fullWidth
+                        name="pzs"
+                        value={problemData.pzs}
+                        onChange={handleChange}
+                        error={!!errors.pzs}
+                        helperText={errors.pzs}
                       />
                     </Grid>
                   </Grid>

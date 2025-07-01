@@ -75,4 +75,19 @@ router.get('/referencias', getReferenciasClientes);
 // POST: Enviar correo de asignación (con intentos)
 router.post('/enviar-correo-asignacion', upload.single('pdf'), enviarCorreoAsignacion);
 
+// backend local (Node.js + Express)
+const axios = require("axios"); // Asegúrate de importar axios al inicio si no está
+
+router.post("/obtenerPedidos", async (req, res) => {
+  try {
+    const response = await axios.post("http://santul.verpedidos.com:9011/SantulTest/SANCED");
+    res.json(response.data);
+  } catch (err) {
+    console.error("Error al consultar API remota:", err);
+    res.status(500).json({ error: "Error al consultar el servidor remoto" });
+  }
+});
+
+
+
 module.exports = router;

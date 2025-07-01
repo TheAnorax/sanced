@@ -181,7 +181,7 @@ LEFT JOIN usuarios us_surtido ON pf.id_usuario_surtido = us_surtido.id_usu
 LEFT JOIN usuarios us_paqueteria ON pf.id_usuario_paqueteria = us_paqueteria.id_usu
 WHERE
     pf.pedido = ? AND pf.tipo = ?;
-`, 
+`,
       [pedido, tipo, pedido, tipo, pedido, tipo] // 👈 Agrega los parámetros en el orden correcto
     );
 
@@ -267,7 +267,23 @@ WHERE pf.motivo IS NOT NULL
   }
 };
 
+// GET /api/paqueteria/cliente/:numero
+const getClientePorNumero = async (req, res) => {
+  const { numero } = req.params;
 
+  try {
+    const [rows] = await pool.query(`
+      SELECT * FROM paqueteria
+      WHERE \`NUM. CLIENTE\` = ?
+      ORDER BY FECHA DESC
+      LIMIT 5
+    `, [numero]);
 
-module.exports = { getFinalizados, getPedidoDetalles, getMotivos };
+    res.json(rows);
+  } catch (err) {
+    console.error("Error al consultar paqueteria:", err);
+    res.status(500).json({ error: "Error al buscar en paqueteria" });
+  }
+};
 
+module.exports = { getFinalizados, getPedidoDetalles, getMotivos, getClientePorNumero };

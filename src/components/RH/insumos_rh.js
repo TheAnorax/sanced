@@ -59,7 +59,7 @@ function InsumosRH() {
       // 1) Llamamos simultáneamente a ambos endpoints:
       const [traspasoRes, recibidosRes] = await Promise.all([
         axios.get('http://localhost:3007/api/RH/ObtenerTraspaso'),
-        axios.get('http://localhost:3001/api/traspaso/recibidos'),
+        axios.get('http://66.232.105.87:3001/api/traspaso/recibidos'),
       ]);
 
       const todosLosTraspasos = traspasoRes.data;     // Ejemplo: [{ Codigo: 2704, … }, { Codigo: 3470, … }, …]

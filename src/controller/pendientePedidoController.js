@@ -37,7 +37,7 @@ const getPedidos = async (req, res) => {
       });
 
       return acc;
-    }, {});
+    }, {}); 
 
     res.json(Object.values(groupedPedidos));
   } catch (error) {

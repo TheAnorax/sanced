@@ -18,7 +18,7 @@ const fetchPedidos = async () => {
 //   // Filtrar las bahías que no comiencen con "B" o "C"
 //   const filteredBahias = response.data.filter(bahia => !/^C-/.teyyst(bahia.bahia));
   
-//   return filteredBahias;
+//   return filteredBahias; 
 // };
 
 const fetchBahias = async () => {
@@ -398,6 +398,7 @@ const Pedidos = React.memo(() => {
   if (errorPedidos || errorBahias || errorUsuarios) return <div>Error al cargar datos</div>;
 
   return (
+
     <Box display="flex" flexDirection="column" width="100%" height="400vh" alignItems="center">
       <Box display="flex" flexDirection="row" width="100%" p={1} justifyContent="space-between" alignItems="center">
         <TextField 
@@ -444,6 +445,7 @@ const Pedidos = React.memo(() => {
         </AutoSizer>
       </Box>
     </Box>
+    
   );
 });
 

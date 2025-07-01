@@ -15,7 +15,9 @@ import CompareArrowsIcon from "@mui/icons-material/CompareArrows";
 import { Tooltip } from "@mui/material";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import EmailIcon from '@mui/icons-material/Email';
+import dayjs from 'dayjs';
 import moment from "moment";
+import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 
 import { NumerosALetras } from "numero-a-letras";
 
@@ -652,6 +654,84 @@ function Transporte() {
     }).format(value);
   };
 
+
+  //subor archivo o carga de la api 
+  dayjs.extend(isSameOrAfter);
+
+  const [modoCarga, setModoCarga] = useState("api"); // o "excel"
+
+  const fetchPedidosDesdeAPI = async () => {
+    try {
+      const response = await axios.post("http://localhost:3007/api/Trasporte/obtenerPedidos");
+      const datos = response.data;
+
+      // 🔸 Crear Set de pedidos ya registrados
+      const pedidosRegistrados = new Set();
+
+      [...sentRoutesData, ...Object.values(groupedData).flatMap(g => g.rows)].forEach((r) => {
+        const orden = String(r["NO ORDEN"]).trim();
+        const tipo = String(r["TIPO ORIGINAL"] || r["tipo_original"]).trim().toUpperCase();
+        pedidosRegistrados.add(`${orden}_${tipo}`);
+      });
+
+      // 🔸 Calcular últimos 3 días hábiles
+      const getLastBusinessDays = (numDays) => {
+        const businessDays = [];
+        let current = new Date();
+        current.setHours(0, 0, 0, 0);
+
+        while (businessDays.length < numDays) {
+          if (current.getDay() !== 0 && current.getDay() !== 6) {
+            businessDays.push(new Date(current)); 
+          }
+          current.setDate(current.getDate() - 1);
+        }
+
+        return businessDays.map(d => d.toISOString().split("T")[0]);
+      };
+
+      const diasValidos = getLastBusinessDays(3);
+
+      const datosMapeados = datos
+        .filter((row) => {
+          const fechaTexto = row.Fecha?.split("T")[0];
+          const orden = String(row.NoOrden).trim();
+          const tipo = String(row.TpoOriginal || "").trim().toUpperCase();
+          const clave = `${orden}_${tipo}`;
+          return diasValidos.includes(fechaTexto) && !pedidosRegistrados.has(clave);
+        })
+        
+        .map((row) => ({
+          RUTA: "Sin Ruta",
+          FECHA: dayjs(row.Fecha).format("DD/MM/YYYY"),
+          "NO ORDEN": row.NoOrden,
+          "NO FACTURA": row.NoFactura,
+          "NUM. CLIENTE": row.NumCliente,
+          "NOMBRE DEL CLIENTE": row.Nombre_Cliente,
+          Codigo_Postal: row.Postal,
+          ZONA: row.Zona,
+          MUNICIPIO: row.Municipio,
+          ESTADO: row.Estado,
+          OBSERVACIONES: row.Observaciones || "",
+          TOTAL: parseFloat(String(row.Total || "0").replace(",", "")),
+          PARTIDAS: Number(row.Partidas || 0),
+          PIEZAS: Number(row.Piezas || 0),
+          DIRECCION: row.Direccion || "",
+          CORREO: row.Correo || "",
+          TELEFONO: row.Telefono || "",
+          "EJECUTIVO VTAS": row.Ejecutivo || "",
+          "TIPO ORIGINAL": row.TpoOriginal || "",
+        }));
+
+      setData(datosMapeados);
+
+    } catch (error) {
+      console.error("Error al obtener los pedidos desde API:", error);
+    }
+  };
+
+
+
   const mapColumns = (row) => ({
     RUTA: "Sin Ruta",
     FECHA: row["Fecha Lista Surtido"],
@@ -683,6 +763,7 @@ function Transporte() {
     "EJECUTIVO VTAS": row["Ejecutico Vtas"] || "",
     "TIPO ORIGINAL": row["Tipo"] || "",
   });
+
 
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
@@ -844,6 +925,22 @@ function Transporte() {
 
     reader.readAsBinaryString(file);
   };
+
+
+  useEffect(() => {
+    if (modoCarga === "api") {
+      fetchPedidosDesdeAPI();
+    }
+  }, []);
+
+
+  useEffect(() => {
+    fetchPedidosDesdeAPI(); // Se llama al cargar el componente
+  }, []);
+
+
+
+
 
   // 🔹 Esperar a que `setData()` actualice el estado antes de calcular totales
   useEffect(() => {
@@ -2243,6 +2340,15 @@ function Transporte() {
     return currentY;
   }
 
+  const getTipoDominante = (productos) => {
+    const tipos = productos.map(p => (p.tipo_caja || "").toUpperCase());
+    const cuenta = {};
+    for (const tipo of tipos) cuenta[tipo] = (cuenta[tipo] || 0) + 1;
+
+    const tipoMasUsado = Object.entries(cuenta).sort((a, b) => b[1] - a[1])[0]?.[0] || "CAJA";
+    return tipoMasUsado === "ATA" ? "ATADO" : tipoMasUsado;
+  };
+
 
 
 
@@ -2258,7 +2364,7 @@ function Transporte() {
       if (!route) return alert("No se encontró la ruta");
 
       const responseEmbarque = await fetch(
-        `http://localhost:3007/api/Trasporte/embarque/${pedido}`
+        `http://localhost:3007/api/Trasporte/embarque/${pedido}` //toma la informacion de embarques 
       );
       const data = await responseEmbarque.json();
       if (!data || !Array.isArray(data) || data.length === 0)
@@ -2358,27 +2464,79 @@ function Transporte() {
       const productosConCaja = data.filter((i) => i.caja && i.caja > 0);
       const productosSinCaja = data.filter((i) => !i.caja || i.caja === 0);
 
-      // ✔️ Primero agrupamos productos por caja original
-
-      const cajasAgrupadasOriginal = productosConCaja.reduce((acc, item) => {
-        if (!acc[item.caja]) acc[item.caja] = [];
-        acc[item.caja].push(item);
-        return acc;
-      }, {});
-
-      const cajasOrdenadas = Object.entries(cajasAgrupadasOriginal).sort(
-        (a, b) => Number(a[0]) - Number(b[0])
+      const productosSinCajaAtados = productosSinCaja.filter(
+        (p) => (p.um || "").toUpperCase() === "ATA"
       );
 
-      const totalINNER_MASTER = productosSinCaja.reduce(
-        (s, i) => s + (i._inner || 0) + (i._master || 0),
-        0
-      );
-      const totalCajasArmadas = cajasOrdenadas.length;
-      const totalCajas = totalINNER_MASTER + totalCajasArmadas;
+      // ✅ AGRUPAR por tipo + cajas (fusionadas respetadas)
+      const cajasAgrupadasOriginal = {};
 
-      const totalTarimas = data.reduce((s, i) => s + (i.tarimas || 0), 0);
-      const totalAtados = data.reduce((s, i) => s + (i.atados || 0), 0);
+      for (const item of productosConCaja) {
+        const tipo = (item.tipo_caja || "").toUpperCase().trim();
+        const cajasTexto = item.cajas || item.caja;
+
+        if (!cajasTexto) continue;
+
+        const cajas = String(cajasTexto)
+          .split(",")
+          .map(c => c.trim())
+          .filter(c => c !== "")
+          .sort((a, b) => parseInt(a) - parseInt(b)); // asegura orden
+
+        const claveCaja = cajas.join(","); // ejemplo: "2,6"
+        const clave = `${tipo}_${claveCaja}`;
+
+        if (!cajasAgrupadasOriginal[clave]) cajasAgrupadasOriginal[clave] = [];
+        cajasAgrupadasOriginal[clave].push(item);
+      }
+
+
+
+      const cajasOrdenadas = Object.entries(cajasAgrupadasOriginal).sort((a, b) => {
+        const getMin = (key) => {
+          const parts = key.split("_")[1]; // "2,6"
+          return Math.min(...parts.split(",").map(p => parseInt(p.trim())));
+        };
+        return getMin(a[0]) - getMin(b[0]);
+      });
+
+      // === Contador REAL de cajas por tipo ===
+      const cajasArmadas = new Set();
+      const cajasAtados = new Set();
+      const cajasTarimas = new Set();
+
+      for (const key of Object.keys(cajasAgrupadasOriginal)) {
+        const [tipo, cajasStr] = key.split("_");
+        const cajas = cajasStr.split(",").map(c => c.trim()).filter(c => c !== "");
+
+        for (const caja of cajas) {
+          const clave = `${tipo}_${caja}`;
+
+          if (tipo === "CAJA") {
+            cajasArmadas.add(clave); // solo cuenta como caja si es física
+          } else if (["ATA", "ATADO"].includes(tipo)) {
+            cajasAtados.add(clave);
+          } else if (tipo === "TARIMA") {
+            cajasTarimas.add(clave);
+          }
+        }
+      }
+
+      // 💡 INNER y MASTER sólo si están sueltos (sin tipo_caja = CAJA)
+      const totalINNER_MASTER = data.reduce((s, i) => {
+        const tipo = (i.tipo_caja || "").toUpperCase();
+        if (["INNER", "MASTER"].includes(tipo)) {
+          return s + (i._inner || 0) + (i._master || 0);
+        }
+        return s;
+      }, 0);
+
+      const totalCajasArmadas = cajasArmadas.size;
+      const totalAtados = cajasAtados.size;
+      const totalTarimas = cajasTarimas.size;
+      const totalCajas = totalINNER_MASTER + totalCajasArmadas + totalAtados + totalTarimas;
+
+
 
       currentY = verificarEspacio(doc, currentY, 2);
       doc.autoTable({
@@ -2411,8 +2569,16 @@ function Transporte() {
 
       let numeroCajaSecuencial = 1;
 
-      for (const [, productos] of cajasOrdenadas) {
-        const titulo = `Productos en la Caja ${numeroCajaSecuencial}`;
+
+
+
+      for (const [key, productos] of cajasOrdenadas) {
+        const [_, numeroCaja] = key.split("_");
+        const tipoVisible = getTipoDominante(productos);
+        const titulo = `Productos en  ${tipoVisible} ${numeroCaja}`;
+
+
+
 
         // Título de la tabla
         doc.autoTable({
@@ -2511,12 +2677,11 @@ function Transporte() {
         numeroCajaSecuencial++;
       }
 
-      if (productosSinCaja.length > 0) {
-        // Título principal
+      if (productosSinCajaAtados.length > 0) {
         currentY = verificarEspacio(doc, currentY, 2);
         doc.autoTable({
           startY: currentY,
-          head: [["Productos sin caja"]],
+          head: [["Lotes Atados"]],
           body: [],
           theme: "grid",
           styles: { halign: "center", fontSize: 9 },
@@ -2548,7 +2713,7 @@ function Transporte() {
               "VALIDAR",
             ],
           ],
-          body: productosSinCaja.map((item) => [
+          body: productosSinCajaAtados.map((item) => [
             item.codigo_ped || "",
             item.des || "",
             item.cantidad || "",
@@ -2594,7 +2759,7 @@ function Transporte() {
               data.cursor.y < 30 &&
               !yaContinua
             ) {
-              const text = "Continuación de productos sin caja";
+              const text = "Continuación de productos atados sin caja";
               doc.setFontSize(8);
               doc.text(text, 105, data.cursor.y - 6, { align: "center" });
               yaContinua = true;
@@ -2604,6 +2769,115 @@ function Transporte() {
 
         currentY = doc.lastAutoTable.finalY + 4;
       }
+
+      const productosNoEnviados = productosSinCaja.filter(
+        (item) =>
+          (item._inner || 0) === 0 &&
+          (item._master || 0) === 0 &&
+          (item.tarimas || 0) === 0 &&
+          (item.atados || 0) === 0 &&
+          (item._pz || 0) === 0 &&
+          (item._pq || 0) === 0
+      );
+
+      const productosSinCajaValidos = productosSinCaja.filter(
+        (item) => !productosNoEnviados.includes(item)
+      );
+
+      if (productosNoEnviados.length > 0) {
+        currentY = verificarEspacio(doc, currentY, 2);
+        doc.autoTable({
+          startY: currentY,
+          head: [["Productos no enviados"]],
+          body: [],
+          theme: "grid",
+          styles: { halign: "center", fontSize: 9 },
+          margin: { left: 10 },
+          tableWidth: 190,
+          headStyles: {
+            fillColor: [255, 255, 255],
+            textColor: [0, 0, 0],
+            fontStyle: "bold",
+          },
+        });
+        currentY = doc.lastAutoTable.finalY;
+
+        let yaContinua = false;
+
+        doc.autoTable({
+          startY: currentY,
+          head: [
+            [
+              "SKU",
+              "DESCRIPCIÓN",
+              "CANTIDAD",
+              "UM",
+              "PZ",
+              "INNER",
+              "MASTER",
+              "TARIMAS",
+              "ATADOS",
+              "VALIDAR",
+            ],
+          ],
+          body: productosNoEnviados.map((item) => [
+            item.codigo_ped || "",
+            item.des || "",
+            item.cantidad || "",
+            item.um || "",
+            item._pz || 0,
+            item._inner || 0,
+            item._master || 0,
+            item.tarimas || 0,
+            item.atados || 0,
+            "",
+          ]),
+          theme: "grid",
+          margin: { left: 10 },
+          tableWidth: 190,
+          styles: {
+            fontSize: 5.5,
+            halign: "center",
+            cellPadding: 2,
+            lineColor: [200, 200, 200],
+            lineWidth: 0.1,
+          },
+          columnStyles: {
+            0: { cellWidth: 15 },
+            1: { cellWidth: 80 },
+            2: { cellWidth: 15 },
+            3: { cellWidth: 10 },
+            4: { cellWidth: 10 },
+            5: { cellWidth: 12 },
+            6: { cellWidth: 12 },
+            7: { cellWidth: 12 },
+            8: { cellWidth: 12 },
+            9: { cellWidth: 12 },
+          },
+          headStyles: {
+            fillColor: [20, 20, 20],
+            textColor: [255, 255, 255],
+            fontSize: 5.5,
+          },
+          didDrawCell: function (data) {
+            if (
+              data.row.index === 0 &&
+              data.section === "body" &&
+              data.cursor.y < 30 &&
+              !yaContinua
+            ) {
+              const text = "Continuación de productos no enviados";
+              doc.setFontSize(8);
+              doc.text(text, 105, data.cursor.y - 6, { align: "center" });
+              yaContinua = true;
+            }
+          },
+        });
+
+        currentY = doc.lastAutoTable.finalY + 4;
+      }
+
+
 
       currentY = doc.lastAutoTable.finalY + 5;
       currentY = verificarEspacio(doc, currentY, 1);
@@ -2695,6 +2969,9 @@ function Transporte() {
       });
 
       currentY = doc.lastAutoTable.finalY + 0;
+
+      // === LEYENDA VERTICAL AL COSTADO DE LA TABLA DE BANCOS ===
+
 
       const instrucciones = [
         "•Estimado cliente, nuestro transportista cuenta con ruta asignada por lo que agradeceríamos agilizar el tiempo de recepción de su mercancía, el material viaja consignado por lo que solo podrá entregarse en la dirección estipulada en este documento.",
@@ -2889,7 +3166,6 @@ function Transporte() {
 
 
   useEffect(() => {
-    // console.log("Observaciones actuales:", observacionesPorRegistro);
   }, [observacionesPorRegistro, groupedData]);
 
   const MAX_VISIBLE_ROUTES = 100;
@@ -2897,11 +3173,10 @@ function Transporte() {
   const removeRoute = (route) => {
     setGroupedData((prevData) => {
       const updatedRoutes = { ...prevData };
-      delete updatedRoutes[route]; // Eliminar la ruta del objeto
+      delete updatedRoutes[route];
       return updatedRoutes;
     });
 
-    // También remover la ruta de las seleccionadas si estaba marcada
     setSelectedRoutes((prevSelected) =>
       prevSelected.filter((r) => r !== route)
     );
@@ -4860,6 +5135,13 @@ function Transporte() {
               }}
             >
               📂 Subir Archivo
+            </Button>
+
+            <Button variant={modoCarga === "api" ? "contained" : "outlined"} onClick={() => {
+              setModoCarga("api");
+              fetchPedidosDesdeAPI();
+            }}>
+              Cargar desde API
             </Button>
           </label>
 

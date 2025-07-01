@@ -477,15 +477,29 @@ const getPedidosEmbarque = async (req, res) => {
   try {
     const { codigo_ped } = req.params;
 
-    const query = `
+    // Consulta principal en pedido_finalizado
+    const queryFinalizado = `
       SELECT pe.pedido, pe.codigo_ped, p.des, pe.cantidad, pe.um, pe._pz,  
-             pe._inner, pe._master, pe.cantidad, pe.caja, pe.estado
+             pe._inner, pe._master, pe.cantidad, pe.caja, pe.estado, pe.cajas, pe.tipo_caja   
       FROM pedido_finalizado pe
       LEFT JOIN productos p ON pe.codigo_ped = p.codigo_pro
       WHERE pe.pedido = ? LIMIT 100;
     `;
 
-    const [rows] = await pool.query(query, [codigo_ped]);
+    let [rows] = await pool.query(queryFinalizado, [codigo_ped]);
+
+    // Si no encontró nada en pedido_finalizado, busca en embarques
+    if (rows.length === 0) {
+      const queryEmbarque = `
+        SELECT em.pedido, em.codigo_ped, p.des, em.cantidad, em.um, em._pz,  
+               em._inner, em._master, em.cantidad, em.caja, em.estado, em.cajas, em.tipo_caja   
+        FROM pedido_embarque em
+        LEFT JOIN productos p ON em.codigo_ped = p.codigo_pro
+        WHERE em.pedido = ? LIMIT 100;
+      `;
+
+      [rows] = await pool.query(queryEmbarque, [codigo_ped]);
+    }
 
     if (rows.length === 0) {
       return res.status(404).json({ message: "No se encontraron registros." });
@@ -497,6 +511,7 @@ const getPedidosEmbarque = async (req, res) => {
     res.status(500).json({ message: "Error al obtener pedidos de embarque" });
   }
 };
+
 
 const getTransportistas = async (req, res) => {
   try {

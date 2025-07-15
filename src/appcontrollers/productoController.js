@@ -4,29 +4,53 @@ const pool = require('../config/database'); // Importa la configuración de la b
 const actualizarProducto = async (req, res) => {
   const { idPedi, scannedPz, scannedPq, scannedInner, scannedMaster, caja } = req.body;
   console.log("upd-caja", req.body);
-  const query = `
-    UPDATE pedido_embarque
-    SET 
-      v_pz = ?, 
-      v_pq = ?, 
-      v_inner = ?, 
-      v_master = ?, 
-      caja = ?, 
-      inicio_embarque = IF(inicio_embarque IS NULL, NOW(), inicio_embarque)
-    WHERE id_pedi = ?;
-  `;
 
   let connection;
   try {
-    connection = await pool.getConnection(); // Obtiene una conexión del pool
+    connection = await pool.getConnection();
 
-    // Ejecuta la actualización del producto en pedido_embarque
+    // 🔍 Primero obtenemos el valor actual de 'cajas'
+    const [rows] = await connection.query(
+      'SELECT cajas FROM pedido_embarque WHERE id_pedi = ?',
+      [idPedi]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'No se encontró el producto para actualizar' });
+    }
+
+    let cajasActual = rows[0].cajas || '';
+    const cajasArray = cajasActual.split(',').map(c => c.trim());
+    const yaExiste = cajasArray.includes(caja.toString());
+
+    // 🧠 Si ya existe, no lo agregamos de nuevo
+    const nuevaCajas = yaExiste
+      ? cajasActual
+      : cajasActual
+        ? `${cajasActual},${caja}`
+        : caja;
+
+    // ✅ Ahora actualizamos
+    const query = `
+      UPDATE pedido_embarque
+      SET 
+        v_pz = ?, 
+        v_pq = ?, 
+        v_inner = ?, 
+        v_master = ?, 
+        caja = ?, 
+        cajas = ?, 
+        inicio_embarque = IF(inicio_embarque IS NULL, NOW(), inicio_embarque)
+      WHERE id_pedi = ?;
+    `;
+
     const [result] = await connection.query(query, [
       scannedPz,
       scannedPq,
       scannedInner,
       scannedMaster,
       caja,
+      nuevaCajas,
       idPedi,
     ]);
 
@@ -42,6 +66,8 @@ const actualizarProducto = async (req, res) => {
     if (connection) connection.release();
   }
 };
+
+
 const recibirResumenCaja = async (req, res) => {
   try {
     const { pedido, unidad_empaque, codigos } = req.body;

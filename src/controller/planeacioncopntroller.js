@@ -29,7 +29,7 @@ const getSales = async (req, res) => {
         SELECT
           p.inicio_surtido,
           p.codigo_ped,
-          prod.clave,
+          prod.clave, 
           p.cant_surti
         FROM pedido_finalizado p
         LEFT JOIN productos prod ON p.codigo_ped = prod.codigo_pro
@@ -69,6 +69,60 @@ const getSales = async (req, res) => {
     });
   }
 };
+
+const getPlacedOrders = async (req, res) => {
+  try {
+    const query = `
+      SELECT 
+        prod.des,        
+        c.codigo,
+        c.cant_recibir,
+        c.arribo,
+        c.tipo,
+        prod.clave
+      FROM recibo_compras c 
+      LEFT JOIN productos prod ON c.codigo = prod.codigo_pro
+      WHERE c.estado IN ("C", "F");
+    `;
+
+    const [rows] = await pool.query(query);
+
+    if (rows.length === 0) {
+      return res.status(200).json({
+        success: false,
+        message: "No placed orders found.",
+        data: [],
+      });
+    }
+
+    // ✅ Formatear fechas
+    const formattedRows = rows.map((row) => ({
+      ...row,
+      arribo: row.arribo
+        ? new Date(row.arribo).toLocaleDateString("es-ES", {
+            day: "2-digit",
+            month: "long",
+            year: "numeric",
+          })
+        : null,
+    }));
+
+    return res.status(200).json({
+      success: true,
+      total_results: formattedRows.length,
+      data: formattedRows,
+    });
+  } catch (error) {
+    console.error("❌ Error in getPlacedOrders:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal error retrieving placed orders.",
+      error: error.message,
+    });
+  }
+};
+
+
 
 
 // controllers/salesController.js
@@ -167,6 +221,7 @@ const getSaleArrive = async (req, res) => {
 //   }
 // };
 
+
 const getSalesByStatus = async (req, res) => {
   try {
     const { fecha_inicio, NoCorto } = req.query;
@@ -198,25 +253,24 @@ const getSalesByStatus = async (req, res) => {
       11: "noviembre",
       12: "diciembre"
     };
-    const query = `
-    SELECT 
-  LPAD(pe.codigo_ped, 4, '0') AS NoCorto,
-  MONTH(pe.inicio_surtido) AS mes_num,
-  p.ESTADO AS estado,
-  SUM(pe.cant_surti) AS total_vendido
-    FROM (
-      SELECT codigo_ped, cant_surti, pedido, inicio_surtido, tipo FROM pedido_embarque
-      UNION ALL
-      SELECT codigo_ped, cant_surti, pedido, inicio_surtido, tipo FROM pedido_finalizado
-    ) pe
-  LEFT JOIN paqueteria p ON pe.pedido = p.no_orden_int AND pe.tipo = p.tipo_original
 
-    WHERE pe.inicio_surtido >= ?
-    ${codigoPedFilter}
-    GROUP BY pe.codigo_ped, mes_num, p.ESTADO
-    ORDER BY pe.codigo_ped
-  `;
-  
+    const query = `
+      SELECT 
+        LPAD(pe.codigo_ped, 4, '0') AS NoCorto,
+        MONTH(pe.inicio_surtido) AS mes_num,
+        TRIM(p.ESTADO) AS estado,
+        SUM(pe.cant_surti) AS total_vendido
+      FROM (
+        SELECT codigo_ped, cant_surti, pedido, inicio_surtido, tipo FROM pedido_embarque
+        UNION ALL
+        SELECT codigo_ped, cant_surti, pedido, inicio_surtido, tipo FROM pedido_finalizado
+      ) pe
+      LEFT JOIN paqueteria p ON pe.pedido = p.no_orden_int AND pe.tipo = p.tipo_original
+      WHERE pe.inicio_surtido >= ?
+      ${codigoPedFilter}
+      GROUP BY pe.codigo_ped, mes_num, TRIM(p.ESTADO)
+      ORDER BY pe.codigo_ped
+    `;
 
     const [rows] = await pool.query(query, params);
 
@@ -243,6 +297,9 @@ const getSalesByStatus = async (req, res) => {
   }
 };
 
+module.exports = { getSalesByStatus };
+
+
 
 
 
@@ -251,4 +308,4 @@ const getSalesByStatus = async (req, res) => {
   
 
 
-module.exports = { getSales, getSaleArrive, getSalesByStatus };
+module.exports = { getSales, getSaleArrive, getSalesByStatus, getPlacedOrders };

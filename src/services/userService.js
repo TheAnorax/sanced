@@ -1,7 +1,7 @@
 // services/userService.js
 const pool = require('../config/database');
 const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
+const jwt = require('jsonwebtoken'); 
 
 const getUserByEmail = async (email) => {
   const [rows] = await pool.query('SELECT * FROM usuarios WHERE email = ?', [email]);
@@ -17,5 +17,17 @@ const generateToken = (user) => {
 };
 
 
+// modificar el forzar cambio 
+const updateUserPassword = async (email, newPassword) => {
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+  await pool.query(`
+    UPDATE usuarios 
+    SET password = ?, ultima_modificacion_password = NOW(), forzar_cambio_password = 0 
+    WHERE email = ?`, 
+    [hashedPassword, email]);
+};
 
-module.exports = { getUserByEmail, comparePassword, generateToken };
+
+
+
+module.exports = { getUserByEmail, comparePassword, generateToken, updateUserPassword };

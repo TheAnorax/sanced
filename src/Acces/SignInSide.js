@@ -16,6 +16,8 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import Alert from '@mui/material/Alert';
 import { red } from '@mui/material/colors';
+import Swal from 'sweetalert2';
+
 
 const theme = createTheme({
   palette: {
@@ -23,7 +25,7 @@ const theme = createTheme({
       main: red[500],
     },
   },
-});
+});  
 
 export default function SignInSide() {
   const navigate = useNavigate();
@@ -86,10 +88,31 @@ export default function SignInSide() {
         navigate('/dashboard');  // Redirigir al Dashboard general
       }
     } catch (error) {
-      console.error('Login failed:', error.response ? error.response.data : error.message);
-      setError('Correo o contraseña incorrectos');
-      setTimeout(() => setError(''), 3000);  // Desaparece después de 3 segundos
-    }
+  console.error('Login failed:', error.response ? error.response.data : error.message);
+
+  if (error.response?.status === 403 && error.response.data?.requirePasswordChange) {
+    const { user, token } = error.response.data;
+
+    // Mostrar SweetAlert2
+    Swal.fire({
+      icon: 'warning',
+      title: 'Cambio de contraseña requerido',
+      text: 'Debes restablecer tu contraseña para continuar',
+      confirmButtonText: 'Restablecer ahora',
+      confirmButtonColor: '#d32f2f',
+    }).then(() => {
+      const resetUrl = `http://66.232.105.87:3000/reset-password/${token}`;
+      window.location.href = resetUrl;
+    });
+
+    return;
+  }
+
+  setError('Correo o contraseña incorrectos');
+  setTimeout(() => setError(''), 3000);
+}
+
+
   };
 
   const handleClickShowPassword = () => {
@@ -182,6 +205,10 @@ export default function SignInSide() {
               >
                 Iniciar sesión
               </Button>
+              <Button onClick={() => navigate('/olvide-contrasena')} size="small">
+  ¿Olvidaste tu contraseña?
+</Button>
+
             </Box>
           </Box>
         </Grid>

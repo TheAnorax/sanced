@@ -78,7 +78,6 @@ function ProductoCRUD() {
   const [filteredProductos, setFilteredProductos] = useState([]);
   const { user } = useContext(UserContext);
   const [search, setSearch] = useState("");
-  const codigosSinImagenRef = React.useRef(new Set());
 
   const [form, setForm] = useState({
     codigo_pro: "",
@@ -540,18 +539,13 @@ function ProductoCRUD() {
                 e.target.src = "../assets/image/img_pz/noimage.png";
 
                 // Guardar código del producto sin imagen
-                codigosSinImagenRef.add(params.row.codigo_pro);
-
+                
                 // Mostrar en consola en tiempo real
                 console.warn(
                   `[IMG NOT FOUND] Producto sin imagen: ${params.row.codigo_pro}`
                 );
 
-                // (Opcional) Mostrar lista completa cada vez que se añade uno nuevo
-                console.log(
-                  "[LISTA COMPLETA SIN IMAGEN]:",
-                  Array.from(codigosSinImagenRef)
-                );
+                
               }}
             />
           ),
@@ -725,15 +719,6 @@ function ProductoCRUD() {
             Descargar Reporte
           </Button>
         </Box>
-
-        <Button
-          variant="outlined"
-          onClick={() => {
-            console.table(Array.from(codigosSinImagenRef.current));
-          }}
-        >
-          Ver productos sin imagen
-        </Button>
       </Box>
       <Paper elevation={3} sx={{ p: 3, overflow: "auto" }}>
         <div style={{ height: isMediumScreen ? 500 : 750, width: "100%" }}>

@@ -518,6 +518,28 @@ const deletepickUnbi = async (req, res) => {
   }
 };
 
+// controllers/inventariosController.js
+
+const getProductsWithoutLocation = async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+       SELECT 
+    p.codigo_pro,
+    p.des,
+    u.ubi
+    FROM productos p
+    LEFT JOIN ubicaciones u ON p.codigo_pro = u.code_prod
+    WHERE u.ubi IS NULL 
+    `);
+
+    res.json(rows);
+  } catch (error) {
+    console.error('Error al obtener productos sin ubicación:', error);
+    res.status(500).json({ message: 'Error al obtener productos sin ubicación', error: error.message });
+  }
+};
+
+
 
 module.exports = {
   getInventarios,
@@ -527,10 +549,11 @@ module.exports = {
   getPeacking,
   updatePeacking,
   insertPeacking,
-  obtenerUbiAlma,
+  obtenerUbiAlma, 
   deleteTarea,
   getUbicacionesImpares,
   getUbicacionesPares,
   insertNuevaUbicacion,
-  deletepickUnbi
+  deletepickUnbi,
+  getProductsWithoutLocation
 }; 

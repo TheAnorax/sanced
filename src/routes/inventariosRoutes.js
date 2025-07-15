@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getInventarios, autorizarRecibo, actualizarUbicacion,insertarNuevoProducto, getPeacking, updatePeacking,insertPeacking, obtenerUbiAlma, deleteTarea, getUbicacionesImpares, getUbicacionesPares, insertNuevaUbicacion, deletepickUnbi } = require('../controller/inventariosController');
+const { getInventarios, autorizarRecibo, actualizarUbicacion,insertarNuevoProducto, getPeacking, updatePeacking,insertPeacking, obtenerUbiAlma, deleteTarea, getUbicacionesImpares, getUbicacionesPares, insertNuevaUbicacion, deletepickUnbi, getProductsWithoutLocation  } = require('../controller/inventariosController');
 
 router.get('/inventarios', getInventarios);
 router.get('/inventarios/peacking', getPeacking)
@@ -16,6 +16,7 @@ router.get("/pares", getUbicacionesPares);
 router.post('/inventarios/insertNuevaUbicacion', insertNuevaUbicacion)
 // En tu archivo de deletepickUnbi
 router.post("/inventarios/borrarPick", deletepickUnbi);
+router.get('/inventarios/sinubicacion', getProductsWithoutLocation);
 
 
 

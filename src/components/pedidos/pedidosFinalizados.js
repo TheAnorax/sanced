@@ -15,6 +15,10 @@ import {
   Tab,
   Chip,
   Stack,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import { Visibility as VisibilityIcon } from "@mui/icons-material";
@@ -755,8 +759,26 @@ function Finalizados() {
     return cleanedAddress;
   };
 
+  const getTipoDominante = (productos) => {
+    const tipos = productos.map((p) => (p.tipo_caja || "").toUpperCase());
+    const cuenta = {};
+    for (const tipo of tipos) cuenta[tipo] = (cuenta[tipo] || 0) + 1;
+
+    const tipoMasUsado =
+      Object.entries(cuenta).sort((a, b) => b[1] - a[1])[0]?.[0] || "CAJA";
+    return tipoMasUsado === "ATA" ? "ATADO" : tipoMasUsado;
+  };
+
   const generatePDF = async (pedido) => {
     try {
+      let numero = "";
+      let numeroFactura = "";
+      let nombreCliente = "";
+      let direccion = "";
+      let telefono = "";
+      let rawTotal = 0;
+      let tipo_original = "";
+
       const responseRoutes = await fetch(
         "http://66.232.105.87:3007/api/Trasporte/ruta-unica"
       );
@@ -764,7 +786,83 @@ function Finalizados() {
       const route = routesData.find(
         (r) => String(r["NO ORDEN"]) === String(pedido)
       );
-      if (!route) return alert("No se encontró la ruta");
+
+      if (!route) {
+        alert("No se encontró la ruta, debes capturar manualmente los datos.");
+
+        // Pedir al usuario los valores necesarios
+        numero = prompt("Ingrese el número de cliente:");
+        numeroFactura = prompt("Ingrese el número de factura:");
+        const inputTotal = prompt("Ingrese el TOTAL del pedido (sin IVA):");
+
+        if (!numero || !numeroFactura || !inputTotal) {
+          return alert("Datos obligatorios no proporcionados. Cancelado.");
+        }
+
+        // Usar SIEMPRE el total ingresado manualmente
+        const totalManual = parseFloat(
+          String(inputTotal).replace(/[^0-9.-]+/g, "")
+        );
+        if (isNaN(totalManual) || totalManual <= 0) {
+          return alert("Total inválido. Cancelado.");
+        }
+        rawTotal = totalManual;
+
+        // Intentar consultar datos del cliente
+        try {
+          const resCliente = await fetch(
+            `http://66.232.105.87:3007/api/finalizados/cliente/${numero}`
+          );
+          const datosCliente = await resCliente.json();
+
+          if (datosCliente.length > 0) {
+            const cliente = datosCliente[0];
+            nombreCliente = cliente["NOMBRE DEL CLIENTE"] || nombreCliente;
+            direccion = cliente["DIRECCION"] || direccion;
+            telefono = cliente["TELEFONO"] || telefono;
+
+            // const totalBD = parseFloat(cliente["TOTAL"]);
+            // const totalInput = parseFloat(String(inputTotal).replace(/[^0-9.-]+/g, ""));
+
+            // if (!isNaN(totalBD) && totalBD > 0) {
+            //   rawTotal = totalBD;
+            // } else if (!isNaN(totalInput) && totalInput > 0) {
+            //   rawTotal = totalInput;
+            // } else {
+            //   return alert("Total inválido. Cancelado.");
+            // }
+          } else {
+            // Si no se encontró el cliente, usar el total ingresado directamente
+            const totalManual = parseFloat(
+              String(inputTotal).replace(/[^0-9.-]+/g, "")
+            );
+            if (!isNaN(totalManual)) {
+              rawTotal = totalManual;
+            } else {
+              return alert("Total inválido. Cancelado.");
+            }
+          }
+        } catch (err) {
+          console.warn("Error consultando cliente manual:", err);
+          // Si ocurre error al consultar, también usar el total manual
+          const totalManual = parseFloat(
+            String(inputTotal).replace(/[^0-9.-]+/g, "")
+          );
+          if (!isNaN(totalManual)) {
+            rawTotal = totalManual;
+          } else {
+            return alert("Total inválido. Cancelado.");
+          }
+        }
+      } else {
+        tipo_original = route["tipo_original"] || tipo_original;
+        nombreCliente = route["NOMBRE DEL CLIENTE"] || nombreCliente;
+        numeroFactura = route["NO_FACTURA"] || numeroFactura;
+        direccion = cleanAddress(route["DIRECCION"]) || direccion;
+        numero = route["NUM. CLIENTE"] || numero;
+        telefono = route["TELEFONO"] || telefono;
+        rawTotal = route["TOTAL"];
+      }
 
       const responseEmbarque = await fetch(
         `http://66.232.105.87:3007/api/Trasporte/embarque/${pedido}`
@@ -812,13 +910,6 @@ function Finalizados() {
       doc.line(10, currentY, 200, currentY);
       currentY += 4;
 
-      const tipo_original = route["tipo_original"] || "No definido";
-      const nombreCliente = route["NOMBRE DEL CLIENTE"] || "No disponible";
-      const numeroFactura = route["NO_FACTURA"] || "No disponible";
-      const direccion = cleanAddress(route["DIRECCION"]) || "No disponible";
-      const numero = route["NUM. CLIENTE"] || "No disponible";
-      const telefono = route["TELEFONO"] || "Sin número";
-      const rawTotal = route["TOTAL"];
       const referenciaCliente = buscarReferenciaCliente(
         numero,
         nombreCliente,
@@ -877,28 +968,84 @@ function Finalizados() {
 
       // ✔️ Primero agrupamos productos por caja original
 
-      const cajasAgrupadasOriginal = productosConCaja.reduce((acc, item) => {
-        if (!acc[item.caja]) acc[item.caja] = [];
-        acc[item.caja].push(item);
-        return acc;
-      }, {});
+      const cajasAgrupadasOriginal = {};
+
+      for (const item of productosConCaja) {
+        const tipo = (item.tipo_caja || "").toUpperCase().trim();
+        const cajasTexto = item.cajas || item.caja;
+
+        if (!cajasTexto) continue;
+
+        const cajas = String(cajasTexto)
+          .split(",")
+          .map((c) => c.trim())
+          .filter((c) => c !== "")
+          .sort((a, b) => parseInt(a) - parseInt(b)); // asegura orden
+
+        const claveCaja = cajas.join(","); // ejemplo: "2,6"
+        const clave = `${tipo}_${claveCaja}`; // ejemplo: "CAJA_2,6"
+
+        if (!cajasAgrupadasOriginal[clave]) cajasAgrupadasOriginal[clave] = [];
+        cajasAgrupadasOriginal[clave].push(item);
+      }
 
       const cajasOrdenadas = Object.entries(cajasAgrupadasOriginal).sort(
-        (a, b) => Number(a[0]) - Number(b[0])
+        (a, b) => {
+          const getMin = (key) => {
+            const parts = key.split("_")[1]; // "2,6"
+            return Math.min(...parts.split(",").map((p) => parseInt(p.trim())));
+          };
+          return getMin(a[0]) - getMin(b[0]);
+        }
       );
 
-      const totalINNER_MASTER = productosSinCaja.reduce(
-        (s, i) => s + (i._inner || 0) + (i._master || 0),
-        0
-      );
-      const totalCajasArmadas = cajasOrdenadas.length;
-      const totalCajas = totalINNER_MASTER + totalCajasArmadas;
+      // === Contador REAL de cajas por tipo ===
+      const cajasArmadas = new Set();
+      const cajasAtados = new Set();
+      const cajasTarimas = new Set();
 
-      const totalTarimas = data.reduce((s, i) => s + (i.tarimas || 0), 0);
-      const atadosProductos = data.filter(
-        (i) => (i.um || "").toUpperCase() === "ATA"
-      );
-      const totalAtados = atadosProductos.length;
+      for (const key of Object.keys(cajasAgrupadasOriginal)) {
+        const [tipo, cajasStr] = key.split("_");
+        const cajas = cajasStr
+          .split(",")
+          .map((c) => c.trim())
+          .filter((c) => c !== "");
+
+        for (const caja of cajas) {
+          const clave = `${tipo}_${caja}`;
+
+          if (tipo === "CAJA") {
+            cajasArmadas.add(clave); // solo cuenta como caja si es física
+          } else if (["ATA", "ATADO"].includes(tipo)) {
+            cajasAtados.add(clave);
+          } else if (tipo === "TARIMA") {
+            cajasTarimas.add(clave);
+          }
+        }
+      }
+
+      // 💡 INNER y MASTER sólo si están sueltos (sin tipo_caja = CAJA)
+      const totalINNER_MASTER = data.reduce((s, i) => {
+        const tipo = (i.tipo_caja || "").toUpperCase();
+        if (["INNER", "MASTER"].includes(tipo)) {
+          return (
+            s + (i._pz || 0) + (i._pq || 0) + (i._inner || 0) + (i._master || 0)
+          );
+        }
+
+        // También suma productos sin tipo de caja pero que tienen INNER o MASTER
+        if (!tipo || tipo === "") {
+          return s + (i._inner || 0) + (i._master || 0);
+        }
+
+        return s;
+      }, 0);
+
+      const totalCajasArmadas = cajasArmadas.size;
+      const totalAtados = cajasAtados.size;
+      const totalTarimas = cajasTarimas.size;
+      const totalCajas =
+        totalINNER_MASTER + totalCajasArmadas + totalAtados + totalTarimas;
 
       currentY = verificarEspacio(doc, currentY, 2);
       doc.autoTable({
@@ -931,8 +1078,10 @@ function Finalizados() {
 
       let numeroCajaSecuencial = 1;
 
-      for (const [, productos] of cajasOrdenadas) {
-        const titulo = `Productos en la Caja ${numeroCajaSecuencial}`;
+      for (const [key, productos] of cajasOrdenadas) {
+        const [_, numeroCaja] = key.split("_");
+        const tipoVisible = getTipoDominante(productos);
+        const titulo = `Productos en  ${tipoVisible} ${numeroCaja}`;
 
         // Título de la tabla
         doc.autoTable({
@@ -1123,8 +1272,115 @@ function Finalizados() {
 
         currentY = doc.lastAutoTable.finalY + 4;
       }
+      // Agrupar los productos sin caja en dos: con algo (INNER, MASTER, TARIMA, ATADOS) y completamente vacíos
+      const productosNoEnviados = productosSinCaja.filter(
+        (item) =>
+          (item._inner || 0) === 0 &&
+          (item._master || 0) === 0 &&
+          (item.tarimas || 0) === 0 &&
+          (item.atados || 0) === 0 &&
+          (item._pz || 0) === 0 &&
+          (item._pq || 0) === 0
+      );
 
-      if (productosSinCaja.length > 0) {
+      const productosSinCajaValidos = productosSinCaja.filter(
+        (item) => !productosNoEnviados.includes(item)
+      );
+
+      if (productosNoEnviados.length > 0) {
+        currentY = verificarEspacio(doc, currentY, 2);
+        doc.autoTable({
+          startY: currentY,
+          head: [["Productos no enviados"]],
+          body: [],
+          theme: "grid",
+          styles: { halign: "center", fontSize: 9 },
+          margin: { left: 10 },
+          tableWidth: 190,
+          headStyles: {
+            fillColor: [255, 255, 255],
+            textColor: [0, 0, 0],
+            fontStyle: "bold",
+          },
+        });
+        currentY = doc.lastAutoTable.finalY;
+
+        let yaContinua = false;
+
+        doc.autoTable({
+          startY: currentY,
+          head: [
+            [
+              "SKU",
+              "DESCRIPCIÓN",
+              "CANTIDAD",
+              "UM",
+              "PZ",
+              "INNER",
+              "MASTER",
+              "TARIMAS",
+              "ATADOS",
+              "VALIDAR",
+            ],
+          ],
+          body: productosNoEnviados.map((item) => [
+            item.codigo_ped || "",
+            item.des || "",
+            item.cantidad || "",
+            item.um || "",
+            item._pz || 0,
+            item._inner || 0,
+            item._master || 0,
+            item.tarimas || 0,
+            item.atados || 0,
+            "",
+          ]),
+          theme: "grid",
+          margin: { left: 10 },
+          tableWidth: 190,
+          styles: {
+            fontSize: 5.5,
+            halign: "center",
+            cellPadding: 2,
+            lineColor: [200, 200, 200],
+            lineWidth: 0.1,
+          },
+          columnStyles: {
+            0: { cellWidth: 15 },
+            1: { cellWidth: 80 },
+            2: { cellWidth: 15 },
+            3: { cellWidth: 10 },
+            4: { cellWidth: 10 },
+            5: { cellWidth: 12 },
+            6: { cellWidth: 12 },
+            7: { cellWidth: 12 },
+            8: { cellWidth: 12 },
+            9: { cellWidth: 12 },
+          },
+          headStyles: {
+            fillColor: [20, 20, 20],
+            textColor: [255, 255, 255],
+            fontSize: 5.5,
+          },
+          didDrawCell: function (data) {
+            if (
+              data.row.index === 0 &&
+              data.section === "body" &&
+              data.cursor.y < 30 &&
+              !yaContinua
+            ) {
+              const text = "Continuación de productos no enviados";
+              doc.setFontSize(8);
+              doc.text(text, 105, data.cursor.y - 6, { align: "center" });
+              yaContinua = true;
+            }
+          },
+        });
+
+        currentY = doc.lastAutoTable.finalY + 4;
+      }
+
+      if (productosSinCajaValidos.length > 0) {
         // Título principal
         currentY = verificarEspacio(doc, currentY, 2);
         doc.autoTable({
@@ -1161,7 +1417,7 @@ function Finalizados() {
               "VALIDAR",
             ],
           ],
-          body: productosSinCaja
+          body: productosSinCajaValidos
             .filter((item) => (item.um || "").toUpperCase() !== "ATA")
             .map((item) => [
               item.codigo_ped || "",
@@ -1310,6 +1566,24 @@ function Finalizados() {
       });
 
       currentY = doc.lastAutoTable.finalY + 0;
+
+      // === LEYENDA VERTICAL EN EL LADO IZQUIERDO ===
+      doc.saveGraphicsState(); // Guarda el estado gráfico actual
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+
+      // Coordenadas para colocar el texto vertical (ajusta según altura de tu hoja)
+      doc.text(
+        "Documento expedido sobre resolución miscelánea vigente",
+        5, // X inicial al borde izquierdo
+        doc.internal.pageSize.getHeight() / 2 + 30, // Y centrado vertical con ajuste
+        {
+          angle: 270, // Rota el texto vertical
+          align: "center",
+        }
+      );
+
+      doc.restoreGraphicsState(); // Restaura el estado gráfico original
 
       const instrucciones = [
         "•Estimado cliente, nuestro transportista cuenta con ruta asignada por lo que agradeceríamos agilizar el tiempo de recepción de su mercancía, el material viaja consignado por lo que solo podrá entregarse en la dirección estipulada en este documento.",
@@ -1491,6 +1765,51 @@ function Finalizados() {
     }
   };
 
+  const [mes, setMes] = useState("");
+  const [anio, setAnio] = useState(new Date().getFullYear().toString());
+
+  const exportarExcel = async () => {
+    if (!mes) {
+      alert("⚠️ Selecciona un mes válido");
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `http://66.232.105.87:3007/api/finalizados/detalles-mes?mes=${mes}&anio=${anio}`
+      );
+      const data = await response.json();
+
+      if (!data || data.length === 0) {
+        alert("⚠️ No hay pedidos para ese mes.");
+        return;
+      }
+
+      // Crear hoja Excel
+      const worksheet = XLSX.utils.json_to_sheet(data);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(
+        workbook,
+        worksheet,
+        `Finalizados_${mes}_${anio}`
+      );
+
+      // Convertir a blob y descargar
+      const excelBuffer = XLSX.write(workbook, {
+        bookType: "xlsx",
+        type: "array",
+      });
+      const blob = new Blob([excelBuffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+
+      saveAs(blob, `Pedidos_Finalizados_${anio}_${mes}.xlsx`);
+    } catch (error) {
+      console.error("❌ Error exportando:", error);
+      alert("Ocurrió un error al generar el archivo.");
+    }
+  };
+
   return (
     <Box p={3}>
       <Typography variant="h4" component="h1" gutterBottom>
@@ -1501,6 +1820,59 @@ function Finalizados() {
         <Tab label="Motivos No Enviados" />
       </Tabs>
 
+      <Box
+        sx={{
+          display: "flex",
+          gap: 2,
+          alignItems: "center",
+          flexWrap: "wrap",
+          my: 2,
+        }}
+      >
+        <Typography variant="h6">
+          Exportar pedidos finalizados por mes
+        </Typography>
+
+        <FormControl size="small" sx={{ minWidth: 120 }}>
+          <InputLabel>Mes</InputLabel>
+          <Select
+            value={mes}
+            onChange={(e) => setMes(e.target.value)}
+            label="Mes"
+          >
+            <MenuItem value="">--</MenuItem>
+            <MenuItem value="01">Enero</MenuItem>
+            <MenuItem value="02">Febrero</MenuItem>
+            <MenuItem value="03">Marzo</MenuItem>
+            <MenuItem value="04">Abril</MenuItem>
+            <MenuItem value="05">Mayo</MenuItem>
+            <MenuItem value="06">Junio</MenuItem>
+            <MenuItem value="07">Julio</MenuItem>
+            <MenuItem value="08">Agosto</MenuItem>
+            <MenuItem value="09">Septiembre</MenuItem>
+            <MenuItem value="10">Octubre</MenuItem>
+            <MenuItem value="11">Noviembre</MenuItem>
+            <MenuItem value="12">Diciembre</MenuItem>
+          </Select>
+        </FormControl>
+
+        <FormControl size="small" sx={{ minWidth: 100 }}>
+          <InputLabel>Año</InputLabel>
+          <Select
+            value={anio}
+            onChange={(e) => setAnio(e.target.value)}
+            label="Año"
+          >
+            <MenuItem value="2023">2023</MenuItem>
+            <MenuItem value="2024">2024</MenuItem>
+            <MenuItem value="2025">2025</MenuItem>
+          </Select>
+        </FormControl>
+
+        <Button variant="contained" onClick={exportarExcel}>
+          Exportar Excel
+        </Button>
+      </Box>
       {tabValue === 0 && (
         <>
           <TextField

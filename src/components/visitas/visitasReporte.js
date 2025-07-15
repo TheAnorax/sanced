@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
-import {Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Box, Button, Tabs, Tab, IconButton, Tooltip, Dialog, DialogTitle, DialogContent, Typography, TextField, ButtonGroup, Avatar, DialogActions, FormControl, Divider, InputLabel, Select, MenuItem, Alert, Snackbar} from "@mui/material";
+import {Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Box, Button, Tabs, Tab, IconButton, Tooltip, Dialog, DialogTitle, DialogContent, Typography, TextField, ButtonGroup, Avatar, DialogActions, FormControl, Divider, InputLabel, Select, MenuItem, Alert, Snackbar, Menu} from "@mui/material";
 import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
+import { es, is } from 'date-fns/locale';
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import moment from "moment";
 import { useMediaQuery} from "@mui/material";
-import { CancelOutlined, CheckCircleOutline, CloudUpload, CloudDownload, PhotoCamera, ModeEditOutline, PaymentsOutlined,  HelpOutline, Visibility,  Circle, AccountCircle, UploadFile, UploadFileOutlined, Backup, MonetizationOn, Block, Edit, ErrorOutline, PersonOffOutlined, PermIdentityOutlined } from "@mui/icons-material";
+import { CancelOutlined, CheckCircleOutline, CloudUpload, CloudDownload, PhotoCamera, ModeEditOutline, PaymentsOutlined,  HelpOutline, Visibility,  Circle, AccountCircle, UploadFile, UploadFileOutlined, Backup, MonetizationOn, Block, Edit, ErrorOutline, PersonOffOutlined, PermIdentityOutlined, KeyboardArrowDown } from "@mui/icons-material";
 import Webcam from "react-webcam";
 import ejemplo from './ej_empleados.png';
 
@@ -19,6 +19,7 @@ function VisitasReporte (){
   //tab
   const [tabIndex, setTabIndex] = useState(0);
   const isSmallScreen = useMediaQuery("(max-width:600px)");
+  const isMobile = useMediaQuery('(max-width:1024px)');
 
   const [empleados, setEmpleados] = useState([]);
   const [selectedEmpleados, setSelectedEmpleados] = useState([]);
@@ -1415,7 +1416,7 @@ const tomarFotoEmpleado = () => {
       }
     } catch (error) {
       console.error("Error al enumerar dispositivos:", error);
-      alert("Error al acceder a las cámaras. Verifica los permisos.");
+      //alert("Error al acceder a las cámaras. Verifica los permisos.");
     }
   };
 
@@ -1425,7 +1426,7 @@ const tomarFotoEmpleado = () => {
 
   const handleUserMediaError = (error) => {
     console.error("Error al acceder a la cámara:", error);
-    alert("No se pudo acceder a la cámara. Verifica los permisos.");
+    //alert("No se pudo acceder a la cámara. Verifica los permisos.");
   };
 
   useEffect(() => {
@@ -1439,6 +1440,19 @@ const tomarFotoEmpleado = () => {
       }
     };
   }, [image]);
+
+  //responsive filtros
+  const [anchorEl, setAnchorEl] = useState(null);
+    const open = Boolean(anchorEl);
+  
+    const handleClick = (event) => {
+      setAnchorEl(event.currentTarget);
+    };
+  
+    const handleCloseFiltro = (callback) => {
+      setAnchorEl(null);
+      if (callback) callback();
+    };
 
     return (
       <div>
@@ -1461,9 +1475,31 @@ const tomarFotoEmpleado = () => {
           >
             <h2 style={{marginLeft: "10px"}}>VISITANTES</h2>
             </Box>
-            <div style={{ marginBottom: "10px", textAlign:'center' }}>
+            {isMobile ? (
+              <div>
+                <ButtonGroup>
+                <Button onClick={() => setFilterVisitas("otros")}>
+                  VISITAS
+                </Button>
+                <Button
+                  onClick={handleClick}
+                  endIcon={<KeyboardArrowDown />}
+                />
+                </ButtonGroup>
+                  <Menu anchorEl={anchorEl} open={open} onClose={() => handleCloseFiltro()}>
+                    <MenuItem onClick={() => setFilterVisitas("otros")}>TODOS</MenuItem>
+                    <MenuItem onClick={() => setFilterVisitas("PERSONAL CORPORATIVO")}>CORPORATIVO</MenuItem>
+                    <MenuItem onClick={() => setFilterVisitas("TRANSPORTISTA")}>TRANSPORTISTAS</MenuItem>
+                    <MenuItem onClick={() => setFilterVisitas("CANDIDATO (ENTREVISTA)")}>ENTREVISTA</MenuItem>
+                    <MenuItem onClick={() => setFilterVisitas("INVITADO (EVENTOS)")}>INVITADO</MenuItem>
+                    <MenuItem onClick={() => setFilterVisitas("PROVEEDOR")}>PROVEEDORES</MenuItem>
+                    <MenuItem onClick={() => setFilterVisitas("PAQUETERIA")}>PAQUETERIAS</MenuItem>
+                </Menu>
+              </div>
+            ): (
+              <div style={{ marginBottom: "10px", textAlign:'center' }}>
               <ButtonGroup variant="text" aria-label="Basic button group">
-                <Button onClick={() => setFilterVisitas("otros")}>TODO</Button>
+                <Button onClick={() => setFilterVisitas("otros")}>TODOS</Button>
                 <Button onClick={() => setFilterVisitas("PERSONAL CORPORATIVO")}>CORPORATIVO</Button>
                 <Button onClick={() => setFilterVisitas("PROVEEDOR")}>PROVEEDORES</Button>
                 <Button onClick={() => setFilterVisitas("CANDIDATO (ENTREVISTA)")}>ENTREVISTA</Button>
@@ -1473,9 +1509,11 @@ const tomarFotoEmpleado = () => {
               </ButtonGroup>
                 
             </div>
-            <TableContainer component={Paper}>
+            )}
+            
+            <TableContainer component={Paper} sx={{ maxHeight: 440 }}>
               
-              <Table sx={{ minWidth: 700 }} aria-label="customized table">
+              <Table stickyHeader aria-label="sticky table">
                 <TableHead>
                   <TableRow>
                   <TableCell>FOTO</TableCell>
@@ -1577,17 +1615,16 @@ const tomarFotoEmpleado = () => {
           <h2>VISITANTES MULTADOS</h2>
           <Button variant="contained" startIcon={<CloudDownload/>} onClick={handleDownloadReportMultas}>Descargar reporte</Button>
           </Box>
-          <div style={{ marginBottom: "10px" }}>
+          <div style={{ marginBottom: "10px", margin:'5px' }}>
             <ButtonGroup variant="text" aria-label="Basic button group">
-              <Button onClick={() => setFilter("todas")}>Todas</Button>
-              <Button onClick={() => setFilter("pagada")}>Multas Pagadas</Button>
-              <Button onClick={() => setFilter("")}>Multas No Pagadas</Button>
+              <Button onClick={() => setFilter("todas")}>TODO</Button>
+              <Button onClick={() => setFilter("pagada")}>MULTAS PAGADAS</Button>
+              <Button onClick={() => setFilter("")}>MULTAS NO PAGADAS</Button>
             </ButtonGroup>
-              
           </div>
-          <TableContainer component={Paper}>
+          <TableContainer component={Paper} sx={{ maxHeight: 440 }}>
             {/* Tabla de multas */}
-            <Table sx={{ minWidth: 700 }} aria-label="customized table">
+            <Table stickyHeader aria-label="sticky table">
               <TableHead>
                 <TableRow>
                   <TableCell>VISITANTE</TableCell>
@@ -1835,8 +1872,8 @@ const tomarFotoEmpleado = () => {
               <h2>Reporte de visitas</h2>
               <Button variant="contained" startIcon={<CloudDownload/>} onClick={handleDownloadReport}>Descargar reporte</Button>
             </Box>
-            <TableContainer component={Paper}>
-              <Table sx={{ minWidth: 700 }} aria-label="customized table">
+            <TableContainer component={Paper} sx={{ maxHeight: 440 }}>
+              <Table stickyHeader aria-label="sticky table">
                 <TableHead>
                   <TableRow>
                     <TableCell>VISITANTE</TableCell>
@@ -1902,13 +1939,13 @@ const tomarFotoEmpleado = () => {
           >
             <h2>PERMISOS DE VEHICULOS</h2>
           </Box>
-          <TableContainer component={Paper}>
+          <TableContainer component={Paper} sx={{ maxHeight: 440 }}>
             {showSuccessAlert && (
               <Alert icon={<CheckCircleOutline fontSize="inherit" />} severity="success">
                 ¡Permiso actualizado con exito.!
               </Alert>
             )}
-            <Table sx={{ minWidth: 700 }} aria-label="customized table">
+            <Table stickyHeader aria-label="sticky table">
               <TableHead>
                 <TableRow>
                   <TableCell>VISITANTE</TableCell>
@@ -1966,9 +2003,21 @@ const tomarFotoEmpleado = () => {
               alignItems="center"
               flexDirection={isSmallScreen ? "column" : "row"}
             >
-              <h2>EMPLEADOS CEDIS SANTUL</h2>
+              <h2 style={{fontSize: isMobile ? '20px': ''}}>EMPLEADOS CEDIS SANTUL</h2>
+              {isMobile ? (
+                <ButtonGroup variant="text" aria-label="Basic button group">
+                  <Button variant="contained" startIcon={<CloudUpload/>} onClick={handleClickOpenUpExcel}>Importar empleados</Button>
+                  <Button variant="contained" startIcon={<AccountCircle/>} onClick={handleClickOpenCreateEmpleado}>Registrar empleado</Button>
+                </ButtonGroup>
+                  ): (
+                    <Box display="flex" gap={2}>
+                      
+                      <Button variant="contained" startIcon={<CloudUpload/>} onClick={handleClickOpenUpExcel}>Importar empleados</Button>
+                      <Button variant="contained" startIcon={<AccountCircle/>} onClick={handleClickOpenCreateEmpleado}>Registrar empleado</Button>
+                    </Box>
+                  )}
               <Box display="flex" gap={2}>
-                <Button variant="contained" startIcon={<CloudUpload/>} onClick={handleClickOpenUpExcel}>Importar empleados</Button>
+                {/* <Button variant="contained" startIcon={<CloudUpload/>} onClick={handleClickOpenUpExcel}>Importar empleados</Button> */}
                 <Dialog
                 open={openUpExcel}
                 onClose={handleCloseUpExcel}
@@ -2093,7 +2142,7 @@ const tomarFotoEmpleado = () => {
                   
                 </Box>
               </Dialog>
-                <Button variant="contained" startIcon={<AccountCircle/>} onClick={handleClickOpenCreateEmpleado}>Registrar empleado</Button>
+                {/* <Button variant="contained" startIcon={<AccountCircle/>} onClick={handleClickOpenCreateEmpleado}>Registrar empleado</Button> */}
                 <Dialog open={openCreateEmpleado} onClose={handleCloseCreateEmpleado} maxWidth="md" fullWidth>
                   <DialogTitle >NUEVO EMPLEADO</DialogTitle>
                   <DialogContent style={{ marginLeft: '5px', display: 'flex', flexDirection: 'column' }}>
@@ -2458,13 +2507,13 @@ const tomarFotoEmpleado = () => {
                 </Dialog>
               </Box>
             </Box>
-            <TableContainer component={Paper}>
+            <TableContainer component={Paper} sx={{ maxHeight: 440 }}> 
             {showAlertCancelEmploye && (
               <Alert icon={<CheckCircleOutline fontSize="inherit" />} severity="success">
                 ¡Empleado cancelado correctamente.!
               </Alert>
             )}
-              <Table sx={{ minWidth: 700 }} aria-label="customized table">
+              <Table  stickyHeader aria-label="sticky table">
                 <TableHead>
                   <TableRow>
                   <TableCell></TableCell>

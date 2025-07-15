@@ -145,7 +145,7 @@ const realizarMovimiento = async (req, res) => {
       if (ubicacionExistente.length > 0) {
         // Si existe, actualizar la cantidad
         await connection.query(
-          "UPDATE ubicaciones SET cant_stock_real = ?, c = ? , ingreso = NOW() WHERE codigo_producto = ?",
+          "UPDATE ubicaciones SET cant_stock_real = ?,  code_prod = ?, ingreso = NOW() WHERE codigo_producto = ?",
           [mitadStock, codigo_producto, codigo_producto]
         );
       } else {

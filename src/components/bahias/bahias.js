@@ -6,6 +6,7 @@ import {
   Typography,
   CircularProgress,
   Box,
+  Tooltip 
 } from "@mui/material";
 import Swal from "sweetalert2";
 
@@ -33,6 +34,15 @@ function Bahias() {
         setLoading(false);
       });
   };
+
+  const tieneMasDeUnaSemana = (fecha) => {
+  if (!fecha) return false;
+  const ingresoDate = new Date(fecha);
+  const hoy = new Date();
+  const diferenciaDias = (hoy - ingresoDate) / (1000 * 60 * 60 * 24);
+  return diferenciaDias > 5;
+};
+
 
   useEffect(() => {
     fetchBahias();
@@ -214,6 +224,27 @@ function Bahias() {
                             REUBICADO
                           </Box>
                         )}
+
+                        {tieneMasDeUnaSemana(bahia.ingreso) && (
+ <Tooltip title="Más de 7 días" arrow>
+  <Box
+    sx={{
+      position: "absolute",
+      top: 1,
+      right: 1,
+      backgroundColor: "red",
+      color: "black",
+      padding: "2px 8px",
+      borderRadius: "2px",
+      fontSize: "0.7em",
+      zIndex: 10,
+    }}
+  >
+    +5
+  </Box>
+</Tooltip>
+)}
+
 
                         <CardContent style={{ textAlign: "center" }}>
                           <Typography

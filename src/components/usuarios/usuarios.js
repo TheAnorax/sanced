@@ -699,6 +699,8 @@
             Usuarios por Turno {user?.role} {user?.name}
           </Typography>
 
+        
+        </Box>
           {(user?.role === "Master" || user?.role === "Admin") && (
             <Button
               variant="contained"
@@ -712,7 +714,6 @@
           <Button variant="contained" color="primary" onClick={generarPDF}>
             Descargar PDF de Accesos
           </Button>
-        </Box>
         {/* Mostrar tabla "Accesos Web" solo a los administradores */}
         {(user?.role === "Admin" || user?.role === "Master") &&
           turno4Usuarios.length > 0 && (

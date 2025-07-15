@@ -41,6 +41,10 @@ import Mapa from './components/reporte/mapa';
 import Catalogo from './components/productos/catalogo';
 import COBERTURA from './components/COBERTURA/COBERTURA';
 import RepoProb from './components/Repo_Prob/Repo_Prob';
+import OlvideContraseña from './Acces/OlvideContraseña';
+import ResetPassword from './Acces/ResetPassword';
+import Departamental from "./components/departamental/departamental"
+
 
 function App() {
   return (        
@@ -49,6 +53,9 @@ function App() {
         <Routes>
           <Route path="/" element={<Navigate to="/login" />} />
           <Route path="/login" element={<SignInSide />} />
+          
+          <Route path="/olvide-contrasena" element={<OlvideContraseña />} />
+          <Route path="/reset-password/:token" element={<ResetPassword />} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>}>
             <Route path="productos" element={<ProtectedRoute><Productos /></ProtectedRoute>} />
             <Route path="pedidos" element={<ProtectedRoute><Pedidos /></ProtectedRoute>} />
@@ -85,6 +92,7 @@ function App() {
             <Route path="Catalogo" element={<ProtectedRoute><Catalogo /></ProtectedRoute>} />
             <Route path="COBERTURA" element={<ProtectedRoute><COBERTURA /></ProtectedRoute>} />
             <Route path="RepoProb" element={<ProtectedRoute><RepoProb /></ProtectedRoute>} />
+            <Route path="departamental" element={<ProtectedRoute><Departamental /></ProtectedRoute>} />
           </Route>
         </Routes>
       </Router>

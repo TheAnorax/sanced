@@ -1,4 +1,6 @@
 const express = require("express");
+const pool = require("../config/database");
+const axios = require("axios");
 const router = express.Router();
 const {
   getReferenciasClientes,
@@ -109,5 +111,30 @@ router.get("/resumen-dia", obtenerResumenDelDia);
 router.put("/actualizar-guia-completa/:noOrden", actualizarGuiaCompleta);
 
 router.get("/referencias", getReferenciasClientes);
+
+router.post("/obtenerPedidos", async (req, res) => {
+  try {
+    const response = await axios.post(
+      "http://santul.verpedidos.com:9011/SantulTest/SANCED"
+    );
+    res.json(response.data);
+  } catch (err) {
+    console.error("Error al consultar API remota:", err);
+    res.status(500).json({ error: "Error al consultar el servidor remoto" });
+  }
+});
+
+// rutas/trasporte.js
+router.get("/pedidosRegistrados", async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      "SELECT `NO ORDEN` as no_orden, `tipo_original` FROM paqueteria"
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error("Error al obtener pedidos registrados", err);
+    res.status(500).json({ error: "Error en servidor" });
+  }
+});
 
 module.exports = router;

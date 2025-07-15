@@ -83,7 +83,7 @@ const actualizarCantidadSurtida = async (req, res) => {
 
   } catch (transactionError) {
     if (connection) await connection.rollback();  // 🔄 Rollback solo si falla pedido_surtido
-    console.error("Error en la transacción pedido_surtido:", transactionError);
+  //console.error("Error en la transacción pedido_surtido:", transactionError);
     return res.status(500).json({ error: "Error en la transacción pedido_surtido: " + transactionError.message });
   } finally {
     if (connection) connection.release();

@@ -1,87 +1,18 @@
 import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import Button from "@mui/material/Button";
-import {
-  Checkbox,
-  Dialog,
-  Divider,
-  Select,
-  TextField,
-  Typography,
-  Box,
-  FormControl,
-  InputLabel,
-  MenuItem,
-  FormControlLabel,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Card,
-  CardContent,
-  Avatar,
-  IconButton,
-  Table ,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Alert,
-  Snackbar,
-  Grid,
-  Tooltip,
-  ButtonGroup,
-  Tabs,
-  Tab,
-} from "@mui/material";
-import {
-  PhotoCamera,
-  CloudUpload,
-  CarCrash,
-  Search,
-  PersonAddAlt,
-  LocalShipping,
-  Add,
-  PrecisionManufacturing,
-  UploadFile,
-  Schedule,
-  Clear,
-  Backup,
-  DoNotDisturbOn,
-  CheckCircleOutline,
-  DirectionsCarFilled,
-  AccessAlarm,
-  EventAvailableOutlined,
-  Error,
-  AvTimer,
-  DeleteOutline,
-  Autorenew,
-  Business,
-  Person,
-  CarCrashOutlined,
-  CloudQueue,
-  UploadFileOutlined,
-  HelpOutline,
-  ErrorOutline,
-  DirectionsSubway,
-  AccessTime,
-  BusAlert,
-  EditCalendar,
-  SensorOccupied,
-  ConnectWithoutContact,
-  ContactEmergency,
-  AirlineSeatReclineNormal,
-  DirectionsCar,
-  EventBusy,
-  FmdGoodOutlined,
-  EngineeringOutlined,
-  TransferWithinAStation,
-} from "@mui/icons-material";
+import { Checkbox, Dialog, Divider, Select, TextField, Typography, Box, FormControl, InputLabel, MenuItem, FormControlLabel, DialogTitle, DialogContent, DialogActions,
+  Card, CardContent, Avatar, IconButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Alert,
+  Snackbar, Grid, Tooltip, ButtonGroup,
+  Menu,} from "@mui/material";
+import { PhotoCamera, CloudUpload, CarCrash, Search, PersonAddAlt, LocalShipping, Add, PrecisionManufacturing, UploadFile, Schedule, Clear, Backup, DoNotDisturbOn, CheckCircleOutline, DirectionsCarFilled, AccessAlarm, EventAvailableOutlined,
+  Error, AvTimer, DeleteOutline, Autorenew, Business, Person, CarCrashOutlined, CloudQueue, UploadFileOutlined, HelpOutline,ErrorOutline, DirectionsSubway, BusAlert, EditCalendar, SensorOccupied, ConnectWithoutContact,
+  AirlineSeatReclineNormal, DirectionsCar, EventBusy, FmdGoodOutlined, EngineeringOutlined,
+  KeyboardArrowDown, } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import Webcam from "react-webcam";
 import { useMediaQuery } from "@mui/material";
-import { DatePicker, LocalizationProvider, TimePicker } from "@mui/x-date-pickers";
+import { ArrowDropDownIcon, DatePicker, LocalizationProvider, TimePicker } from "@mui/x-date-pickers";
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import logob from './logo.png';
 import ejemplo from './ejemplo.png';
@@ -91,13 +22,14 @@ import * as XLSX from 'xlsx';
 import dayjs from 'dayjs';
 import 'dayjs/locale/es' 
 import EscPosEncoder from 'esc-pos-encoder';
+import Swal from "sweetalert2";
 
 dayjs.locale('es');
-//const api = "http://66.232.105.87:3007/api/visitas";
-//const foto = "http://66.232.105.87:3007/api/fotos";
+//const api = "http://192.168.3.27:3007/api/visitas";
+//const foto = "http://192.168.3.27:3007/api/fotos";
 function Visitantes() {
-const api = "http://66.232.105.87:3007/api/visitas";
-const foto = "http://66.232.105.87:3007/api/fotos";
+  const api = "http://66.232.105.87:3007/api/visitas";
+  const foto = "http://66.232.105.87:3007/api/fotos";
 
   
   const navigate = useNavigate();
@@ -177,12 +109,10 @@ const foto = "http://66.232.105.87:3007/api/fotos";
 
   const [checkedVisita, setCheckedVisita] = useState(false);
   const [checkedPaq, setCheckedPaq] = useState(false);
-  const [checkedClie, setCheckedClie] = useState(false);
   const [checkedIne, setCheckedIne] = useState(false);
   const [checkedLic, setCheckedLic] = useState(false);
   const [acompanantes, setAcompanantes] = useState([]);
   const [acompanantesPaq, setAcompanantesPaq] = useState([]);
-  const [acompanantesClie, setAcompanantesClie] = useState([]);
   const [checkedAcceso, setCheckedAcceso] = useState(false);
 
   const [invalidColumns, setInvalidColumns] = useState([]);
@@ -220,12 +150,10 @@ const foto = "http://66.232.105.87:3007/api/fotos";
   const [errorVisita, setErrorVisita] = useState('');
   const [errorVisitaPaqueteria, setErrorVisitaPaqueteria] = useState('');
   const [errorVisitaAcomp, setErrorVisitaAcomp] = useState('');
-  const [errorVisitaCliente, setErrorVisitaCliente] = useState('');
   const [errorVisitaAuto, setErrorVisitaAuto] = useState('');
   const [errorVehiculo, setErrorVehiculo] = useState('');
   const [errorTransp, setErrorTransp] = useState('');
   const [errorVisitas, setErrorVisitas] = useState('');
-  const [errorVisitaProv, setErrorVisitaProv] = useState('');
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [isCameraReadyUp, setIsCameraReadyUp] = useState(false);
   const [errorMulta, setErrorMulta] = useState('');
@@ -254,12 +182,10 @@ const foto = "http://66.232.105.87:3007/api/fotos";
   const [openNewVeh, setOpenNewVeh] = useState(false);
   const [openSalida, setOpenSalida] = useState(false);
   const [openBloqueo, setOpenBloqueo] = useState(false);
-  const [openRegistro, setOpenRegistro] = useState(false);
   const [openVisitaAgendada, setOpenVisitaAgendada] = useState(false);
   const [openUpExcelInfo, setOpenUpExcelInfo] = useState(false);
   const [openMultaFinalizar, setOpenMultaFinalizar] = useState(false);
   const [openVisitaDup, setOpenVisitaDup] = useState(false);
-  const [openVisitaError, setOpenVisitaError] = useState(false);
   const [openTransportistaError, setOpenTransportistaError] = useState(false);
 
   const [openAlert, setOpenAlert] = useState(false);
@@ -267,12 +193,8 @@ const foto = "http://66.232.105.87:3007/api/fotos";
   const [alertaMostrada, setAlertaMostrada] = useState(false);
   const [showErrorAlertPlaca, setShowErrorAlertPlaca] = useState(false); 
 
-  const [openAlertAccess, setOpenAlertAccess] = useState(false);
-  const [openAlertOut, setOpenAlertOut] = useState(false);
   const [openExcesoTiempo, setOpenExcesoTiempo] = useState(false);
-  const [showButton, setShowButton] = useState(false); 
   const [showSuccessAlert, setShowSuccessAlert] = useState(false);
-  const [showErrorAlert, setShowErrorAlert] = useState(false);
   const [showSuccessAlertImgs, setShowSuccessAlertImgs] = useState(false);
   const [showErrorAlertImgs, setShowErrorAlertImgs] = useState(false);
 
@@ -304,6 +226,16 @@ const foto = "http://66.232.105.87:3007/api/fotos";
   const datosFiltradosPaqueterias = filtro === 'paqueterias' || filtro === 'todos' ? paqueteriasAct : [];
   const datosFiltradosClienteRecoge = filtro === 'clientes' || filtro === 'todos' ? clienteRecoge : [];
 
+  const columns = [
+    { id: '', label: '', minWidth: 170 },
+    { id: 'nombre', label: 'NOMBRE', minWidth: 170 },
+    { id: 'empresa', label: 'EMPRESA', minWidth: 100 },
+    { id: 'respon', label: 'RESPONSABLE', minWidth: 170 },
+    { id: 'area', label: 'ÁREA', minWidth: 170, align: 'right' },
+    { id: 'entrada', label: 'ENTRADA', minWidth: 170  },
+    { id: 'vehiculo', label: 'VEHÍCULO', minWidth: 170  },
+  ];
+
 
   //dialog de actividad
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -324,6 +256,10 @@ const foto = "http://66.232.105.87:3007/api/fotos";
     setDialogOpen(true);
   };
 
+  const handleOpenDialog = () => {
+    setDialogOpen(true);
+  }
+
   const enviarAlerta = () => {
     generarCodigo();
     console.log("Alerta enviada con el código:", randomNumber);
@@ -338,7 +274,7 @@ const foto = "http://66.232.105.87:3007/api/fotos";
       if (alertasEnviadas === 0 && currentHour < 9) {
         enviarAlerta();
         setAlertasEnviadas((prev) => prev + 1);
-      } else if (alertasEnviadas === 1 && currentHour >= 9) {
+      } else if (alertasEnviadas === 1 || alertasEnviadas === 0 && currentHour >= 9) {
         enviarAlerta();
         setAlertasEnviadas((prev) => prev + 1);
       }
@@ -372,7 +308,7 @@ const foto = "http://66.232.105.87:3007/api/fotos";
     if (!actividad) {
       // No hay actividad previa, iniciar a las 7 am
       const inicio = new Date();
-      inicio.setHours(1, 0, 0, 0);
+      inicio.setHours(7, 0, 0, 0);
 
       if (now < inicio) {
         const tiempoHastaInicio = inicio - now;
@@ -391,6 +327,7 @@ const foto = "http://66.232.105.87:3007/api/fotos";
       if (response.data && response.data.fecha) {
         const ultimaActividad = new Date(response.data.fecha);
         setActividad(ultimaActividad);
+        console.log("Última actividad:", ultimaActividad);
       } else {
         console.error("No se encontró la propiedad 'fecha' en la respuesta.");
       }
@@ -461,9 +398,11 @@ const handleClose = () => {
 
         const data = await response.json();
         if (data.success) {
-            alert('Datos guardados correctamente');
+           // alert('Datos guardados correctamente');
+            console.log('Datos guardados correctamente')
         } else {
             alert('Error al guardar los datos');
+            console.log('Error al guardar los datos');
         }
     } catch (error) {
         console.error('Error al enviar los datos:', error);
@@ -790,37 +729,74 @@ const getConMultas = async () => {
       return nuevoObjeto;
     };
 
-    const createTransportista = async () => { 
-      const invitMayusculas = convertirATextoMayusculas(transp);
-    
-      const formData = new FormData();
-      Object.entries(invitMayusculas).forEach(([key, value]) => {
-          formData.append(key, value);
+  const createTransportista = async () => { 
+    const invitMayusculas = convertirATextoMayusculas(transp);
+
+    const formData = new FormData();
+    Object.entries(invitMayusculas).forEach(([key, value]) => {
+        formData.append(key, value);
+    });
+
+    if (image) {
+      formData.append('foto', image);
+    } else {
+      console.error("No se ha seleccionado ninguna imagen.");
+      // return;
+    }
+
+    try {
+      const response = await axios.post(`${api}/create/transportista`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
-    
-      if (image) {
-        formData.append('foto', image);
-      } else {
-        console.error("No se ha seleccionado ninguna imagen.");
-        // return;
-      }
-    
-      try {
-        const response = await axios.post(`${api}/create/transportista`, formData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        });
-        console.log('Guardado exitoso', response.data);
-        setClave({ tipo: response.data.tipo, mensaje: response.data.message });
-        setOpenRegistro(true);
-      } catch (error) {
-        const errorMessage = error.response?.data?.message || "Error inesperado al registrar.";
-        setErrorTransportista(errorMessage);
-        setOpenTransportistaError(true);
-      }
-    };
+      console.log('Guardado exitoso', response.data);
+      setClave({ tipo: response.data.tipo, mensaje: response.data.message });
+      //setOpenRegistro(true);
+      Swal.fire({
+        title:'Transportista registrado con exito.',
+        text: `Clave: ${response.data.message}`,
+
+        icon: "success",
+        confirmButtonText: "CERRAR",
+        confirmButtonColor: "#6dba27",
+        // denyButtonText: `AGENDAR`,
+        // denyButtonColor: "#FFA500",
+        // showDenyButton: true,
+        didOpen: () => {
+          const swalContainer = document.querySelector('.swal2-container');
+          if (swalContainer) {
+            swalContainer.style.zIndex = '9999'; // Asegúrate que sea mayor al Dialog
+          }
+        }
+      }).then(() => {
+        window.location.reload();
+      })
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || "Error inesperado al registrar.";
+      setErrorTransportista(errorMessage);
+      //setOpenTransportistaError(true);
+      Swal.fire({
+        //title: "Error",
+        text: errorMessage,
+        //text: msg,
+        icon: "error",
+        confirmButtonText: "CERRAR",
+        //confirmButtonColor: "#6dba27",
+        confirmButtonColor: "#FFA500",
+        didOpen: () => {
+          const swalContainer = document.querySelector('.swal2-container');
+          if (swalContainer) {
+            swalContainer.style.zIndex = '9999'; // Asegúrate que sea mayor al Dialog
+          }
+        }
+      }).then(() => {
+        //getLista()
+        window.location.reload();
+      })
+    }
+  };
     
 
-const [transp, setTransp] = useState(
+  const [transp, setTransp] = useState(
     {
       id_catv: "",
       nombre: "",
@@ -838,7 +814,7 @@ const [transp, setTransp] = useState(
       
         
     }
-);
+  );
 
 const validateTransportista = () => {
   let validationErrors = {};
@@ -997,11 +973,50 @@ const createInvitado = async () => {
 
     console.log("Guardado exitoso", response.data);
     setClave({ tipo: response.data.tipo, mensaje: response.data.message });
-    setOpenRegistro(true);
+    Swal.fire({
+      title:'Visitante registrado con exito.',
+      text: `Clave: ${response.data.message}`,
+
+      icon: "success",
+      confirmButtonText: "CERRAR",
+      confirmButtonColor: "#6dba27",
+      denyButtonText: `AGENDAR`,
+      denyButtonColor: "#FFA500",
+      showDenyButton: true,
+      didOpen: () => {
+        const swalContainer = document.querySelector('.swal2-container');
+        if (swalContainer) {
+          swalContainer.style.zIndex = '9999'; // Asegúrate que sea mayor al Dialog
+        }
+      }
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        window.location.reload();
+      } else if (result.isDenied) {
+        await getVisitantes();
+        setOpenCreateVisita(true);
+      }
+    });
   } catch (error) {
     const errorMessage = error.response?.data?.message || "Error inesperado al registrar.";
     setErrorVisitante(errorMessage);
-    setOpenVisitaError(true); 
+    Swal.fire({
+      //title: "Error",
+      text: errorMessage,
+      //text: msg,
+      icon: "error",
+      confirmButtonText: "CERRAR",
+      //confirmButtonColor: "#6dba27",
+      confirmButtonColor: "#FFA500",
+      didOpen: () => {
+        const swalContainer = document.querySelector('.swal2-container');
+        if (swalContainer) {
+          swalContainer.style.zIndex = '9999'; // Asegúrate que sea mayor al Dialog
+        }
+      }
+    }).then(() => {
+     window.location.reload();
+    })
   }
 };
 
@@ -1449,12 +1464,8 @@ const inputChangeVehiculo = (event) => {
     setOpenMultaFinalizar(false);
     setOpenBloqueo(false);
   };
-  const handleCloseError = () => {
-    setOpenVisitaError(false);
-  };
-  const handleCloseErrorT = () => {
-    setOpenTransportistaError(false);
-  };
+  
+  
   const handleClickOpenCreateIn = () => {
     setOpenCreateInvitado(true);
   };
@@ -1481,10 +1492,6 @@ const inputChangeVehiculo = (event) => {
     })
   };
 
-  const handleClickOpenCliente = () => {
-    setOpenCreateCliente(true);
-  };
-
   const handleClickCloseCliente = () => {
     setOpenCreateCliente(false);
     setSelectedPaqueteria(null);
@@ -1503,6 +1510,7 @@ const inputChangeVehiculo = (event) => {
       acompanantesPaq:[]
     })
   };
+
   const handleCloseCreateIn = () => {
     setOpenCreateInvitado(false);
     setSelectCategorias(null);
@@ -1543,12 +1551,16 @@ const inputChangeVehiculo = (event) => {
       });
   };
 
+  const onCloseGenEtiqueta = () => {
+    setOpenGenerarAcceso(false);
+  }
   const handleCloseCreateTransp = () => {
     setOpenCreateTransp(false);
     setSelectCategoriasMT(null);
     //setTransp('')
   };
   const handleClickOpenCreateVisita = () => {
+    getVisitantes();
     setOpenCreateVisita(true);
   };
   const handleClickOpenCreateVisita2 = () => {
@@ -1558,6 +1570,7 @@ const inputChangeVehiculo = (event) => {
   
 
   const handleCloseCreateVisita = () => {
+    handleCloseCreateIn();
     setOpenCreateVisita(false);
     setSelectedAcs(null);
     setSelectedPR(null);
@@ -1595,6 +1608,11 @@ const inputChangeVehiculo = (event) => {
   const handleCloseRegAcomp = () => {
     setOpenRegAcomp(false); 
     setSelectedVisita(null);
+    setVitAcomp({
+      nombre_acomp:'',
+      apellidos_acomp:'',
+      no_ine_acomp:''
+    })
   };
 
   const handleCloseAcceso = () => {
@@ -1909,11 +1927,7 @@ const validateProveedor = () => {
     //setSelectedVisitaSalida(null);
     setOpenExcesoTiempo(false);
   };
-  const handleCloseRegistro = () => {
-    
-    setOpenRegistro(false);
-    window.location.reload();
-  };
+  
   const handleCloseVisitaAgendada = () => {
     
     setOpenVisitaAgendada(false);
@@ -1946,9 +1960,24 @@ const validateProveedor = () => {
         headers: { 'Content-Type': 'application/json'},
       });
       console.log('Guardado exitoso', response.data);
-      window.location.reload();
-      // En lugar de recargar la página, actualizamos la tabla
-      //fetchAcompañantes(); 
+      //window.location.reload();
+      
+      Swal.fire({
+        //title:'Registro exitoso.',
+        text: 'Acompañante registrado con éxito.',
+  
+        icon: "success",
+        confirmButtonText: "CERRAR",
+        confirmButtonColor: "#6dba27",
+        didOpen: () => {
+          const swalContainer = document.querySelector('.swal2-container');
+          if (swalContainer) {
+            swalContainer.style.zIndex = '9999'; // Asegúrate que sea mayor al Dialog
+          }
+        }
+      }).then(() => {
+       window.location.reload();
+      })
   
     } catch (error) {
       console.error('Error al registrar visita:', error.response?.data || error.message);
@@ -2060,6 +2089,7 @@ const createVisitaPaqueteria = async () => {
       console.log('Guardado exitoso', response.data);
       //setOpenVisitaAgendada(true);
       window.location.reload();
+      
   } catch (error) {
       console.error('Error al registrar visita:', error.response?.data || error.message);
       setShowErrorAlertPlaca(true);
@@ -2250,17 +2280,69 @@ const newVisita = async () => {
     // Enviar los datos al endpoint de la API.
     const response = await axios.post(`${api}/create/visita`, dataMayusculas);
     console.log('Guardado exitoso', response.data);
-
+    setErrorVisita(response.data.error);
+    let msg = response.data.error;
     // Si la respuesta tiene error, muestra el mensaje de error en el modal.
     if (response.data.success === false) {
-      setErrorVisita(response.data.error);
+      Swal.fire({
+        title: "Error",
+        //text: "Ocurrio un error. Intenta nuevamente.",
+        text: msg,
+        icon: "error",
+        confirmButtonText: "Cerrar",
+        //confirmButtonColor: "#6dba27",
+        confirmButtonColor: "#dd6b55",
+        didOpen: () => {
+          const swalContainer = document.querySelector('.swal2-container');
+          if (swalContainer) {
+            swalContainer.style.zIndex = '9999'; // Asegúrate que sea mayor al Dialog
+          }
+        }
+      }).then(() => {
+        //getLista()
+       window.location.reload();
+      })
+      //
     } else {
-      setOpenVisitaAgendada(true); // Muestra el modal de éxito
+      Swal.fire({
+        title:'Visita agendada con exito.',
+        icon: "success",
+        confirmButtonText: "CERRAR",
+        confirmButtonColor: "#6dba27",
+        didOpen: () => {
+          const swalContainer = document.querySelector('.swal2-container');
+          if (swalContainer) {
+            swalContainer.style.zIndex = '9999'; // Asegúrate que sea mayor al Dialog
+          }
+        }
+      }).then(() => {
+        //getLista()
+       window.location.reload();
+      })// Muestra el modal de éxito
     }
   } catch (error) {
+    let errorVisita = error.response?.data.error;
+    Swal.fire({
+      //title: "Error",
+      text: errorVisita,
+      //text: msg,
+      icon: "warning",
+      confirmButtonText: "CERRAR",
+      //confirmButtonColor: "#6dba27",
+      confirmButtonColor: "#FFA500",
+      didOpen: () => {
+        const swalContainer = document.querySelector('.swal2-container');
+        if (swalContainer) {
+          swalContainer.style.zIndex = '9999'; // Asegúrate que sea mayor al Dialog
+        }
+      }
+    }).then(() => {
+      //getLista()
+     window.location.reload();
+    })
     console.error('Error al registrar visita:', error.response?.data || error.message);
-    setErrorVisita(error.response?.data || error.message); 
-    setOpenVisitaAgendada(true);
+    //setErrorVisita(error.response?.data || error.message); 
+    //setOpenVisitaAgendada(true);
   }
 };
 
@@ -2590,34 +2672,34 @@ const handleGenerateImage = async () => {
     console.log("Generando QR del visitante principal...");
     const qrVisitante = await generateQRCode(visitanteQRContent);
 
-    const qrAcompanantes = await Promise.all(
-      acompanantes.map(async (acompanante) => {
-        const qrContent = `
-          NOMBRE ACOMPAÑANTE: ${acompanante}\n
-          EMPRESA: ${empresa}\n
-          PLACA O CONTENEDOR: ${vehiculo}\n
-          DÍA DE VISITA: ${fechaVisita}\n
-          HORA VISITA: ${horaVisita || '-'}\n
-          AREA DE ACCESO: ${areaAcceso}\n
-        `;
-        return generateQRCode(qrContent);
-      })
-    );
-    const contentAcompanantes = await Promise.all(
-      acompanantes.map(async (acompanante) => {
-        const qrContent = `
-          VISITA SANTUL - ${selectedVisita.clave_visit}
-          NOM. ACOMPAÑANTE: ${acompanante}
-          EMPRESA: ${empresa}
-          TIPO DE VISITA: ${selectedVisita.tipo}
-          AREA DE ACCESO: ${areaAcceso}
-        `;
-        return generateQRCode(qrContent);
-      })
-    );
+    // const qrAcompanantes = await Promise.all(
+    //   acompanantes.map(async (acompanante) => {
+    //     const qrContent = `
+    //       NOMBRE ACOMPAÑANTE: ${acompanante}\n
+    //       EMPRESA: ${empresa}\n
+    //       PLACA O CONTENEDOR: ${vehiculo}\n
+    //       DÍA DE VISITA: ${fechaVisita}\n
+    //       HORA VISITA: ${horaVisita || '-'}\n
+    //       AREA DE ACCESO: ${areaAcceso}\n
+    //     `;
+    //     return generateQRCode(qrContent);
+    //   })
+    // );
+    // const contentAcompanantes = await Promise.all(
+    //   acompanantes.map(async (acompanante) => {
+    //     const qrContent = `
+    //       VISITA SANTUL - ${selectedVisita.clave_visit}
+    //       NOM. ACOMPAÑANTE: ${acompanante}
+    //       EMPRESA: ${empresa}
+    //       TIPO DE VISITA: ${selectedVisita.tipo}
+    //       AREA DE ACCESO: ${areaAcceso}
+    //     `;
+    //     return generateQRCode(qrContent);
+    //   })
+    // );
 
-    console.log("Conectando e imprimiendo...");
-    await connectAndPrint(printContent, visitanteQRContent, qrAcompanantes, contentAcompanantes);
+    // console.log("Conectando e imprimiendo...");
+    // await connectAndPrint(printContent, visitanteQRContent, qrAcompanantes, contentAcompanantes);
 
     console.log("Impresión completada, actualizando datos...");
     await darAcceso(idVisit, estado);
@@ -2634,7 +2716,8 @@ const connectAndPrint = async (printContent, qrVisitante, qrAcompanantes, conten
     console.log("Solicitando dispositivo...");
 
     const device = await navigator.bluetooth.requestDevice({
-      filters: [{ name: "NLS-PP310-EA20" }],
+      //cambiar el nombre del dispositivo por el de la impresora
+      filters: [{ name: "NLS-PP310-6654" }],
       optionalServices: ["49535343-fe7d-4ae5-8fa9-9fafd205e455"],
     });
 
@@ -2864,6 +2947,29 @@ const multaVisitante = async () => {
     });
     console.log('Guardado exitosamente', response.data);
     setShowSuccessAlert(true);
+    // Swal.fire({
+    //   title: 'El visitante ha sido multado con éxito.',
+    //   text: '¿Desea finalizar la visita?',
+    //   icon: "success",
+    //   confirmButtonText: "NO FINALIZAR",
+    //   confirmButtonColor: "#6dba27",
+    //   denyButtonText: `FINALIZAR`,
+    //   denyButtonColor: "#FFA500",
+    //   showDenyButton: true,
+    //   didOpen: () => {
+    //     const swalContainer = document.querySelector('.swal2-container');
+    //     if (swalContainer) {
+    //       swalContainer.style.zIndex = '9999'; // Asegúrate que sea mayor al Dialog
+    //     }
+    //   }
+    // }).then(async (result) => {
+    //   if (result.isConfirmed) {
+    //     window.location.reload();
+    //   } else if (result.isDenied) {
+    //     await getVisitantes();
+    //     setOpenCreateVisita(true);
+    //   }
+    // });
     handleOpenMultaFinalizar(selectedVisitaBloqeo);
     setTimeout(() => setShowSuccessAlert(false), 5000); 
   } catch (error) {
@@ -3045,7 +3151,7 @@ const handleSaveVehiculoData = async () => {
       window.location.reload();
   } catch (error) {
       console.error("Error al guardar los datos:", error);
-      alert("Error al guardar los datos");
+      //alert("Error al guardar los datos");
   }
 };
 
@@ -3065,7 +3171,7 @@ const handleSaveData = async () => {
       window.location.reload();
   } catch (error) {
       console.error("Error al guardar los datos:", error);
-      alert("Error al guardar los datos");
+      //alert("Error al guardar los datos");
   }
 };
 
@@ -3184,436 +3290,508 @@ const handleDropdownChangeCortina = (event) => {
   }));
 }; 
 
+const isMobile = useMediaQuery('(max-width:1200px)');
 
-return (
-  <div>
-    <Box
-      display="flex"
-      justifyContent="space-between"
-      alignItems="center"
-      mb={2}
-      flexDirection={isSmallScreen ? "column" : "row"}
-    >
-      {(user?.role === 'POLIB' || user?.role === 'Admin') && (
-        <>
-        <Box mb={2}>
-          <TextField
-            label="Buscar visita"
-            value={searchQuery}
-            onChange={handleSearchChange}
-            variant="outlined"
-            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-            size="small"
-            sx={{
-              width: isSmallScreen ? "100%" : "300px",
-              mb: 2,
-            }}
-            InputProps={{ 
-              endAdornment: (
-                <>
-                  {filteredVisitas.length > 0  ? (
-                    <IconButton
-                      aria-label="clear"
-                      size="small"
-                      onClick={handleClearSearch}
-                    >
-                      <Clear fontSize="small" />
-                    </IconButton>
-                  ) : (
-                    <IconButton
-                      aria-label="search"
-                      size="small"
-                      onClick={handleSearch}
-                    >
-                      <Search fontSize="small" />
-                    </IconButton>
-                  )}
-                </>
-              ),
-            }}
-          />{' '}
-          <TextField
-            label="Buscar empleado"
-            value={searchQueryEmpleado}
-            onChange={handleSearchChangeEmpleado}
-            variant="outlined"
-            size="small"
-            onKeyDown={(e) => e.key === "Enter" && handleSearchEmpleado()}
-            sx={{
-              width: isSmallScreen ? "100%" : "300px",
-              mb: 2,
-            }}
-            InputProps={{
-              endAdornment: (
-                <>
-                  {/* Mostrar el ícono de búsqueda solo si hay texto en el input */}
-                  {filteredEmpleados.length > 0  ? (
-                    <IconButton
-                      aria-label="clear"
-                      size="small"
-                      onClick={handleClearSearchEmpleado}
-                    >
-                      <Clear fontSize="small" />
-                    </IconButton>
-                  ) : (
-                    <IconButton
-                      aria-label="search"
-                      size="small"
-                      onClick={handleSearchEmpleado}
-                    >
-                      <Search fontSize="small" />
-                    </IconButton>
-                  )}
-                </>
-              ),
-            }}
-          />
-          
-        </Box>
-        </>
-        
-      )}
-      
-      <Box display="flex" gap={2}>
-        {(user?.role === 'RH' || user?.role === 'Admin') && ( 
-          <Button
-            variant="contained"
-            color="primary"
-            startIcon={<PersonAddAlt />}
-            onClick={handleClickOpenCreateIn}
-          >
-            Nuevo visitante
-          </Button>
-        )}
-        {(user?.role === 'CONTROL' || user?.role === 'Admin') && (
-          <Button
-            variant="contained"
-            startIcon={<LocalShipping />}
-            onClick={handleClickOpenCreateTransp}
-          > 
-            Nuevo transportista
-          </Button>
-        )}
-        {(user?.role === 'RH' || user?.role === 'CONTROL' || user?.role === 'Nac' || user?.role === 'TRAFICO' || user?.role === 'Imp' || user?.role === 'Admin') && (
-          <>
-            <Button
-              variant="contained"
-              startIcon={<Schedule />}
-              onClick={handleClickOpenCreateVisita}
-            >
-              Programar visita
-            </Button>
-          </>
-        )}
+//responsive filtros
+const [anchorEl, setAnchorEl] = useState(null);
+  const open = Boolean(anchorEl);
+
+  const handleClick = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleCloseFiltro = (callback) => {
+    setAnchorEl(null);
+    if (callback) callback();
+  };
+
+
+  return (
+    <div>
+      <Box
+        display="flex"
+        justifyContent="space-between"
+        alignItems={isMobile ? "" : "center"}
+        mb={2}
+        flexDirection={isSmallScreen ? "column" : "row"}
+      >
         {(user?.role === 'POLIB' || user?.role === 'Admin') && (
           <>
+          <Box mb={2}>
+            <TextField
+              label="Buscar visita"
+              value={searchQuery}
+              onChange={handleSearchChange}
+              variant="outlined"
+              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+              size="small"
+              sx={{
+                width: isMobile ? 200 : 300,
+                mb: 2,
+              }}
+              InputProps={{ 
+                endAdornment: (
+                  <>
+                    {filteredVisitas.length > 0  ? (
+                      <IconButton
+                        aria-label="clear"
+                        size="small"
+                        onClick={handleClearSearch}
+                      >
+                        <Clear fontSize="small" />
+                      </IconButton>
+                    ) : (
+                      <IconButton
+                        aria-label="search"
+                        size="small"
+                        onClick={handleSearch}
+                      >
+                        <Search fontSize="small" />
+                      </IconButton>
+                    )}
+                  </>
+                ),
+              }}
+            />{' '}
+            <TextField
+              label="Buscar empleado"
+              value={searchQueryEmpleado}
+              onChange={handleSearchChangeEmpleado}
+              variant="outlined"
+              size="small"
+              onKeyDown={(e) => e.key === "Enter" && handleSearchEmpleado()}
+              sx={{
+                width: isMobile ? 200 : 300,
+                mb: 2,
+              }}
+              InputProps={{
+                endAdornment: (
+                  <>
+                    {/* Mostrar el ícono de búsqueda solo si hay texto en el input */}
+                    {filteredEmpleados.length > 0  ? (
+                      <IconButton
+                        aria-label="clear"
+                        size="small"
+                        onClick={handleClearSearchEmpleado}
+                      >
+                        <Clear fontSize="small" />
+                      </IconButton>
+                    ) : (
+                      <IconButton
+                        aria-label="search"
+                        size="small"
+                        onClick={handleSearchEmpleado}
+                      >
+                        <Search fontSize="small" />
+                      </IconButton>
+                    )}
+                  </>
+                ),
+              }}
+            />{' '}
+            {(user?.role === 'POLIA' || user?.role === 'Admin')  && (
+              <TextField
+                label="Buscar placa"
+                value={searchQueryPlaca}
+                onChange={handleSearchChangePlaca}
+                variant="outlined"
+                size="small"
+                onKeyDown={(e) => e.key === "Enter" && handleSearchPlaca()}
+                sx={{
+                  width: isMobile ? 200 : 300,
+                  mb: 2,
+                }}
+                InputProps={{
+                  endAdornment: (
+                    <>
+                      {/* Mostrar el ícono de búsqueda solo si hay texto en el input */}
+                      {filteredPlacas.length > 0  ? (
+                        <IconButton
+                          aria-label="clear"
+                          size="small"
+                          onClick={handleClearSearchPlaca}
+                        >
+                          <Clear fontSize="small" />
+                        </IconButton>
+                      ) : (
+                        <IconButton
+                          aria-label="search"
+                          size="small"
+                          onClick={handleSearchPlaca}
+                        >
+                          <Search fontSize="small" />
+                        </IconButton>
+                      )}
+                    </>
+                  ),
+                  }}
+                />
+            )}
+            
+          </Box>
+          </>
+          
+        )}
+        
+        <Box display="flex" gap={isMobile ? 1 : 2} sx={{
+            flexDirection: isMobile ? "column" : "row",
+            justifyContent: isMobile ? "left" : "flex-start", // Alineación a la derecha en dispositivos móviles
+            alignItems: isMobile ? "left" : "center",
+          }}>
+          {(user?.role === 'RH' || user?.role === 'Admin') && ( 
             <Button
               variant="contained"
               color="primary"
-              startIcon={<LocalShipping />}
-              onClick={handleClickOpenPaqueteria}
+              startIcon={<PersonAddAlt />}
+              onClick={handleClickOpenCreateIn}
+              size={isMobile ? "small" : "medium"}
             >
-              LLEGADA DE PAQUETERIA
+              Nuevo visitante
             </Button>
-          </>
-        )}
-      </Box>
-    </Box>
-    {(user?.role === 'POLIA' || user?.role === 'Admin')  && (
-      <Box mb={2}>
-        <TextField
-        label="Buscar placa"
-        value={searchQueryPlaca}
-        onChange={handleSearchChangePlaca}
-        variant="outlined"
-        size="small"
-        onKeyDown={(e) => e.key === "Enter" && handleSearchPlaca()}
-        sx={{
-          width: isSmallScreen ? "100%" : "300px",
-          mb: isSmallScreen ? 2 : 0,
-        }}
-        InputProps={{
-          endAdornment: (
+          )}
+          {(user?.role === 'CONTROL' || user?.role === 'Admin') && (
+            <Button
+              variant="contained"
+              startIcon={<LocalShipping />}
+              onClick={handleClickOpenCreateTransp}
+              size={isMobile ? "small" : "medium"}
+            > 
+              Nuevo transportista
+            </Button>
+          )}
+          {(user?.role === 'RH' || user?.role === 'CONTROL' || user?.role === 'Nac' || user?.role === 'TRAFICO' || user?.role === 'Imp' || user?.role === 'Admin') && (
             <>
-              {/* Mostrar el ícono de búsqueda solo si hay texto en el input */}
-              {filteredPlacas.length > 0  ? (
-                <IconButton
-                  aria-label="clear"
-                  size="small"
-                  onClick={handleClearSearchPlaca}
-                >
-                  <Clear fontSize="small" />
-                </IconButton>
-              ) : (
-                <IconButton
-                  aria-label="search"
-                  size="small"
-                  onClick={handleSearchPlaca}
-                >
-                  <Search fontSize="small" />
-                </IconButton>
-              )}
+              <Button
+                variant="contained"
+                startIcon={<Schedule />}
+                onClick={handleClickOpenCreateVisita}
+                size={isMobile ? "small" : "medium"}
+              >
+                Programar visita
+              </Button>
             </>
-          ),
-          }}
-        />
-        
+          )}
+          {(user?.role === 'POLIB' || user?.role === 'Admin') && (
+            <>
+              <Button
+                variant="contained"
+                color="primary"
+                startIcon={<LocalShipping />}
+                onClick={handleClickOpenPaqueteria}
+                size={isMobile ? "small" : "medium"}
+              >
+                LLEGADA DE PAQUETERIA
+              </Button>
+            </>
+          )}
+        </Box>
       </Box>
-    )}
-    { (user?.role === 'Admin' || user?.role === 'POLIB') && (
-    <Box mb={2}>
-      <Grid container spacing={3}>
-        {filteredEmpleados.map((empleado, index) => (
-          <Grid item xs={12} sm={6} md={4.5} key={index}>
-            <Card sx={{ height: '100%', width: '120%', display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-              <CardContent sx={{ display: "flex" }}>
-                <Avatar
-                  src={`${foto}/${empleado.foto}`}
-                  alt={empleado.nombre_completo}
-                  sx={{ width: 150, height: 150, marginRight: "15px", objectFit: "cover" }}
-                />
-                <div style={{ flex: 1 }}>
-                  <Typography variant="h6" sx={{ fontWeight: "bold" }}>
-                    <i className="pi pi-user" style={{ marginRight: 5 }} />
-                    {empleado.nombre_completo}
-                  </Typography>
-                  <Typography variant="body2" sx={{ marginBottom: 1 }}>
-                    <EngineeringOutlined fontSize="small" /> No. Empleado: {empleado.no_empleado}
-                  </Typography>
-                  <Typography variant="body2" sx={{ marginBottom: 1 }}>
-                    <Business fontSize="small" /> Empresa: {empleado.id_catv === 8 && "COLABORADOR SANTUL" }
-                  </Typography>
-                  <Typography variant="body2" sx={{ marginBottom: 1 }}>
-                    <Autorenew fontSize="small" /> Relación: {empleado.tipo}
-                  </Typography>
-                  <Typography variant="body2" sx={{ marginBottom: 1 }}>
-                    <ConnectWithoutContact fontSize="small" />Acceso: {empleado.est === 'A' ? (<span style={{color:'green'}}><strong>AUTORIZADO</strong></span>):(<span style={{color:'red'}}><strong>NO AUTORIZADO</strong></span>)}
-                  </Typography>
-                  
-                </div>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
-    </Box>)}
-
+      
+      { (user?.role === 'Admin' || user?.role === 'POLIB') && (
       <Box mb={2}>
         <Grid container spacing={3}>
-          {filteredVisitas.length > 0 ? (
-            <>
-            
-            {filteredVisitas.filter((visita) => validTypes.some(type => visita.tipo?.startsWith(type)))
-            .map((visita, index) => (
-              <Grid item xs={12} sm={6} md={4} key={index}>
-                <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                  <CardContent sx={{ display: 'flex' }}>
-                    <Avatar
-                      src={`${foto}/${visita.foto}`}
-                      alt={visita.nombre_completo}
-                      sx={{ width: 150, height: 150, marginRight: '15px', objectFit: 'cover' }}
-                    />
-                    <div style={{ flex: 1 }}>
-                      <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                        <i className="pi pi-user" style={{ marginRight: 5 }} />
-                        {visita.nombre_completo}
-                      </Typography>
-                      <Typography variant="body2" sx={{ marginBottom: 1 }}>
-                        <Business fontSize="small" />{' '}
-                        Empresa: {visita.id_catv === 1 ? ( 'COLABORADOR SANTUL'): visita.id_catv === 2 ? ('N/A'): (visita.empresa)} 
-                      </Typography>
-                      <Typography variant="body2" sx={{ marginBottom: 1 }}>
-                        <Autorenew fontSize="small"/>{' '}
-                        Relación:  {visita.tipo}
-                      </Typography>
-                      <Typography variant="body2" sx={{ marginBottom: 1 }}>
-                        <CarCrashOutlined fontSize="small" />{' '}
-                        Placa: {visita.id_catv === 1 || visita.id_catv === 2 || visita.id_catv === 3 ? (
-                          'N/A'
-                        ) : ( visita.placa )} 
-                        <br />
-                        {visita.id_catv === 1 || visita.id_catv === 2 || visita.placa === null ? (
-                          ' '
-                        ) : (
-                          <small style={{ marginLeft: '8px' }}>
-                            {visita.acc_veh === 'S' || visita.acc === 'S' || visita.acc_dir === 'S' ? (
-                              <span style={{ color: 'green' }}>Vehículo con acceso autorizado.</span>
-                            ) : visita.acc_veh === '' || visita.acc === null ? (
-                              <span style={{ color: '#ed6b1b' }}>Vehículo pendiente de autorizar acceso.</span>
-                            ) : (
-                              <span style={{ color: 'red' }}>Vehículo sin acceso autorizado.</span>
-                            )}
-                          </small>
-                        )}
-                      {visita.id_catv === 1 || visita.id_catv === 2 ? (
-                        <Typography variant="body2" sx={{ marginBottom: 1 }}>
-                          <SensorOccupied fontSize="small"/>{' '}
-                          Responsable: {visita.personal}
-                        </Typography>
-                      ) : (' ')}
-
-                      </Typography>
-                      <Typography variant="body2" sx={{ marginBottom: 1 }}>
-                        <CloudQueue fontSize="small"/>{' '}
-                        Día y hora de visita: {formatDateToYMD(visita.reg_entrada)}, {visita.hora_entrada}
-                      </Typography>
-                      <div> 
-                      <Button
-                          variant="outlined"
-                          startIcon={<FmdGoodOutlined />}
-                          sx={{ width: "90%", mb: 1 }}
-                          onClick={() => validarVisita(visita)}
-                        >
-                          Marcar llegada
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                  
-                </Card>
-              </Grid>
-            
-            ))}
-
-          {filteredVisitas
-            .filter((visita) => validProv.some(type => visita.tipo?.startsWith(type)))
-            .map((visita, index) => (
-              <Grid item xs={12} sm={6} md={4.5} key={`PR-${index}`}>
-                <Card
-                  sx={{
-                    height: '100%', width:'150%',
-                    display: "flex",
-                    flexDirection: "column",
-                    justifyContent: "space-between",
-                  }}
-                >
-                  <CardContent sx={{ display: "flex" }}>
-                    {/* Contenido del card */}
-                    <Avatar
-                      src={`${foto}/${visita.foto}`}
-                      alt={visita.nombre_completo}
-                      sx={{
-                        width: 150,
-                        height: 150,
-                        marginRight: "15px",
-                        objectFit: "cover",
-                      }}
-                    />
-                    <div style={{ flex: 1 }}>
-                      {/* Contenido de los detalles */}
-                      <Typography variant="h6" sx={{ fontWeight: "bold" }}>
-                        <i className="pi pi-user" style={{ marginRight: 5 }} />
-                        {visita.contenedor} -
-                        <small style={{ marginLeft: '8px' }}>
-                          {visita.acc_veh === 'S' || visita.acc_dir === 'S' ? (
-                            <small style={{ color: 'green' }}>Vehículo con acceso autorizado.</small>
-                          ) : (
-                            <small style={{ color: 'red' }}>Vehículo con acceso denegado.</small>
-                          )}
-                        </small>
-                      </Typography>
-                      <Typography variant="body2" sx={{ marginBottom: 1 }}>
-                        <Autorenew fontSize="small" /> Relación: {visita.tipo}
-                      </Typography>
-                      <Typography variant="body2" sx={{ marginBottom: 1 }}>
-                        <DirectionsSubway fontSize="small" /> Contenedor: {visita.contenedor}<br/>
-                        <small style={{marginLeft:'8px'}}>{visita.acc_veh === 'S' ? (<span style={{color:'green'}}>Vehículo con acceso autorizado.</span>):
-                        visita.acc_veh === ''  (<span style={{color:'#ed6b1b'}}>Vehiculo pendiente de autorizar acceso.</span>)}</small>
-                      </Typography>
-                      <Typography variant="body2" sx={{ marginBottom: 1 }}>
-                        <CloudQueue fontSize="small" /> Día y hora de la visita: {formatDateToYMD(visita.reg_entrada)}
-                      </Typography>
-                      <div>
-                      <Button
-                          variant="outlined"
-                          startIcon={<FmdGoodOutlined />}
-                          sx={{ width: "90%", mb: 1 }}
-                          onClick={() => validarVisita(visita)}
-                        >
-                          Marcar llegada
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
-
-            </>
-          ) :  searchPerformed && filteredVisitas.length === 0 ? (
-            <Grid item xxs={12}>
-              <Typography variant="h6" color="textSecondary" align="left">
-                {searchQuery.trim() !== "" && !searchPerformed
-                  ? "Por favor, ingresa el nombre completo para realizar la búsqueda."
-                  : "No se encontró ninguna visita."}
-              </Typography>
+          {filteredEmpleados.map((empleado, index) => (
+            <Grid item xs={12} sm={6} md={4.5} key={index}>
+              <Card sx={{ height: '100%', width: '120%', display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                <CardContent sx={{ display: "flex" }}>
+                  <Avatar
+                    src={`${foto}/${empleado.foto}`}
+                    alt={empleado.nombre_completo}
+                    sx={{ width: 150, height: 150, marginRight: "15px", objectFit: "cover" }}
+                  />
+                  <div style={{ flex: 1 }}>
+                    <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+                      <i className="pi pi-user" style={{ marginRight: 5 }} />
+                      {empleado.nombre_completo}
+                    </Typography>
+                    <Typography variant="body2" sx={{ marginBottom: 1 }}>
+                      <EngineeringOutlined fontSize="small" /> No. Empleado: {empleado.no_empleado}
+                    </Typography>
+                    <Typography variant="body2" sx={{ marginBottom: 1 }}>
+                      <Business fontSize="small" /> Empresa: {empleado.id_catv === 8 && "COLABORADOR SANTUL" }
+                    </Typography>
+                    <Typography variant="body2" sx={{ marginBottom: 1 }}>
+                      <Autorenew fontSize="small" /> Relación: {empleado.tipo}
+                    </Typography>
+                    <Typography variant="body2" sx={{ marginBottom: 1 }}>
+                      <ConnectWithoutContact fontSize="small" />Acceso: {empleado.est === 'A' ? (<span style={{color:'green'}}><strong>AUTORIZADO</strong></span>):(<span style={{color:'red'}}><strong>NO AUTORIZADO</strong></span>)}
+                    </Typography>
+                    
+                  </div>
+                </CardContent>
+              </Card>
             </Grid>
-          ) : null}
-          
+          ))}
         </Grid>
-      </Box>
+      </Box>)}
 
-      <Box mb={2} sx={{marginTop:'30px'}}>
-        <Grid container spacing={2}>
-          {filteredPlacas.length > 0 ? (
-            filteredPlacas
-             //.filter((visita) => visita.llegada === 'S' && visita.validar === null || visita.validar === '' && visita.id_catv !== 4)
+        <Box mb={2}>
+          <Grid container spacing={3}>
+            {filteredVisitas.length > 0 ? (
+              <>
+              
+              {filteredVisitas.filter((visita) => validTypes.some(type => visita.tipo?.startsWith(type)))
               .map((visita, index) => (
-                <Grid item xs={12} sm={6} md={4.5} key={index}>
-                  <Card
-                    sx={{
-                      height: '100%', width: '120%',
-                      display: 'flex',
-                      flexDirection: 'column',
-                    }}
-                  >
+                <Grid item xs={12} sm={6} md={4} key={index}>
+                  <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                     <CardContent sx={{ display: 'flex' }}>
                       <Avatar
                         src={`${foto}/${visita.foto}`}
                         alt={visita.nombre_completo}
                         sx={{ width: 150, height: 150, marginRight: '15px', objectFit: 'cover' }}
                       />
-                      {visita.id_catv === 4 ? (
-                        <div style={{ flex: 1 }}>
-                          <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                            <i className="pi pi-user" fontSize="small" />
-                            {visita.contenedor} -
+                      <div style={{ flex: 1 }}>
+                        <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                          <i className="pi pi-user" style={{ marginRight: 5 }} />
+                          {visita.nombre_completo}
+                        </Typography>
+                        <Typography variant="body2" sx={{ marginBottom: 1 }}>
+                          <Business fontSize="small" />{' '}
+                          Empresa: {visita.id_catv === 1 ? ( 'COLABORADOR SANTUL'): visita.id_catv === 2 ? ('N/A'): visita.id_catv === 11 || visita.id_catv === 13 ? (visita.paqueteria): (visita.empresa)} 
+                        </Typography>
+                        <Typography variant="body2" sx={{ marginBottom: 1 }}>
+                          <Autorenew fontSize="small"/>{' '}
+                          Relación:  {visita.tipo}
+                        </Typography>
+                        <Typography variant="body2" sx={{ marginBottom: 1 }}>
+                          <CarCrashOutlined fontSize="small" />{' '}
+                          Placa: {visita.id_catv === 1 || visita.id_catv === 2 || visita.id_catv === 3 ? (
+                            'N/A'
+                          ) : ( visita.placa )} 
+                          <br />
+                          {visita.id_catv === 1 || visita.id_catv === 2 || visita.placa === null ? (
+                            ' '
+                          ) : (
                             <small style={{ marginLeft: '8px' }}>
-                              {visita.acc_veh === 'S' || visita.acc_dir === 'S' ? (
-                                <small style={{ color: 'green' }}>Vehículo con acceso autorizado.</small>
+                              {visita.acc_veh === 'S' || visita.acc === 'S' || visita.acc_dir === 'S' ? (
+                                <span style={{ color: 'green' }}>Vehículo con acceso autorizado.</span>
+                              ) : visita.acc_veh === '' || visita.acc === null ? (
+                                <span style={{ color: '#ed6b1b' }}>Vehículo pendiente de autorizar acceso.</span>
                               ) : (
-                                <small style={{ color: 'red' }}>Vehículo con acceso denegado.</small>
+                                <span style={{ color: 'red' }}>Vehículo sin acceso autorizado.</span>
                               )}
                             </small>
-                          </Typography>
-                          {visita.tipoCom === 'Importaciones' ? (
-                            <Typography variant="body2" sx={{ marginBottom: 1 }}>
-                              <Person fontSize="small" /> Nombre: N/A
-                            </Typography>
-                          ):(
-                            <Typography variant="body2" sx={{ marginBottom: 1 }}>
-                              <Person fontSize="small" /> Nombre: {visita.nombre_completo}
-                            </Typography>
                           )}
-                          {visita.tipoCom === 'Importaciones' ? (
-                            <Typography variant="body2" sx={{ marginBottom: 1 }}>
-                              <Business fontSize="small" /> Empresa: N/A
-                            </Typography>
-                          ):(
-                            <Typography variant="body2" sx={{ marginBottom: 1 }}>
-                              <Business fontSize="small" /> Empresa: {visita.empresa}
-                            </Typography>
-                          )}
-                          
+                        {visita.id_catv === 1 || visita.id_catv === 2 ? (
                           <Typography variant="body2" sx={{ marginBottom: 1 }}>
-                            <Autorenew fontSize="small" /> Relación: {visita.tipo}<br/>
-                            {visita.tipoCom === 'Importaciones' && (
-                              <small style={{marginLeft:'25px' }}>{visita.tipoCom} </small>
-                              )}
+                            <SensorOccupied fontSize="small"/>{' '}
+                            Responsable: {visita.personal}
+                          </Typography>
+                        ) : (' ')}
+
+                        </Typography>
+                        <Typography variant="body2" sx={{ marginBottom: 1 }}>
+                          <CloudQueue fontSize="small"/>{' '}
+                          Día y hora de visita: {formatDateToYMD(visita.reg_entrada)}, {visita.hora_entrada}
+                        </Typography>
+                        <div> 
+                        <Button
+                            variant="outlined"
+                            startIcon={<FmdGoodOutlined />}
+                            sx={{ width: "90%", mb: 1 }}
+                            onClick={() => validarVisita(visita)}
+                          >
+                            Marcar llegada
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                    
+                  </Card>
+                </Grid>
+              
+              ))}
+
+            {filteredVisitas
+              .filter((visita) => validProv.some(type => visita.tipo?.startsWith(type)))
+              .map((visita, index) => (
+                <Grid item xs={12} sm={6} md={4.5} key={`PR-${index}`}>
+                  <Card
+                    sx={{
+                      height: '100%', width:'150%',
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <CardContent sx={{ display: "flex" }}>
+                      {/* Contenido del card */}
+                      <Avatar
+                        src={`${foto}/${visita.foto}`}
+                        alt={visita.nombre_completo}
+                        sx={{
+                          width: 150,
+                          height: 150,
+                          marginRight: "15px",
+                          objectFit: "cover",
+                        }}
+                      />
+                      <div style={{ flex: 1 }}>
+                        {/* Contenido de los detalles */}
+                        <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+                          <i className="pi pi-user" style={{ marginRight: 5 }} />
+                          {visita.contenedor} -
+                          <small style={{ marginLeft: '8px' }}>
+                            {visita.acc_veh === 'S' || visita.acc_dir === 'S' ? (
+                              <small style={{ color: 'green' }}>Vehículo con acceso autorizado.</small>
+                            ) : (
+                              <small style={{ color: 'red' }}>Vehículo con acceso denegado.</small>
+                            )}
+                          </small>
+                        </Typography>
+                        <Typography variant="body2" sx={{ marginBottom: 1 }}>
+                          <Autorenew fontSize="small" /> Relación: {visita.tipo}
+                        </Typography>
+                        <Typography variant="body2" sx={{ marginBottom: 1 }}>
+                          <DirectionsSubway fontSize="small" /> Contenedor: {visita.contenedor}<br/>
+                          <small style={{marginLeft:'8px'}}>{visita.acc_veh === 'S' ? (<span style={{color:'green'}}>Vehículo con acceso autorizado.</span>):
+                          visita.acc_veh === ''  (<span style={{color:'#ed6b1b'}}>Vehiculo pendiente de autorizar acceso.</span>)}</small>
+                        </Typography>
+                        <Typography variant="body2" sx={{ marginBottom: 1 }}>
+                          <CloudQueue fontSize="small" /> Día y hora de la visita: {formatDateToYMD(visita.reg_entrada)}
+                        </Typography>
+                        <div>
+                        <Button
+                            variant="outlined"
+                            startIcon={<FmdGoodOutlined />}
+                            sx={{ width: "90%", mb: 1 }}
+                            onClick={() => validarVisita(visita)}
+                          >
+                            Marcar llegada
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
+
+              </>
+            ) :  searchPerformed && filteredVisitas.length === 0 ? (
+              <Grid item xxs={12}>
+                <Typography variant="h6" color="textSecondary" align="left">
+                  {searchQuery.trim() !== "" && !searchPerformed
+                    ? "Por favor, ingresa el nombre completo para realizar la búsqueda."
+                    : "No se encontró ninguna visita."}
+                </Typography>
+              </Grid>
+            ) : null}
+            
+          </Grid>
+        </Box>
+
+        <Box mb={2} sx={{marginTop:'30px'}}>
+          <Grid container spacing={2}>
+            {filteredPlacas.length > 0 ? (
+              filteredPlacas
+               //.filter((visita) => visita.llegada === 'S' && visita.validar === null || visita.validar === '' && visita.id_catv !== 4)
+                .map((visita, index) => (
+                  <Grid item xs={12} sm={6} md={4.5} key={index}>
+                    <Card
+                      sx={{
+                        height: '100%', width: '120%',
+                        display: 'flex',
+                        flexDirection: 'column',
+                      }}
+                    >
+                      <CardContent sx={{ display: 'flex' }}>
+                        <Avatar
+                          src={`${foto}/${visita.foto}`}
+                          alt={visita.nombre_completo}
+                          sx={{ width: 150, height: 150, marginRight: '15px', objectFit: 'cover' }}
+                        />
+                        {visita.id_catv === 4 ? (
+                          <div style={{ flex: 1 }}>
+                            <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                              <i className="pi pi-user" fontSize="small" />
+                              {visita.contenedor} -
+                              <small style={{ marginLeft: '8px' }}>
+                                {visita.acc_veh === 'S' || visita.acc_dir === 'S' ? (
+                                  <small style={{ color: 'green' }}>Vehículo con acceso autorizado.</small>
+                                ) : (
+                                  <small style={{ color: 'red' }}>Vehículo con acceso denegado.</small>
+                                )}
+                              </small>
+                            </Typography>
+                            {visita.tipoCom === 'Importaciones' ? (
+                              <Typography variant="body2" sx={{ marginBottom: 1 }}>
+                                <Person fontSize="small" /> Nombre: N/A
+                              </Typography>
+                            ):(
+                              <Typography variant="body2" sx={{ marginBottom: 1 }}>
+                                <Person fontSize="small" /> Nombre: {visita.nombre_completo}
+                              </Typography>
+                            )}
+                            {visita.tipoCom === 'Importaciones' ? (
+                              <Typography variant="body2" sx={{ marginBottom: 1 }}>
+                                <Business fontSize="small" /> Empresa: N/A
+                              </Typography>
+                            ):(
+                              <Typography variant="body2" sx={{ marginBottom: 1 }}>
+                                <Business fontSize="small" /> Empresa: {visita.empresa}
+                              </Typography>
+                            )}
+                            
+                            <Typography variant="body2" sx={{ marginBottom: 1 }}>
+                              <Autorenew fontSize="small" /> Relación: {visita.tipo}<br/>
+                              {visita.tipoCom === 'Importaciones' && (
+                                <small style={{marginLeft:'25px' }}>{visita.tipoCom} </small>
+                                )}
+                            </Typography>
+                            <Typography variant="body2" sx={{ marginBottom: 1 }}>
+                              <CloudQueue fontSize="small" /> Día y hora de visita: {formatDateToYMD(visita.reg_entrada)}, {visita.hora_entrada}
+                            </Typography>
+                            <div>
+                              <Button
+                                variant="outlined"
+                                startIcon={<BusAlert />}
+                                sx={{ width: '90%', mb: 1 }}
+                                onClick={() => validar(visita)}
+                              >
+                                Validar acceso
+                              </Button>
+                            </div>
+                          </div>
+                        ): (
+                          <div style={{ flex: 1 }}>
+                          {visita.tipo === 'PROVEEDOR (IMPORTACIONES/NACIONALES)' ? (
+                            <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                              <i className="pi pi-user" fontSize="small" />
+                              {visita.contenedor} - 
+                              <small style={{ marginLeft: '8px' }}>
+                                {visita.acc_veh === 'S' || visita.acc_dir === 'S' ? (
+                                  <small style={{ color: 'green' }}>Vehículo con acceso autorizado.</small>
+                                ) : (
+                                  <small style={{ color: 'red' }}>Vehículo con acceso denegado.</small>
+                                )}
+                              </small>
+                            </Typography>
+                          ):( 
+                            <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                              <i className="pi pi-user" fontSize="small" />
+                              {visita.placa} - 
+                              <small style={{ marginLeft: '8px' }}>
+                                {visita.acc_veh === 'S' || visita.acc_dir === 'S' ? (
+                                  <small style={{ color: 'green' }}>Vehículo con acceso autorizado.</small>
+                                ) : (
+                                  <small style={{ color: 'red' }}>Vehículo con acceso denegado.</small>
+                                )}
+                              </small>
+                            </Typography> 
+                          )}
+                          <Typography variant="body2" sx={{ marginBottom: 1 }}>
+                            <Person fontSize="small" /> Nombre: {visita.nombre_completo}
+                          </Typography>
+                          <Typography variant="body2" sx={{ marginBottom: 1 }}>
+                            <Business fontSize="small" /> Empresa: {visita.empresa}
+                          </Typography>
+                          <Typography variant="body2" sx={{ marginBottom: 1 }}>
+                            <Autorenew fontSize="small" /> Relación: {visita.tipo}
                           </Typography>
                           <Typography variant="body2" sx={{ marginBottom: 1 }}>
                             <CloudQueue fontSize="small" /> Día y hora de visita: {formatDateToYMD(visita.reg_entrada)}, {visita.hora_entrada}
                           </Typography>
+                          {visita.llegada === 'S' && visita.id_catv !== 4 && (
                           <div>
                             <Button
                               variant="outlined"
@@ -3623,80 +3801,29 @@ return (
                             >
                               Validar acceso
                             </Button>
-                          </div>
+                          </div>)}
                         </div>
-                      ): (
-                        <div style={{ flex: 1 }}>
-                        {visita.tipo === 'PROVEEDOR (IMPORTACIONES/NACIONALES)' ? (
-                          <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                            <i className="pi pi-user" fontSize="small" />
-                            {visita.contenedor} - 
-                            <small style={{ marginLeft: '8px' }}>
-                              {visita.acc_veh === 'S' || visita.acc_dir === 'S' ? (
-                                <small style={{ color: 'green' }}>Vehículo con acceso autorizado.</small>
-                              ) : (
-                                <small style={{ color: 'red' }}>Vehículo con acceso denegado.</small>
-                              )}
-                            </small>
-                          </Typography>
-                        ):( 
-                          <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                            <i className="pi pi-user" fontSize="small" />
-                            {visita.placa} - 
-                            <small style={{ marginLeft: '8px' }}>
-                              {visita.acc_veh === 'S' || visita.acc_dir === 'S' ? (
-                                <small style={{ color: 'green' }}>Vehículo con acceso autorizado.</small>
-                              ) : (
-                                <small style={{ color: 'red' }}>Vehículo con acceso denegado.</small>
-                              )}
-                            </small>
-                          </Typography> 
                         )}
-                        <Typography variant="body2" sx={{ marginBottom: 1 }}>
-                          <Person fontSize="small" /> Nombre: {visita.nombre_completo}
-                        </Typography>
-                        <Typography variant="body2" sx={{ marginBottom: 1 }}>
-                          <Business fontSize="small" /> Empresa: {visita.empresa}
-                        </Typography>
-                        <Typography variant="body2" sx={{ marginBottom: 1 }}>
-                          <Autorenew fontSize="small" /> Relación: {visita.tipo}
-                        </Typography>
-                        <Typography variant="body2" sx={{ marginBottom: 1 }}>
-                          <CloudQueue fontSize="small" /> Día y hora de visita: {formatDateToYMD(visita.reg_entrada)}, {visita.hora_entrada}
-                        </Typography>
-                        {visita.llegada === 'S' && visita.id_catv !== 4 && (
-                        <div>
-                          <Button
-                            variant="outlined"
-                            startIcon={<BusAlert />}
-                            sx={{ width: '90%', mb: 1 }}
-                            onClick={() => validar(visita)}
-                          >
-                            Validar acceso
-                          </Button>
-                        </div>)}
-                      </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </Grid>
-              ))
-          ) : searchPerformedPlacas && filteredPlacas.length === 0 ? (
-            <Grid item xs={12}>
-              <Typography variant="h6" color="textSecondary" align="left">
-                {searchQueryPlaca.trim() !== '' && !searchPerformedPlacas
-                  ? 'Por favor, ingresa el nombre completo para realizar la búsqueda.'
-                  : 'No se encontró ninguna visita.'}
-              </Typography>
-            </Grid>
-          ) : null}
-        </Grid>
-      </Box>
-      
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))
+            ) : searchPerformedPlacas && filteredPlacas.length === 0 ? (
+              <Grid item xs={12}>
+                <Typography variant="h6" color="textSecondary" align="left">
+                  {searchQueryPlaca.trim() !== '' && !searchPerformedPlacas
+                    ? 'Por favor, ingresa el nombre completo para realizar la búsqueda.'
+                    : 'No se encontró ninguna visita.'}
+                </Typography>
+              </Grid>
+            ) : null}
+          </Grid>
+        </Box>
+        
 
 
-      {/**card de validar todos los visitantes */}
-      {(user?.role === 'POLIB' || user?.role === 'Admin') && (
+        {/**card de validar todos los visitantes */}
+        {(user?.role === 'POLIB' || user?.role === 'Admin') && (
           <Box mb={2} sx={{marginTop:'30px'}}>
           <Grid container spacing={2}>
             {visitas 
@@ -3860,567 +3987,1014 @@ return (
             </Grid>
           </Box>
         )}
-      
-      {(user?.role === 'POLIP' || user?.role === 'Admin') && (
-        <Box mb={2} sx={{marginTop:'30px'}}>
-        <Grid container spacing={2}>
-          {visitas 
-            .filter((vit) =>  vit.img1 === '' || vit.validado === '' || vit.validado === null && (vit.entrada_h !== null)) 
-            .map((vit, index) => (
-              <Grid item xs={12} sm={6} md={4.5} key={index}>
-                <Card
-                  sx={{
-                    height: '100%', width: '100%',
-                    display: 'flex',
-                    flexDirection: 'column',
-                  }}
-                >
-                  <CardContent sx={{ display: 'flex' }}>
-                    <Avatar
-                      src={`${foto}/${vit.foto}`}
-                      alt={vit.nombre_completo}
-                      sx={{ width: 150, height: 150, marginRight: '15px', objectFit: 'cover' }}
-                    />
-                    <div style={{ flex: 1 }}>
-                      {vit.catv === '4' || vit.tipo === 'PROVEEDOR (IMPORTACIONES/NACIONALES)' ? (
-                        <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                          <i className="pi pi-user" style={{ marginRight: 5 }} />
-                          {vit.contenedor}
-                        </Typography>
-                      ): (
-                        <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                          <i className="pi pi-user" style={{ marginRight: 5 }} />
-                          {vit.nombre_completo}
-                        </Typography>
-                      )}
-                      
-                      <Typography variant="body2" sx={{ marginBottom: 1 }}>
-                        <Business fontSize="small" /> 
-                          Empresa: {
-                            vit.id_catv === 1
-                              ? 'COLABORADOR SANTUL'
-                              : vit.id_catv === 7
-                              ? vit.paqueteria
-                              : vit.id_catv === 2 || vit.id_catv === 4
-                              ? 'N/A'
-                              : vit.empresa === '6' || vit.empresa === '8'
-                              ? 'N/A'
-                              : vit.empresa
-                          }
-                      </Typography>
-                      <Typography variant="body2" sx={{ marginBottom: 1 }}>
-                        <Autorenew fontSize="small" /> Relación: {vit.tipo}
-                      </Typography>
+        
+        {(user?.role === 'POLIP' || user?.role === 'Admin') && (
+          <Box mb={2} sx={{marginTop:'30px'}}>
+          <Grid container spacing={2}>
+            {visitas 
+              .filter((vit) =>  vit.img1 === '' || vit.validado === '' || vit.validado === null && (vit.entrada_h !== null)) 
+              .map((vit, index) => (
+                <Grid item xs={12} sm={6} md={4.5} key={index}>
+                  <Card  className="card__responsive"
+                    sx={{
+                      height: '100%', width: '100%',
+                      //display: 'flex',
+                      flexDirection: 'column',
+                    }}
+                  >
+                    <CardContent sx={{ display: 'flex'  }}>
+                      <Avatar
+                        src={`${foto}/${vit.foto}`}
+                        alt={vit.nombre_completo}
+                        sx={{
+                          width: isMobile ? 65 : 150,
+                          height: isMobile ? 65 : 150,
+                          marginRight: isMobile ? 1 : '15px',
+                          objectFit: 'cover',
+                        }}
+                      />
+                      <div style={{ flex: 1 }}>
                         {vit.catv === '4' || vit.tipo === 'PROVEEDOR (IMPORTACIONES/NACIONALES)' ? (
-                          <Typography variant="body2" sx={{ marginBottom: 1 }}>
-                            <DirectionsSubway fontSize="small" /> Contenedor: {vit.contenedor}<br/>
-                            <small style={{ marginLeft:'12px', color:'green'}}>Vehículo con acceso autorizado.</small>
+                          <Typography variant="h6" sx={{ fontWeight: 'bold' }} className="text__card">
+                            <i className="pi pi-user" style={{ marginRight: 5 }} />
+                            {vit.contenedor}
                           </Typography>
-                        ): vit.id_catv === 1 || vit.id_catv === 2 ? (
-                          ' '
-                        ):(
-                          <Typography variant="body2" sx={{ marginBottom: 1 }}>
-                            <CarCrashOutlined fontSize="small" /> Placa: {vit.id_catv === 1 || vit.id_catv === 2 || vit.id_catv === 3 ? ( 'N/A'):(vit.placa)} <br/>
-                          {vit.id_catv === 1 || vit.id_catv === 2 || vit.placa === null ? ( ' '):(
-                            <small style={{marginLeft:'8px'}}>{vit.acc_veh === 'S' || vit.acc === 'S' || vit.acc_dir === 'S' ? (<span style={{color:'green'}}>Vehículo con acceso autorizado.</span>):
-                            vit.acc_veh === '' || vit.acc === null ? (<span style={{color:'#ed6b1b'}}>Vehiculo pendiente de autorizar acceso.</span>):
-                            (<span style={{color:'red'}}>Vehículo sin acceso autorizado.</span>)}</small>
-                          )} 
-                            
+                        ): (
+                          <Typography variant="h6" sx={{ fontWeight: 'bold' }} className="text__card">
+                            <i className="pi pi-user " style={{ marginRight: 5 }} />
+                            {vit.nombre_completo}
                           </Typography>
                         )}
-                        <Typography>
-                          {vit.id_catv === 1 || vit.id_catv === 2 ? (
-                            <Typography variant="body2" sx={{ marginBottom: 1 }}>
-                              <SensorOccupied fontSize="small"/>{' '}
-                              Responsable: {vit.personal}
-                            </Typography>
-                          ) : (' ')}
-                          
+                        
+                        <Typography variant="body2" sx={{ marginBottom: 1 }}>
+                          <Business fontSize="small" /> 
+                            Empresa: {
+                              vit.id_catv === 1
+                                ? 'COLABORADOR SANTUL'
+                                : vit.id_catv === 7
+                                ? vit.paqueteria
+                                : vit.id_catv === 2 || vit.id_catv === 4
+                                ? 'N/A'
+                                : vit.empresa === '6' || vit.empresa === '8'
+                                ? 'N/A'
+                                : vit.empresa
+                            }
                         </Typography>
-                      <Typography variant="body2" sx={{ marginBottom: 1 }}>
-                        <CloudQueue fontSize="small" /> Día y hora de visita: {formatDateToYMD(vit.reg_entrada)}, {vit.hora_entrada}
-                      </Typography>
-                      <div>
-                        {vit.img1 === null  && (
-                            <div >
-                            <Button
-                              style={{marginTop:'8px'}}
-                              size="small"
-                              variant="outlined"
-                              color="warning"
-                              startIcon={<i className="pi pi-qrcode" />}
-                              onClick={() => handleClickOpenValidarVehiculo(vit)}
-                            >
-                              Validar vehiculo
-                            </Button>
-                            
-                          </div>
+                        <Typography variant="body2" sx={{ marginBottom: 1 }}>
+                          <Autorenew fontSize="small" /> Relación: {vit.tipo}
+                        </Typography>
+                          {vit.catv === '4' || vit.tipo === 'PROVEEDOR (IMPORTACIONES/NACIONALES)' ? (
+                            <Typography variant="body2" sx={{ marginBottom: 1 }}>
+                              <DirectionsSubway fontSize="small" /> Contenedor: {vit.contenedor}<br/>
+                              <small style={{ marginLeft:'12px', color:'green'}}>Vehículo con acceso autorizado.</small>
+                            </Typography>
+                          ): vit.id_catv === 1 || vit.id_catv === 2 ? (
+                            ' '
+                          ):(
+                            <Typography variant="body2" sx={{ marginBottom: 1 }}>
+                              <CarCrashOutlined fontSize="small" /> Placa: {vit.id_catv === 1 || vit.id_catv === 2 || vit.id_catv === 3 ? ( 'N/A'):(vit.placa)} <br/>
+                            {vit.id_catv === 1 || vit.id_catv === 2 || vit.placa === null ? ( ' '):(
+                              <small style={{marginLeft:'8px'}}>{vit.acc_veh === 'S' || vit.acc === 'S' || vit.acc_dir === 'S' ? (<span style={{color:'green'}}>Vehículo con acceso autorizado.</span>):
+                              vit.acc_veh === '' || vit.acc === null ? (<span style={{color:'#ed6b1b'}}>Vehiculo pendiente de autorizar acceso.</span>):
+                              (<span style={{color:'red'}}>Vehículo sin acceso autorizado.</span>)}</small>
+                            )} 
+                              
+                            </Typography>
                           )}
+                          <Typography>
+                            {vit.id_catv === 1 || vit.id_catv === 2 ? (
+                              <Typography variant="body2" sx={{ marginBottom: 1 }}>
+                                <SensorOccupied fontSize="small"/>{' '}
+                                Responsable: {vit.personal}
+                              </Typography>
+                            ) : (' ')}
+                            
+                          </Typography>
+                        <Typography variant="body2" sx={{ marginBottom: 1 }}>
+                          <CloudQueue fontSize="small" /> Día y hora de visita: {formatDateToYMD(vit.reg_entrada)}, {vit.hora_entrada}
+                        </Typography>
+                        <div>
+                          {vit.img1 === null  && (
+                              <div >
+                              <Button
+                                style={{marginTop:'8px'}}
+                                size="small"
+                                variant="outlined"
+                                color="warning"
+                                startIcon={<i className="pi pi-qrcode" />}
+                                onClick={() => handleClickOpenValidarVehiculo(vit)}
+                              >
+                                Validar vehiculo
+                              </Button>
+                              
+                            </div>
+                            )}
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
 
-          </Grid>
-        </Box>
-      )}
-      
-
-
-    <Dialog open={openValidarVehiculo} onClose={handleCloseValidarVehiculo} >
-    <DialogTitle>Evidencia del vehículo</DialogTitle>
-    <DialogContent>
-      <Box
-        sx={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(2, 1fr)', // Dos columnas
-          gap: 2, // Espacio entre las imágenes
-          justifyItems: 'center', // Centra las imágenes
-          textAlign: 'center',
-          width: '100%',
-        }}
-      >
-        
-        {/* Mostrar las imágenes del vehículo */}
-        {Object.entries(images).map(([key, value], index) => (
-          <Box
-            key={index}
-            sx={{
-              width: 230,
-              height: 240,
-              border: '1px dashed #ccc',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              position: 'relative',
-            }}
-          >
-            {value ? (
-              <Box sx={{ textAlign: 'center' }}>
-                <img
-                  src={value}
-                  alt={`Foto ${index + 1}`}
-                  style={{
-                    width: 200,
-                    height: 200,
-                    objectFit: 'cover',
-                    borderRadius: 8,
-                  }}
-                />
-                <Typography variant="body2" sx={{ color: 'black' }}>
-                  {imageLabels[key]} {/* Mostrar la descripción según la clave */}
-                </Typography>
-                <Button
-                  variant="contained"
-                  color="error"
-                  size="small"
-                  onClick={() => removeImageVehiculo(index)}
-                  sx={{ position: 'absolute', top: 5, right: 5 }}
-                >
-                  Quitar
-                </Button>
-              </Box>
-            ) : (
-              <Box>
-                <input
-                  accept="image/*"
-                  type="file"
-                  style={{ display: 'none' }}
-                  id={`file-input-${index}`}
-                  onChange={(e) => handleFileChange(e, index)}
-                />
-                <label htmlFor={`file-input-${index}`}>
-                  <Button
-                    variant="outlined"
-                    startIcon={<PhotoCamera />}
-                    sx={{ width: '100%' }}
-                    component="span"
-                  >
-                    Seleccionar Imagen {imageLabels[key]}
-                  </Button>
-                </label>
-              </Box>
-            )}
+            </Grid>
           </Box>
-        ))}
+        )}
+        
 
-      </Box>
-      <FormControl fullWidth>
-        <TextField
-        onChange={(e) => setComentario(e.target.value)}
-          variant="outlined"
-          label="¿Trae algún material adicional?"
-          sx={{
-            width: '100%',
-            marginTop: 2,
-            marginX: 'auto',
-          }}
-          inputProps={{ style: { textTransform: "uppercase" } }}
-        />
-      </FormControl>
-    </DialogContent>
-    {showSuccessAlertImgs && (
-      <Alert icon={<CheckCircleOutline fontSize="inherit" />} severity="success">
-        ¡Evidencia del vehículo registrada correctamente!
-      </Alert>
-    )}
-    {showErrorAlertImgs && (
-      <Alert icon={<ErrorOutline fontSize="inherit" />} severity="error">
-        Debe agregar las 4 imágenes obligatorias.
-      </Alert>
-    )}
-    <DialogActions>
-      <Box sx={{ textAlign: "center", mt: 2 }}>
-        <Button onClick={handleCloseValidarVehiculo}>Cancelar</Button>
-        <Button variant="contained" color="primary" onClick={handleFinalizar}>Finalizar</Button>
-      </Box>
-    </DialogActions>
 
-    </Dialog>
-    <Dialog
-      open={openCreateInvitado}
-      onClose={handleCloseCreateIn}
-      maxWidth="md"
-      fullWidth
-    >
-
-      <DialogTitle>NUEVO VISITANTE</DialogTitle>
+      <Dialog open={openValidarVehiculo} onClose={handleCloseValidarVehiculo} >
+      <DialogTitle>Evidencia del vehículo</DialogTitle>
       <DialogContent>
-        <Grid container spacing={2}>
-          {/* Imagen o selección de foto */}
-          <Grid item xs={12} sm={6} md={3}>
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, 1fr)', // Dos columnas
+            gap: 2, // Espacio entre las imágenes
+            justifyItems: 'center', // Centra las imágenes
+            textAlign: 'center',
+            width: '100%',
+          }}
+        >
+          
+          {/* Mostrar las imágenes del vehículo */}
+          {Object.entries(images).map(([key, value], index) => (
             <Box
+              key={index}
               sx={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                border: "1px dashed #ccc",
-                width: "100%",
-                height: 230,
-                textAlign: "center",
-                margin: "auto",
+                width: 230,
+                height: 240,
+                border: '1px dashed #ccc',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                position: 'relative',
               }}
             >
-              {image ? (
-                <Box
-                  sx={{ textAlign: "center", width: "100%", height: "100%" }}
-                >
+              {value ? (
+                <Box sx={{ textAlign: 'center' }}>
                   <img
-                    src={image ? URL.createObjectURL(image) : ""}
-                    alt="preview"
-                    style={{ width: "100%", maxHeight: 170, borderRadius: 8 }}
+                    src={value}
+                    alt={`Foto ${index + 1}`}
+                    style={{
+                      width: 200,
+                      height: 200,
+                      objectFit: 'cover',
+                      borderRadius: 8,
+                    }}
                   />
-                  <Typography variant="body2" sx={{ color: "black" }}>
-                    {image.name || "Captura de Webcam"}
+                  <Typography variant="body2" sx={{ color: 'black' }}>
+                    {imageLabels[key]} {/* Mostrar la descripción según la clave */}
                   </Typography>
                   <Button
                     variant="contained"
                     color="error"
                     size="small"
-                    onClick={removeImage}
-                    sx={{ mt: 1 }}
+                    onClick={() => removeImageVehiculo(index)}
+                    sx={{ position: 'absolute', top: 5, right: 5 }}
                   >
-                    Quitar Imagen
+                    Quitar
                   </Button>
                 </Box>
               ) : (
                 <Box>
-                  <Button
-                    variant="outlined"
-                    startIcon={<CloudUpload />}
-                    sx={{ width: "90%", mb: 1 }}
-                    component="label"
-                  >
-                    Seleccionar Foto
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={onTemplateSelect1}
-                      hidden
-                    />
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    startIcon={<PhotoCamera />}
-                    sx={{ width: "90%", mb: 1 }}
-                    onClick={handleClickOpenCam}
-                  >
-                    Tomar Foto
-                  </Button>
-                  <Dialog
-                    header="TOMAR FOTO"
-                    open={openCam}
-                    onClose={handleCloseCam}
-                  >
-                    <Box style={{textAlign: "center", margin:'20px'  }}>
-                    <Webcam
-                      audio={false}
-                      ref={webcamRef}
-                      style={{ width: '100%' }}
-                      screenshotFormat="image/jpeg"
-                      videoConstraints={videoConstraints}
-                      onUserMedia={handleUserMedia}
-                      onUserMediaError={handleUserMediaError}
-                    />
-                      {!isCameraReady ? ( // Mostrar mensaje de carga mientras la cámara no esté lista
-                        <p style={{ marginTop: "20px", fontSize: "16px", color: "#888", textAlign:'center' }}>
-                          Cargando cámara...
-                        </p>
-                      ) : (
-                        <Button
-                          severity="danger"
-                          variant="outlined"
-                          startIcon={<PhotoCamera />}
-                          style={{ width: "100%", marginTop: "20px" }}
-                          onClick={tomarFoto}
-                        >
-                          Tomar Foto
-                        </Button>
-                      )}
-                      
-                    </Box>
-                  </Dialog>
+                  <input
+                    accept="image/*"
+                    type="file"
+                    style={{ display: 'none' }}
+                    id={`file-input-${index}`}
+                    onChange={(e) => handleFileChange(e, index)}
+                  />
+                  <label htmlFor={`file-input-${index}`}>
+                    <Button
+                      variant="outlined"
+                      startIcon={<PhotoCamera />}
+                      sx={{ width: '100%' }}
+                      component="span"
+                    >
+                      Seleccionar Imagen {imageLabels[key]}
+                    </Button>
+                  </label>
                 </Box>
-                
               )}
-              
             </Box>
-            <small style={{color:'gray'}}>
-            * Opcional.
-            </small>
-          </Grid>
+          ))}
 
-          {/* Formulario de selección */}
-          <Grid container item marginTop={2} sm={6} md={4.5} >
+        </Box>
+        <FormControl fullWidth>
+          <TextField
+          onChange={(e) => setComentario(e.target.value)}
+            variant="outlined"
+            label="¿Trae algún material adicional?"
+            sx={{
+              width: '100%',
+              marginTop: 2,
+              marginX: 'auto',
+            }}
+            inputProps={{ style: { textTransform: "uppercase" } }}
+          />
+        </FormControl>
+      </DialogContent>
+      {showSuccessAlertImgs && (
+        <Alert icon={<CheckCircleOutline fontSize="inherit" />} severity="success">
+          ¡Evidencia del vehículo registrada correctamente!
+        </Alert>
+      )}
+      {showErrorAlertImgs && (
+        <Alert icon={<ErrorOutline fontSize="inherit" />} severity="error">
+          Debe agregar las 4 imágenes obligatorias.
+        </Alert>
+      )}
+      <DialogActions>
+        <Box sx={{ textAlign: "center", mt: 2 }}>
+          <Button onClick={handleCloseValidarVehiculo}>Cancelar</Button>
+          <Button variant="contained" color="primary" onClick={handleFinalizar}>Finalizar</Button>
+        </Box>
+      </DialogActions>
 
-            <FormControl fullWidth sx={{ mb: 2 }}>
-              <InputLabel id="id_catv">Tipo de invitado</InputLabel>
-                <Select
-                  labelId="id_catv"
-                  id="id_catv"
-                  name="id_catv"
-                  value={selectCategorias}
-                  onChange={handleDropdownChangeTipo}
-                  label="Tipo de invitado"
-                >
-                  <MenuItem value={null}>SELECCIONAR TIPO</MenuItem>
-                  {categorias.map((item) => (
-                    <MenuItem key={item.id_catv} value={item}>
-                        {item.tipo}
-                    </MenuItem>
-                  ))}
-                </Select>
-                <small>
-                {errorVisita.id_catv && (
-                  <span style={{color: 'red'}}>
-                    * {errorVisita.id_catv}
-                  </span>
+      </Dialog>
+      <Dialog
+        open={openCreateInvitado}
+        onClose={handleCloseCreateIn}
+        maxWidth="md"
+        fullWidth
+      >
+
+        <DialogTitle>NUEVO VISITANTE</DialogTitle>
+        <DialogContent>
+          <Grid container spacing={2}>
+            {/* Imagen o selección de foto */}
+            <Grid item xs={12} sm={6} md={3}>
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  border: "1px dashed #ccc",
+                  width: "100%",
+                  height: 230,
+                  textAlign: "center",
+                  margin: "auto",
+                }}
+              >
+                {image ? (
+                  <Box
+                    sx={{ textAlign: "center", width: "100%", height: "100%" }}
+                  >
+                    <img
+                      src={image ? URL.createObjectURL(image) : ""}
+                      alt="preview"
+                      style={{ width: "100%", maxHeight: 170, borderRadius: 8 }}
+                    />
+                    <Typography variant="body2" sx={{ color: "black" }}>
+                      {image.name || "Captura de Webcam"}
+                    </Typography>
+                    <Button
+                      variant="contained"
+                      color="error"
+                      size="small"
+                      onClick={removeImage}
+                      sx={{ mt: 1 }}
+                    >
+                      Quitar Imagen
+                    </Button>
+                  </Box>
+                ) : (
+                  <Box>
+                    <Button
+                      variant="outlined"
+                      startIcon={<CloudUpload />}
+                      sx={{ width: "90%", mb: 1 }}
+                      component="label"
+                    >
+                      Seleccionar Foto
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={onTemplateSelect1}
+                        hidden
+                      />
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      startIcon={<PhotoCamera />}
+                      sx={{ width: "90%", mb: 1 }}
+                      onClick={handleClickOpenCam}
+                    >
+                      Tomar Foto
+                    </Button>
+                    <Dialog
+                      header="TOMAR FOTO"
+                      open={openCam}
+                      onClose={handleCloseCam}
+                    >
+                      <Box style={{textAlign: "center", margin:'20px'  }}>
+                      <Webcam
+                        audio={false}
+                        ref={webcamRef}
+                        style={{ width: '100%' }}
+                        screenshotFormat="image/jpeg"
+                        videoConstraints={videoConstraints}
+                        onUserMedia={handleUserMedia}
+                        onUserMediaError={handleUserMediaError}
+                      />
+                        {!isCameraReady ? ( // Mostrar mensaje de carga mientras la cámara no esté lista
+                          <p style={{ marginTop: "20px", fontSize: "16px", color: "#888", textAlign:'center' }}>
+                            Cargando cámara...
+                          </p>
+                        ) : (
+                          <Button
+                            severity="danger"
+                            variant="outlined"
+                            startIcon={<PhotoCamera />}
+                            style={{ width: "100%", marginTop: "20px" }}
+                            onClick={tomarFoto}
+                          >
+                            Tomar Foto
+                          </Button>
+                        )}
+                        
+                      </Box>
+                    </Dialog>
+                  </Box>
+                  
                 )}
+                
+              </Box>
+              <small style={{color:'gray'}}>
+              * Opcional.
               </small>
-            </FormControl>
-            <FormControl fullWidth sx={{ mb: 2 }}>
-              <TextField
-                id="apellidos"
-                name="apellidos"
-                label="Apellidos"
-                value={invit.apellidos}
-                onChange={inputChange}
-                variant="outlined"
-                inputProps={{ style: { textTransform: "uppercase" } }}
-              />
-              <small >
-                {errorVisita.apellidos && (
-                  <span style={{color: 'red'}}>
-                    * {errorVisita.apellidos}
-                  </span>
-                )}
-              </small>
-            </FormControl>
-            {selectCategorias?.id_catv === 1 && (
-              
+            </Grid>
+
+            {/* Formulario de selección */}
+            <Grid container item marginTop={2} sm={6} md={4.5} >
+
               <FormControl fullWidth sx={{ mb: 2 }}>
-                <TextField
-                    id="no_empleado"
-                    name="no_empleado"
-                    label="No. Empleado"
-                    value={invit.no_empleado}
-                    onChange={inputChange}
-                    inputProps={{ style: { textTransform: 'uppercase' } }}
-                  />
+                <InputLabel id="id_catv">Tipo de invitado</InputLabel>
+                  <Select
+                    labelId="id_catv"
+                    id="id_catv"
+                    name="id_catv"
+                    value={selectCategorias}
+                    onChange={handleDropdownChangeTipo}
+                    label="Tipo de invitado"
+                  >
+                    <MenuItem value={null}>SELECCIONAR TIPO</MenuItem>
+                    {categorias.map((item) => (
+                      <MenuItem key={item.id_catv} value={item}>
+                          {item.tipo}
+                      </MenuItem>
+                    ))}
+                  </Select>
                   <small>
-                  {errorVisita.no_empleado && (
+                  {errorVisita.id_catv && (
                     <span style={{color: 'red'}}>
-                      * {errorVisita.no_empleado}
+                      * {errorVisita.id_catv}
                     </span>
                   )}
                 </small>
               </FormControl>
-            )}
-             {selectCategorias?.id_catv !== 10 && (
               <FormControl fullWidth sx={{ mb: 2 }}>
                 <TextField
-                  id="no_ine"
-                  name="no_ine"
-                  label="No. INE"
-                  value={invit.no_ine}
+                  id="apellidos"
+                  name="apellidos"
+                  label="Apellidos"
+                  value={invit.apellidos}
                   onChange={inputChange}
+                  variant="outlined"
+                  inputProps={{ style: { textTransform: "uppercase" } }}
                 />
-                <small color="red">
-                  {errorVisita.no_ine && (
+                <small >
+                  {errorVisita.apellidos && (
                     <span style={{color: 'red'}}>
-                      * {errorVisita.no_ine}
+                      * {errorVisita.apellidos}
                     </span>
                   )}
                 </small>
               </FormControl>
-          )}
-          </Grid>
-
-          {/* Más campos de texto */}
-          <Grid container item marginTop={2} sm={6} md={4.5} >
-          <FormControl fullWidth sx={{ mb: 2 }}>
-              <TextField
-                id="nombre"
-                name="nombre"
-                label="Nombre (s)"
-                value={invit.nombre}
-                onChange={inputChange}
-                variant="outlined"
-                inputProps={{ style: { textTransform: "uppercase" } }}
-              />
-              <small>
-                {errorVisita.nombre && (
-                  <span style={{color: 'red'}}>
-                    * {errorVisita.nombre}
-                  </span>
-                )}
-              </small>
-            </FormControl>
-            {selectCategorias?.id_catv === 1 && (
-              
-              <FormControl fullWidth sx={{ mb: 2 }}>
-                <TextField
-                    id="puesto"
-                    name="puesto"
-                    label="Puesto"
-                    value={invit.puesto}
-                    onChange={inputChange}
-                    inputProps={{ style: { textTransform: 'uppercase' } }}
-                  />
-                  <small>
-                  {errorVisita.puesto && (
-                    <span style={{color: 'red'}}>
-                      * {errorVisita.puesto}
-                    </span>
-                  )}
-                </small>
-              </FormControl>
-            )}
-            {selectCategorias?.id_catv === 1 || selectCategorias?.id_catv === 2 || selectCategorias?.id_catv === 10 ? (
-              <div></div>
-            ):(
-              <FormControl fullWidth sx={{ mb: 2 }}>
-              <TextField
-                id="empresa"
-                name="empresa"
-                value={invit.empresa}
-                onChange={inputChange}
-                variant="outlined"
-                label="Empresa"
-                inputProps={{ style: { textTransform: "uppercase" } }}
-                disabled={selectCategorias?.id_catv === 1 || selectCategorias?.id_catv === 2}
-              />
-              <small color="red">
-                {errorVisita.empresa && (
-                  <span style={{color: 'red'}}>
-                    * {errorVisita.empresa}
-                  </span>
-                )}
-              </small>
-            </FormControl>
-            )}
-            
-            <FormControl fullWidth sx={{ mb: 2 }}>
-              <TextField
-                id="telefono"
-                name="telefono"
-                label="Teléfono"
-                value={invit.telefono}
-                onChange={inputChange}
-              />
-              <small color="red">
-                {errorVisita.telefono && (
-                  <span style={{color: 'red'}}>
-                    * {errorVisita.telefono}
-                  </span>
-                )}
-              </small>
-            </FormControl>
-            
-          </Grid>
-
-          {/* Checkbox y datos adicionales */}
-          {selectCategorias?.id_catv === 2 || selectCategorias?.id_catv === 12 ? (
-          <div></div>
-          ): (
-            <Grid item xs={12}>
-              <FormControlLabel
-                control={
-                  <Checkbox  
-                    checked={checked}
-                    onChange={handleCheckboxChange}
-                    color="primary"
-                  />
-                }
-                label="Cuenta con vehículo"
-              />
-            </Grid>)}
-
-          {checked && (
-            <Grid item xs={12}>
-              <Divider textAlign="left">
-                <DirectionsCarFilled /> {' '}
-                <b>DATOS DEL VEHÍCULO</b>
-              </Divider>
-              <Grid container spacing={2} marginTop={2}>
-                <Grid item xs={12} sm={6}>
+              {selectCategorias?.id_catv === 1 && (
+                
                 <FormControl fullWidth sx={{ mb: 2 }}>
                   <TextField
-                    fullWidth
-                    id="no_licencia"
-                    name="no_licencia"
-                    label="No. licencia"
-                    value={invit.no_licencia}
-                    onChange={inputChange}
-                    inputProps={{ style: { textTransform: "uppercase" } }}
-                  />
-                  <small>
-                    {errorVisitaAuto.no_licencia && (
+                      id="no_empleado"
+                      name="no_empleado"
+                      label="No. Empleado"
+                      value={invit.no_empleado}
+                      onChange={inputChange}
+                      inputProps={{ style: { textTransform: 'uppercase' } }}
+                    />
+                    <small>
+                    {errorVisita.no_empleado && (
                       <span style={{color: 'red'}}>
-                        * {errorVisitaAuto.no_licencia}
+                        * {errorVisita.no_empleado}
                       </span>
                     )}
                   </small>
                 </FormControl>
+              )}
+               {selectCategorias?.id_catv !== 10 && (
                 <FormControl fullWidth sx={{ mb: 2 }}>
+                  <TextField
+                    id="no_ine"
+                    name="no_ine"
+                    label="No. INE"
+                    value={invit.no_ine}
+                    onChange={inputChange}
+                  />
+                  <small color="red">
+                    {errorVisita.no_ine && (
+                      <span style={{color: 'red'}}>
+                        * {errorVisita.no_ine}
+                      </span>
+                    )}
+                  </small>
+                </FormControl>
+            )}
+            </Grid>
+
+            {/* Más campos de texto */}
+            <Grid container item marginTop={2} sm={6} md={4.5} >
+            <FormControl fullWidth sx={{ mb: 2 }}>
+                <TextField
+                  id="nombre"
+                  name="nombre"
+                  label="Nombre (s)"
+                  value={invit.nombre}
+                  onChange={inputChange}
+                  variant="outlined"
+                  inputProps={{ style: { textTransform: "uppercase" } }}
+                />
+                <small>
+                  {errorVisita.nombre && (
+                    <span style={{color: 'red'}}>
+                      * {errorVisita.nombre}
+                    </span>
+                  )}
+                </small>
+              </FormControl>
+              {selectCategorias?.id_catv === 1 && (
+                
+                <FormControl fullWidth sx={{ mb: 2 }}>
+                  <TextField
+                      id="puesto"
+                      name="puesto"
+                      label="Puesto"
+                      value={invit.puesto}
+                      onChange={inputChange}
+                      inputProps={{ style: { textTransform: 'uppercase' } }}
+                    />
+                    <small>
+                    {errorVisita.puesto && (
+                      <span style={{color: 'red'}}>
+                        * {errorVisita.puesto}
+                      </span>
+                    )}
+                  </small>
+                </FormControl>
+              )}
+              {selectCategorias?.id_catv === 1 || selectCategorias?.id_catv === 2 || selectCategorias?.id_catv === 10 ? (
+                <div></div>
+              ):(
+                <FormControl fullWidth sx={{ mb: 2 }}>
+                <TextField
+                  id="empresa"
+                  name="empresa"
+                  value={invit.empresa}
+                  onChange={inputChange}
+                  variant="outlined"
+                  label="Empresa"
+                  inputProps={{ style: { textTransform: "uppercase" } }}
+                  disabled={selectCategorias?.id_catv === 1 || selectCategorias?.id_catv === 2}
+                />
+                <small color="red">
+                  {errorVisita.empresa && (
+                    <span style={{color: 'red'}}>
+                      * {errorVisita.empresa}
+                    </span>
+                  )}
+                </small>
+              </FormControl>
+              )}
+              
+              <FormControl fullWidth sx={{ mb: 2 }}>
+                <TextField
+                  id="telefono"
+                  name="telefono"
+                  label="Teléfono"
+                  value={invit.telefono}
+                  onChange={inputChange}
+                />
+                <small color="red">
+                  {errorVisita.telefono && (
+                    <span style={{color: 'red'}}>
+                      * {errorVisita.telefono}
+                    </span>
+                  )}
+                </small>
+              </FormControl>
+              
+            </Grid>
+
+            {/* Checkbox y datos adicionales */}
+            {selectCategorias?.id_catv === 2 || selectCategorias?.id_catv === 12 ? (
+            <div></div>
+            ): (
+              <Grid item xs={12}>
+                <FormControlLabel
+                  control={
+                    <Checkbox  
+                      checked={checked}
+                      onChange={handleCheckboxChange}
+                      color="primary"
+                    />
+                  }
+                  label="Cuenta con vehículo"
+                />
+              </Grid>)}
+
+            {checked && (
+              <Grid item xs={12}>
+                <Divider textAlign="left">
+                  <DirectionsCarFilled /> {' '}
+                  <b>DATOS DEL VEHÍCULO</b>
+                </Divider>
+                <Grid container spacing={2} marginTop={2}>
+                  <Grid item xs={12} sm={6}>
+                  <FormControl fullWidth sx={{ mb: 2 }}>
+                    <TextField
+                      fullWidth
+                      id="no_licencia"
+                      name="no_licencia"
+                      label="No. licencia"
+                      value={invit.no_licencia}
+                      onChange={inputChange}
+                      inputProps={{ style: { textTransform: "uppercase" } }}
+                    />
+                    <small>
+                      {errorVisitaAuto.no_licencia && (
+                        <span style={{color: 'red'}}>
+                          * {errorVisitaAuto.no_licencia}
+                        </span>
+                      )}
+                    </small>
+                  </FormControl>
+                  <FormControl fullWidth sx={{ mb: 2 }}>
+                      <TextField
+                        fullWidth
+                        id="marca"
+                        name="marca"
+                        label="Marca"
+                        value={invit.marca}
+                        onChange={inputChange}
+                        inputProps={{ style: { textTransform: "uppercase" } }}
+                      />
+                      <small>
+                        {errorVisitaAuto.marca && (
+                          <span style={{color: 'red'}}>
+                            * {errorVisitaAuto.marca}
+                          </span>
+                        )}
+                      </small>
+                    </FormControl>
+                    <FormControl fullWidth sx={{ mb: 2 }}>
+                      <TextField
+                        fullWidth
+                        id="modelo"
+                        name="modelo"
+                        label="Modelo"
+                        value={invit.modelo}
+                        onChange={inputChange}
+                        inputProps={{ style: { textTransform: "uppercase" } }}
+                      />
+                      <small>
+                        {errorVisitaAuto.modelo && (
+                          <span style={{color: 'red'}}>
+                            * {errorVisitaAuto.modelo}
+                          </span>
+                        )}
+                      </small>
+                    </FormControl>
+                    
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                  <FormControl fullWidth sx={{ mb: 2 }}>
+                      <TextField
+                        fullWidth
+                        id="placa"
+                        name="placa"
+                        label="Placa"
+                        value={invit.placa}
+                        onChange={inputChange}
+                        inputProps={{ style: { textTransform: "uppercase" } }}
+                      />
+                      <small>
+                        {errorVisitaAuto.placa && (
+                          <span style={{color: 'red'}}>
+                            * {errorVisitaAuto.placa}
+                          </span>
+                        )}
+                      </small>
+                    </FormControl>
+                    <FormControl fullWidth sx={{ mb: 2 }}>
+                      <TextField
+                        fullWidth
+                        id="anio"
+                        name="anio"
+                        label="Año"
+                        value={invit.anio}
+                        onChange={inputChange}
+                        inputProps={{ style: { textTransform: "uppercase" } }}
+                      />
+                      <small>
+                        {errorVisitaAuto.anio && (
+                          <span style={{color: 'red'}}>
+                            * {errorVisitaAuto.anio}
+                          </span>
+                        )}
+                      </small>
+                    </FormControl>
+                    
+                    <FormControl fullWidth sx={{ mb: 2 }}>
+                      <TextField
+                        fullWidth
+                        id="seguro"
+                        name="seguro"
+                        label="Poliza de seguro"
+                        value={invit.seguro}
+                        onChange={inputChange}
+                        inputProps={{ style: { textTransform: "uppercase" } }}
+                      />
+                      <small style={{color:'gray'}}>
+                        * Opcional
+                      </small>
+                    </FormControl>
+                    
+                  </Grid>
+                </Grid>
+              </Grid>
+            )}
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          {/* Botones de acción */}
+          <Box sx={{ textAlign: "center", mt: 4 }}>
+            <Button variant="outlined" color="secondary" sx={{ mr: 2 }} onClick={handleCloseCreateIn}>
+              Cancelar
+            </Button>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={SaveVisitante}
+            >
+              Finalizar
+            </Button>
+          </Box>
+        </DialogActions>
+      </Dialog>
+      <Dialog
+        open={openCreateTransp}
+        onClose={handleCloseCreateTransp}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle> 
+            <Box display="flex"
+              justifyContent="space-between"
+              alignItems="center"
+              mb={3}
+              flexDirection={isSmallScreen ? "column" : "row"}>
+                NUEVO TRANSPORTISTA
+            
+                <Grid container item sm={2} md={3} direction="column" marginTop={1} spacing={2}>
+                  <Grid item>
+                    <Button variant="outlined" color="error" endIcon={<UploadFileOutlined />} onClick={handleClickOpenUpExcelVeh}>
+                      Vehículos
+                    </Button>
+                  </Grid>
+                  <Grid item>
+                  <Button variant="outlined" color="error" endIcon={<UploadFileOutlined />} onClick={handleClickOpenUpExcel}>
+                      transportistas
+                    </Button>
+                  </Grid>
+                </Grid>
+              <Dialog
+                open={openUpExcel}
+                onClose={handleCloseUpExcel}
+                maxWidth="md"
+                fullWidth
+              >
+                <Box >
+                  <DialogTitle>
+                    <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexDirection={isSmallScreen ? "column" : "row"} marginTop={3}>
+                      <Typography variant="h6" gutterBottom>
+                        Importar información
+                      </Typography>
+                      <Grid item marginTop={2} sm={2} md={3.5}>
+                        <input
+                          type="file"
+                          accept=".xlsx, .xls"
+                          onChange={handleFileUpload}
+                          style={{ display: 'none' }}
+                          id="upload-excel"
+                        />
+                        <label htmlFor="upload-excel">
+                          <Button
+                            variant="outlined"
+                            endIcon={<UploadFile />}
+                            component="span"
+                            fontSize="small"
+                          >
+                            Seleccionar archivo
+                          </Button>
+                        </label>
+                      </Grid>
+                    </Box>
+                    
+                  </DialogTitle>
+                  <DialogContent>
+
+                    {dataExcel.length > 0 ? (
+                      <>
+                      <TableContainer component={Paper}>
+                        <Table sx={{ minWidth: 600 }} aria-label="simple table">
+                          <TableHead>
+                            <TableRow>
+                              {Object.keys(dataExcel[0]).map((key) => (
+                                <TableCell key={key}
+                                style={{
+                                  backgroundColor: invalidColumns.includes(key) ? "#f8d7da" : "inherit",
+                                  color: invalidColumns.includes(key) ? "#721c24" : "inherit",
+                                }}>{key}</TableCell>
+                              ))}
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {dataExcel.map((row, index) => (
+                              <TableRow key={index} >
+                                {Object.values(row).map((value, i) => (
+                                  <TableCell key={i}>{value}</TableCell>
+                                ))}
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                      {errorExcel.length > 0 ? (
+                        <div style={{ color: "red", marginTop: "20px" }}>
+                          <Alert severity="error">
+                          <h4>Errores en el archivo:</h4>
+                          <ul>
+                            {errorExcel.map((error, index) => (
+                              <li key={index}>{error}</li>
+                            ))}
+                          </ul>
+                          <h4 color="black">Ejemplo del orden: </h4>
+                          <img preview src={ejemplo} width='100%'/></Alert>
+                        </div>
+                      ):(
+                        <p>
+                          <Alert severity="success">Archivo correcto.</Alert>
+                        </p>
+                      )}
+                      </>
+                    ) : (
+                      <Grid>
+                        <Typography>
+                          Antes de cargar el archivo Excel, asegurate que tenga la estructura correcta.
+                        </Typography><p/>
+                        <Typography>
+                          Ejemplo:
+                        </Typography>
+                        <img preview src={ejemplo} width='100%'/>
+                      </Grid>
+                    )}
+                  </DialogContent>
+                  <DialogActions>
+                    <Box>
+                    {dataExcel.length > 0 && (
+                      <Box sx={{ textAlign: "center", mt: 4 }}>
+                        <Button
+                        variant="outlined"
+                        color="primary"
+                        onClick={handleClearExcel}
+                        sx={{ mr: 2 }}>
+                          Cancelar 
+                        </Button>
+                        <Snackbar open={openAlert} autoHideDuration={6000} onClose={handleCloseSave}>
+                          <Alert severity="error" onClose={handleCloseSave}>{errorSave}</Alert>
+                        </Snackbar>
+                        <Button
+                          variant="outlined"
+                          color="primary"
+                          endIcon={<Backup />}
+                          onClick={handleSaveData}
+                          disabled={dataExcel.length === 0}
+                        >
+                          Guardar Datos
+                        </Button>
+                        
+                      </Box>
+                    )}
+                  </Box>
+                  </DialogActions>
+                    
+                  
+                </Box>
+              </Dialog>
+              <Dialog
+                open={openUpExcelVeh}
+                onClose={handleCloseUpExcelVeh}
+                maxWidth="md"
+                fullWidth
+              >
+                <Box >
+                  <DialogTitle>
+                  <Box
+                    display="flex"
+                    justifyContent="space-between"
+                    alignItems="center"
+                    mb={3}
+                    flexDirection={isSmallScreen ? "column" : "row"}
+                    marginTop={3}
+                  >
+                    <Typography variant="h6" gutterBottom>
+                      Importar información de vehículos
+                    </Typography>
+                    <Box display="flex" flexDirection="column" gap={2} marginTop={2}>
+                      <Grid item sm={12}>
+                        <input
+                          type="file"
+                          accept=".xlsx, .xls"
+                          onChange={handleFileUploadVeh}
+                          style={{ display: "none" }}
+                          id="upload-excel"
+                        />
+                        <label htmlFor="upload-excel">
+                          <Button
+                            variant="outlined"
+                            endIcon={<UploadFile />}
+                            component="span"
+                            fontSize="small"
+                          >
+                            Seleccionar archivo
+                          </Button>
+                        </label>
+                      </Grid>
+                      <Grid item sm={12}>
+                        <Button
+                          variant="outlined"
+                          endIcon={<DirectionsCar />}
+                          component="span"
+                          fontSize="small"
+                          onClick={handleOpenNewVeh}
+                        >
+                          Registrar vehículo
+                        </Button>
+                      </Grid>
+                    </Box>
+                  </Box>
+
+                    
+                  </DialogTitle>
+                  <DialogContent>
+
+                    {dataExcelVeh.length > 0 ? (
+                      <>
+                      <TableContainer component={Paper}>
+                        <Table sx={{ minWidth: 600 }} aria-label="simple table">
+                          <TableHead>
+                            <TableRow>
+                              {Object.keys(dataExcelVeh[0]).map((key) => (
+                                <TableCell key={key}
+                                style={{
+                                  backgroundColor: invalidColumns.includes(key) ? "#f8d7da" : "inherit",
+                                  color: invalidColumns.includes(key) ? "#721c24" : "inherit",
+                                }}>{key}</TableCell>
+                              ))}
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {dataExcelVeh.map((row, index) => (
+                              <TableRow key={index} >
+                                {Object.values(row).map((value, i) => (
+                                  <TableCell key={i}>{value}</TableCell>
+                                ))}
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                      {errorExcel.length > 0 ? (
+                        <div style={{ color: "red", marginTop: "20px" }}>
+                          <Alert severity="error">
+                          <h4>Errores en el archivo:</h4>
+                          <ul>
+                            {errorExcelVeh.map((error, index) => (
+                              <li key={index}>{error}</li>
+                            ))}
+                          </ul>
+                          <h4 color="black">Ejemplo del orden: </h4>
+                          <img preview src={ejemploVeh} width='100%'/></Alert>
+                        </div>
+                      ):(
+                        <p>
+                          <Alert severity="success">Archivo correcto.</Alert>
+                        </p>
+                      )}
+                      </>
+                    ) : (
+                      <Grid>
+                        <Typography>
+                          Antes de cargar el archivo Excel, asegurate que tenga la estructura correcta.
+                        </Typography><p/>
+                        <Typography>
+                          Ejemplo:
+                        </Typography>
+                        <img preview src={ejemploVeh} width='100%'/>
+                      </Grid>
+                    )}
+                    {openAlert && (
+                      <Alert icon={<CheckCircleOutline fontSize="inherit" />} severity="success">
+                        ¡Archivo cargado con éxito!
+                      </Alert>
+                    )}
+                    {openAlertError && (
+                      <Alert icon={<ErrorOutline fontSize="inherit" />} severity="error">
+                        ¡Hubo un error al guardar la información!
+                        Verifica el archivo.
+                      </Alert>
+                    )}
+                    
+                  </DialogContent>
+                  <DialogActions>
+                    <Box>
+                    {dataExcelVeh.length > 0 && (
+                      <Box sx={{ textAlign: "center", mt: 4 }}>
+                        <Button
+                        variant="outlined"
+                        color="primary"
+                        onClick={handleClearExcelVeh}
+                        sx={{ mr: 2 }}>
+                          Cancelar 
+                        </Button>
+                        <Snackbar open={openAlert} autoHideDuration={6000} onClose={handleCloseSave}>
+                          <Alert severity="error" onClose={handleCloseSave}>{errorSaveVeh}</Alert>
+                        </Snackbar>
+                        <Button
+                          variant="outlined"
+                          color="primary" 
+                          endIcon={<Backup />}
+                          onClick={handleSaveVehiculoData}
+                          disabled={dataExcelVeh.length === 0}
+                        >
+                          Guardar Datos
+                        </Button>
+                        
+                      </Box>
+                    )}
+                  </Box>
+                  </DialogActions>
+                    
+                  
+                </Box>
+              </Dialog>
+              <Dialog open={openNewVeh} onClose={handleCloseNewVeh}>
+                <DialogTitle>Registrar vehiculo</DialogTitle>
+                <DialogContent>
+                <Grid container  style={{marginTop:'7px'}}>
+                <FormControl fullWidth sx={{ mb: 2 }}>
+                    <TextField
+                      fullWidth
+                      id="empresa"
+                      name="empresa"
+                      label="Empresa del vehículo"
+                      value={vehiculo.empresa}
+                      onChange={inputChangeVehiculo}
+                      inputProps={{ style: { textTransform: "uppercase" } }}
+                    />
+                    <small>
+                      {errorVehiculo.empresa && (
+                        <span style={{color: 'red'}}>
+                          * {errorVehiculo.empresa}
+                        </span>
+                      )}
+                    </small>
+                  </FormControl>
+                  <FormControl fullWidth sx={{ mb: 2 }}>
                     <TextField
                       fullWidth
                       id="marca"
                       name="marca"
                       label="Marca"
-                      value={invit.marca}
-                      onChange={inputChange}
+                      value={vehiculo.marca}
+                      onChange={inputChangeVehiculo}
                       inputProps={{ style: { textTransform: "uppercase" } }}
                     />
                     <small>
-                      {errorVisitaAuto.marca && (
+                      {errorVehiculo.marca && (
                         <span style={{color: 'red'}}>
-                          * {errorVisitaAuto.marca}
+                          * {errorVehiculo.marca}
                         </span>
                       )}
                     </small>
@@ -4431,35 +5005,32 @@ return (
                       id="modelo"
                       name="modelo"
                       label="Modelo"
-                      value={invit.modelo}
-                      onChange={inputChange}
+                      value={vehiculo.modelo}
+                      onChange={inputChangeVehiculo}
                       inputProps={{ style: { textTransform: "uppercase" } }}
                     />
                     <small>
-                      {errorVisitaAuto.modelo && (
+                      {errorVehiculo.modelo && (
                         <span style={{color: 'red'}}>
-                          * {errorVisitaAuto.modelo}
+                          * {errorVehiculo.modelo}
                         </span>
                       )}
                     </small>
                   </FormControl>
-                  
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                <FormControl fullWidth sx={{ mb: 2 }}>
+                   <FormControl fullWidth sx={{ mb: 2 }}>
                     <TextField
                       fullWidth
                       id="placa"
                       name="placa"
                       label="Placa"
-                      value={invit.placa}
-                      onChange={inputChange}
+                      value={vehiculo.placa}
+                      onChange={inputChangeVehiculo}
                       inputProps={{ style: { textTransform: "uppercase" } }}
                     />
                     <small>
-                      {errorVisitaAuto.placa && (
+                      {errorVehiculo.placa && (
                         <span style={{color: 'red'}}>
-                          * {errorVisitaAuto.placa}
+                          * {errorVehiculo.placa}
                         </span>
                       )}
                     </small>
@@ -4470,14 +5041,14 @@ return (
                       id="anio"
                       name="anio"
                       label="Año"
-                      value={invit.anio}
-                      onChange={inputChange}
+                      value={vehiculo.anio}
+                      onChange={inputChangeVehiculo}
                       inputProps={{ style: { textTransform: "uppercase" } }}
                     />
                     <small>
-                      {errorVisitaAuto.anio && (
+                      {errorVehiculo.anio && (
                         <span style={{color: 'red'}}>
-                          * {errorVisitaAuto.anio}
+                          * {errorVehiculo.anio}
                         </span>
                       )}
                     </small>
@@ -4489,1301 +5060,490 @@ return (
                       id="seguro"
                       name="seguro"
                       label="Poliza de seguro"
-                      value={invit.seguro}
-                      onChange={inputChange}
+                      value={vehiculo.seguro}
+                      onChange={inputChangeVehiculo}
                       inputProps={{ style: { textTransform: "uppercase" } }}
                     />
                     <small style={{color:'gray'}}>
                       * Opcional
                     </small>
                   </FormControl>
-                  
                 </Grid>
-              </Grid>
-            </Grid>
-          )}
-        </Grid>
-      </DialogContent>
-      <DialogActions>
-        {/* Botones de acción */}
-        <Box sx={{ textAlign: "center", mt: 4 }}>
-          <Button variant="outlined" color="secondary" sx={{ mr: 2 }} onClick={handleCloseCreateIn}>
-            Cancelar
-          </Button>
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={SaveVisitante}
-          >
-            Finalizar
-          </Button>
-        </Box>
-      </DialogActions>
-    </Dialog>
-    <Dialog
-      open={openCreateTransp}
-      onClose={handleCloseCreateTransp}
-      maxWidth="md"
-      fullWidth
-    >
-      <DialogTitle> 
-          <Box display="flex"
-            justifyContent="space-between"
-            alignItems="center"
-            mb={3}
-            flexDirection={isSmallScreen ? "column" : "row"}>
-              NUEVO TRANSPORTISTA
-          
-              <Grid container item sm={2} md={3} direction="column" marginTop={1} spacing={2}>
-                <Grid item>
-                  <Button variant="outlined" color="error" endIcon={<UploadFileOutlined />} onClick={handleClickOpenUpExcelVeh}>
-                    Vehículos
-                  </Button>
-                </Grid>
-                <Grid item>
-                <Button variant="outlined" color="error" endIcon={<UploadFileOutlined />} onClick={handleClickOpenUpExcel}>
-                    transportistas
-                  </Button>
-                </Grid>
-              </Grid>
-            <Dialog
-              open={openUpExcel}
-              onClose={handleCloseUpExcel}
-              maxWidth="md"
-              fullWidth
-            >
-              <Box >
-                <DialogTitle>
-                  <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexDirection={isSmallScreen ? "column" : "row"} marginTop={3}>
-                    <Typography variant="h6" gutterBottom>
-                      Importar información
-                    </Typography>
-                    <Grid item marginTop={2} sm={2} md={3.5}>
-                      <input
-                        type="file"
-                        accept=".xlsx, .xls"
-                        onChange={handleFileUpload}
-                        style={{ display: 'none' }}
-                        id="upload-excel"
-                      />
-                      <label htmlFor="upload-excel">
-                        <Button
-                          variant="outlined"
-                          endIcon={<UploadFile />}
-                          component="span"
-                          fontSize="small"
-                        >
-                          Seleccionar archivo
-                        </Button>
-                      </label>
-                    </Grid>
-                  </Box>
-                  
-                </DialogTitle>
-                <DialogContent>
-
-                  {dataExcel.length > 0 ? (
-                    <>
-                    <TableContainer component={Paper}>
-                      <Table sx={{ minWidth: 600 }} aria-label="simple table">
-                        <TableHead>
-                          <TableRow>
-                            {Object.keys(dataExcel[0]).map((key) => (
-                              <TableCell key={key}
-                              style={{
-                                backgroundColor: invalidColumns.includes(key) ? "#f8d7da" : "inherit",
-                                color: invalidColumns.includes(key) ? "#721c24" : "inherit",
-                              }}>{key}</TableCell>
-                            ))}
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {dataExcel.map((row, index) => (
-                            <TableRow key={index} >
-                              {Object.values(row).map((value, i) => (
-                                <TableCell key={i}>{value}</TableCell>
-                              ))}
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                    {errorExcel.length > 0 ? (
-                      <div style={{ color: "red", marginTop: "20px" }}>
-                        <Alert severity="error">
-                        <h4>Errores en el archivo:</h4>
-                        <ul>
-                          {errorExcel.map((error, index) => (
-                            <li key={index}>{error}</li>
-                          ))}
-                        </ul>
-                        <h4 color="black">Ejemplo del orden: </h4>
-                        <img preview src={ejemplo} width='100%'/></Alert>
-                      </div>
-                    ):(
-                      <p>
-                        <Alert severity="success">Archivo correcto.</Alert>
-                      </p>
-                    )}
-                    </>
-                  ) : (
-                    <Grid>
-                      <Typography>
-                        Antes de cargar el archivo Excel, asegurate que tenga la estructura correcta.
-                      </Typography><p/>
-                      <Typography>
-                        Ejemplo:
-                      </Typography>
-                      <img preview src={ejemplo} width='100%'/>
-                    </Grid>
-                  )}
+                
                 </DialogContent>
                 <DialogActions>
-                  <Box>
-                  {dataExcel.length > 0 && (
-                    <Box sx={{ textAlign: "center", mt: 4 }}>
-                      <Button
-                      variant="outlined"
-                      color="primary"
-                      onClick={handleClearExcel}
-                      sx={{ mr: 2 }}>
-                        Cancelar 
-                      </Button>
-                      <Snackbar open={openAlert} autoHideDuration={6000} onClose={handleCloseSave}>
-                        <Alert severity="error" onClose={handleCloseSave}>{errorSave}</Alert>
-                      </Snackbar>
-                      <Button
-                        variant="outlined"
-                        color="primary"
-                        endIcon={<Backup />}
-                        onClick={handleSaveData}
-                        disabled={dataExcel.length === 0}
-                      >
-                        Guardar Datos
-                      </Button>
-                      
-                    </Box>
-                  )}
-                </Box>
+                  <Button variant="outlined">Cancelar</Button>
+                  <Button variant="contained" onClick={SaveVehiculo}>Finalizar</Button>
                 </DialogActions>
-                  
-                
-              </Box>
-            </Dialog>
-            <Dialog
-              open={openUpExcelVeh}
-              onClose={handleCloseUpExcelVeh}
-              maxWidth="md"
-              fullWidth
-            >
-              <Box >
-                <DialogTitle>
-                <Box
-                  display="flex"
-                  justifyContent="space-between"
-                  alignItems="center"
-                  mb={3}
-                  flexDirection={isSmallScreen ? "column" : "row"}
-                  marginTop={3}
-                >
-                  <Typography variant="h6" gutterBottom>
-                    Importar información de vehículos
-                  </Typography>
-                  <Box display="flex" flexDirection="column" gap={2} marginTop={2}>
-                    <Grid item sm={12}>
-                      <input
-                        type="file"
-                        accept=".xlsx, .xls"
-                        onChange={handleFileUploadVeh}
-                        style={{ display: "none" }}
-                        id="upload-excel"
-                      />
-                      <label htmlFor="upload-excel">
-                        <Button
-                          variant="outlined"
-                          endIcon={<UploadFile />}
-                          component="span"
-                          fontSize="small"
-                        >
-                          Seleccionar archivo
-                        </Button>
-                      </label>
-                    </Grid>
-                    <Grid item sm={12}>
-                      <Button
-                        variant="outlined"
-                        endIcon={<DirectionsCar />}
-                        component="span"
-                        fontSize="small"
-                        onClick={handleOpenNewVeh}
-                      >
-                        Registrar vehículo
-                      </Button>
-                    </Grid>
-                  </Box>
-                </Box>
-
-                  
-                </DialogTitle>
-                <DialogContent>
-
-                  {dataExcelVeh.length > 0 ? (
-                    <>
-                    <TableContainer component={Paper}>
-                      <Table sx={{ minWidth: 600 }} aria-label="simple table">
-                        <TableHead>
-                          <TableRow>
-                            {Object.keys(dataExcelVeh[0]).map((key) => (
-                              <TableCell key={key}
-                              style={{
-                                backgroundColor: invalidColumns.includes(key) ? "#f8d7da" : "inherit",
-                                color: invalidColumns.includes(key) ? "#721c24" : "inherit",
-                              }}>{key}</TableCell>
-                            ))}
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {dataExcelVeh.map((row, index) => (
-                            <TableRow key={index} >
-                              {Object.values(row).map((value, i) => (
-                                <TableCell key={i}>{value}</TableCell>
-                              ))}
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                    {errorExcel.length > 0 ? (
-                      <div style={{ color: "red", marginTop: "20px" }}>
-                        <Alert severity="error">
-                        <h4>Errores en el archivo:</h4>
-                        <ul>
-                          {errorExcelVeh.map((error, index) => (
-                            <li key={index}>{error}</li>
-                          ))}
-                        </ul>
-                        <h4 color="black">Ejemplo del orden: </h4>
-                        <img preview src={ejemploVeh} width='100%'/></Alert>
-                      </div>
-                    ):(
-                      <p>
-                        <Alert severity="success">Archivo correcto.</Alert>
-                      </p>
-                    )}
-                    </>
-                  ) : (
-                    <Grid>
-                      <Typography>
-                        Antes de cargar el archivo Excel, asegurate que tenga la estructura correcta.
-                      </Typography><p/>
-                      <Typography>
-                        Ejemplo:
-                      </Typography>
-                      <img preview src={ejemploVeh} width='100%'/>
-                    </Grid>
-                  )}
-                  {openAlert && (
-                    <Alert icon={<CheckCircleOutline fontSize="inherit" />} severity="success">
-                      ¡Archivo cargado con éxito!
-                    </Alert>
-                  )}
-                  {openAlertError && (
-                    <Alert icon={<ErrorOutline fontSize="inherit" />} severity="error">
-                      ¡Hubo un error al guardar la información!
-                      Verifica el archivo.
-                    </Alert>
-                  )}
-                  
-                </DialogContent>
-                <DialogActions>
-                  <Box>
-                  {dataExcelVeh.length > 0 && (
-                    <Box sx={{ textAlign: "center", mt: 4 }}>
-                      <Button
-                      variant="outlined"
-                      color="primary"
-                      onClick={handleClearExcelVeh}
-                      sx={{ mr: 2 }}>
-                        Cancelar 
-                      </Button>
-                      <Snackbar open={openAlert} autoHideDuration={6000} onClose={handleCloseSave}>
-                        <Alert severity="error" onClose={handleCloseSave}>{errorSaveVeh}</Alert>
-                      </Snackbar>
-                      <Button
-                        variant="outlined"
-                        color="primary" 
-                        endIcon={<Backup />}
-                        onClick={handleSaveVehiculoData}
-                        disabled={dataExcelVeh.length === 0}
-                      >
-                        Guardar Datos
-                      </Button>
-                      
-                    </Box>
-                  )}
-                </Box>
-                </DialogActions>
-                  
-                
-              </Box>
-            </Dialog>
-            <Dialog open={openNewVeh} onClose={handleCloseNewVeh}>
-              <DialogTitle>Registrar vehiculo</DialogTitle>
-              <DialogContent>
-              <Grid container  style={{marginTop:'7px'}}>
-              <FormControl fullWidth sx={{ mb: 2 }}>
-                  <TextField
-                    fullWidth
-                    id="empresa"
-                    name="empresa"
-                    label="Empresa del vehículo"
-                    value={vehiculo.empresa}
-                    onChange={inputChangeVehiculo}
-                    inputProps={{ style: { textTransform: "uppercase" } }}
-                  />
-                  <small>
-                    {errorVehiculo.empresa && (
-                      <span style={{color: 'red'}}>
-                        * {errorVehiculo.empresa}
-                      </span>
-                    )}
-                  </small>
-                </FormControl>
-                <FormControl fullWidth sx={{ mb: 2 }}>
-                  <TextField
-                    fullWidth
-                    id="marca"
-                    name="marca"
-                    label="Marca"
-                    value={vehiculo.marca}
-                    onChange={inputChangeVehiculo}
-                    inputProps={{ style: { textTransform: "uppercase" } }}
-                  />
-                  <small>
-                    {errorVehiculo.marca && (
-                      <span style={{color: 'red'}}>
-                        * {errorVehiculo.marca}
-                      </span>
-                    )}
-                  </small>
-                </FormControl>
-                <FormControl fullWidth sx={{ mb: 2 }}>
-                  <TextField
-                    fullWidth
-                    id="modelo"
-                    name="modelo"
-                    label="Modelo"
-                    value={vehiculo.modelo}
-                    onChange={inputChangeVehiculo}
-                    inputProps={{ style: { textTransform: "uppercase" } }}
-                  />
-                  <small>
-                    {errorVehiculo.modelo && (
-                      <span style={{color: 'red'}}>
-                        * {errorVehiculo.modelo}
-                      </span>
-                    )}
-                  </small>
-                </FormControl>
-                 <FormControl fullWidth sx={{ mb: 2 }}>
-                  <TextField
-                    fullWidth
-                    id="placa"
-                    name="placa"
-                    label="Placa"
-                    value={vehiculo.placa}
-                    onChange={inputChangeVehiculo}
-                    inputProps={{ style: { textTransform: "uppercase" } }}
-                  />
-                  <small>
-                    {errorVehiculo.placa && (
-                      <span style={{color: 'red'}}>
-                        * {errorVehiculo.placa}
-                      </span>
-                    )}
-                  </small>
-                </FormControl>
-                <FormControl fullWidth sx={{ mb: 2 }}>
-                  <TextField
-                    fullWidth
-                    id="anio"
-                    name="anio"
-                    label="Año"
-                    value={vehiculo.anio}
-                    onChange={inputChangeVehiculo}
-                    inputProps={{ style: { textTransform: "uppercase" } }}
-                  />
-                  <small>
-                    {errorVehiculo.anio && (
-                      <span style={{color: 'red'}}>
-                        * {errorVehiculo.anio}
-                      </span>
-                    )}
-                  </small>
-                </FormControl>
-                
-                <FormControl fullWidth sx={{ mb: 2 }}>
-                  <TextField
-                    fullWidth
-                    id="seguro"
-                    name="seguro"
-                    label="Poliza de seguro"
-                    value={vehiculo.seguro}
-                    onChange={inputChangeVehiculo}
-                    inputProps={{ style: { textTransform: "uppercase" } }}
-                  />
-                  <small style={{color:'gray'}}>
-                    * Opcional
-                  </small>
-                </FormControl>
-              </Grid>
-              
-              </DialogContent>
-              <DialogActions>
-                <Button variant="outlined">Cancelar</Button>
-                <Button variant="contained" onClick={SaveVehiculo}>Finalizar</Button>
-              </DialogActions>
-            </Dialog>
-        </Box>
-      </DialogTitle>
-      <DialogContent style={{marginLeft:'5px'}}>
-        <Grid container spacing={2}>
-          <Grid item xs={12} sm={6} md={3}>
-            <Box
-              sx={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                border: "1px dashed #ccc",
-                width: "100%",
-                height: 230,
-                textAlign: "center",
-                margin: "auto",
-              }}
-            >
-              {image ? (
-                <Box
-                  sx={{ textAlign: "center", width: "100%", height: "100%" }}
-                >
-                  <img
-                    src={
-                      typeof image === "string"
-                        ? image
-                        : URL.createObjectURL(image)
-                    }
-                    alt="preview"
-                    style={{ width: "100%", maxHeight: 170, borderRadius: 8 }}
-                  />
-                  <Typography variant="body2" sx={{ color: "black" }}>
-                    {image.name || "Captura de Webcam"}
-                  </Typography>
-                  <Button
-                    variant="contained"
-                    color="error"
-                    size="small"
-                    onClick={removeImage}
-                    sx={{ mt: 1 }}
-                  >
-                    Quitar Imagen
-                  </Button>
-                </Box>
-              ) : (
-                <Box>
-                  <Button
-                    variant="outlined"
-                    startIcon={<CloudUpload />}
-                    sx={{ width: "95%", mb: 1 }}
-                    component="label"
-                  >
-                    Seleccionar Foto
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={onTemplateSelect1}
-                      hidden
-                    />
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    startIcon={<PhotoCamera />}
-                    sx={{ width: "95%", mb: 1 }}
-                    onClick={handleClickOpenCam}
-                  >
-                    Tomar Foto
-                  </Button>
-                  <Dialog
-                    header="TOMAR FOTO"
-                    open={openCam}
-                    onClose={handleCloseCam}
-                  >
-                    <Box style={{ textAlign: "center", margin:'20px'  }}>
-                    <Webcam
-                      audio={false}
-                      ref={webcamRef}
-                      style={{ width: '100%' }}
-                      screenshotFormat="image/jpeg"
-                      videoConstraints={videoConstraints}
-                      onUserMedia={handleUserMedia}
-                      onUserMediaError={handleUserMediaError}
-                    />
-                      {!isCameraReady && webcamRef ? ( // Mostrar mensaje de carga mientras la cámara no esté lista
-                        <p style={{ marginTop: "20px", fontSize: "16px", color: "#888", textAlign:'center' }}>
-                          Cargando cámara...
-                        </p>
-                      ) : (
-                        <Button
-                          severity="danger"
-                          variant="outlined"
-                          startIcon={<PhotoCamera />}
-                          style={{ width: "100%", marginTop: "20px" }}
-                          onClick={tomarFoto}
-                        >
-                          Tomar Foto
-                        </Button>
-                      )}
-                      
-                    </Box>
-                  </Dialog>
-                </Box>
-              )}
-            </Box>
-            <small style={{color:'gray'}}>
-              * Opcional
-            </small>
-          </Grid>
-
-          <Grid container item marginTop={2} sm={6} md={4.5}  >
-          <FormControl fullWidth sx={{ mb: 2 }}>
-              <InputLabel id="id_catv">Tipo de invitado</InputLabel>
-                <Select
-                  labelId="id_catv"
-                  id="id_catv"
-                  name="id_catv"
-                  value={selectCategoriasMT}
-                  onChange={handleDropdownChangeTipoMt}
-                  label="Tipo de invitado"
-                >
-                  <MenuItem value={null}>SELECCIONAR TIPO</MenuItem>
-                  {categoriasMT.map((item) => (
-                    <MenuItem key={item.id_catv} value={item}>
-                        {item.tipo}
-                    </MenuItem>
-                  ))}
-                </Select>
-                <small>
-                {errorTransp.id_catv && (
-                  <span style={{color: 'red'}}>
-                    * {errorTransp.id_catv}
-                  </span>
-                )}
-              </small>
-            </FormControl>
-            <FormControl fullWidth sx={{ mb: 2 }}>
-              <TextField
-                id="apellidos"
-                name="apellidos"
-                label="Apellidos"
-                value={transp.apellidos}
-                onChange={inputChangeTransp}
-                variant="outlined"
-                inputProps={{ style: { textTransform: "uppercase" } }}
-              />
-              <small >
-                {errorTransp.apellidos && (
-                  <span style={{color: 'red'}}>
-                    * {errorTransp.apellidos}
-                  </span>
-                )}
-              </small>
-            </FormControl>
-            <FormControl fullWidth sx={{ mb: 2 }}>
-              <TextField
-                id="telefono"
-                name="telefono"
-                label="Teléfono"
-                value={transp.telefono}
-                onChange={inputChangeTransp}
-              />
-              <small>
-                {errorTransp.telefono && (
-                  <span style={{color: 'red'}}>
-                    * {errorTransp.telefono}
-                  </span>
-                )}
-              </small>
-            </FormControl>
-            {(selectCategoriasMT?.id_catv === 5 || selectCategoriasMT?.id_catv === 6 || selectCategoriasMT?.id_catv === 11) && (
-            <FormControl fullWidth sx={{ mb: 2 }}>
-              <TextField
-                fullWidth
-                id="no_licencia"
-                name="no_licencia"
-                label="No. licencia"
-                value={transp.no_licencia}
-                onChange={inputChangeTransp}
-                inputProps={{ style: { textTransform: "uppercase" } }}
-              />
-              <small>
-                {errorTransp.no_licencia && (
-                  <span style={{color: 'red'}}>
-                    * {errorTransp.no_licencia}
-                  </span>
-                )}
-              </small>
-            </FormControl>)}
-          </Grid>
-
-          {/* Más campos de texto */}
-          <Grid container item marginTop={2} md={4.5}>
-          <FormControl fullWidth sx={{ mb: 2 }}>
-              <TextField
-                id="nombre"
-                name="nombre"
-                value={transp.nombre}
-                onChange={inputChangeTransp}
-                variant="outlined"
-                label="Nombre (s)"
-                inputProps={{ style: { textTransform: "uppercase" } }}
-              />
-              <small>
-                {errorTransp.nombre && (
-                  <span style={{color: 'red'}}>
-                    * {errorTransp.nombre}
-                  </span>
-                )}
-              </small>
-            </FormControl>
-            <FormControl fullWidth sx={{ mb: 2 }}>
-              <TextField
-                id="empresa"
-                name="empresa"
-                value={transp.empresa}
-                onChange={inputChangeTransp}
-                variant="outlined"
-                label="Empresa"
-                inputProps={{ style: { textTransform: "uppercase" } }}
-              />
-              <small>
-                {errorTransp.empresa && (
-                  <span style={{color: 'red'}}>
-                    * {errorTransp.empresa}
-                  </span>
-                )}
-              </small>
-            </FormControl>
-            <FormControl fullWidth sx={{ mb: 2 }}>
-              <TextField
-                id="no_ine"
-                name="no_ine"
-                label="No. INE"
-                value={transp.no_ine}
-                onChange={inputChangeTransp}
-              />
-              <small>
-              {errorTransp.no_ine && (
-                <span style={{color: 'red'}}>
-                  * {errorTransp.no_ine}
-                </span>
-              )}
-            </small>
-            </FormControl>
-          </Grid>
-
-          {/* Checkbox y datos adicionales */}
-          {/*<Grid item xs={12}>
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={checked}
-                  onChange={handleCheckboxChange}
-                  color="primary"
-                />
-              }
-              label="Cuenta con vehículo"
-            />
-          </Grid>*/}
-
-        </Grid>
-      </DialogContent>
-      <DialogActions>
-        {/* Botones de acción */}
-        <Box sx={{ textAlign: "center", mt: 4 }}>
-          <Button variant="outlined" color="secondary" sx={{ mr: 2 }} onClick={handleCloseCreateTransp}>
-            Cancelar
-          </Button>
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={SaveTransp}
-          >
-            Finalizar
-          </Button>
-        </Box>
-      </DialogActions>
-    </Dialog>
-    <Dialog
-      open={openCreateVisita}
-      onClose={handleCloseCreateVisita}
-      maxWidth="md"
-      fullWidth
-      >
-        <DialogTitle>NUEVA VISITA</DialogTitle>
-        <DialogContent>
+              </Dialog>
+          </Box>
+        </DialogTitle>
+        <DialogContent style={{marginLeft:'5px'}}>
           <Grid container spacing={2}>
-            {/* Selección de visita */}
-            <Grid item xs={4} sm={6} style={{marginTop:'5px'}}>
-            <FormControl fullWidth sx={{ mb: 2 }}>
-              <InputLabel id="id_vit">Selecciona una visita</InputLabel>
-              <Select
-                labelId="id_vit"
-                id="id_vit"
-                name="id_vit"
-                value={selectedAcs}
-                onChange={(e) => handleDropdownChange(e.target.value)}
-                label="Selecciona una visita"
+            <Grid item xs={12} sm={6} md={3}>
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  border: "1px dashed #ccc",
+                  width: "100%",
+                  height: 230,
+                  textAlign: "center",
+                  margin: "auto",
+                }}
               >
-                {/* Opción predeterminada */}
-                <MenuItem value={null}>SELECCIONAR UNA VISITA</MenuItem>
-
-                {/* Opciones filtradas */}
-                {accesos
-                  .filter((item) => {
-                    if (user?.role === "Admin") {
-                      // Admin ve todo
-                      return true;
-                    }
-                    if (user?.role === "CONTROL" || user?.role === "Imp") {
-                      return item.clave.startsWith("TR") || item.clave.startsWith("MN");
-                    }
-                    if (user?.role === "RH") {
-                      return item.clave.startsWith("VT");
-                    }
-                    if (user?.role === "Nac") {
-                      return false; // No muestra nada para este rol
-                    }
-                    return true; // Otros roles ven todo
-                  })
-                  .map((item) => (
-                    <MenuItem key={item.clave} value={item}>
-                      {item.label}
-                    </MenuItem>
-                  ))}
-              </Select>
-
-              {/* Mensaje de error */}
-              <small>
-                {errorVisitas.id_vit && (
-                  <span style={{ color: "red" }}>* {errorVisitas.id_vit}</span>
-                )}
-              </small>
-            </FormControl>
-
-            <FormControl fullWidth sx={{ mb: 2 }}>
-              <TextField
-                id="categoria"
-                name="categoria"
-                value={selectedAcs?.categoria || ""}
-                label="Tipo de visita"
-                InputProps={{ readOnly: true }}
-                inputProps={{ style: { textTransform: "uppercase" } }}
-              />
-            </FormControl>
-
-              <FormControl fullWidth sx={{ mb: 2 }}>
-                <TextField
-                  id="personal"
-                  name="personal"
-                  label="Responsable de la visita"
-                  value={visita.personal || (selectedAcs?.categoria === "TRANSPORTISTA" || selectedAcs?.categoria === "PAQUETERIA" ? "LAURA RODRIGUEZ" : "")}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    inputChangeVis({ target: { name: "personal", value } }); // Actualiza el estado
-                  }}
-                  inputProps={{
-                    style: { textTransform: 'uppercase' }, // Transforma visualmente
-                  }}
-                />
-                <small>
-                  {errorVisitas.personal && (
-                    <span style={{ color: 'red' }}>* {errorVisitas.personal}</span>
-                  )}
-                </small>
-              </FormControl>
-            </Grid>
-
-            {/* fecha y hors */}
-            <Grid item xs={12} sm={6} style={{marginTop:'5px'}}>
-              <FormControl fullWidth sx={{ mb: 2 }}>
-                <LocalizationProvider adapterLocale="es" dateAdapter={AdapterDayjs}>
-                  <DatePicker
-                    label="Día de la visita"
-                    value={date}
-                    onChange={handleDateChange}
-                    format="DD-MM-YYYY"
-                  />
-                </LocalizationProvider>
-                <small>
-                  {errorVisitas.reg_entrada && (
-                    <span style={{color: 'red'}}>
-                      * {errorVisitas.reg_entrada}
-                    </span>
-                  )}
-                </small>
-              </FormControl>
-              <FormControl fullWidth sx={{ mb: 2 }}>
-                <LocalizationProvider dateAdapter={AdapterDayjs}>
-                  <TimePicker
-                    label="Hora de la visita"
-                    value={time}
-                    onChange={handleTimeChange}
-                    renderInput={(params) => <TextField {...params} />}
-                  />
-                </LocalizationProvider>
-                <small>
-                  {errorVisitas.hora_entrada && (
-                    <span style={{color: 'red'}}>
-                      * {errorVisitas.hora_entrada}
-                    </span>
-                  )}
-                </small>
-              </FormControl>
-
-              <FormControl fullWidth sx={{ mb: 2 }}>
-                <InputLabel id="area_per">Area que visita</InputLabel>
-                  <Select
-                    labelId="area_per"
-                    id="area_per"
-                    name="area_per"
-                    value={selectedArea}
-                    onChange={handleDropdownChangeArea}
-                    label="Area que visita"
+                {image ? (
+                  <Box
+                    sx={{ textAlign: "center", width: "100%", height: "100%" }}
                   >
-                    <MenuItem value={null}>SELECCIONAR ÁREA</MenuItem>
-                    { 
-                      (selectedAcs?.categoria === 'TRANSPORTISTA' || selectedAcs?.categoria === 'PAQUETERIA' || selectedAcs?.categoria === 'MANIOBRISTA' ? areasTR : areas)
-                      .map((item) => (
-                        <MenuItem key={item.id_area} value={item}>
-                          {item.area}
-                        </MenuItem>
-                      ))
-                    }
-                  </Select>
-                  <small>
-                  {errorVisita.id_area && (
-                    <span style={{color: 'red'}}>
-                      * {errorVisita.id_area}
-                    </span>
-                  )}
-                </small>
-              </FormControl>
-            </Grid>
-
-            {/* Área y acompañantes */}
-            <Grid item xs={12}>
-              <FormControl fullWidth sx={{ mb: 2 }}>
-                <TextField
-                  id="motivo"
-                  name="motivo"
-                  label="Motivo de la visita"
-                  value={visita.motivo}
-                  onChange={inputChangeVis}
-                  inputProps={{ style: { textTransform: 'uppercase' } }}
-                />
-                <small>
-                  {errorVisitas.motivo && (
-                    <span style={{color: 'red'}}>
-                      * {errorVisitas.motivo}
-                    </span>
-                  )}
-                </small>
-              </FormControl>
-              <FormControlLabel
-                control={
-                    <Checkbox
-                    checked={checkedVisita}
-                    onChange={(e) => setCheckedVisita(e.target.checked)}
+                    <img
+                      src={
+                        typeof image === "string"
+                          ? image
+                          : URL.createObjectURL(image)
+                      }
+                      alt="preview"
+                      style={{ width: "100%", maxHeight: 170, borderRadius: 8 }}
                     />
-                }
-                label="Acompañantes"
-              />
-
-
-              {checkedVisita && (
-                <Grid item xs={12}>
-                  {acompanantes.map((acompanante, index) => (
-                    <div>
-                      <span>{`Datos de acompañante ${index + 1}`}</span><p/>
-                    <Grid
-                      container
-                      key={index}
-                      spacing={2}
-                      alignItems="center"
-                      sx={{ mb: 2 }}
+                    <Typography variant="body2" sx={{ color: "black" }}>
+                      {image.name || "Captura de Webcam"}
+                    </Typography>
+                    <Button
+                      variant="contained"
+                      color="error"
+                      size="small"
+                      onClick={removeImage}
+                      sx={{ mt: 1 }}
                     >
-                        <Grid item>
-                          <TextField
-                          fullWidth
-                          id={`nombre_acomp_${index}`}
-                          name={`nombre_acomp_${index}`}
-                          value={acompanante.nombre_acomp}
-                          onChange={(e) =>
-                            handleInputChange(index, {
-                              ...acompanante,
-                              nombre_acomp: e.target.value,
-                            })
-                          }
-                          label={`Nombre de acompañante`}
-                          inputProps={{ style: { textTransform: 'uppercase' } }}
-                        />
-                        </Grid>
-                        <Grid item>
-                        
-                        <TextField
-                          fullWidth
-                          id={`apellidos_acomp_${index}`}
-                          name={`apellidos_acomp_${index}`}
-                          value={acompanante.apellidos_acomp}
-                          onChange={(e) =>
-                            handleInputChange(index, {
-                              ...acompanante,
-                              apellidos_acomp: e.target.value,
-                            })
-                          }
-                          label={`Apellidos de acompañante`}
-                          inputProps={{ style: { textTransform: 'uppercase' } }}
-                        />
-                        </Grid>
-                        <Grid item>
-                        <TextField
-                          fullWidth
-                          id={`no_ine_acomp_${index}`}
-                          name={`no_ine_acomp_${index}`}
-                          value={acompanante.no_ine_acomp}
-                          onChange={(e) =>
-                            handleInputChange(index, {
-                              ...acompanante,
-                              no_ine_acomp: e.target.value,
-                            })
-                          }
-                          label={`No. INE de acompañante`}
-                          inputProps={{ style: { textTransform: 'uppercase' } }}
-                        />
-                      </Grid>
-                      <Grid item>
-                        <IconButton
-                          variant="contained"
-                          color="error"
-                          size="small"
-                          onClick={() => eliminarAcompanante(index)}
-                        >
-                          <DeleteOutline/>
-                        </IconButton>
-                      </Grid>
-                    </Grid>
-                    </div>
-                  ))}
-                  {acompanantes.length < 4 ? ( // Controla si el botón se muestra
+                      Quitar Imagen
+                    </Button>
+                  </Box>
+                ) : (
+                  <Box>
                     <Button
                       variant="outlined"
-                      onClick={agregarAcompanante}
-                      startIcon={<Add />}
+                      startIcon={<CloudUpload />}
+                      sx={{ width: "95%", mb: 1 }}
+                      component="label"
                     >
-                      Otro acompañante
+                      Seleccionar Foto
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={onTemplateSelect1}
+                        hidden
+                      />
                     </Button>
-                  ) : (
-                    <p style={{ color: "red" }}>Solo puedes agregar un máximo de 2 acompañantes</p>
-                  )}
-                    </Grid>
-                  )}
-              
-              {selectedAcs?.placa && selectedAcs?.tipo === "PAQUETERIA" && selectedAcs?.clave?.startsWith('VT') && (
-                <p>  
-                <Divider textAlign="left" style={{margin:'10px'}}>
-                  <CarCrash/>
-                </Divider>  
-                <Typography variant="h7">
-                  Este visitante tiene un vehículo registrado.
-                </Typography><p/>
-                <Typography variant="h8">
-                  ¿Desea solicitar el acceso del vehículo? 
-                  
-                </Typography>
-                <FormControlLabel
-                  sx={{marginLeft:'2px'}}
-                  control={
-                    <Checkbox
-                    checked={checkedAcceso}
-                    onChange={handleCheckboxChangeAccess}
-                    />
-                  }
-                  label="Solicitar acceso"
-                />
-
-                  {checkedAcceso && (
-                    <FormControl fullWidth sx={{ mb: 2 }}>   
-                      <TextField
-                        sx={{marginTop:'10px'}}
-                        fullWidth
-                        id='motivo_acc'
-                        name='motivo_acc'
-                        value={visita.motivo_acc}
-                        onChange={inputChangeVis}
-                        label='Motivo del acceso'
-                        inputProps={{ style: { textTransform: 'uppercase' } }}
-                        />
+                    <Button
+                      variant="outlined"
+                      startIcon={<PhotoCamera />}
+                      sx={{ width: "95%", mb: 1 }}
+                      onClick={handleClickOpenCam}
+                    >
+                      Tomar Foto
+                    </Button>
+                    <Dialog
+                      header="TOMAR FOTO"
+                      open={openCam}
+                      onClose={handleCloseCam}
+                    >
+                      <Box style={{ textAlign: "center", margin:'20px'  }}>
+                      <Webcam
+                        audio={false}
+                        ref={webcamRef}
+                        style={{ width: '100%' }}
+                        screenshotFormat="image/jpeg"
+                        videoConstraints={videoConstraints}
+                        onUserMedia={handleUserMedia}
+                        onUserMediaError={handleUserMediaError}
+                      />
+                        {!isCameraReady && webcamRef ? ( // Mostrar mensaje de carga mientras la cámara no esté lista
+                          <p style={{ marginTop: "20px", fontSize: "16px", color: "#888", textAlign:'center' }}>
+                            Cargando cámara...
+                          </p>
+                        ) : (
+                          <Button
+                            severity="danger"
+                            variant="outlined"
+                            startIcon={<PhotoCamera />}
+                            style={{ width: "100%", marginTop: "20px" }}
+                            onClick={tomarFoto}
+                          >
+                            Tomar Foto
+                          </Button>
+                        )}
                         
-                    </FormControl>
-                  )}
-                </p>
-              )}
-            </Grid>
-            
-      {/**seguir modificando la solicitud de acceso de los autos de los carros */}
-          </Grid>
-        </DialogContent>
-        <DialogActions>
-        <Button
-          variant="outlined"
-          color="secondary"
-          onClick={handleCloseCreateVisita}
-          >
-          Cancelar
-          </Button>
-          <Button
-          variant="contained"
-          color="primary"
-          onClick={saveVisitas}
-          startIcon={<EditCalendar />}
-          >
-            Agendar
-          </Button>
-        </DialogActions>
-          
-      </Dialog>
-      <Dialog
-        open={openCreatePaqueteria}
-        onClose={handleClickClosePaqueteria}
-        maxWidth="md"
-        fullWidth
-      >
-        <DialogTitle>ENTRADA DE PAQUETERIA</DialogTitle>
-          <DialogContent style={{margin:'5px'}}>
-            <Grid container spacing={2}>
-
-              <Grid item xs={4} sm={6}  style={{marginTop:'5px'}}>
-                <FormControl fullWidth sx={{ mb: 2 }}>
-                  <InputLabel id="empresa">Selecciona una paqueteria</InputLabel>
-                  <Select 
-                    labelId="empresa" 
-                    id="empresa" 
-                    name="empresa" 
-                    value={selectedPaqueteria} 
-                    onChange={(e) => handleDropdownChangePP(e.target.value)}
-                    label='Selecciona una paqueteria' 
-                  >
-                    <MenuItem value={null}>SELECCIONAR UNA PAQUETERIA</MenuItem>
-                      {paqueterias.map((item) => (
-                        <MenuItem key={item.id_paq} value={item}>
-                            {item.paqueteria}
-                        </MenuItem>
-                      ))}
-                  </Select>
-                  <small>
-                    {errorVisitaPaqueteria.empresa && (
-                      <span style={{color: 'red'}}>
-                        * {errorVisitaPaqueteria.empresa}
-                      </span>
-                    )}
-                  </small>
-                </FormControl>
-                <FormControl fullWidth sx={{ mb: 2 }}>
-                  <TextField
-                    id="apellidos"
-                    name="apellidos"
-                    label="Apellidos"
-                    value={paq.apellidos}
-                    onChange={inputChangePaq}
-                    inputProps={{ style: { textTransform: 'uppercase' } }}
-                  />
-                  <small>
-                    {errorVisitaPaqueteria.apellidos && (
-                      <span style={{color: 'red'}}>
-                        * {errorVisitaPaqueteria.apellidos}
-                      </span>
-                    )}
-                  </small>
-                </FormControl>
-                
-              </Grid>
-
-              <Grid item xs={12} sm={6} style={{marginTop:'5px'}}>
-                <FormControl fullWidth sx={{ mb: 2 }}>
-                  <TextField
-                    id="nombre"
-                    name="nombre"
-                    label="Nombre (s)"
-                    value={paq.nombre}
-                    onChange={inputChangePaq}
-                    inputProps={{ style: { textTransform: 'uppercase' } }}
-                  />
-                  <small>
-                    {errorVisitaPaqueteria.nombre && (
-                      <span style={{color: 'red'}}>
-                        * {errorVisitaPaqueteria.nombre}
-                      </span>
-                    )}
-                  </small>
-                </FormControl>
-                <FormControl fullWidth sx={{ mb: 2 }}>
-                  <TextField
-                    id="no_ide"
-                    name="no_ide"
-                    label="No. Identificación"
-                    value={paq.no_ide}
-                    onChange={inputChangePaq}
-                    inputProps={{ style: { textTransform: 'uppercase' } }}
-                  />
-                  <small>
-                    {errorVisitaPaqueteria.no_ide && (
-                      <span style={{color: 'red'}}>
-                        * {errorVisitaPaqueteria.no_ide}
-                      </span>
-                    )}
-                  </small>
-                </FormControl>
-
-                {paq.no_ide && ( 
-                  <>
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          size="small"
-                          checked={checkedIne}
-                          onChange={() => handleCheckboxChangeIne("ine")}
-                        />
-                      }
-                      label="No. INE"
-                    />
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          size="small"
-                          checked={checkedLic}
-                          onChange={() => handleCheckboxChangeIne("lic")}
-                        />
-                      }
-                      label="No. Licencia"
-                    /><br/>
-                    <small>
-                    {errorVisitaPaqueteria.checks && (
-                      <span style={{ color: 'red' }}>
-                        * {errorVisitaPaqueteria.checks}
-                      </span>
-                    )}
-                    </small>
-                  </>
+                      </Box>
+                    </Dialog>
+                  </Box>
                 )}
-                
-                
-              </Grid>
-                    
-              <Grid item xs={12} sm={6}>
-                <FormControl fullWidth sx={{ mb: 2 }}>
-                  <InputLabel id="area_per">No. Cortina</InputLabel>
+              </Box>
+              <small style={{color:'gray'}}>
+                * Opcional
+              </small>
+            </Grid>
+
+            <Grid container item marginTop={2} sm={6} md={4.5}  >
+            <FormControl fullWidth sx={{ mb: 2 }}>
+                <InputLabel id="id_catv">Tipo de invitado</InputLabel>
                   <Select
-                    labelId="area_per"
-                    id="area_per"
-                    name="area_per"
-                    value={selectedCortina}
-                    onChange={handleDropdownChangeCortina}
-                    label="No. Cortina"
+                    labelId="id_catv"
+                    id="id_catv"
+                    name="id_catv"
+                    value={selectCategoriasMT}
+                    onChange={handleDropdownChangeTipoMt}
+                    label="Tipo de invitado"
                   >
-                    <MenuItem value={null}>SELECCIONAR CORTINA</MenuItem>
-                    {cortinas
-                      .filter((item) => 
-                        selectedPaqueteria?.id_paq === 7 || selectedPaqueteria?.id_paq === 8 ? [1, 2, 3, 4, 5,7].includes(item.id_cor) : true
-                      )
-                      .map((item) => (
-                        <MenuItem key={item.id_cor} value={item}>
-                            {item.cortina}
-                        </MenuItem>
+                    <MenuItem value={null}>SELECCIONAR TIPO</MenuItem>
+                    {categoriasMT.map((item) => (
+                      <MenuItem key={item.id_catv} value={item}>
+                          {item.tipo}
+                      </MenuItem>
                     ))}
                   </Select>
                   <small>
-                    {errorVisitaPaqueteria.area_per && (
-                      <span style={{color: 'red'}}>
-                        * {errorVisitaPaqueteria.area_per}
-                      </span>
-                    )}
-                  </small>
-                </FormControl>
-                
-                  <FormControl fullWidth sx={{ mb: 2 }}>
-                  <TextField
-                    fullWidth
-                    id="marca"
-                    name="marca"
-                    label="Marca"
-                    value={paq.marca}
-                    onChange={inputChangePaq}
-                    inputProps={{ style: { textTransform: "uppercase" } }}
-                  />
-                  <small>
-                    {errorVisitaPaqueteria.marca && (
-                      <span style={{color: 'red'}}>
-                        * {errorVisitaPaqueteria.marca}
-                      </span>
-                    )}
-                  </small>
-                </FormControl>
-                
-              </Grid>
-              <Grid item xs={12} sm={6}>
+                  {errorTransp.id_catv && (
+                    <span style={{color: 'red'}}>
+                      * {errorTransp.id_catv}
+                    </span>
+                  )}
+                </small>
+              </FormControl>
               <FormControl fullWidth sx={{ mb: 2 }}>
                 <TextField
-                  id="motivo"
-                  name="motivo" 
-                  label="Motivo de la visita"
-                  value={paq.motivo || selectedCortina?.area || ""}
-                  onChange={inputChangePaq}
-                  inputProps={{ style: { textTransform: 'uppercase' } }}
+                  id="apellidos"
+                  name="apellidos"
+                  label="Apellidos"
+                  value={transp.apellidos}
+                  onChange={inputChangeTransp}
+                  variant="outlined"
+                  inputProps={{ style: { textTransform: "uppercase" } }}
+                />
+                <small >
+                  {errorTransp.apellidos && (
+                    <span style={{color: 'red'}}>
+                      * {errorTransp.apellidos}
+                    </span>
+                  )}
+                </small>
+              </FormControl>
+              <FormControl fullWidth sx={{ mb: 2 }}>
+                <TextField
+                  id="telefono"
+                  name="telefono"
+                  label="Teléfono"
+                  value={transp.telefono}
+                  onChange={inputChangeTransp}
+                />
+                <small>
+                  {errorTransp.telefono && (
+                    <span style={{color: 'red'}}>
+                      * {errorTransp.telefono}
+                    </span>
+                  )}
+                </small>
+              </FormControl>
+              {(selectCategoriasMT?.id_catv === 5 || selectCategoriasMT?.id_catv === 6 || selectCategoriasMT?.id_catv === 11) && (
+              <FormControl fullWidth sx={{ mb: 2 }}>
+                <TextField
+                  fullWidth
+                  id="no_licencia"
+                  name="no_licencia"
+                  label="No. licencia"
+                  value={transp.no_licencia}
+                  onChange={inputChangeTransp}
+                  inputProps={{ style: { textTransform: "uppercase" } }}
+                />
+                <small>
+                  {errorTransp.no_licencia && (
+                    <span style={{color: 'red'}}>
+                      * {errorTransp.no_licencia}
+                    </span>
+                  )}
+                </small>
+              </FormControl>)}
+            </Grid>
+
+            {/* Más campos de texto */}
+            <Grid container item marginTop={2} md={4.5}>
+            <FormControl fullWidth sx={{ mb: 2 }}>
+                <TextField
+                  id="nombre"
+                  name="nombre"
+                  value={transp.nombre}
+                  onChange={inputChangeTransp}
+                  variant="outlined"
+                  label="Nombre (s)"
+                  inputProps={{ style: { textTransform: "uppercase" } }}
+                />
+                <small>
+                  {errorTransp.nombre && (
+                    <span style={{color: 'red'}}>
+                      * {errorTransp.nombre}
+                    </span>
+                  )}
+                </small>
+              </FormControl>
+              <FormControl fullWidth sx={{ mb: 2 }}>
+                <TextField
+                  id="empresa"
+                  name="empresa"
+                  value={transp.empresa}
+                  onChange={inputChangeTransp}
+                  variant="outlined"
+                  label="Empresa"
+                  inputProps={{ style: { textTransform: "uppercase" } }}
+                />
+                <small>
+                  {errorTransp.empresa && (
+                    <span style={{color: 'red'}}>
+                      * {errorTransp.empresa}
+                    </span>
+                  )}
+                </small>
+              </FormControl>
+              <FormControl fullWidth sx={{ mb: 2 }}>
+                <TextField
+                  id="no_ine"
+                  name="no_ine"
+                  label="No. INE"
+                  value={transp.no_ine}
+                  onChange={inputChangeTransp}
+                />
+                <small>
+                {errorTransp.no_ine && (
+                  <span style={{color: 'red'}}>
+                    * {errorTransp.no_ine}
+                  </span>
+                )}
+              </small>
+              </FormControl>
+            </Grid>
+
+            {/* Checkbox y datos adicionales */}
+            {/*<Grid item xs={12}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={checked}
+                    onChange={handleCheckboxChange}
+                    color="primary"
+                  />
+                }
+                label="Cuenta con vehículo"
+              />
+            </Grid>*/}
+
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          {/* Botones de acción */}
+          <Box sx={{ textAlign: "center", mt: 4 }}>
+            <Button variant="outlined" color="secondary" sx={{ mr: 2 }} onClick={handleCloseCreateTransp}>
+              Cancelar
+            </Button>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={SaveTransp}
+            >
+              Finalizar
+            </Button>
+          </Box>
+        </DialogActions>
+      </Dialog>
+      <Dialog
+        open={openCreateVisita}
+        onClose={handleCloseCreateVisita}
+        maxWidth="md"
+        fullWidth
+        >
+          <DialogTitle>NUEVA VISITA</DialogTitle>
+          <DialogContent>
+            <Grid container spacing={2}>
+              {/* Selección de visita */}
+              <Grid item xs={4} sm={6} style={{marginTop:'5px'}}>
+              <FormControl fullWidth sx={{ mb: 2 }}>
+                <InputLabel id="id_vit">Selecciona una visita</InputLabel>
+                <Select
+                  labelId="id_vit"
+                  id="id_vit"
+                  name="id_vit"
+                  value={selectedAcs}
+                  onChange={(e) => handleDropdownChange(e.target.value)}
+                  label="Selecciona una visita"
+                >
+                  {/* Opción predeterminada */}
+                  <MenuItem value={null}>SELECCIONAR UNA VISITA</MenuItem>
+
+                  {/* Opciones filtradas */}
+                  {accesos
+                    .filter((item) => {
+                      if (user?.role === "Admin") {
+                        // Admin ve todo
+                        return true;
+                      }
+                      if (user?.role === "CONTROL" || user?.role === "Imp") {
+                        return item.clave.startsWith("TR") || item.clave.startsWith("MN");
+                      }
+                      if (user?.role === "RH") {
+                        return item.clave.startsWith("VT");
+                      }
+                      if (user?.role === "Nac") {
+                        return false; // No muestra nada para este rol
+                      }
+                      return true; // Otros roles ven todo
+                    })
+                    .map((item) => (
+                      <MenuItem key={item.clave} value={item}>
+                        {item.label}
+                      </MenuItem>
+                    ))}
+                </Select>
+
+                {/* Mensaje de error */}
+                <small>
+                  {errorVisitas.id_vit && (
+                    <span style={{ color: "red" }}>* {errorVisitas.id_vit}</span>
+                  )}
+                </small>
+              </FormControl>
+
+              <FormControl fullWidth sx={{ mb: 2 }}>
+                <TextField
+                  id="categoria"
+                  name="categoria"
+                  value={selectedAcs?.categoria || ""}
+                  label="Tipo de visita"
+                  InputProps={{ readOnly: true }}
+                  inputProps={{ style: { textTransform: "uppercase" } }}
                 />
               </FormControl>
-              
+
                 <FormControl fullWidth sx={{ mb: 2 }}>
                   <TextField
-                    fullWidth
-                    id="placa"
-                    name="placa"
-                    label="Placa"
-                    value={paq.placa}
-                    onChange={inputChangePaq}
-                    inputProps={{ style: { textTransform: "uppercase" } }}
+                    id="personal"
+                    name="personal"
+                    label="Responsable de la visita"
+                    value={visita.personal || (selectedAcs?.categoria === "TRANSPORTISTA" || selectedAcs?.categoria === "PAQUETERIA" ? "LAURA RODRIGUEZ" : "")}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      inputChangeVis({ target: { name: "personal", value } }); // Actualiza el estado
+                    }}
+                    inputProps={{
+                      style: { textTransform: 'uppercase' }, // Transforma visualmente
+                    }}
                   />
                   <small>
-                    {errorVisitaPaqueteria.placa&& (
+                    {errorVisitas.personal && (
+                      <span style={{ color: 'red' }}>* {errorVisitas.personal}</span>
+                    )}
+                  </small>
+                </FormControl>
+              </Grid>
+
+              {/* fecha y hors */}
+              <Grid item xs={12} sm={6} style={{marginTop:'5px'}}>
+                <FormControl fullWidth sx={{ mb: 2 }}>
+                  <LocalizationProvider adapterLocale="es" dateAdapter={AdapterDayjs}>
+                    <DatePicker
+                      label="Día de la visita"
+                      value={date}
+                      onChange={handleDateChange}
+                      format="DD-MM-YYYY"
+                    />
+                  </LocalizationProvider>
+                  <small>
+                    {errorVisitas.reg_entrada && (
                       <span style={{color: 'red'}}>
-                        * {errorVisitaPaqueteria.placa}
+                        * {errorVisitas.reg_entrada}
                       </span>
                     )}
                   </small>
                 </FormControl>
-                
+                <FormControl fullWidth sx={{ mb: 2 }}>
+                  <LocalizationProvider dateAdapter={AdapterDayjs}>
+                    <TimePicker
+                      label="Hora de la visita"
+                      value={time}
+                      onChange={handleTimeChange}
+                      renderInput={(params) => <TextField {...params} />}
+                    />
+                  </LocalizationProvider>
+                  <small>
+                    {errorVisitas.hora_entrada && (
+                      <span style={{color: 'red'}}>
+                        * {errorVisitas.hora_entrada}
+                      </span>
+                    )}
+                  </small>
+                </FormControl>
+
+                <FormControl fullWidth sx={{ mb: 2 }}>
+                  <InputLabel id="area_per">Area que visita</InputLabel>
+                    <Select
+                      labelId="area_per"
+                      id="area_per"
+                      name="area_per"
+                      value={selectedArea}
+                      onChange={handleDropdownChangeArea}
+                      label="Area que visita"
+                    >
+                      <MenuItem value={null}>SELECCIONAR ÁREA</MenuItem>
+                      { 
+                        (selectedAcs?.categoria === 'TRANSPORTISTA' || selectedAcs?.categoria === 'PAQUETERIA' || selectedAcs?.categoria === 'MANIOBRISTA' ? areasTR : areas)
+                        .map((item) => (
+                          <MenuItem key={item.id_area} value={item}>
+                            {item.area}
+                          </MenuItem>
+                        ))
+                      }
+                    </Select>
+                    <small>
+                    {errorVisita.id_area && (
+                      <span style={{color: 'red'}}>
+                        * {errorVisita.id_area}
+                      </span>
+                    )}
+                  </small>
+                </FormControl>
               </Grid>
-              <Grid item xs={12} >
+
+              {/* Área y acompañantes */}
+              <Grid item xs={12}>
+                <FormControl fullWidth sx={{ mb: 2 }}>
+                  <TextField
+                    id="motivo"
+                    name="motivo"
+                    label="Motivo de la visita"
+                    value={visita.motivo}
+                    onChange={inputChangeVis}
+                    inputProps={{ style: { textTransform: 'uppercase' } }}
+                  />
+                  <small>
+                    {errorVisitas.motivo && (
+                      <span style={{color: 'red'}}>
+                        * {errorVisitas.motivo}
+                      </span>
+                    )}
+                  </small>
+                </FormControl>
                 <FormControlLabel
                   control={
-                    <Checkbox
-                    checked={checkedPaq}
-                    onChange={(e) => setCheckedPaq(e.target.checked)}
-                    />
+                      <Checkbox
+                      checked={checkedVisita}
+                      onChange={(e) => setCheckedVisita(e.target.checked)}
+                      />
                   }
                   label="Acompañantes"
                 />
-                {checkedPaq && (
+
+
+                {checkedVisita && (
                   <Grid item xs={12}>
-                    {acompanantesPaq.map((acompanante, index) => (
+                    {acompanantes.map((acompanante, index) => (
                       <div>
                         <span>{`Datos de acompañante ${index + 1}`}</span><p/>
                       <Grid
@@ -5800,7 +5560,7 @@ return (
                             name={`nombre_acomp_${index}`}
                             value={acompanante.nombre_acomp}
                             onChange={(e) =>
-                              handleInputChangePaq(index, {
+                              handleInputChange(index, {
                                 ...acompanante,
                                 nombre_acomp: e.target.value,
                               })
@@ -5817,7 +5577,7 @@ return (
                             name={`apellidos_acomp_${index}`}
                             value={acompanante.apellidos_acomp}
                             onChange={(e) =>
-                              handleInputChangePaq(index, {
+                              handleInputChange(index, {
                                 ...acompanante,
                                 apellidos_acomp: e.target.value,
                               })
@@ -5833,12 +5593,12 @@ return (
                             name={`no_ine_acomp_${index}`}
                             value={acompanante.no_ine_acomp}
                             onChange={(e) =>
-                              handleInputChangePaq(index, {
+                              handleInputChange(index, {
                                 ...acompanante,
                                 no_ine_acomp: e.target.value,
                               })
                             }
-                            label={`No. Identificación`}
+                            label={`No. INE de acompañante`}
                             inputProps={{ style: { textTransform: 'uppercase' } }}
                           />
                         </Grid>
@@ -5847,7 +5607,7 @@ return (
                             variant="contained"
                             color="error"
                             size="small"
-                            onClick={() => eliminarAcompanantePaq(index)}
+                            onClick={() => eliminarAcompanante(index)}
                           >
                             <DeleteOutline/>
                           </IconButton>
@@ -5855,10 +5615,10 @@ return (
                       </Grid>
                       </div>
                     ))}
-                    {acompanantesPaq.length < 2 ? (
+                    {acompanantes.length < 4 ? ( // Controla si el botón se muestra
                       <Button
                         variant="outlined"
-                        onClick={agregarAcompanantePaq}
+                        onClick={agregarAcompanante}
                         startIcon={<Add />}
                       >
                         Otro acompañante
@@ -5866,1262 +5626,1626 @@ return (
                     ) : (
                       <p style={{ color: "red" }}>Solo puedes agregar un máximo de 2 acompañantes</p>
                     )}
-                  </Grid>
+                      </Grid>
+                    )}
+                
+                {selectedAcs?.placa && selectedAcs?.tipo === "PAQUETERIA" && selectedAcs?.clave?.startsWith('VT') && (
+                  <p>  
+                  <Divider textAlign="left" style={{margin:'10px'}}>
+                    <CarCrash/>
+                  </Divider>  
+                  <Typography variant="h7">
+                    Este visitante tiene un vehículo registrado.
+                  </Typography><p/>
+                  <Typography variant="h8">
+                    ¿Desea solicitar el acceso del vehículo? 
+                    
+                  </Typography>
+                  <FormControlLabel
+                    sx={{marginLeft:'2px'}}
+                    control={
+                      <Checkbox
+                      checked={checkedAcceso}
+                      onChange={handleCheckboxChangeAccess}
+                      />
+                    }
+                    label="Solicitar acceso"
+                  />
+
+                    {checkedAcceso && (
+                      <FormControl fullWidth sx={{ mb: 2 }}>   
+                        <TextField
+                          sx={{marginTop:'10px'}}
+                          fullWidth
+                          id='motivo_acc'
+                          name='motivo_acc'
+                          value={visita.motivo_acc}
+                          onChange={inputChangeVis}
+                          label='Motivo del acceso'
+                          inputProps={{ style: { textTransform: 'uppercase' } }}
+                          />
+                          
+                      </FormControl>
+                    )}
+                  </p>
                 )}
-                {showErrorAlertPlaca && (
-                <Alert icon={<CheckCircleOutline fontSize="inherit" />} severity="error">
-                  Esta placa ya ha sido registrada hoy
-                </Alert>
-              )}
               </Grid>
               
+        {/**seguir modificando la solicitud de acceso de los autos de los carros */}
             </Grid>
           </DialogContent>
           <DialogActions>
-              <Button
-                variant="outlined"
-                color="secondary"
-                onClick={handleClickClosePaqueteria}
-              >
-              Cancelar
-              </Button>
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={SaveVisitantePaqueteria}
-                startIcon={<EditCalendar />}
-              >
-                Registrar
-              </Button>
+          <Button
+            variant="outlined"
+            color="secondary"
+            onClick={handleCloseCreateVisita}
+            >
+            Cancelar
+            </Button>
+            <Button
+            variant="contained"
+            color="primary"
+            onClick={saveVisitas}
+            startIcon={<EditCalendar />}
+            >
+              Agendar
+            </Button>
           </DialogActions>
-          
-      </Dialog>
-      {/* Filtro debajo del buscador y botones */}
-      
-      {(user?.role === 'POLIB' || user?.role === 'POLIP' || user?.role === 'Admin') && (
-        <div>
-          <Box mb={2}>
-            <Grid container spacing={2} sx={{ marginBottom: '20px' }}>
-              <Grid item>
-              <ButtonGroup variant="text" aria-label="Basic button group" style={{marginTop:'10px'}}>
-                <Button size="small"  onClick={mostrarTodos}>TODO</Button>
-                <Button size="small"  onClick={mostrarVisitantes}>VISITANTES</Button>
-                <Button size="small"  onClick={mostrarTransportistas}>TRANSPORTISTAS</Button>
-                <Button size="small"  onClick={mostrarProveedores && mostrarProveedor}>PROVEEDORES</Button>
-                <Button size="small"  onClick={mostrarPaqueterias}>PAQUETERIAS</Button>
-                <Button size="small"  onClick={mostrarClientes}>CLIENTES RECOGE</Button>
-              </ButtonGroup> 
-              </Grid>
-            </Grid>
-            <p>
-            {showSuccessAlert && (
-              <Alert icon={<CheckCircleOutline fontSize="inherit" />} severity="success">
-                ¡Multa registrada con éxito!
-              </Alert>
-            )}
-            </p>
-            <TableContainer component={Paper}>
-              <Table sx={{ minWidth: 650 }} size="small" aria-label="a dense table">
-                {/* Encabezado de la tabla para Visitantes */}
-                <TableHead>
-                  <TableRow>
-                    <TableCell colSpan={6} align="left" style={{ backgroundColor: '#f5f3f3', textAlign:'center' }}><strong>VISITANTES</strong></TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell align="center"></TableCell>
-                    <TableCell align="left">Nombre</TableCell>
-                    <TableCell align="left">Empresa</TableCell>
-                    <TableCell align="left">Área</TableCell>
-                    <TableCell align="left">Entrada</TableCell>
-                    <TableCell align="left">Vehículo</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {datosFiltradosVisitantes.filter((row) => row.est === 'A').map((row, index) => {
-                    const tiempoTranscurrido = calcularTiempo(row.entrada_h);
-                    const excedeTiempo = tiempoTranscurrido.includes('hr') && parseInt(tiempoTranscurrido.split('hr')[0]) >= 1;
-
-                    return (
-                      <TableRow key={index} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
-                        <TableCell component="th" scope="row" align="center" sx={{ width: '30%' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <Avatar
-                              src={row.foto ? `${foto}/${row.foto}` : '/placeholder.png'}
-                              alt={row.nombre_completo || 'Sin nombre'}
-                              sx={{ width: 85, height: 85, marginRight: '15px', objectFit: 'cover' }}
-                            />
-                            <strong>Visita: {row.clave_visit}</strong>
-                          </div>
-                          <br />
-                          <Alert
-                            icon={excedeTiempo ? <AvTimer/> : <PrecisionManufacturing />}
-                            severity={excedeTiempo ? 'error' : 'success'}
-                            action={
-                              <div>
-                                <Tooltip title="Multar">
-                                  <IconButton aria-label="delete" size="small" onClick={() => handleClickOpenBloquear(row)}>
-                                    <DoNotDisturbOn fontSize="inherit" />
-                                  </IconButton>
-                                </Tooltip>
-                                <Tooltip title="Finalizar">
-                                  <IconButton aria-label="delete" size="small" onClick={() => handleClickOpenSalida(row)}>
-                                    <Error fontSize="inherit" />
-                                  </IconButton>
-                                </Tooltip>
-                              </div>
-                            }
-                          >
-                            {excedeTiempo ? `Tiempo excedido:  ${tiempoTranscurrido}` : `Trabajando:  ${tiempoTranscurrido}`}
-                          </Alert>
-                        </TableCell>
-                        <TableCell align="left" sx={{ width: '18%' }}>
-                          <strong>{row.nombre_completo}</strong>
-                          <br />
-                          <small style={{ marginLeft: '10px' }}>{row.tipo}</small>
-                        </TableCell>
-                        <TableCell align="center" sx={{ width: '18%' }}>{row.id_catv === 1 ? ( 'COLABORADOR SANTUL'): row.id_catv === 2 ? ('NO APLICA') : (row.empresa)} </TableCell>
-                        <TableCell align="left"  sx={{ width: '18%' }}>{row.area}<br/>
-                        <small style={{ marginLeft: '10px' }}>Motivo: {row.motivo}</small>
-                        </TableCell>
-                        <TableCell align="left" sx={{ width: '15%' }}>
-                          {row.entrada_h
-                            ? new Date(row.entrada_h).toLocaleString('es-ES', {
-                                hour12: true,
-                                year: 'numeric',
-                                month: '2-digit',
-                                day: '2-digit',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })
-                            : 'N/A'}
-                        </TableCell>
-                        <TableCell align="left">
-                          {row.id_catv === 4 ? (
-                            <span>{row.contenedor}</span>
-                          ) : row.placa === '' || row.placa === null ? (
-                            <span>No aplica</span>
-                          ) : (
-                            <span>{row.placa}</span>
-                          )}
-                          
-                          <br />
-                          <small style={{ marginLeft: '10px' }}>
-                          
-                          { row.acc === 'S' || row.acc_veh === 'S' ? (
-                            <span>Vehículo: AUTORIZADO.</span>
-                          ) : row.acc === 'N' || row.acc_veh === '' ? (
-                            <span>Vehículo: NO AUTORIZADO</span>
-                          ) : (
-                            <span>No aplica</span>
-                          )}
-                            
-                          </small>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody><p/>
-
-                <TableHead>
-                  <TableRow >
-                    <TableCell colSpan={6} align="left" style={{ backgroundColor: '#f5f3f3', textAlign:'center' }}><strong>TRANSPORTISTAS</strong></TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {(filtro === 'transportistas' || filtro === 'todos') && datosFiltradosTransportistas.filter((row) => row.validado === "S" && row.est === 'A').map((row, index) => {
-                    const tiempoTranscurrido = calcularTiempo(row.entrada_h);
-                    const excedeTiempo = tiempoTranscurrido.includes('hr') && parseInt(tiempoTranscurrido.split('hr')[0]) >= 4;
             
-                    return (
-                      <TableRow key={index} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
-                        <TableCell component="th" scope="row" align="center" sx={{width: '30%'}}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <Avatar
-                              src={row.foto ? `${foto}/${row.foto}` : '/placeholder.png'}
-                              alt={row.nombre_completo || 'Sin nombre'}
-                              sx={{ width: 85, height: 85, marginRight: '15px', objectFit: 'cover' }}
-                            />
-                            <strong>Visita: {row.clave_visit}</strong>
-                          </div>
-                          <br />
-                          <Alert
-                            icon={excedeTiempo ? <AvTimer/> : <PrecisionManufacturing />}
-                            severity={excedeTiempo ? 'error' : 'success'}
-                            action={
-                              <div>
-                                <Tooltip title="Bloquear">
-                                  <IconButton aria-label="delete" size="small" onClick={() => handleClickOpenBloquear(row)}>
-                                    <DoNotDisturbOn fontSize="inherit" />
-                                  </IconButton>
-                                </Tooltip>
-                                <Tooltip title="Finalizar">
-                                  <IconButton aria-label="delete" size="small" onClick={() => handleClickOpenSalida(row)}>
-                                    <Error fontSize="inherit" />
-                                  </IconButton>
-                                </Tooltip>
-                              </div>
-                            }
-                          >
-                            {excedeTiempo ? `Tiempo excedido:  ${tiempoTranscurrido}` : `Trabajando:  ${tiempoTranscurrido}`}
-                          </Alert>
-                        </TableCell>
-                        <TableCell align="left" sx={{ width: '18%' }}>
-                          <strong>{row.nombre_completo}</strong>
-                          <br />
-                          <small style={{ marginLeft: '10px' }}>{row.tipo}</small>
-                        </TableCell>
-                        <TableCell align="center" sx={{ width: '18%' }}>{row.id_catv === 7 ? (row.paqueteria): (row.empresa)}</TableCell>
-                        <TableCell align="left"  sx={{ width: '18%' }}>{row.area}<br/>
-                        <small style={{ marginLeft: '10px' }}>Motivo: {row.motivo}</small>
-                        </TableCell>
-                        <TableCell align="left" sx={{ width: '12%' }}>
-                          {row.entrada_h
-                            ? new Date(row.entrada_h).toLocaleString('es-ES', {
-                                hour12: true,
-                                year: 'numeric',
-                                month: '2-digit',
-                                day: '2-digit',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })
-                            : 'N/A'}
-                        </TableCell>
-                        <TableCell align="left" sx={{ width: '16%' }}>
-                          {row.placa}
-                          <br />
-                          <small style={{ marginLeft: '10px' }}>
-                            {row.acc === 'S' || row.acc_veh === 'S' || row.acc_dir === 'S' ? (
-                              <span>Vehículo: AUTORIZADO.</span>
-                            ) :row.acc === 'N' || row.acc_veh === '' ? (
-                              <span>Vehículo: NO AUTORIZADO</span>
-                            ): (
-                              <span>No aplica</span>
-                            )}
-                          </small>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
+        </Dialog>
+        <Dialog
+          open={openCreatePaqueteria}
+          onClose={handleClickClosePaqueteria}
+          maxWidth="md"
+          fullWidth
+        >
+          <DialogTitle>ENTRADA DE PAQUETERIA</DialogTitle>
+            <DialogContent style={{margin:'5px'}}>
+              <Grid container spacing={2}>
 
-                <TableHead>
-                  <TableRow >
-                    <TableCell colSpan={6} align="left" style={{ backgroundColor: '#f5f3f3', textAlign:'center' }}><strong>PROVEEDORES</strong></TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {(filtro === 'proveedores' || filtro === 'todos') && datosFiltradosProveedor && datosFiltradosProveedorImp && datosFiltradosProveedores.filter((row) => row.validado === "S" &&  row.est === 'A').map((row, index) => {
-                    const tiempoTranscurrido = calcularTiempo(row.entrada_h);
-                    const excedeTiempo = tiempoTranscurrido.includes('hr') && parseInt(tiempoTranscurrido.split('hr')[0]) >= 4;
-            
-                    return (
-                      <TableRow key={index} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
-                        <TableCell component="th" scope="row" align="center" sx={{width: '30%'}}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <Avatar
-                              src={row.foto ? `${foto}/${row.foto}` : '/placeholder.png'}
-                              alt={row.nombre_completo || 'Sin nombre'}
-                              sx={{ width: 85, height: 85, marginRight: '15px', objectFit: 'cover' }}
-                            />
-                            <strong>Visita: {row.clave_visit}</strong>
-                          </div>
-                          <br />
-                          <Alert
-                            icon={excedeTiempo ? <AvTimer/> : <PrecisionManufacturing />}
-                            severity={excedeTiempo ? 'error' : 'success'}
-                            action={
-                              <div>
-                                <Tooltip title="Bloquear">
-                                  <IconButton aria-label="delete" size="small" onClick={() => handleClickOpenBloquear(row)}>
-                                    <DoNotDisturbOn fontSize="inherit" />
-                                  </IconButton>
-                                </Tooltip>
-                                <Tooltip title="Finalizar">
-                                  <IconButton aria-label="delete" size="small" onClick={() => handleClickOpenSalida(row)}>
-                                    <Error fontSize="inherit" />
-                                  </IconButton>
-                                </Tooltip>
-                              </div>
-                            }
-                          >
-                            {excedeTiempo ? `Tiempo excedido:  ${tiempoTranscurrido}` : `Trabajando:  ${tiempoTranscurrido}`}
-                          </Alert>
-                        </TableCell>
-                        <TableCell align="left" sx={{ width: '18%' }}>
-                          {row.id_catv === 13 ? (
-                            <strong>{row.nombre_completo}</strong>
-                          ):(
-                            <strong>{row.nombre_com_acomp}</strong>
-                          )}
-                          
-                          <br />
-                          <small style={{ marginLeft: '10px' }}>{row.tipo}</small>
-                        </TableCell>
-                        <TableCell align="center" sx={{ width: '18%' }}>NO APLICA</TableCell>
-                        <TableCell align="left"  sx={{ width: '18%' }}>{row.area}<br/>
-                        <small style={{ marginLeft: '10px' }}>Motivo: {row.motivo}</small>
-                        </TableCell>
-                        <TableCell align="left" sx={{ width: '12%' }}>
-                          {row.entrada_h
-                            ? new Date(row.entrada_h).toLocaleString('es-ES', {
-                                hour12: true,
-                                year: 'numeric',
-                                month: '2-digit',
-                                day: '2-digit',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })
-                            : 'N/A'}
-                        </TableCell>
-                        <TableCell align="left" sx={{ width: '16%' }}>
-                          {row.contenedor}
-                          <br />
-                          <small style={{ marginLeft: '10px' }}>
-                            {row.acc === 'S' || row.acc_veh === 'S' ? (
-                              <span>Vehículo: AUTORIZADO.</span>
-                            ) :row.acc === 'N' || row.acc_veh === '' ? (
-                              <span>Vehículo: NO AUTORIZADO</span>
-                            ): (
-                              <span>No aplica</span>
-                            )}
-                          </small>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
+                <Grid item xs={4} sm={6}  style={{marginTop:'5px'}}>
+                  <FormControl fullWidth sx={{ mb: 2 }}>
+                    <InputLabel id="empresa">Selecciona una paqueteria</InputLabel>
+                    <Select 
+                      labelId="empresa" 
+                      id="empresa" 
+                      name="empresa" 
+                      value={selectedPaqueteria} 
+                      onChange={(e) => handleDropdownChangePP(e.target.value)}
+                      label='Selecciona una paqueteria' 
+                    >
+                      <MenuItem value={null}>SELECCIONAR UNA PAQUETERIA</MenuItem>
+                        {paqueterias.map((item) => (
+                          <MenuItem key={item.id_paq} value={item}>
+                              {item.paqueteria}
+                          </MenuItem>
+                        ))}
+                    </Select>
+                    <small>
+                      {errorVisitaPaqueteria.empresa && (
+                        <span style={{color: 'red'}}>
+                          * {errorVisitaPaqueteria.empresa}
+                        </span>
+                      )}
+                    </small>
+                  </FormControl>
+                  <FormControl fullWidth sx={{ mb: 2 }}>
+                    <TextField
+                      id="apellidos"
+                      name="apellidos"
+                      label="Apellidos"
+                      value={paq.apellidos}
+                      onChange={inputChangePaq}
+                      inputProps={{ style: { textTransform: 'uppercase' } }}
+                    />
+                    <small>
+                      {errorVisitaPaqueteria.apellidos && (
+                        <span style={{color: 'red'}}>
+                          * {errorVisitaPaqueteria.apellidos}
+                        </span>
+                      )}
+                    </small>
+                  </FormControl>
+                  
+                </Grid>
 
-                <TableHead>
-                  <TableRow >
-                    <TableCell colSpan={6} align="left" style={{ backgroundColor: '#f5f3f3', textAlign:'center' }}><strong>PAQUETERIAS</strong></TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {(filtro === 'paqueterias' || filtro === 'todos') && datosFiltradosPaqueterias.filter((row) => row.validado === "S" &&  row.est === 'A').map((row, index) => {
-                    const tiempoTranscurrido = calcularTiempo(row.entrada_h);
-                    const excedeTiempo = tiempoTranscurrido.includes('hr') && parseInt(tiempoTranscurrido.split('hr')[0]) >= 4;
-            
-                    return (
-                      <TableRow key={index} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
-                        <TableCell component="th" scope="row" align="center" sx={{width: '30%'}}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <Avatar
-                              src={row.foto ? `${foto}/${row.foto}` : '/placeholder.png'}
-                              alt={row.nombre_completo || 'Sin nombre'}
-                              sx={{ width: 85, height: 85, marginRight: '15px', objectFit: 'cover' }}
-                            />
-                            <strong>Visita: {row.clave_visit}</strong>
-                          </div>
-                          <br />
-                          <Alert
-                            icon={excedeTiempo ? <AvTimer/> : <PrecisionManufacturing />}
-                            severity={excedeTiempo ? 'error' : 'success'}
-                            action={
-                              <div>
-                                <Tooltip title="Bloquear">
-                                  <IconButton aria-label="delete" size="small" onClick={() => handleClickOpenBloquear(row)}>
-                                    <DoNotDisturbOn fontSize="inherit" />
-                                  </IconButton>
-                                </Tooltip>
-                                <Tooltip title="Finalizar">
-                                  <IconButton aria-label="delete" size="small" onClick={() => handleClickOpenSalida(row)}>
-                                    <Error fontSize="inherit" />
-                                  </IconButton>
-                                </Tooltip>
-                              </div>
-                            }
-                          >
-                            {excedeTiempo ? `Tiempo excedido:  ${tiempoTranscurrido}` : `Trabajando:  ${tiempoTranscurrido}`}
-                          </Alert>
-                        </TableCell>
-                        <TableCell align="left" sx={{ width: '18%' }}>
-                          <strong>{row.nombre_completo}</strong>
-                          <br />
-                          <small style={{ marginLeft: '10px' }}>{row.tipo}</small>
-                        </TableCell>
-                        <TableCell align="center" sx={{ width: '18%' }}>{row.id_catv === 7 ? (row.paqueteria): (row.empresa)}</TableCell>
-                        <TableCell align="left"  sx={{ width: '18%' }}>{row.area}<br/>
-                        <small style={{ marginLeft: '10px' }}>Motivo: {row.motivo}</small>
-                        </TableCell>
-                        <TableCell align="left" sx={{ width: '12%' }}>
-                          {row.entrada_h
-                            ? new Date(row.entrada_h).toLocaleString('es-ES', {
-                                hour12: true,
-                                year: 'numeric',
-                                month: '2-digit',
-                                day: '2-digit',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })
-                            : 'N/A'}
-                        </TableCell>
-                        <TableCell align="left" sx={{ width: '16%' }}>
-                          {row.placa}
-                          <br />
-                          <small style={{ marginLeft: '10px' }}>
-                            {row.acc === 'S' || row.acc_veh === 'S' || row.acc_dir === 'S' ? (
-                              <span>Vehículo: AUTORIZADO.</span>
-                            ) :row.acc === 'N' || row.acc_veh === '' ? (
-                              <span>Vehículo: NO AUTORIZADO</span>
-                            ): (
-                              <span>No aplica</span>
-                            )}
-                          </small>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-                <TableHead>
-                  <TableRow >
-                    <TableCell colSpan={6} align="left" style={{ backgroundColor: '#f5f3f3', textAlign:'center' }}><strong>CLIENTES</strong></TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody> 
-                  {(filtro === 'clientes' || filtro === 'todos') && datosFiltradosClienteRecoge.filter((row) => row.validado === "S" &&  row.est === 'A').map((row, index) => {
-                    const tiempoTranscurrido = calcularTiempo(row.entrada_h); 
-                    const excedeTiempo = tiempoTranscurrido.includes('hr') && parseInt(tiempoTranscurrido.split('hr')[0]) >= 4;
-            
-                    return (
-                      <TableRow key={index} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
-                        <TableCell component="th" scope="row" align="center" sx={{width: '30%'}}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <Avatar
-                              src={row.foto ? `${foto}/${row.foto}` : '/placeholder.png'}
-                              alt={row.nombre_completo || 'Sin nombre'}
-                              sx={{ width: 85, height: 85, marginRight: '15px', objectFit: 'cover' }}
-                            />
-                            <strong>Visita: {row.clave_visit}</strong>
-                          </div>
-                          <br />
-                          <Alert
-                            icon={excedeTiempo ? <AvTimer/> : <PrecisionManufacturing />}
-                            severity={excedeTiempo ? 'error' : 'success'}
-                            action={
-                              <div>
-                                <Tooltip title="Bloquear">
-                                  <IconButton aria-label="delete" size="small" onClick={() => handleClickOpenBloquear(row)}>
-                                    <DoNotDisturbOn fontSize="inherit" />
-                                  </IconButton>
-                                </Tooltip>
-                                <Tooltip title="Finalizar">
-                                  <IconButton aria-label="delete" size="small" onClick={() => handleClickOpenSalida(row)}>
-                                    <Error fontSize="inherit" />
-                                  </IconButton>
-                                </Tooltip>
-                              </div>
-                            }
-                          >
-                            {excedeTiempo ? `Tiempo excedido:  ${tiempoTranscurrido}` : `Trabajando:  ${tiempoTranscurrido}`}
-                          </Alert>
-                        </TableCell>
-                        <TableCell align="left" sx={{ width: '18%' }}>
-                          <strong>{row.nombre_completo}</strong>
-                          <br />
-                          <small style={{ marginLeft: '10px' }}>{row.tipo}</small>
-                        </TableCell>
-                        <TableCell align="center" sx={{ width: '18%' }}>{row.id_catv === 11 ? 'N/A': (row.empresa)}</TableCell>
-                        <TableCell align="left"  sx={{ width: '18%' }}>{row.area}<br/>
-                        <small style={{ marginLeft: '10px' }}>Motivo: {row.motivo}</small>
-                        </TableCell>
-                        <TableCell align="left" sx={{ width: '12%' }}>
-                          {row.entrada_h
-                            ? new Date(row.entrada_h).toLocaleString('es-ES', {
-                                hour12: true,
-                                year: 'numeric',
-                                month: '2-digit',
-                                day: '2-digit',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })
-                            : 'N/A'}
-                        </TableCell>
-                        <TableCell align="left" sx={{ width: '16%' }}>
-                          {row.placa === '' ? (
-                            'No aplica'
-                          ): (
-                            <>{row.placa}</>
-                          )}
-                          <br />
-                          <small style={{ marginLeft: '10px' }}>
-                            {row.acc === 'S' || row.acc_veh === 'S' || row.acc_dir === 'S' ? (
-                              <span>Vehículo: AUTORIZADO.</span>
-                            ) :row.acc === 'N' || row.acc_veh === '' ? (
-                              <span>Vehículo: NO AUTORIZADO</span>
-                            ): row.placa === '' || row.placa === null ? (
-                              <span>No aplica</span>
-                            ): null}
-                          </small>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                <Grid item xs={12} sm={6} style={{marginTop:'5px'}}>
+                  <FormControl fullWidth sx={{ mb: 2 }}>
+                    <TextField
+                      id="nombre"
+                      name="nombre"
+                      label="Nombre (s)"
+                      value={paq.nombre}
+                      onChange={inputChangePaq}
+                      inputProps={{ style: { textTransform: 'uppercase' } }}
+                    />
+                    <small>
+                      {errorVisitaPaqueteria.nombre && (
+                        <span style={{color: 'red'}}>
+                          * {errorVisitaPaqueteria.nombre}
+                        </span>
+                      )}
+                    </small>
+                  </FormControl>
+                  <FormControl fullWidth sx={{ mb: 2 }}>
+                    <TextField
+                      id="no_ide"
+                      name="no_ide"
+                      label="No. Identificación"
+                      value={paq.no_ide}
+                      onChange={inputChangePaq}
+                      inputProps={{ style: { textTransform: 'uppercase' } }}
+                    />
+                    <small>
+                      {errorVisitaPaqueteria.no_ide && (
+                        <span style={{color: 'red'}}>
+                          * {errorVisitaPaqueteria.no_ide}
+                        </span>
+                      )}
+                    </small>
+                  </FormControl>
 
-          </Box>
-        </div>
-      )}
-      <Dialog open={openSalida} onClose={handleCloseSalida}>
-        <DialogTitle>
-          Finalizar visita
-        </DialogTitle>
-        <DialogContent sx={{display: 'flex'}}>
-          {selectedVisitaSalida && (
-            <>
-          {/**hacer el calculo del tiempo de la visita y el button para la salida y desactivar el qr */}
-          <Avatar
-            src={selectedVisitaSalida.foto ? `${foto}/${selectedVisitaSalida.foto}` : '/placeholder.png'}
-            alt={selectedVisitaSalida.nombre_completo || 'Sin nombre'}
-            sx={{ width: 150, height: 150, marginRight: '15px', objectFit: 'cover' }}
-          />
-          <div style={{ flex: 1 }}>
-            {selectedVisitaSalida.id_catv === 4 ?(
-              <Typography variant="h6" sx={{ fontWeight: 'bold' }} >
-                {selectedVisitaSalida.nombre_com_acomp || 'N/A'}
-              </Typography>
-            ) : (
-              <Typography variant="h6" sx={{ fontWeight: 'bold' }} >
-                {selectedVisitaSalida.nombre_completo || 'N/A'}
-              </Typography>
-            )}
-            
-            <Grid container spacing={1} sx={{marginTop:'2px'}}>
-              {/* QR Code */}
-              <Grid item>
-                {selectedVisitaSalida && (
-                  <QRCodeCanvas
-                    value={`Nombre: ${selectedVisitaSalida.nombre_completo},\nEmpresa: ${selectedVisitaSalida.empresa},\nPlaca: ${selectedVisitaSalida.placa || 'S/A'},\nDía Visita: ${formatDateToYMDQR(selectedVisitaSalida.reg_entrada)} - ${selectedVisitaSalida.hora_entrada},\nAcompañante: ${selectedVisitaSalida.nom_com || 'S/A'}`}
-                    size={80}
-                    bgColor="#ffffff"
-                    fgColor="#000000"
-                    level="Q"
+                  {paq.no_ide && ( 
+                    <>
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            size="small"
+                            checked={checkedIne}
+                            onChange={() => handleCheckboxChangeIne("ine")}
+                          />
+                        }
+                        label="No. INE"
+                      />
+                      <FormControlLabel
+                        control={
+                          <Checkbox
+                            size="small"
+                            checked={checkedLic}
+                            onChange={() => handleCheckboxChangeIne("lic")}
+                          />
+                        }
+                        label="No. Licencia"
+                      /><br/>
+                      <small>
+                      {errorVisitaPaqueteria.checks && (
+                        <span style={{ color: 'red' }}>
+                          * {errorVisitaPaqueteria.checks}
+                        </span>
+                      )}
+                      </small>
+                    </>
+                  )}
+                  
+                  
+                </Grid>
+                      
+                <Grid item xs={12} sm={6}>
+                  <FormControl fullWidth sx={{ mb: 2 }}>
+                    <InputLabel id="area_per">No. Cortina</InputLabel>
+                    <Select
+                      labelId="area_per"
+                      id="area_per"
+                      name="area_per"
+                      value={selectedCortina}
+                      onChange={handleDropdownChangeCortina}
+                      label="No. Cortina"
+                    >
+                      <MenuItem value={null}>SELECCIONAR CORTINA</MenuItem>
+                      {cortinas
+                        .filter((item) => 
+                          selectedPaqueteria?.id_paq === 7 || selectedPaqueteria?.id_paq === 8 ? [1, 2, 3, 4, 5,7].includes(item.id_cor) : true
+                        )
+                        .map((item) => (
+                          <MenuItem key={item.id_cor} value={item}>
+                              {item.cortina}
+                          </MenuItem>
+                      ))}
+                    </Select>
+                    <small>
+                      {errorVisitaPaqueteria.area_per && (
+                        <span style={{color: 'red'}}>
+                          * {errorVisitaPaqueteria.area_per}
+                        </span>
+                      )}
+                    </small>
+                  </FormControl>
+                  
+                    <FormControl fullWidth sx={{ mb: 2 }}>
+                    <TextField
+                      fullWidth
+                      id="marca"
+                      name="marca"
+                      label="Marca"
+                      value={paq.marca}
+                      onChange={inputChangePaq}
+                      inputProps={{ style: { textTransform: "uppercase" } }}
+                    />
+                    <small>
+                      {errorVisitaPaqueteria.marca && (
+                        <span style={{color: 'red'}}>
+                          * {errorVisitaPaqueteria.marca}
+                        </span>
+                      )}
+                    </small>
+                  </FormControl>
+                  
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                <FormControl fullWidth sx={{ mb: 2 }}>
+                  <TextField
+                    id="motivo"
+                    name="motivo" 
+                    label="Motivo de la visita"
+                    value={paq.motivo || selectedCortina?.area || ""}
+                    onChange={inputChangePaq}
+                    inputProps={{ style: { textTransform: 'uppercase' } }}
                   />
+                </FormControl>
+                
+                  <FormControl fullWidth sx={{ mb: 2 }}>
+                    <TextField
+                      fullWidth
+                      id="placa"
+                      name="placa"
+                      label="Placa"
+                      value={paq.placa}
+                      onChange={inputChangePaq}
+                      inputProps={{ style: { textTransform: "uppercase" } }}
+                    />
+                    <small>
+                      {errorVisitaPaqueteria.placa&& (
+                        <span style={{color: 'red'}}>
+                          * {errorVisitaPaqueteria.placa}
+                        </span>
+                      )}
+                    </small>
+                  </FormControl>
+                  
+                </Grid>
+                <Grid item xs={12} >
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                      checked={checkedPaq}
+                      onChange={(e) => setCheckedPaq(e.target.checked)}
+                      />
+                    }
+                    label="Acompañantes"
+                  />
+                  {checkedPaq && (
+                    <Grid item xs={12}>
+                      {acompanantesPaq.map((acompanante, index) => (
+                        <div>
+                          <span>{`Datos de acompañante ${index + 1}`}</span><p/>
+                        <Grid
+                          container
+                          key={index}
+                          spacing={2}
+                          alignItems="center"
+                          sx={{ mb: 2 }}
+                        >
+                            <Grid item>
+                              <TextField
+                              fullWidth
+                              id={`nombre_acomp_${index}`}
+                              name={`nombre_acomp_${index}`}
+                              value={acompanante.nombre_acomp}
+                              onChange={(e) =>
+                                handleInputChangePaq(index, {
+                                  ...acompanante,
+                                  nombre_acomp: e.target.value,
+                                })
+                              }
+                              label={`Nombre de acompañante`}
+                              inputProps={{ style: { textTransform: 'uppercase' } }}
+                            />
+                            </Grid>
+                            <Grid item>
+                            
+                            <TextField
+                              fullWidth
+                              id={`apellidos_acomp_${index}`}
+                              name={`apellidos_acomp_${index}`}
+                              value={acompanante.apellidos_acomp}
+                              onChange={(e) =>
+                                handleInputChangePaq(index, {
+                                  ...acompanante,
+                                  apellidos_acomp: e.target.value,
+                                })
+                              }
+                              label={`Apellidos de acompañante`}
+                              inputProps={{ style: { textTransform: 'uppercase' } }}
+                            />
+                            </Grid>
+                            <Grid item>
+                            <TextField
+                              fullWidth
+                              id={`no_ine_acomp_${index}`}
+                              name={`no_ine_acomp_${index}`}
+                              value={acompanante.no_ine_acomp}
+                              onChange={(e) =>
+                                handleInputChangePaq(index, {
+                                  ...acompanante,
+                                  no_ine_acomp: e.target.value,
+                                })
+                              }
+                              label={`No. Identificación`}
+                              inputProps={{ style: { textTransform: 'uppercase' } }}
+                            />
+                          </Grid>
+                          <Grid item>
+                            <IconButton
+                              variant="contained"
+                              color="error"
+                              size="small"
+                              onClick={() => eliminarAcompanantePaq(index)}
+                            >
+                              <DeleteOutline/>
+                            </IconButton>
+                          </Grid>
+                        </Grid>
+                        </div>
+                      ))}
+                      {acompanantesPaq.length < 2 ? (
+                        <Button
+                          variant="outlined"
+                          onClick={agregarAcompanantePaq}
+                          startIcon={<Add />}
+                        >
+                          Otro acompañante
+                        </Button>
+                      ) : (
+                        <p style={{ color: "red" }}>Solo puedes agregar un máximo de 2 acompañantes</p>
+                      )}
+                    </Grid>
+                  )}
+                  {showErrorAlertPlaca && (
+                  <Alert icon={<CheckCircleOutline fontSize="inherit" />} severity="error">
+                    Esta placa ya ha sido registrada hoy
+                  </Alert>
                 )}
+                </Grid>
+                
               </Grid>
-              <Grid item>
-                <Typography variant="body2">
-                  <strong>Entrada:</strong> {selectedVisitaSalida.entrada_h ? new Date(selectedVisitaSalida.entrada_h).toLocaleString('es-ES', {
-                    hour12: true,
-                    year: 'numeric',
-                    month: '2-digit',
-                    day: '2-digit',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit',
-                  }) : 'N/A'}
+            </DialogContent>
+            <DialogActions>
+                <Button
+                  variant="outlined"
+                  color="secondary"
+                  onClick={handleClickClosePaqueteria}
+                >
+                Cancelar
+                </Button>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={SaveVisitantePaqueteria}
+                  startIcon={<EditCalendar />}
+                >
+                  Registrar
+                </Button>
+            </DialogActions>
+            
+        </Dialog>
+        {/* Filtro debajo del buscador y botones */}
+        
+        {(user?.role === 'POLIB' || user?.role === 'POLIP' || user?.role === 'Admin') && (
+          <div>
+            <Box mb={2}>
+              <Grid container spacing={2} sx={{ marginBottom: '20px' }}>
+                <Grid item>
+                  {isMobile ? (
+                    <div>
+                      <ButtonGroup>
+                      <Button onClick={mostrarTodos}>
+                        VISITAS ACTIVAS
+                      </Button>
+                      <Button
+                        onClick={handleClick}
+                        endIcon={<KeyboardArrowDown  />}
+                      />
+                      </ButtonGroup>
+                        <Menu anchorEl={anchorEl} open={open} onClose={() => handleCloseFiltro()}>
+                          <MenuItem onClick={() => handleCloseFiltro(mostrarTodos)}>TODOS</MenuItem>
+                          <MenuItem onClick={() => handleCloseFiltro(mostrarVisitantes)}>VISITANTES</MenuItem>
+                          <MenuItem onClick={() => handleCloseFiltro(mostrarTransportistas)}>TRANSPORTISTAS</MenuItem>
+                          <MenuItem onClick={() => handleCloseFiltro(() => { mostrarProveedores(); mostrarProveedor(); })}>PROVEEDORES</MenuItem>
+                          <MenuItem onClick={() => handleCloseFiltro(mostrarPaqueterias)}>PAQUETERIAS</MenuItem>
+                          <MenuItem onClick={() => handleCloseFiltro(mostrarClientes)}>CLIENTES RECOGE</MenuItem>
+                      </Menu>
+                    </div>
+                  ):(
+                    <div style={{ marginBottom: "10px", textAlign:'center' }}>
+                      <ButtonGroup variant="text" aria-label="Basic button group">
+                        <Button size="small"  onClick={mostrarTodos}>TODOS</Button>
+                        <Button size="small"  onClick={mostrarVisitantes}>VISITANTES</Button>
+                        <Button size="small"  onClick={mostrarTransportistas}>TRANSPORTISTAS</Button>
+                        <Button size="small"  onClick={mostrarProveedores && mostrarProveedor}>PROVEEDORES</Button>
+                        <Button size="small"  onClick={mostrarPaqueterias}>PAQUETERIAS</Button>
+                        <Button size="small"  onClick={mostrarClientes}>CLIENTES RECOGE</Button>
+                      </ButtonGroup> 
+                    </div>
+                    
+                  )}
+                
+                </Grid>
+              </Grid>
+              <p>
+              {showSuccessAlert && (
+                <Alert icon={<CheckCircleOutline fontSize="inherit" />} severity="success">
+                  ¡Multa registrada con éxito!
+                </Alert>
+              )}
+              </p>
+              <TableContainer component={Paper} sx={{ maxHeight: 440 }}>
+                <Table stickyHeader aria-label="sticky table">
+                  {/* Encabezado de la tabla para Visitantes */}
+                  <TableHead>
+                    {/* <TableRow>
+                      <TableCell align="center"></TableCell>
+                      <TableCell align="center">NOMBRE</TableCell>
+                      <TableCell align="center">EMPRESA</TableCell>
+                      <TableCell align="center">RESPONSABLE</TableCell>
+                      <TableCell align="center">ÁREA</TableCell>
+                      <TableCell align="center">ENTRADA</TableCell>
+                      <TableCell align="center">VEHÍCULO</TableCell>
+                    </TableRow> */}
+                    <TableRow>
+                      {columns.map((column) => (
+                         
+                          <TableCell
+                            key={column.id}
+                            align={column.align}
+                            style={{ top: 57, minWidth: column.minWidth }}
+                          >
+                            {column.label}
+                          </TableCell>
+                        
+                      ))}
+                    </TableRow>
+                    <TableRow>
+                      <TableCell colSpan={7} align="left" style={{ backgroundColor: '#f5f3f3', textAlign: isMobile ? 'left' :'center' }}><strong>VISITANTES</strong></TableCell>
+                    </TableRow>
+                    {/* <TableRow>
+                      <TableCell align="center"></TableCell>
+                      <TableCell align="left" >Nombre</TableCell>
+                      <TableCell align="left">Empresa</TableCell>
+                      <TableCell align="left">Responsable</TableCell>
+                      <TableCell align="left">Área</TableCell>
+                      <TableCell align="left">Entrada</TableCell>
+                      <TableCell align="left">Vehículo</TableCell>
+                    </TableRow>  */}
+                  </TableHead>
+                  <TableBody>
+                    {datosFiltradosVisitantes.filter((row) => row.est === 'A').map((row, index) => {
+                      const tiempoTranscurrido = calcularTiempo(row.entrada_h);
+                      const excedeTiempo = tiempoTranscurrido.includes('hr') && parseInt(tiempoTranscurrido.split('hr')[0]) >= 1;
+
+                      return (
+                        <TableRow key={index} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+                          <TableCell component="th" scope="row" align="center" sx={{ width: '30%' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <Avatar
+                                src={row.foto ? `${foto}/${row.foto}` : '/placeholder.png'}
+                                alt={row.nombre_completo || 'Sin nombre'}
+                                sx={{ width: 85, height: 85, marginRight: '15px', objectFit: 'cover' }}
+                              />
+                              <strong>Visita: {row.clave_visit}</strong>
+                            </div>
+                            <br />
+                            <Alert
+                              icon={excedeTiempo ? <AvTimer/> : <PrecisionManufacturing />}
+                              severity={excedeTiempo ? 'error' : 'success'}
+                              action={
+                                <div>
+                                  <Tooltip title="Multar">
+                                    <IconButton aria-label="delete" size="small" onClick={() => handleClickOpenBloquear(row)}>
+                                      <DoNotDisturbOn fontSize="inherit" />
+                                    </IconButton>
+                                  </Tooltip>
+                                  <Tooltip title="Finalizar">
+                                    <IconButton aria-label="delete" size="small" onClick={() => handleClickOpenSalida(row)}>
+                                      <Error fontSize="inherit" />
+                                    </IconButton>
+                                  </Tooltip>
+                                </div>
+                              }
+                            >
+                              {excedeTiempo ? `Tiempo excedido:  ${tiempoTranscurrido}` : `Trabajando:  ${tiempoTranscurrido}`}
+                            </Alert>
+                          </TableCell>
+                          <TableCell align="left" sx={{ width: '18%' }}>
+                            <strong>{row.nombre_completo}</strong>
+                            <br />
+                            <small style={{ marginLeft: '10px' }}>{row.tipo}</small>
+                          </TableCell>
+                          <TableCell align="center" sx={{ width: '18%' }}>{row.id_catv === 1 ? ( 'COLABORADOR SANTUL'): row.id_catv === 2 ? ('NO APLICA') : (row.empresa)} </TableCell>
+                          <TableCell align="left"  sx={{ width: '18%' }}>{row.personal}</TableCell>
+                          <TableCell align="left"  sx={{ width: '18%' }}>{row.area}<br/>
+                          <small style={{ marginLeft: '10px' }}>Motivo: {row.motivo}</small>
+                          </TableCell>
+                          <TableCell align="left" sx={{ width: '15%' }}>
+                            {row.entrada_h
+                              ? new Date(row.entrada_h).toLocaleString('es-ES', {
+                                  hour12: true,
+                                  year: 'numeric',
+                                  month: '2-digit',
+                                  day: '2-digit',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })
+                              : 'N/A'}
+                          </TableCell>
+                          <TableCell align="left">
+                            {row.id_catv === 4 ? (
+                              <span>{row.contenedor}</span>
+                            ) : row.placa === '' || row.placa === null ? (
+                              <span>No aplica</span>
+                            ) : (
+                              <span>{row.placa}</span>
+                            )}
+                            
+                            <br />
+                            <small style={{ marginLeft: '10px' }}>
+                            
+                            { row.acc === 'S' || row.acc_veh === 'S' ? (
+                              <span>Vehículo: AUTORIZADO.</span>
+                            ) : row.acc === 'N' || row.acc_veh === '' ? (
+                              <span>Vehículo: NO AUTORIZADO</span>
+                            ) : (
+                              <span>No aplica</span>
+                            )}
+                              
+                            </small>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody><p/>
+
+                  <TableHead>
+                    <TableRow >
+                      <TableCell colSpan={7} align="left" style={{ backgroundColor: '#f5f3f3', textAlign: isMobile ? 'left' :'center' }}><strong>TRANSPORTISTAS</strong></TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {(filtro === 'transportistas' || filtro === 'todos') && datosFiltradosTransportistas.filter((row) => row.validado === "S" && row.est === 'A').map((row, index) => {
+                      const tiempoTranscurrido = calcularTiempo(row.entrada_h);
+                      const excedeTiempo = tiempoTranscurrido.includes('hr') && parseInt(tiempoTranscurrido.split('hr')[0]) >= 4;
+              
+                      return (
+                        <TableRow key={index} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+                          <TableCell component="th" scope="row" align="center" sx={{width: '30%'}}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <Avatar
+                                src={row.foto ? `${foto}/${row.foto}` : '/placeholder.png'}
+                                alt={row.nombre_completo || 'Sin nombre'}
+                                sx={{ width: 85, height: 85, marginRight: '15px', objectFit: 'cover' }}
+                              />
+                              <strong>Visita: {row.clave_visit}</strong>
+                            </div>
+                            <br />
+                            <Alert
+                              icon={excedeTiempo ? <AvTimer/> : <PrecisionManufacturing />}
+                              severity={excedeTiempo ? 'error' : 'success'}
+                              action={
+                                <div>
+                                  <Tooltip title="Bloquear">
+                                    <IconButton aria-label="delete" size="small" onClick={() => handleClickOpenBloquear(row)}>
+                                      <DoNotDisturbOn fontSize="inherit" />
+                                    </IconButton>
+                                  </Tooltip>
+                                  <Tooltip title="Finalizar">
+                                    <IconButton aria-label="delete" size="small" onClick={() => handleClickOpenSalida(row)}>
+                                      <Error fontSize="inherit" />
+                                    </IconButton>
+                                  </Tooltip>
+                                </div>
+                              }
+                            >
+                              {excedeTiempo ? `Tiempo excedido:  ${tiempoTranscurrido}` : `Trabajando:  ${tiempoTranscurrido}`}
+                            </Alert>
+                          </TableCell>
+                          <TableCell align="left" sx={{ width: '18%' }}>
+                            <strong>{row.nombre_completo}</strong>
+                            <br />
+                            <small style={{ marginLeft: '10px' }}>{row.tipo}</small>
+                          </TableCell>
+                          <TableCell align="center" sx={{ width: '18%' }}>{row.id_catv === 7 ? (row.paqueteria): (row.empresa)}</TableCell>
+                          <TableCell align="left"  sx={{ width: '18%' }}>{row.personal}</TableCell>
+                          <TableCell align="left"  sx={{ width: '18%' }}>{row.area}<br/>
+                          <small style={{ marginLeft: '10px' }}>Motivo: {row.motivo}</small>
+                          </TableCell>
+                          <TableCell align="left" sx={{ width: '12%' }}>
+                            {row.entrada_h
+                              ? new Date(row.entrada_h).toLocaleString('es-ES', {
+                                  hour12: true,
+                                  year: 'numeric',
+                                  month: '2-digit',
+                                  day: '2-digit',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })
+                              : 'N/A'}
+                          </TableCell>
+                          <TableCell align="left" sx={{ width: '16%' }}>
+                            {row.placa}
+                            <br />
+                            <small style={{ marginLeft: '10px' }}>
+                              {row.acc === 'S' || row.acc_veh === 'S' || row.acc_dir === 'S' ? (
+                                <span>Vehículo: AUTORIZADO.</span>
+                              ) :row.acc === 'N' || row.acc_veh === '' ? (
+                                <span>Vehículo: NO AUTORIZADO</span>
+                              ): (
+                                <span>No aplica</span>
+                              )}
+                            </small>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+
+                  <TableHead>
+                    <TableRow >
+                      <TableCell colSpan={7} align="left" style={{ backgroundColor: '#f5f3f3', textAlign: isMobile ? 'left' :'center'}}><strong>PROVEEDORES</strong></TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {(filtro === 'proveedores' || filtro === 'todos') && datosFiltradosProveedor && datosFiltradosProveedorImp && datosFiltradosProveedores.filter((row) => row.validado === "S" &&  row.est === 'A').map((row, index) => {
+                      const tiempoTranscurrido = calcularTiempo(row.entrada_h);
+                      const excedeTiempo = tiempoTranscurrido.includes('hr') && parseInt(tiempoTranscurrido.split('hr')[0]) >= 4;
+              
+                      return (
+                        <TableRow key={index} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+                          <TableCell component="th" scope="row" align="center" sx={{width: '30%'}}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <Avatar
+                                src={row.foto ? `${foto}/${row.foto}` : '/placeholder.png'}
+                                alt={row.nombre_completo || 'Sin nombre'}
+                                sx={{ width: 85, height: 85, marginRight: '15px', objectFit: 'cover' }}
+                              />
+                              <strong>Visita: {row.clave_visit}</strong>
+                            </div>
+                            <br />
+                            <Alert
+                              icon={excedeTiempo ? <AvTimer/> : <PrecisionManufacturing />}
+                              severity={excedeTiempo ? 'error' : 'success'}
+                              action={
+                                <div>
+                                  <Tooltip title="Bloquear">
+                                    <IconButton aria-label="delete" size="small" onClick={() => handleClickOpenBloquear(row)}>
+                                      <DoNotDisturbOn fontSize="inherit" />
+                                    </IconButton>
+                                  </Tooltip>
+                                  <Tooltip title="Finalizar">
+                                    <IconButton aria-label="delete" size="small" onClick={() => handleClickOpenSalida(row)}>
+                                      <Error fontSize="inherit" />
+                                    </IconButton>
+                                  </Tooltip>
+                                </div>
+                              }
+                            >
+                              {excedeTiempo ? `Tiempo excedido:  ${tiempoTranscurrido}` : `Trabajando:  ${tiempoTranscurrido}`}
+                            </Alert>
+                          </TableCell>
+                          <TableCell align="left" sx={{ width: '18%' }}>
+                            {row.id_catv === 13 ? (
+                              <strong>{row.nombre_completo}</strong>
+                            ):(
+                              <strong>{row.nombre_com_acomp}</strong>
+                            )}
+                            
+                            <br />
+                            <small style={{ marginLeft: '10px' }}>{row.tipo}</small>
+                          </TableCell>
+                          <TableCell align="center" sx={{ width: '18%' }}>NO APLICA</TableCell>
+                          <TableCell align="left"  sx={{ width: '18%' }}>{row.personal}</TableCell>
+                          <TableCell align="left"  sx={{ width: '18%' }}>{row.area}<br/>
+                          <small style={{ marginLeft: '10px' }}>Motivo: {row.motivo}</small>
+                          </TableCell>
+                          <TableCell align="left" sx={{ width: '12%' }}>
+                            {row.entrada_h
+                              ? new Date(row.entrada_h).toLocaleString('es-ES', {
+                                  hour12: true,
+                                  year: 'numeric',
+                                  month: '2-digit',
+                                  day: '2-digit',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })
+                              : 'N/A'}
+                          </TableCell>
+                          <TableCell align="left" sx={{ width: '16%' }}>
+                            {row.contenedor}
+                            <br />
+                            <small style={{ marginLeft: '10px' }}>
+                              {row.acc === 'S' || row.acc_veh === 'S' ? (
+                                <span>Vehículo: AUTORIZADO.</span>
+                              ) :row.acc === 'N' || row.acc_veh === '' ? (
+                                <span>Vehículo: NO AUTORIZADO</span>
+                              ): (
+                                <span>No aplica</span>
+                              )}
+                            </small>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+
+                  <TableHead>
+                    <TableRow >
+                      <TableCell colSpan={7} align="left" style={{ backgroundColor: '#f5f3f3', textAlign: isMobile ? 'left' :'center' }}><strong>PAQUETERIAS</strong></TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {(filtro === 'paqueterias' || filtro === 'todos') && datosFiltradosPaqueterias.filter((row) => row.validado === "S" &&  row.est === 'A').map((row, index) => {
+                      const tiempoTranscurrido = calcularTiempo(row.entrada_h);
+                      const excedeTiempo = tiempoTranscurrido.includes('hr') && parseInt(tiempoTranscurrido.split('hr')[0]) >= 4;
+              
+                      return (
+                        <TableRow key={index} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+                          <TableCell component="th" scope="row" align="center" sx={{width: '30%'}}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <Avatar
+                                src={row.foto ? `${foto}/${row.foto}` : '/placeholder.png'}
+                                alt={row.nombre_completo || 'Sin nombre'}
+                                sx={{ width: 85, height: 85, marginRight: '15px', objectFit: 'cover' }}
+                              />
+                              <strong>Visita: {row.clave_visit}</strong>
+                            </div>
+                            <br />
+                            <Alert
+                              icon={excedeTiempo ? <AvTimer/> : <PrecisionManufacturing />}
+                              severity={excedeTiempo ? 'error' : 'success'}
+                              action={
+                                <div>
+                                  <Tooltip title="Bloquear">
+                                    <IconButton aria-label="delete" size="small" onClick={() => handleClickOpenBloquear(row)}>
+                                      <DoNotDisturbOn fontSize="inherit" />
+                                    </IconButton>
+                                  </Tooltip>
+                                  <Tooltip title="Finalizar">
+                                    <IconButton aria-label="delete" size="small" onClick={() => handleClickOpenSalida(row)}>
+                                      <Error fontSize="inherit" />
+                                    </IconButton>
+                                  </Tooltip>
+                                </div>
+                              }
+                            >
+                              {excedeTiempo ? `Tiempo excedido:  ${tiempoTranscurrido}` : `Trabajando:  ${tiempoTranscurrido}`}
+                            </Alert>
+                          </TableCell>
+                          <TableCell align="left" sx={{ width: '18%' }}>
+                            <strong>{row.nombre_completo}</strong>
+                            <br />
+                            <small style={{ marginLeft: '10px' }}>{row.tipo}</small>
+                          </TableCell>
+                          <TableCell align="center" sx={{ width: '18%' }}>{row.id_catv === 7 ? (row.paqueteria): (row.empresa)}</TableCell>
+                          <TableCell align="left"  sx={{ width: '18%' }}>{row.personal}</TableCell>
+                          <TableCell align="left"  sx={{ width: '18%' }}>{row.area}<br/>
+                          <small style={{ marginLeft: '10px' }}>Motivo: {row.motivo}</small>
+                          </TableCell>
+                          <TableCell align="left" sx={{ width: '12%' }}>
+                            {row.entrada_h
+                              ? new Date(row.entrada_h).toLocaleString('es-ES', {
+                                  hour12: true,
+                                  year: 'numeric',
+                                  month: '2-digit',
+                                  day: '2-digit',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })
+                              : 'N/A'}
+                          </TableCell>
+                          <TableCell align="left" sx={{ width: '16%' }}>
+                            {row.placa}
+                            <br />
+                            <small style={{ marginLeft: '10px' }}>
+                              {row.acc === 'S' || row.acc_veh === 'S' || row.acc_dir === 'S' ? (
+                                <span>Vehículo: AUTORIZADO.</span>
+                              ) :row.acc === 'N' || row.acc_veh === '' ? (
+                                <span>Vehículo: NO AUTORIZADO</span>
+                              ): (
+                                <span>No aplica</span>
+                              )}
+                            </small>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                  <TableHead>
+                    <TableRow >
+                      <TableCell colSpan={7} align="left" style={{ backgroundColor: '#f5f3f3', textAlign: isMobile ? 'left' :'center' }}><strong>CLIENTES</strong></TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody> 
+                    {(filtro === 'clientes' || filtro === 'todos') && datosFiltradosClienteRecoge.filter((row) => row.validado === "S" &&  row.est === 'A').map((row, index) => {
+                      const tiempoTranscurrido = calcularTiempo(row.entrada_h); 
+                      const excedeTiempo = tiempoTranscurrido.includes('hr') && parseInt(tiempoTranscurrido.split('hr')[0]) >= 4;
+              
+                      return (
+                        <TableRow key={index} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+                          <TableCell component="th" scope="row" align="center" sx={{width: '30%'}}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              <Avatar
+                                src={row.foto ? `${foto}/${row.foto}` : '/placeholder.png'}
+                                alt={row.nombre_completo || 'Sin nombre'}
+                                sx={{ width: 85, height: 85, marginRight: '15px', objectFit: 'cover' }}
+                              />
+                              <strong>Visita: {row.clave_visit}</strong>
+                            </div>
+                            <br />
+                            <Alert
+                              icon={excedeTiempo ? <AvTimer/> : <PrecisionManufacturing />}
+                              severity={excedeTiempo ? 'error' : 'success'}
+                              action={
+                                <div>
+                                  <Tooltip title="Bloquear">
+                                    <IconButton aria-label="delete" size="small" onClick={() => handleClickOpenBloquear(row)}>
+                                      <DoNotDisturbOn fontSize="inherit" />
+                                    </IconButton>
+                                  </Tooltip>
+                                  <Tooltip title="Finalizar">
+                                    <IconButton aria-label="delete" size="small" onClick={() => handleClickOpenSalida(row)}>
+                                      <Error fontSize="inherit" />
+                                    </IconButton>
+                                  </Tooltip>
+                                </div>
+                              }
+                            >
+                              {excedeTiempo ? `Tiempo excedido:  ${tiempoTranscurrido}` : `Trabajando:  ${tiempoTranscurrido}`}
+                            </Alert>
+                          </TableCell>
+                          <TableCell align="left" sx={{ width: '18%' }}>
+                            <strong>{row.nombre_completo}</strong>
+                            <br />
+                            <small style={{ marginLeft: '10px' }}>{row.tipo}</small>
+                          </TableCell>
+                          <TableCell align="center" sx={{ width: '18%' }}>{row.id_catv === 11 ? 'N/A': (row.empresa)}</TableCell>
+                          <TableCell align="left"  sx={{ width: '18%' }}>{row.personal}</TableCell>
+                          <TableCell align="left"  sx={{ width: '18%' }}>{row.area}<br/>
+                          <small style={{ marginLeft: '10px' }}>Motivo: {row.motivo}</small>
+                          </TableCell>
+                          <TableCell align="left" sx={{ width: '12%' }}>
+                            {row.entrada_h
+                              ? new Date(row.entrada_h).toLocaleString('es-ES', {
+                                  hour12: true,
+                                  year: 'numeric',
+                                  month: '2-digit',
+                                  day: '2-digit',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })
+                              : 'N/A'}
+                          </TableCell>
+                          <TableCell align="left" sx={{ width: '16%' }}>
+                            {row.placa === '' ? (
+                              'No aplica'
+                            ): (
+                              <>{row.placa}</>
+                            )}
+                            <br />
+                            <small style={{ marginLeft: '10px' }}>
+                              {row.acc === 'S' || row.acc_veh === 'S' || row.acc_dir === 'S' ? (
+                                <span>Vehículo: AUTORIZADO.</span>
+                              ) :row.acc === 'N' || row.acc_veh === '' ? (
+                                <span>Vehículo: NO AUTORIZADO</span>
+                              ): row.placa === '' || row.placa === null ? (
+                                <span>No aplica</span>
+                              ): null}
+                            </small>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+
+            </Box>
+          </div>
+        )}
+        <Dialog open={openSalida} onClose={handleCloseSalida}>
+          <DialogTitle>
+            Finalizar visita
+          </DialogTitle>
+          <DialogContent sx={{display: 'flex'}}>
+            {selectedVisitaSalida && (
+              <>
+            {/**hacer el calculo del tiempo de la visita y el button para la salida y desactivar el qr */}
+            <Avatar
+              src={selectedVisitaSalida.foto ? `${foto}/${selectedVisitaSalida.foto}` : '/placeholder.png'}
+              alt={selectedVisitaSalida.nombre_completo || 'Sin nombre'}
+              sx={{ width: 150, height: 150, marginRight: '15px', objectFit: 'cover' }}
+            />
+            <div style={{ flex: 1 }}>
+              {selectedVisitaSalida.id_catv === 4 ?(
+                <Typography variant="h6" sx={{ fontWeight: 'bold' }} >
+                  {selectedVisitaSalida.nombre_com_acomp || 'N/A'}
                 </Typography>
-                {selectedVisitaSalida.entrada_h && (
+              ) : (
+                <Typography variant="h6" sx={{ fontWeight: 'bold' }} >
+                  {selectedVisitaSalida.nombre_completo || 'N/A'}
+                </Typography>
+              )}
+              
+              <Grid container spacing={1} sx={{marginTop:'2px'}}>
+                {/* QR Code */}
+                <Grid item>
+                  {selectedVisitaSalida && (
+                    <QRCodeCanvas
+                      value={`Nombre: ${selectedVisitaSalida.nombre_completo},\nEmpresa: ${selectedVisitaSalida.empresa},\nPlaca: ${selectedVisitaSalida.placa || 'S/A'},\nDía Visita: ${formatDateToYMDQR(selectedVisitaSalida.reg_entrada)} - ${selectedVisitaSalida.hora_entrada},\nAcompañante: ${selectedVisitaSalida.nom_com || 'S/A'}`}
+                      size={80}
+                      bgColor="#ffffff"
+                      fgColor="#000000"
+                      level="Q"
+                    />
+                  )}
+                </Grid>
+                <Grid item>
                   <Typography variant="body2">
-                    <strong>Tiempo de permanencia: </strong>
+                    <strong>Entrada:</strong> {selectedVisitaSalida.entrada_h ? new Date(selectedVisitaSalida.entrada_h).toLocaleString('es-ES', {
+                      hour12: true,
+                      year: 'numeric',
+                      month: '2-digit',
+                      day: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      second: '2-digit',
+                    }) : 'N/A'}
+                  </Typography>
+                  {selectedVisitaSalida.entrada_h && (
+                    <Typography variant="body2">
+                      <strong>Tiempo de permanencia: </strong>
+                      <span style={{ color: excesoTiempo ? 'red' : 'inherit' }}>
+                        {tiempo}
+                      </span>
+                    </Typography>
+                  )}
+                </Grid>
+              </Grid>
+              <Grid sx={{textAlign:'center', marginTop:'20px'}}>
+                <Button variant="outlined" onClick={darSalida}>
+                  Finalizar visita
+                </Button>
+              </Grid>
+              </div>
+              </>
+            )}
+          </DialogContent>
+        </Dialog>
+        <Dialog open={openBloqueo} onClose={handleCloseBloqueo}>
+          <DialogTitle>
+            MULTAR VISITANTE
+          </DialogTitle>
+          <DialogContent>
+          {selectedVisitaBloqeo && (
+           
+            <div>
+              <div style={{display:'flex', margin:'10px'}}>
+                <div>
+                  <Avatar
+                    src={selectedVisitaBloqeo.foto ? `${foto}/${selectedVisitaBloqeo.foto}` : '/placeholder.png'}
+                    alt={selectedVisitaBloqeo.nombre_completo || 'Sin nombre'}
+                    sx={{ width: 150, height: 150, objectFit: 'cover', marginRight: '15px' }}
+                  />
+                </div>
+                <div >
+                  {selectedVisitaBloqeo.id_catv === 4 ? (
+                    <Typography variant="h5" sx={{ marginBottom: 1 , fontWeight: 'bold',}}>
+                    {selectedVisitaBloqeo.nombre_com_acomp || 'N/A'} 
+                  </Typography>
+                  ): (
+                    <Typography variant="h5" sx={{ marginBottom: 1 , fontWeight: 'bold',}}>
+                    {selectedVisitaBloqeo.nombre_completo || 'N/A'} 
+                  </Typography>
+                  )}
+                  
+                  <Typography variant="body2" >
+                    <strong>Entrada:</strong>{' '}
+                    {selectedVisitaBloqeo.entrada_h
+                      ? new Date(selectedVisitaBloqeo.entrada_h).toLocaleString('es-ES', {
+                          hour12: true,
+                          year: 'numeric',
+                          month: '2-digit',
+                          day: '2-digit',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          second: '2-digit',
+                        })
+                      : 'N/A'}
+                  </Typography>
+                  {selectedVisitaBloqeo.id_catv === 4 ? (
+                    <Typography variant="body2"  >
+                      <strong>Responsable:</strong> NO APLICA
+                    </Typography>
+                  ): (
+                    <Typography variant="body2"  >
+                      <strong>Responsable:</strong> {selectedVisitaBloqeo.personal}
+                    </Typography>
+                  )}
+                  
+                  <Typography variant="body2" >
+                    <strong>Motivo de visita:</strong> {selectedVisitaBloqeo.motivo}
+                  </Typography>
+                  <Typography variant="body2" >
+                    <strong>Area de acceso:</strong> {selectedVisitaBloqeo.area}
+                  </Typography>
+                  <Typography variant="body2" >
+                    <strong>Empresa:</strong> {selectedVisitaBloqeo.empresa === '' || selectedVisitaBloqeo.empresa === '' && selectedVisitaBloqeo.id_catv === 1 ? (
+                      <span>COLABORADOR SANTUL</span>
+                    ): selectedVisitaBloqeo.empresa === '' || selectedVisitaBloqeo.empresa === '' && selectedVisitaBloqeo.id_catv === 2 || selectedVisitaBloqeo.id_catv === 11 ? (
+                      <span> NO APLICA </span>
+                    ): selectedVisitaBloqeo.id_catv === 4 ? (
+                      <span>PROVEEDOR</span>
+                    ): selectedVisitaBloqeo.id_catv === 7 ?(
+                      <span>{selectedVisitaBloqeo.paqueteria} </span>
+                    ): (
+                      <span>{selectedVisitaBloqeo.empresa} </span>
+                    )}
+                  </Typography>
+                </div>
+                
+              </div>
+              <Divider style={{marginTop:'10px'}}/>
+              {/* TextField */}
+              <div style={{marginTop:'15px'}}>
+                <FormControl fullWidth>
+                  <InputLabel id="id_multa">Motivo de la multa</InputLabel>
+                  <Select
+                    labelId="id_multa"
+                    id="id_multa"
+                    name="id_multa"
+                    label="Motivo de la multa"
+                    value={selectedConMulta || ''}
+                    onChange={handleDropdownChangeMulta}
+                  >
+                    <MenuItem value="">SELECCIONAR MOTIVO DE MULTA</MenuItem>
+                    {conMulta.map((item) => (
+                      <MenuItem key={item.id_multa} value={item}>
+                        {item.motivo} 
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  {errorMulta.id_multa && (
+                    <small style={{color:'red'}}>
+                      * {errorMulta.id_multa}
+                    </small>
+                  )}
+                </FormControl>
+              </div>
+
+              {/* Botón */}
+              <DialogActions sx={{ margin:'10px', textAlign: 'center' }}>
+                <Button variant="outlined" onClick={SaveMulta}>
+                  Multar 
+                </Button>
+              </DialogActions>
+            </div>
+          )}
+          </DialogContent>
+        </Dialog>
+        <Dialog open={openVisitaAgendada}> 
+          <DialogTitle style={{ alignItems: 'center', textAlign: 'center', margin: '30px' }}>
+            {errorVisita ? (
+              <EventBusy sx={{ fontSize: 100, color: 'red',opacity:'0.6' }} />
+            ) : (
+              <EventAvailableOutlined sx={{ fontSize: 100, color: 'green' }} />
+            )}
+          </DialogTitle>
+          <DialogContent sx={{ textAlign: 'center' }}>
+            <div style={{ margin: '10px' }}>
+              {errorVisita 
+                ? errorVisita.error || 'Error al registrar la visita.' 
+                : 'Visita agendada correctamente.'}
+            </div>
+            <div style={{ margin: '20px' }}>
+            {errorVisita ? (
+              <Button onClick={handleCloseVisitaAgendadaError}>
+                CERRAR
+              </Button>
+            ) : (
+              <Button onClick={handleCloseVisitaAgendada}>
+                CERRAR
+              </Button>
+            )}
+              
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={openUpExcelInfo} onClose={false}>
+          <DialogTitle style={{alignItems:'center', textAlign:'center', margin:'30px'}}>
+           <CheckCircleOutline sx={{ fontSize: 100, color:'green' }} /> 
+          </DialogTitle>
+          <DialogContent sx={{textAlign:'center'}}>
+            <div style={{margin:'10px'}}>
+              Información cargada correctamente
+            </div>
+            <div style={{margin:'20px'}}>
+              <Button onClick={handleCloseUpExcelInfo}>
+                CERRAR
+              </Button>
+            </div>
+            
+          </DialogContent>
+        </Dialog>
+        {(user?.role === 'POLIB' || user?.role === 'Admin') && (
+          <Dialog open={openExcesoTiempo} onClose={handleCloseExcesoTiempo}>
+            {selectedVisitaSalida && ( 
+              <div>
+              <DialogContent sx={{ textAlign: 'center' }}>
+              <AccessAlarm sx={{ fontSize: '7rem', color: '#6ec860', opacity: '0.8' }} />
+                <div>
+                  <h3>Este usuario ha excedido el tiempo de visita permitido (1hrs).</h3>
+                  <p>
+                    <strong>Nombre:</strong> {selectedVisitaSalida.nombre_completo}
+                    <br />
+                    <strong>Tiempo de permanencia: </strong> 
                     <span style={{ color: excesoTiempo ? 'red' : 'inherit' }}>
                       {tiempo}
                     </span>
-                  </Typography>
-                )}
-              </Grid>
-            </Grid>
-            <Grid sx={{textAlign:'center', marginTop:'20px'}}>
-              <Button variant="outlined" onClick={darSalida}>
-                Finalizar visita
-              </Button>
-            </Grid>
+                  </p>
+                  
+                </div>
+              
+              </DialogContent>
+              <DialogActions>
+                <Button variant="contained" onClick={() => handleClickOpenSalida(selectedVisitaSalida)}>
+                  Ver visita
+                </Button>
+              </DialogActions> 
             </div>
-            </>
           )}
-        </DialogContent>
-      </Dialog>
-      <Dialog open={openBloqueo} onClose={handleCloseBloqueo}>
-        <DialogTitle>
-          Multar visitante
-        </DialogTitle>
-        <DialogContent>
-        {selectedVisitaBloqeo && (
-         
-          <div>
-            <div style={{display:'flex', margin:'10px'}}>
-              <div>
-                <Avatar
-                  src={selectedVisitaBloqeo.foto ? `${foto}/${selectedVisitaBloqeo.foto}` : '/placeholder.png'}
-                  alt={selectedVisitaBloqeo.nombre_completo || 'Sin nombre'}
-                  sx={{ width: 150, height: 150, objectFit: 'cover', marginRight: '15px' }}
-                />
-              </div>
-              <div >
-                {selectedVisitaBloqeo.id_catv === 4 ? (
-                  <Typography variant="h5" sx={{ marginBottom: 1 , fontWeight: 'bold',}}>
-                  {selectedVisitaBloqeo.nombre_com_acomp || 'N/A'} 
-                </Typography>
-                ): (
-                  <Typography variant="h5" sx={{ marginBottom: 1 , fontWeight: 'bold',}}>
-                  {selectedVisitaBloqeo.nombre_completo || 'N/A'} 
-                </Typography>
-                )}
-                
-                <Typography variant="body2" >
-                  <strong>Entrada:</strong>{' '}
-                  {selectedVisitaBloqeo.entrada_h
-                    ? new Date(selectedVisitaBloqeo.entrada_h).toLocaleString('es-ES', {
-                        hour12: true,
-                        year: 'numeric',
-                        month: '2-digit',
-                        day: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        second: '2-digit',
-                      })
-                    : 'N/A'}
-                </Typography>
-                {selectedVisitaBloqeo.id_catv === 4 ? (
-                  <Typography variant="body2"  >
-                    <strong>Responsable:</strong> NO APLICA
-                  </Typography>
-                ): (
-                  <Typography variant="body2"  >
-                    <strong>Responsable:</strong> {selectedVisitaBloqeo.personal}
-                  </Typography>
-                )}
-                
-                <Typography variant="body2" >
-                  <strong>Motivo de visita:</strong> {selectedVisitaBloqeo.motivo}
-                </Typography>
-                <Typography variant="body2" >
-                  <strong>Area de acceso:</strong> {selectedVisitaBloqeo.area}
-                </Typography>
-                <Typography variant="body2" >
-                  <strong>Empresa:</strong> {selectedVisitaBloqeo.empresa === '' || selectedVisitaBloqeo.empresa === '' && selectedVisitaBloqeo.id_catv === 1 ? (
-                    <span>COLABORADOR SANTUL</span>
-                  ): selectedVisitaBloqeo.empresa === '' || selectedVisitaBloqeo.empresa === '' && selectedVisitaBloqeo.id_catv === 2 || selectedVisitaBloqeo.id_catv === 11 ? (
-                    <span> NO APLICA </span>
-                  ): selectedVisitaBloqeo.id_catv === 4 ? (
-                    <span>PROVEEDOR</span>
-                  ): selectedVisitaBloqeo.id_catv === 7 ?(
-                    <span>{selectedVisitaBloqeo.paqueteria} </span>
-                  ): (
-                    <span>{selectedVisitaBloqeo.empresa} </span>
+          </Dialog>
+        )}
+        {(user?.role === 'POLIB') && (
+          <>
+        <Dialog open={dialogOpen} onClose={false}>
+          <DialogTitle style={{ alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
+            <HelpOutline style={{ fontSize: '4.5em', marginRight: '8px' }} />
+            <p>¿Sigues ahí?</p>
+          </DialogTitle>
+          <DialogContent sx={{textAlign:'center'}}>
+          {AlertaCodigo && (
+              <Alert icon={<CheckCircleOutline fontSize="inherit" />} severity="success">
+                ¡Correcto! Permanece activo.
+              </Alert>
+            )}
+            <h1><strong>{randomNumber}</strong></h1>
+            <p>
+              <h2><AvTimer/> {' '} Tiempo restante: {tiempoRestante}s</h2> 
+            </p>
+            <TextField
+              autoFocus
+              margin="dense"
+              label="Número"
+              fullWidth
+              value={codigoIng}
+              onChange={(e) => setCodigoIng(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleValidate()}
+              error={Boolean(errorMessage)}
+              helperText={errorMessage}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleValidate}>Validar</Button>
+          </DialogActions>
+        </Dialog>
+        </>)}
+        <Dialog
+          header="TOMAR FOTO"
+          open={openCamVehiculo}
+          onClose={handleCloseCamVehiculos}
+        >
+          <DialogContent>
+            <Box style={{ textAlign: 'center', margin: '20px' }}>
+              <Webcam
+                audio={false}
+                ref={webcamRef}
+                style={{ width: '100%' }}
+                screenshotFormat="image/jpeg"
+                videoConstraints={videoConstraints}
+                onUserMedia={handleUserMedia}
+                onUserMediaError={handleUserMediaError}
+              />
+              {!isCameraReady ? (
+                <p style={{ marginTop: '20px', fontSize: '16px', color: '#888' }}>
+                  Cargando cámara...
+                </p>
+              ) : (
+                <Button
+                  variant="outlined"
+                  startIcon={<PhotoCamera />}
+                  style={{ width: '100%', marginTop: '20px' }}
+                  onClick={tomarFotoVehiculo}
+                >
+                  Tomar Foto
+                </Button>
+              )}
+            </Box>
+          </DialogContent>
+        </Dialog>
+        <Dialog open={openGenerarAcceso} onClose={onCloseGenEtiqueta}>
+          <DialogContent style={{margin:'10px', textAlign:'center'}} >
+          {selectedVisita && (
+            <div ref={visitaDetailsRef}>
+              <Grid container alignItems="center" spacing={1}>
+                  <Grid item>
+                      <img src={logob} width={25} height={25} alt="Logo" className="imagen-visita" />
+                  </Grid>
+
+                  <Grid item>
+                  <h2>VISITA SANTUL - {selectedVisita.clave_visit}</h2>
+                  </Grid>
+              </Grid>
+              <Grid container alignItems="center" spacing={1}>
+                  <Grid item>
+                  {selectedVisita && (
+                    <QRCodeCanvas
+                      value={`
+                        Nombre: ${selectedVisita.id_catv === 4 ? selectedVisita.nombre_com_acomp : selectedVisita.nombre_completo}
+                        Empresa: ${getEmpresa(selectedVisita)}
+                        Placa: ${selectedVisita.placa ? selectedVisita.placa : 'N/A'}
+                        Día de Visita: ${formatDateToYMD(selectedVisita.reg_entrada)}
+                        Hora de Visita: ${selectedVisita.hora_entrada}
+                        Acompañante (s): ${selectedVisita.nombre_acomp || ''}
+                      `}
+                      size={80}
+                      bgColor="#ffffff"
+                      fgColor="#000000"
+                      level="Q"
+                    />
                   )}
-                </Typography>
-              </div>
+                  </Grid>
+                  <Grid item>
+                      <Typography variant="body1" align="left"><strong>NOMBRE:</strong> {selectedVisita.id_catv === 4 ? 'NO APLICA' : selectedVisita.nombre_completo}</Typography>
+                      <Typography variant="body1" align="left"><strong>RELACION:</strong> {selectedVisita.id_catv === 4 ? 'PROVEEDOR (IMP/NAC)' : selectedVisita.tipo}</Typography> 
+                      <Typography variant="body1" align="left"><strong>AREA DE ACCESO:</strong> {selectedVisita.area}</Typography>
+                  </Grid>
+                  
+              </Grid>
               
             </div>
-            <Divider style={{marginTop:'10px'}}/>
-            {/* TextField */}
-            <div style={{marginTop:'15px'}}>
-              <FormControl fullWidth>
-                <InputLabel id="id_multa">Motivo de la multa</InputLabel>
-                <Select
-                  labelId="id_multa"
-                  id="id_multa"
-                  name="id_multa"
-                  label="Motivo de la multa"
-                  value={selectedConMulta || ''}
-                  onChange={handleDropdownChangeMulta}
-                >
-                  <MenuItem value="">SELECCIONAR MOTIVO DE MULTA</MenuItem>
-                  {conMulta.map((item) => (
-                    <MenuItem key={item.id_multa} value={item}>
-                      {item.motivo} 
-                    </MenuItem>
-                  ))}
-                </Select>
-                {errorMulta.id_multa && (
-                  <small style={{color:'red'}}>
-                    * {errorMulta.id_multa}
-                  </small>
-                )}
-              </FormControl>
-            </div>
-
-            {/* Botón */}
-            <DialogActions sx={{ margin:'10px', textAlign: 'center' }}>
-              <Button variant="outlined" onClick={SaveMulta}>
-                Multar 
-              </Button>
-            </DialogActions>
-          </div>
-        )}
-        </DialogContent>
-      </Dialog>
-      <Dialog open={openRegistro} onClose={false}>
-        <DialogTitle style={{alignItems:'center', textAlign:'center', margin:'30px'}}>
-         <CheckCircleOutline sx={{ fontSize: 100, color:'green' }} /> 
-        </DialogTitle>
-        <DialogContent sx={{textAlign:'center'}}>
-          <div style={{margin:'10px'}}>
-            {clave?.tipo === "TR"
-                ? "TRANSPORTISTA REGISTRADO CORRECTAMENTE"
-                : clave?.tipo === "PR"
-                ? "PROVEEDOR REGISTRADO CORRECTAMENTE"
-                : clave?.tipo === "MN"
-                ? "MANIOBRISTA REGISTRADO CORRECTAMENTE"
-                : clave?.tipo === "VT"
-                ? "VISITANTE REGISTRADO CORRECTAMENTE"
-                : "ERROR"
-            }
-          </div>
-          <div>
-            {clave?.mensaje ? (
-              <>
-                CLAVE: {clave.mensaje}.                
-              </>
-              ) : (
-                "No se pudo registrar."
-              )}
-          </div><p/>
-          <div>
-            ¿Desea agendar una visita para este invitado?
-          </div>
-          <div style={{margin:'20px'}}>
-            <Button onClick={handleClickOpenCreateVisita2} variant="outlined" color="success" style={{margin:'4px'}}>
-              AGENDAR
-            </Button>
-            <Button onClick={handleCloseRegistro} variant="outlined" style={{margin:'4px'}}>
-              CERRAR
-            </Button>
-          </div>
-          
-        </DialogContent>
-      </Dialog>
-      <Dialog open={openVisitaAgendada}> 
-        <DialogTitle style={{ alignItems: 'center', textAlign: 'center', margin: '30px' }}>
-          {errorVisita ? (
-            <EventBusy sx={{ fontSize: 100, color: 'red',opacity:'0.6' }} />
-          ) : (
-            <EventAvailableOutlined sx={{ fontSize: 100, color: 'green' }} />
           )}
-        </DialogTitle>
-        <DialogContent sx={{ textAlign: 'center' }}>
-          <div style={{ margin: '10px' }}>
-            {errorVisita 
-              ? errorVisita.error || 'Error al registrar la visita.' 
-              : 'Visita agendada correctamente.'}
-          </div>
-          <div style={{ margin: '20px' }}>
-          {errorVisita ? (
-            <Button onClick={handleCloseVisitaAgendadaError}>
-              CERRAR
+            <Button
+              onClick={handleGenerateImage}
+              variant="contained"
+              color="primary"
+              sx={{ marginTop: 2 }}
+            >
+              Generar etiqueta
             </Button>
-          ) : (
-            <Button onClick={handleCloseVisitaAgendada}>
-              CERRAR
-            </Button>
-          )}
-            
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={openUpExcelInfo} onClose={false}>
-        <DialogTitle style={{alignItems:'center', textAlign:'center', margin:'30px'}}>
-         <CheckCircleOutline sx={{ fontSize: 100, color:'green' }} /> 
-        </DialogTitle>
-        <DialogContent sx={{textAlign:'center'}}>
-          <div style={{margin:'10px'}}>
-            Información cargada correctamente
-          </div>
-          <div style={{margin:'20px'}}>
-            <Button onClick={handleCloseUpExcelInfo}>
-              CERRAR
-            </Button>
-          </div>
-          
-        </DialogContent>
-      </Dialog>
-      {(user?.role === 'POLIB' || user?.role === 'Admin') && (
-        <Dialog open={openExcesoTiempo} onClose={handleCloseExcesoTiempo}>
-          {selectedVisitaSalida && ( 
-            <div>
-            <DialogContent sx={{ textAlign: 'center' }}>
-            <AccessAlarm sx={{ fontSize: '7rem', color: '#6ec860', opacity: '0.8' }} />
-              <div>
-                <h3>Este usuario ha excedido el tiempo de visita permitido (1hrs).</h3>
-                <p>
-                  <strong>Nombre:</strong> {selectedVisitaSalida.nombre_completo}
-                  <br />
-                  <strong>Tiempo de permanencia: </strong> 
-                  <span style={{ color: excesoTiempo ? 'red' : 'inherit' }}>
-                    {tiempo}
-                  </span>
-                </p>
-                
-              </div>
-            
-            </DialogContent>
-            <DialogActions>
-              <Button variant="contained" onClick={() => handleClickOpenSalida(selectedVisitaSalida)}>
-                Ver visita
-              </Button>
-            </DialogActions> 
-          </div>
-        )}
+          </DialogContent>
         </Dialog>
-      )}
-      {(user?.role === 'POLIB') && (
-        <>
-      <Dialog open={dialogOpen} onClose={false}>
-        <DialogTitle style={{ alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
-          <HelpOutline style={{ fontSize: '4.5em', marginRight: '8px' }} />
-          <p>¿Sigues ahí?</p>
-        </DialogTitle>
-        <DialogContent sx={{textAlign:'center'}}>
-        {AlertaCodigo && (
-            <Alert icon={<CheckCircleOutline fontSize="inherit" />} severity="success">
-              ¡Correcto! Permanece activo.
-            </Alert>
-          )}
-          <h1><strong>{randomNumber}</strong></h1>
-          <p>
-            <h2><AvTimer/> {' '} Tiempo restante: {tiempoRestante}s</h2> 
-          </p>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Número"
-            fullWidth
-            value={codigoIng}
-            onChange={(e) => setCodigoIng(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleValidate()}
-            error={Boolean(errorMessage)}
-            helperText={errorMessage}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleValidate}>Validar</Button>
-        </DialogActions>
-      </Dialog>
-      </>)}
-      <Dialog
-        header="TOMAR FOTO"
-        open={openCamVehiculo}
-        onClose={handleCloseCamVehiculos}
-      >
-        <DialogContent>
-          <Box style={{ textAlign: 'center', margin: '20px' }}>
-            <Webcam
-              audio={false}
-              ref={webcamRef}
-              style={{ width: '100%' }}
-              screenshotFormat="image/jpeg"
-              videoConstraints={videoConstraints}
-              onUserMedia={handleUserMedia}
-              onUserMediaError={handleUserMediaError}
-            />
-            {!isCameraReady ? (
-              <p style={{ marginTop: '20px', fontSize: '16px', color: '#888' }}>
-                Cargando cámara...
-              </p>
-            ) : (
-              <Button
-                variant="outlined"
-                startIcon={<PhotoCamera />}
-                style={{ width: '100%', marginTop: '20px' }}
-                onClick={tomarFotoVehiculo}
-              >
-                Tomar Foto
-              </Button>
-            )}
-          </Box>
-        </DialogContent>
-      </Dialog>
-      <Dialog open={openGenerarAcceso} >
-        <DialogContent style={{margin:'10px', textAlign:'center'}} >
-        {selectedVisita && (
-          <div ref={visitaDetailsRef}>
-            <Grid container alignItems="center" spacing={1}>
-                <Grid item>
-                    <img src={logob} width={25} height={25} alt="Logo" className="imagen-visita" />
-                </Grid>
-
-                <Grid item>
-                <h2>VISITA SANTUL - {selectedVisita.clave_visit}</h2>
-                </Grid>
-            </Grid>
-            <Grid container alignItems="center" spacing={1}>
-                <Grid item>
-                {selectedVisita && (
-                  <QRCodeCanvas
-                    value={`
-                      Nombre: ${selectedVisita.id_catv === 4 ? selectedVisita.nombre_com_acomp : selectedVisita.nombre_completo}
-                      Empresa: ${getEmpresa(selectedVisita)}
-                      Placa: ${selectedVisita.placa ? selectedVisita.placa : 'N/A'}
-                      Día de Visita: ${formatDateToYMD(selectedVisita.reg_entrada)}
-                      Hora de Visita: ${selectedVisita.hora_entrada}
-                      Acompañante (s): ${selectedVisita.nombre_acomp || ''}
-                    `}
-                    size={80}
-                    bgColor="#ffffff"
-                    fgColor="#000000"
-                    level="Q"
-                  />
-                )}
-                </Grid>
-                <Grid item>
-                    <Typography variant="body1" align="left"><strong>NOMBRE:</strong> {selectedVisita.id_catv === 4 ? 'NO APLICA' : selectedVisita.nombre_completo}</Typography>
-                    <Typography variant="body1" align="left"><strong>RELACION:</strong> {selectedVisita.id_catv === 4 ? 'PROVEEDOR (IMP/NAC)' : selectedVisita.tipo}</Typography> 
-                    <Typography variant="body1" align="left"><strong>AREA DE ACCESO:</strong> {selectedVisita.area}</Typography>
-                </Grid>
-                
-            </Grid>
+        <Dialog open={openRegAcomp} onClose={handleCloseRegAcomp} >
+        <DialogTitle>{"REGISTRAR ACOMPAÑANTE"}</DialogTitle>
+          <DialogContent style={{margin:'8px', textAlign:'center'}}  >
             
-          </div>
-        )}
-          <Button
-            onClick={handleGenerateImage}
-            variant="contained"
-            color="primary"
-            sx={{ marginTop: 2 }}
-          >
-            Generar etiqueta
-          </Button>
-        </DialogContent>
-      </Dialog>
-      <Dialog open={openRegAcomp} onClose={handleCloseRegAcomp}>
-        <DialogContent style={{margin:'10px', textAlign:'center'}} >
-        {selectedVisita && (
-          <div ref={visitaDetailsRef}>
-            <h3>ACOMPAÑANTE DE: {selectedVisita.nombre_completo}</h3>
-            <Grid container alignItems="center" spacing={1}>
-              <FormControl fullWidth sx={{ mb: 2 }}>
-                <TextField
-                  fullWidth
-                  id="nombre_acomp"
-                  name="nombre_acomp"
-                  value={vitAcomp.nombre_acomp}
-                  onChange={inputChangeAcomp}
-                  label={`Nombre (s) de acompañante`}
-                  inputProps={{ style: { textTransform: 'uppercase' } }}
-                />
-                <small>
-                  {errorVisitaAcomp.nombre_acomp && (
-                    <span style={{color: 'red'}}>
-                      * {errorVisitaAcomp.nombre_acomp}
-                    </span>
-                  )}
-                </small>
-              </FormControl>
-              <FormControl fullWidth sx={{ mb: 2 }}>
-                <TextField
-                  fullWidth
-                  id="apellidos_acomp"
-                  name="apellidos_acomp"
-                  value={vitAcomp.apellidos_acomp}
-                  onChange={inputChangeAcomp}
-                  label={`Apellidos de acompañante`}
-                  inputProps={{ style: { textTransform: 'uppercase' } }}
-                />
-                <small>
-                  {errorVisitaAcomp.apellidos_acomp && (
-                    <span style={{color: 'red'}}>
-                      * {errorVisitaAcomp.apellidos_acomp}
-                    </span>
-                  )}
-                </small>
+          {selectedVisita && (
+            <div ref={visitaDetailsRef}>
+              <h3>VISITANTE: {selectedVisita.nombre_completo}</h3>
+              
+              <Grid container alignItems="center" spacing={1}>
+                <FormControl fullWidth sx={{ mb: 2 }}>
+                  <TextField
+                    fullWidth
+                    id="nombre_acomp"
+                    name="nombre_acomp"
+                    value={vitAcomp.nombre_acomp}
+                    onChange={inputChangeAcomp}
+                    label={`Nombre (s) de acompañante`}
+                    inputProps={{ style: { textTransform: 'uppercase' } }}
+                  />
+                  <small>
+                    {errorVisitaAcomp.nombre_acomp && (
+                      <span style={{color: 'red'}}>
+                        * {errorVisitaAcomp.nombre_acomp}
+                      </span>
+                    )}
+                  </small>
                 </FormControl>
                 <FormControl fullWidth sx={{ mb: 2 }}>
                   <TextField
                     fullWidth
-                    id="no_ine_acomp"
-                    name="no_ine_acomp"
-                    value={vitAcomp.no_ine_acomp}
+                    id="apellidos_acomp"
+                    name="apellidos_acomp"
+                    value={vitAcomp.apellidos_acomp}
                     onChange={inputChangeAcomp}
-                    label={`No. Identificación`}
+                    label={`Apellidos de acompañante`}
+                    inputProps={{ style: { textTransform: 'uppercase' } }}
                   />
                   <small>
-                  {errorVisitaAcomp.no_ine_acomp && (
-                    <span style={{color: 'red'}}>
-                      * {errorVisitaAcomp.no_ine_acomp}
-                    </span>
-                  )}
-                </small>
-                </FormControl>
-              </Grid>
-            
-          </div>
-        )}
-        </DialogContent>
-        <DialogActions>
-          <Button
-            variant="outlined"
-            color="secondary"
-            onClick={handleCloseRegAcomp}
-          >
-            Cancelar
-          </Button>
-          <Button
-            onClick={SaveVisitanteAcomp}
-            variant="contained"
-            color="primary"
-          >
-            GUARDAR
-          </Button>
-        </DialogActions>
-      </Dialog>
-      <Dialog
-        header="TOMAR FOTO"
-        open={openCamUp}
-        onClose={handleCloseCamUp}
-      >
-        <DialogContent >
-          {imageUp ? (
-            <Box sx={{ textAlign: "center", width: "100%", height: "100%" }}>
-              <img
-                src={typeof imageUp === "string" ? imageUp : URL.createObjectURL(imageUp)}
-                  alt="preview"
-                  style={{ width: "100%", height: "150%", borderRadius: 8 }}
-                />
-                <Typography variant="body2" sx={{ color: "black" }}>
-                  {imageUp.name || "Captura de Webcam"}
-                </Typography>
-                <Button
-                  variant="outlined"
-                  color="error"
-                  size="small"
-                  onClick={removeImageUp}
-                  sx={{ mt: 1, margin:'10px',width: "50%" }}
-                >
-                  Tomar de nuevo
-                </Button>
-                <Button
-                  variant="outlined"
-                  color="error"
-                  size="small"
-                  onClick={updateInvitado}
-                  sx={{ mt: 1, margin:'10px',width: "50%" }}
-                >
-                  Guardar
-                </Button>
-              </Box>
-            ):(
-              <div>
-                <Webcam
-                  audio={false}
-                  ref={webcamRef}
-                  style={{ width: '100%' }}
-                  screenshotFormat="image/jpeg"
-                  videoConstraints={videoConstraints}
-                  onUserMedia={handleUserMedia}
-                  onUserMediaError={handleUserMediaError}
-                />
-                {!isCameraReadyUp ? (
-                  <p
-                    style={{
-                      marginTop: "20px",
-                      fontSize: "16px",
-                      color: "#888",
-                      textAlign: "center",
-                    }}
-                  >
-                    Cargando cámara...
-                  </p>
-                ) : (
-                    <Button
-                      severity="danger"
-                      variant="outlined"
-                      startIcon={<PhotoCamera />}
-                      style={{ width: "100%", marginTop: "20px" }}
-                      onClick={tomarFotoUpdate}
-                    >
-                      Tomar Foto
-                    </Button>
-                    
-                )}
-              </div>
-          )}
-          
-            <div>
-          </div>
-          
-        </DialogContent>
-
-      </Dialog>
-      <Dialog
-        header="TOMAR FOTO"
-        open={openCamUpDatos}
-        onClose={handleCloseCamProv}
-      >
-        <DialogContent >
-          {imageProv ? (
-            <Box sx={{ textAlign: "center", width: "100%", height: "100%" }}>
-              <img
-                src={typeof imageProv === "string" ? imageProv : URL.createObjectURL(imageProv)}
-                  alt="preview"
-                  style={{ width: "100%", height: "150%", borderRadius: 8 }}
-                />
-                <Typography variant="body2" sx={{ color: "black" }}>
-                  {imageProv.name || "Captura de Webcam"}
-                </Typography>
-                <Button
-                  variant="outlined"
-                  color="error"
-                  size="small"
-                  onClick={removeImageProv}
-                  sx={{ mt: 1, margin:'10px',width: "50%" }}
-                >
-                  Tomar de nuevo
-                </Button>
-              </Box>
-            ):(
-              <div>
-                <Webcam
-                  audio={false}
-                  ref={webcamRef}
-                  style={{ width: '100%' }}
-                  screenshotFormat="image/jpeg"
-                  videoConstraints={videoConstraints}
-                  onUserMedia={handleUserMedia}
-                  onUserMediaError={handleUserMediaError}
-                />
-                {!isCameraReadyUp ? (
-                  <p
-                    style={{
-                      marginTop: "20px",
-                      fontSize: "16px",
-                      color: "#888",
-                      textAlign: "center",
-                    }}
-                  >
-                    Cargando cámara...
-                  </p>
-                ) : (
-                    <Button
-                      severity="danger"
-                      variant="outlined"
-                      startIcon={<PhotoCamera />}
-                      style={{ width: "100%", marginTop: "20px" }}
-                      onClick={tomarFotoProveedor}
-                    >
-                      Tomar Foto
-                    </Button>
-                )}
-              </div>
-          )}
-          
-            <div>
-            <Divider style={{marginTop:'20px'}} textAlign="left" ><AirlineSeatReclineNormal fontSize="small"/> Datos del conductor</Divider>
-            <FormControl fullWidth>
-              <TextField
-              onChange={(e) => setConductor({ ...conductor, nombre_acomp: e.target.value })}
-                variant="outlined"
-                label="Nombre del conductor"
-                sx={{
-                  width: '100%',
-                  marginTop: 2,
-                  marginX: 'auto',
-                }}
-                inputProps={{ style: { textTransform: "uppercase" } }}
-              />
-              {errorProveedor.nombre_acomp && (
-                <small style={{ color: "red" }}>* {errorProveedor.nombre_acomp}</small>
-              )}
-            </FormControl>
-            <FormControl fullWidth>
-              <TextField
-              onChange={(e) => setConductor({ ...conductor, apellidos_acomp: e.target.value })}
-                variant="outlined"
-                label="Apellidos del conductor"
-                sx={{
-                  width: '100%',
-                  marginTop: 2,
-                  marginX: 'auto',
-                }}
-                inputProps={{ style: { textTransform: "uppercase" } }}
-              />
-              {errorProveedor.apellidos_acomp && (
-                <small style={{ color: "red" }}>* {errorProveedor.apellidos_acomp}</small>
-              )}
-            </FormControl>
-            <FormControl fullWidth>
-              <TextField
-              onChange={(e) => setConductor({ ...conductor, no_ine_acomp: e.target.value })}
-                variant="outlined"
-                label="NO. INE"
-                sx={{
-                  width: '100%',
-                  marginTop: 2,
-                  marginX: 'auto',
-                }}
-              />
-              {errorProveedor.no_ine_acomp && (
-                <small style={{ color: "red" }}>* {errorProveedor.no_ine_acomp}</small>
-              )}
-            </FormControl>
-            <div>
-              <Box sx={{ textAlign: "center", mt: 2 }}>
-                <Button onClick={handleCloseValidarProveedor}>Cancelar</Button>
-                <Button variant="contained" color="primary" onClick={handleFinalizarProveedor}>Finalizar</Button>
-              </Box>
+                    {errorVisitaAcomp.apellidos_acomp && (
+                      <span style={{color: 'red'}}>
+                        * {errorVisitaAcomp.apellidos_acomp}
+                      </span>
+                    )}
+                  </small>
+                  </FormControl>
+                  <FormControl fullWidth sx={{ mb: 2 }}>
+                    <TextField
+                      fullWidth
+                      id="no_ine_acomp"
+                      name="no_ine_acomp"
+                      value={vitAcomp.no_ine_acomp}
+                      onChange={inputChangeAcomp}
+                      label={`No. Identificación`}
+                    />
+                    <small>
+                    {errorVisitaAcomp.no_ine_acomp && (
+                      <span style={{color: 'red'}}>
+                        * {errorVisitaAcomp.no_ine_acomp}
+                      </span>
+                    )}
+                  </small>
+                  </FormControl>
+                </Grid>
+              
             </div>
-          </div>
-          
-        </DialogContent>
-
-      </Dialog>
-      <Dialog open={openMultaFinalizar}>
-      <DialogContent>
-        <h2>El visitante ha sido multado.</h2><br />
-        <h3 style={{textAlign:'center'}}>¿Desea finalizar la visita?</h3>
-        <Box
-          sx={{
-            display: 'flex',
-            justifyContent: 'center',
-            gap: 2,
-            marginTop: 2,
-          }}
+          )}
+          </DialogContent>
+          <DialogActions>
+            <Button
+              variant="outlined"
+              color="secondary"
+              onClick={handleCloseRegAcomp}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={SaveVisitanteAcomp}
+              variant="contained"
+              color="primary"
+            >
+              GUARDAR
+            </Button>
+          </DialogActions>
+        </Dialog>
+        <Dialog
+          header="TOMAR FOTO"
+          open={openCamUp}
+          onClose={handleCloseCamUp}
         >
-          <Button variant="contained" onClick={darSalida}>Finalizar</Button>
-          <Button variant="outlined" onClick={handleCloseMultaFinalizar}>No finalizar</Button>
-        </Box>
-      </DialogContent>
+          <DialogContent >
+            {imageUp ? (
+              <Box sx={{ textAlign: "center", width: "100%", height: "100%" }}>
+                <img
+                  src={typeof imageUp === "string" ? imageUp : URL.createObjectURL(imageUp)}
+                    alt="preview"
+                    style={{ width: "100%", height: "150%", borderRadius: 8 }}
+                  />
+                  <Typography variant="body2" sx={{ color: "black" }}>
+                    {imageUp.name || "Captura de Webcam"}
+                  </Typography>
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    size="small"
+                    onClick={removeImageUp}
+                    sx={{ mt: 1, margin:'10px',width: "50%" }}
+                  >
+                    Tomar de nuevo
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    size="small"
+                    onClick={updateInvitado}
+                    sx={{ mt: 1, margin:'10px',width: "50%" }}
+                  >
+                    Guardar
+                  </Button>
+                </Box>
+              ):(
+                <div>
+                  <Webcam
+                    audio={false}
+                    ref={webcamRef}
+                    style={{ width: '100%' }}
+                    screenshotFormat="image/jpeg"
+                    videoConstraints={videoConstraints}
+                    onUserMedia={handleUserMedia}
+                    onUserMediaError={handleUserMediaError}
+                  />
+                  {!isCameraReadyUp ? (
+                    <p
+                      style={{
+                        marginTop: "20px",
+                        fontSize: "16px",
+                        color: "#888",
+                        textAlign: "center",
+                      }}
+                    >
+                      Cargando cámara...
+                    </p>
+                  ) : (
+                      <Button
+                        severity="danger"
+                        variant="outlined"
+                        startIcon={<PhotoCamera />}
+                        style={{ width: "100%", marginTop: "20px" }}
+                        onClick={tomarFotoUpdate}
+                      >
+                        Tomar Foto
+                      </Button>
+                      
+                  )}
+                </div>
+            )}
+            
+              <div>
+            </div>
+            
+          </DialogContent>
 
-      </Dialog>
-      <Dialog open={openVisitaDup}>
-      <DialogContent>
-        <h2>El visitante ha sido multado.</h2><br />
-        <h3 style={{textAlign:'center'}}>¿Desea finalizar la visita?</h3>
-        <Box
-          sx={{
-            display: 'flex',
-            justifyContent: 'center',
-            gap: 2,
-            marginTop: 2,
-          }}
+        </Dialog>
+        <Dialog
+          header="TOMAR FOTO"
+          open={openCamUpDatos}
+          onClose={handleCloseCamProv}
         >
-          <Button variant="contained" onClick={darSalida}>Finalizar</Button>
-          <Button variant="outlined" onClick={handleCloseMultaFinalizar}>No finalizar</Button>
-        </Box>
-      </DialogContent>
+          <DialogContent >
+            {imageProv ? (
+              <Box sx={{ textAlign: "center", width: "100%", height: "100%" }}>
+                <img
+                  src={typeof imageProv === "string" ? imageProv : URL.createObjectURL(imageProv)}
+                    alt="preview"
+                    style={{ width: "100%", height: "150%", borderRadius: 8 }}
+                  />
+                  <Typography variant="body2" sx={{ color: "black" }}>
+                    {imageProv.name || "Captura de Webcam"}
+                  </Typography>
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    size="small"
+                    onClick={removeImageProv}
+                    sx={{ mt: 1, margin:'10px',width: "50%" }}
+                  >
+                    Tomar de nuevo
+                  </Button>
+                </Box>
+              ):(
+                <div>
+                  <Webcam
+                    audio={false}
+                    ref={webcamRef}
+                    style={{ width: '100%' }}
+                    screenshotFormat="image/jpeg"
+                    videoConstraints={videoConstraints}
+                    onUserMedia={handleUserMedia}
+                    onUserMediaError={handleUserMediaError}
+                  />
+                  {!isCameraReadyUp ? (
+                    <p
+                      style={{
+                        marginTop: "20px",
+                        fontSize: "16px",
+                        color: "#888",
+                        textAlign: "center",
+                      }}
+                    >
+                      Cargando cámara...
+                    </p>
+                  ) : (
+                      <Button
+                        severity="danger"
+                        variant="outlined"
+                        startIcon={<PhotoCamera />}
+                        style={{ width: "100%", marginTop: "20px" }}
+                        onClick={tomarFotoProveedor}
+                      >
+                        Tomar Foto
+                      </Button>
+                  )}
+                </div>
+            )}
+            
+              <div>
+              <Divider style={{marginTop:'20px'}} textAlign="left" ><AirlineSeatReclineNormal fontSize="small"/> Datos del conductor</Divider>
+              <FormControl fullWidth>
+                <TextField
+                onChange={(e) => setConductor({ ...conductor, nombre_acomp: e.target.value })}
+                  variant="outlined"
+                  label="Nombre del conductor"
+                  sx={{
+                    width: '100%',
+                    marginTop: 2,
+                    marginX: 'auto',
+                  }}
+                  inputProps={{ style: { textTransform: "uppercase" } }}
+                />
+                {errorProveedor.nombre_acomp && (
+                  <small style={{ color: "red" }}>* {errorProveedor.nombre_acomp}</small>
+                )}
+              </FormControl>
+              <FormControl fullWidth>
+                <TextField
+                onChange={(e) => setConductor({ ...conductor, apellidos_acomp: e.target.value })}
+                  variant="outlined"
+                  label="Apellidos del conductor"
+                  sx={{
+                    width: '100%',
+                    marginTop: 2,
+                    marginX: 'auto',
+                  }}
+                  inputProps={{ style: { textTransform: "uppercase" } }}
+                />
+                {errorProveedor.apellidos_acomp && (
+                  <small style={{ color: "red" }}>* {errorProveedor.apellidos_acomp}</small>
+                )}
+              </FormControl>
+              <FormControl fullWidth>
+                <TextField
+                onChange={(e) => setConductor({ ...conductor, no_ine_acomp: e.target.value })}
+                  variant="outlined"
+                  label="NO. INE"
+                  sx={{
+                    width: '100%',
+                    marginTop: 2,
+                    marginX: 'auto',
+                  }}
+                />
+                {errorProveedor.no_ine_acomp && (
+                  <small style={{ color: "red" }}>* {errorProveedor.no_ine_acomp}</small>
+                )}
+              </FormControl>
+              <div>
+                <Box sx={{ textAlign: "center", mt: 2 }}>
+                  <Button onClick={handleCloseValidarProveedor}>Cancelar</Button>
+                  <Button variant="contained" color="primary" onClick={handleFinalizarProveedor}>Finalizar</Button>
+                </Box>
+              </div>
+            </div>
+            
+          </DialogContent>
 
-      </Dialog>
-      <Dialog open={openVisitaError} onClose={handleCloseError}>
-        <DialogTitle style={{textAlign:'center'}}>
-          <ErrorOutline style={{color:'red', fontSize: 100, opacity:'0.5' }}/><p/>
-          Error al registar visitante.</DialogTitle>
+        </Dialog>
+        <Dialog open={openMultaFinalizar}>
         <DialogContent>
-          {errorVisitante}
+          <h2>El visitante ha sido multado.</h2><br />
+          <h3 style={{textAlign:'center'}}>¿Desea finalizar la visita?</h3>
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'center',
+              gap: 2,
+              marginTop: 2,
+            }}
+          >
+            <Button variant="contained" onClick={darSalida}>Finalizar</Button>
+            <Button variant="outlined" onClick={handleCloseMultaFinalizar}>No finalizar</Button>
+          </Box>
         </DialogContent>
-        <DialogActions>
-          <Button variant="outlined" onClick={handleCloseError}>Cancelar</Button>
-        </DialogActions>
 
-      </Dialog>
-      <Dialog open={openTransportistaError} onClose={handleCloseErrorT}>
-        <DialogTitle style={{textAlign:'center'}}>
-          <ErrorOutline style={{color:'red', fontSize: 100, opacity:'0.5' }}/><p/>
-          Error al registar transportista.</DialogTitle>
+        </Dialog>
+        <Dialog open={openVisitaDup}>
         <DialogContent>
-          {errorTransportista}
+          <h2>El visitante ha sido multado.</h2><br />
+          <h3 style={{textAlign:'center'}}>¿Desea finalizar la visita?</h3>
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'center',
+              gap: 2,
+              marginTop: 2,
+            }}
+          >
+            <Button variant="contained" onClick={darSalida}>Finalizar</Button>
+            <Button variant="outlined" onClick={handleCloseMultaFinalizar}>No finalizar</Button>
+          </Box>
         </DialogContent>
-        <DialogActions>
-          <Button variant="outlined" onClick={handleCloseErrorT}>Cancelar</Button>
-        </DialogActions>
 
-      </Dialog>
-     
-  </div>
-);
+        </Dialog>
+       
+    </div>
+  );
 }
-
 
 export default Visitantes;
 

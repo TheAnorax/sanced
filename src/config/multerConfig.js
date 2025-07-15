@@ -3,31 +3,47 @@ const express = require('express');
 const path = require('path');
 const app = express();
 
-// Configuración del almacenamiento para guardar los archivos en la carpeta proporcionada
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, 'C:/Users/rodrigo/Desktop/react/docs')); // Ajusta la ruta si es necesario
-  },
-  filename: (req, file, cb) => {
-    // Obtener la fecha actual en un formato deseado
-    const currentDate = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-    // Concatenar la fecha con el nombre original del archivo
-    cb(null, `${currentDate}-${file.originalname}`); // Guardar con la fecha y el nombre original
+
+// server.js
+
+const cors = require("cors");
+
+require("dotenv").config();
+const fs = require("fs");
+const https = require("https");
+const fetch = require("./fetch"); // ✅ SOLUCIÓN FINAL
+
+
+// ───── Servidor HTTPS separado solo para imagenes ─────
+const imageApp = express();
+
+imageApp.get("/imagenes/img_pz/:img", async (req, res) => {
+  const { img } = req.params;
+  const remoteUrl = `http://66.232.105.87:3011/imagenes/img_pz/${img}`;
+
+  try {
+    const response = await fetch(remoteUrl);
+    if (!response.ok) {
+      return res.status(404).send("Imagen no encontrada");
+    }
+
+    res.set("Content-Type", response.headers.get("content-type"));
+    response.body.pipe(res);
+  } catch (err) {
+    console.error("❌ Error al obtener la imagen:", err.message);
+    res.status(500).send("Error al conectar con imagen remota");
   }
 });
 
-// Exporta solo la configuración de Multer (sin `.fields()`)
-const upload = multer({ storage: storage, limits: { files: 5 } });
+// Certificados autofirmados o reales
+const sslOptions = {
+  key: fs.readFileSync(path.join(__dirname, "ssl", "key.pem")),
+  cert: fs.readFileSync(path.join(__dirname, "ssl", "cert.pem")),
+};
 
-
-
-app.use('/docs', express.static('C:/Users/rodrigo/Desktop/react/docs'));
-app.use('/docsOC', express.static('C:/Users/rodrigo/Desktop/react/docsOC'));
-// En tu app.js o index.js
-app.use("/imagenes", express.static("C:/Users/rodrigo/Desktop/react/imagenes"));
-
-
-app.listen(3011, () => {
-  console.log('Servidor corriendo en el puerto 3011');
+const httpsPort = 3011;
+https.createServer(sslOptions, imageApp).listen(httpsPort, () => {
+  console.log(
+    `🔐 Servidor HTTPS (imagenes) en https://localhost:${httpsPort}/imagenes/...`
+  );
 });
-module.exports = upload;

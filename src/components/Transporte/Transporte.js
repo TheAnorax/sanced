@@ -15,6 +15,8 @@ import CompareArrowsIcon from "@mui/icons-material/CompareArrows";
 import { Tooltip } from "@mui/material";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import moment from "moment";
+import dayjs from "dayjs";
+import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 
 import { NumerosALetras } from "numero-a-letras";
 
@@ -649,6 +651,101 @@ function Transporte() {
       style: "currency",
       currency: "MXN",
     }).format(value);
+  };
+
+  //subor archivo o carga de la api
+  dayjs.extend(isSameOrAfter);
+
+  const getLastBusinessDays = (numDays) => {
+    const businessDays = [];
+    let current = new Date();
+    current.setHours(0, 0, 0, 0);
+
+    while (businessDays.length < numDays) {
+      const day = current.getDay();
+      if (day !== 0 && day !== 6) {
+        businessDays.push(new Date(current));
+      }
+      current.setDate(current.getDate() - 1);
+    }
+
+    return businessDays.map((d) => d.toISOString().split("T")[0]);
+  };
+
+  const [modoCarga, setModoCarga] = useState("api"); // o "excel"
+
+  const fetchPedidosDesdeAPI = async () => {
+    try {
+      // 1. Consultar pedidos ya registrados desde el backend
+      const registradosRes = await axios.get(
+        "http://66.232.105.87:3007/api/Trasporte/pedidosRegistrados"
+      );
+      const pedidosRegistradosDB = new Set(
+        registradosRes.data.map(
+          (r) =>
+            `${String(r.no_orden).trim()}_${String(r.tipo_original)
+              .trim()
+              .toUpperCase()}`
+        )
+      );
+
+      // 2. Consultar pedidos nuevos
+      const response = await axios.post(
+        "http://66.232.105.87:3007/api/Trasporte/obtenerPedidos"
+      );
+      const datos = response.data;
+
+      // 3. Calcular últimos 3 días hábiles
+      const diasValidos = getLastBusinessDays(3); // esto debe devolver fechas tipo "2025-07-01"
+
+      // 4. Filtrar y mapear
+      let datosMapeados = datos
+        .filter((row) => {
+          const fechaTexto = row.Fecha?.split("T")[0];
+          const clave = `${String(row.NoOrden).trim()}_${String(
+            row.TpoOriginal || ""
+          )
+            .trim()
+            .toUpperCase()}`;
+          return (
+            diasValidos.includes(fechaTexto) && !pedidosRegistradosDB.has(clave)
+          );
+        })
+        .map((row) => ({
+          rawDate: row.Fecha?.split("T")[0], // guardamos fecha original para ordenamiento
+          RUTA: "Sin Ruta",
+          FECHA: dayjs(row.Fecha).format("DD/MM/YYYY"),
+          "NO ORDEN": row.NoOrden,
+          "NO FACTURA": row.NoFactura,
+          "NUM. CLIENTE": row.NumCliente,
+          "NOMBRE DEL CLIENTE": row.Nombre_Cliente,
+          Codigo_Postal: row.Postal,
+          ZONA: row.Zona,
+          MUNICIPIO: row.Municipio,
+          ESTADO: row.Estado,
+          OBSERVACIONES: row.Observaciones || "",
+          TOTAL: parseFloat(String(row.Total || "0").replace(",", "")),
+          PARTIDAS: Number(row.Partidas || 0),
+          PIEZAS: Number(row.Piezas || 0),
+          DIRECCION: row.Direccion || "",
+          CORREO: row.Correo || "",
+          TELEFONO: row.Telefono || "",
+          "EJECUTIVO VTAS": row.Ejecutivo || "",
+          "TIPO ORIGINAL": row.TpoOriginal || "",
+        }));
+
+      // 5. Ordenar por fecha descendente (de hoy hacia atrás)
+      datosMapeados.sort(
+        (a, b) => dayjs(b.rawDate).unix() - dayjs(a.rawDate).unix()
+      );
+
+      // 6. Eliminar rawDate antes de guardar
+      const datosFinales = datosMapeados.map(({ rawDate, ...rest }) => rest);
+
+      setData(datosFinales);
+    } catch (error) {
+      console.error("Error al obtener los pedidos:", error);
+    }
   };
 
   const mapColumns = (row) => ({
@@ -2247,7 +2344,17 @@ function Transporte() {
     return currentY;
   }
 
-  const generatePDF = async (pedido) => {
+  const getTipoDominante = (productos) => {
+    const tipos = productos.map((p) => (p.tipo_caja || "").toUpperCase());
+    const cuenta = {};
+    for (const tipo of tipos) cuenta[tipo] = (cuenta[tipo] || 0) + 1;
+
+    const tipoMasUsado =
+      Object.entries(cuenta).sort((a, b) => b[1] - a[1])[0]?.[0] || "CAJA";
+    return tipoMasUsado === "ATA" ? "ATADO" : tipoMasUsado;
+  };
+
+  const generatePDF = async (pedido, modo = "descargar") => {
     try {
       const responseRoutes = await fetch(
         "http://66.232.105.87:3007/api/Trasporte/ruta-unica"
@@ -2259,7 +2366,7 @@ function Transporte() {
       if (!route) return alert("No se encontró la ruta");
 
       const responseEmbarque = await fetch(
-        `http://66.232.105.87:3007/api/Trasporte/embarque/${pedido}`
+        `http://66.232.105.87:3007/api/Trasporte/embarque/${pedido}` //toma la informacion de embarques
       );
       const data = await responseEmbarque.json();
       if (!data || !Array.isArray(data) || data.length === 0)
@@ -2367,36 +2474,103 @@ function Transporte() {
         (p) => (p.um || "").toUpperCase() === "ATA"
       );
 
-      // ✔️ Primero agrupamos productos por caja original
+      // ✅ AGRUPAR por tipo + cajas (fusionadas respetadas)
+      const cajasAgrupadasOriginal = {};
 
-      const cajasAgrupadasOriginal = productosConCaja.reduce((acc, item) => {
-        if (!acc[item.caja]) acc[item.caja] = [];
-        acc[item.caja].push(item);
-        return acc;
-      }, {});
+      for (const item of productosConCaja) {
+        const tipo = (item.tipo_caja || "").toUpperCase().trim();
+        const cajasTexto = item.cajas || item.caja;
+
+        if (!cajasTexto) continue;
+
+        const cajas = String(cajasTexto)
+          .split(",")
+          .map((c) => c.trim())
+          .filter((c) => c !== "")
+          .sort((a, b) => parseInt(a) - parseInt(b)); // asegura orden
+
+        const claveCaja = cajas.join(","); // ejemplo: "2,6"
+        const clave = `${tipo}_${claveCaja}`; // ejemplo: "CAJA_2,6"
+
+        if (!cajasAgrupadasOriginal[clave]) cajasAgrupadasOriginal[clave] = [];
+        cajasAgrupadasOriginal[clave].push(item);
+      }
 
       const cajasOrdenadas = Object.entries(cajasAgrupadasOriginal).sort(
-        (a, b) => Number(a[0]) - Number(b[0])
+        (a, b) => {
+          const getMin = (key) => {
+            const parts = key.split("_")[1]; // "2,6"
+            return Math.min(...parts.split(",").map((p) => parseInt(p.trim())));
+          };
+          return getMin(a[0]) - getMin(b[0]);
+        }
       );
 
-      const totalINNER_MASTER = productosSinCaja.reduce(
-        (s, i) => s + (i._inner || 0) + (i._master || 0),
-        0
-      );
-      const totalCajasArmadas = cajasOrdenadas.length;
-      const totalCajas = totalINNER_MASTER + totalCajasArmadas;
+      // const totalINNER_MASTER = productosSinCaja.reduce(
+      //   (s, i) => s + (i._inner || 0) + (i._master || 0),
+      //   0
+      // );
+      // const totalCajasArmadas = cajasOrdenadas.length;
+      // const totalCajas = totalINNER_MASTER + totalCajasArmadas;
 
-      const totalTarimas = data.reduce((s, i) => s + (i.tarimas || 0), 0);
-      const atadosProductos = data.filter(
-        (i) => (i.um || "").toUpperCase() === "ATA"
-      );
-      const totalAtados = atadosProductos.length;
+      // const totalTarimas = data.reduce((s, i) => s + (i.tarimas || 0), 0);
+      // const atadosProductos = data.filter(
+      //   (i) => (i.um || "").toUpperCase() === "ATA"
+      // );
+      // const totalAtados = atadosProductos.length;
+
+      // === Contador REAL de cajas por tipo ===
+      // === Contador REAL de cajas por tipo ===
+      const cajasArmadas = new Set();
+      const cajasAtados = new Set();
+      const cajasTarimas = new Set();
+
+      for (const key of Object.keys(cajasAgrupadasOriginal)) {
+        const [tipo, cajasStr] = key.split("_");
+        const cajas = cajasStr
+          .split(",")
+          .map((c) => c.trim())
+          .filter((c) => c !== "");
+
+        for (const caja of cajas) {
+          const clave = `${tipo}_${caja}`;
+
+          if (tipo === "CAJA") {
+            cajasArmadas.add(clave); // solo cuenta como caja si es física
+          } else if (["ATA", "ATADO"].includes(tipo)) {
+            cajasAtados.add(clave);
+          } else if (tipo === "TARIMA") {
+            cajasTarimas.add(clave);
+          }
+        }
+      }
+
+      // 💡 INNER y MASTER sólo si están sueltos (sin tipo_caja = CAJA)
+      const totalINNER_MASTER = data.reduce((s, i) => {
+        const tipo = (i.tipo_caja || "").toUpperCase();
+        if (["INNER", "MASTER"].includes(tipo)) {
+          return s + (i._inner || 0) + (i._master || 0);
+        }
+        return s;
+      }, 0);
+
+      const totalCajasArmadas = cajasArmadas.size;
+      const totalAtados = cajasAtados.size;
+      const totalTarimas = cajasTarimas.size;
+      const totalCajas =
+        totalINNER_MASTER + totalCajasArmadas + totalAtados + totalTarimas;
 
       currentY = verificarEspacio(doc, currentY, 2);
       doc.autoTable({
         startY: currentY,
         head: [
-          ["INNER/MASTER", "TARIMAS", "ATADOS", "CAJAS ARMADAS", "TOTAL CAJAS"],
+          [
+            "INNER/MASTER",
+            "TARIMAS",
+            "ATADOS",
+            "CAJAS ARMADAS",
+            "TOTAL DE ENTREGA",
+          ],
         ],
         body: [
           [
@@ -2423,8 +2597,10 @@ function Transporte() {
 
       let numeroCajaSecuencial = 1;
 
-      for (const [, productos] of cajasOrdenadas) {
-        const titulo = `Productos en la Caja ${numeroCajaSecuencial}`;
+      for (const [key, productos] of cajasOrdenadas) {
+        const [_, numeroCaja] = key.split("_");
+        const tipoVisible = getTipoDominante(productos);
+        const titulo = `Productos en  ${tipoVisible} ${numeroCaja}`;
 
         // Título de la tabla
         doc.autoTable({
@@ -2616,12 +2792,25 @@ function Transporte() {
         currentY = doc.lastAutoTable.finalY + 4;
       }
 
-      if (productosSinCaja.length > 0) {
-        // Título principal
+      const productosNoEnviados = productosSinCaja.filter(
+        (item) =>
+          (item._inner || 0) === 0 &&
+          (item._master || 0) === 0 &&
+          (item.tarimas || 0) === 0 &&
+          (item.atados || 0) === 0 &&
+          (item._pz || 0) === 0 &&
+          (item._pq || 0) === 0
+      );
+
+      const productosSinCajaValidos = productosSinCaja.filter(
+        (item) => !productosNoEnviados.includes(item)
+      );
+
+      if (productosNoEnviados.length > 0) {
         currentY = verificarEspacio(doc, currentY, 2);
         doc.autoTable({
           startY: currentY,
-          head: [["Productos sin caja"]],
+          head: [["Productos no enviados"]],
           body: [],
           theme: "grid",
           styles: { halign: "center", fontSize: 9 },
@@ -2650,23 +2839,21 @@ function Transporte() {
               "MASTER",
               "TARIMAS",
               "ATADOS",
-              "VALIDAR",
+              "VALIDA",
             ],
           ],
-          body: productosSinCaja
-            .filter((item) => (item.um || "").toUpperCase() !== "ATA")
-            .map((item) => [
-              item.codigo_ped || "",
-              item.des || "",
-              item.cantidad || "",
-              item.um || "",
-              item._pz || 0,
-              item._inner || 0,
-              item._master || 0,
-              item.tarimas || 0,
-              item.atados || 0,
-              "",
-            ]),
+          body: productosNoEnviados.map((item) => [
+            item.codigo_ped || "",
+            item.des || "",
+            item.cantidad || "",
+            item.um || "",
+            item._pz || 0,
+            item._inner || 0,
+            item._master || 0,
+            item.tarimas || 0,
+            item.atados || 0,
+            "",
+          ]),
           theme: "grid",
           margin: { left: 10 },
           tableWidth: 190,
@@ -2701,7 +2888,7 @@ function Transporte() {
               data.cursor.y < 30 &&
               !yaContinua
             ) {
-              const text = "Continuación de productos sin caja";
+              const text = "Continuación de productos no enviados";
               doc.setFontSize(8);
               doc.text(text, 105, data.cursor.y - 6, { align: "center" });
               yaContinua = true;
@@ -2786,7 +2973,7 @@ function Transporte() {
               styles: { fontSize: 7, halign: "justify", textColor: [0, 0, 0] },
             },
             {
-              content: "Firma del Transportista",
+              content: "Firma del Transporte",
               styles: { fontSize: 7, halign: "center", fontStyle: "bold" },
             },
           ],
@@ -2802,6 +2989,8 @@ function Transporte() {
       });
 
       currentY = doc.lastAutoTable.finalY + 0;
+
+      // === LEYENDA VERTICAL AL COSTADO DE LA TABLA DE BANCOS ===
 
       const instrucciones = [
         "•Estimado cliente, nuestro transportista cuenta con ruta asignada por lo que agradeceríamos agilizar el tiempo de recepción de su mercancía, el material viaja consignado por lo que solo podrá entregarse en la dirección estipulada en este documento.",
@@ -2840,7 +3029,7 @@ function Transporte() {
       ).toLocaleDateString("es-MX");
 
       const textoPagare =
-        `En cualquier lugar de este documento donde se estampe la firma por este pagaré debo(emos) y pagaré(mos) ` +
+        `En cualquier lugar de este documento donde se estampe la firma en este compromiso de pago debo(emos) y pagare(mos) ` +
         `incondicionalmente a la vista y a la orden de SANTUL HERRAMIENTAS S.A. DE C.V., la cantidad de: $${totalImporte.toFixed(
           2
         )} ` +
@@ -2870,12 +3059,23 @@ function Transporte() {
       currentY = doc.lastAutoTable.finalY + 0;
       currentY = verificarEspacio(doc, currentY, 5);
 
-      //informacion bancaria
+      // LEYENDA FINAL HORIZONTAL ABAJO DEL PAGARÉ
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(0, 0, 0);
+
+      doc.text(
+        "Documento expedido sobre resolución miscelánea vigente",
+        10, // X: alineado a la izquierda
+        currentY
+      );
+
+      currentY += 5;
+
       // === Información Bancaria + Observaciones alineadas ===
 
-      const tablaBancosY = currentY + 10; // Ajusta el +3 si lo quieres más arriba o abajo
+      const tablaBancosY = currentY + 10;
 
-      // Muestra la referencia bancaria arriba de la tabla
       doc.setFontSize(10);
       doc.text("Referencia bancaria:", 20, tablaBancosY - 5, {
         styles: { fontStyle: "bold" },
@@ -2910,6 +3110,7 @@ function Transporte() {
             },
           ],
         ],
+
         body: [
           ["BANAMEX", "6860432", "7006", "002180700668604325"],
           [
@@ -2920,6 +3121,23 @@ function Transporte() {
           ],
           ["BANCOMER", "CIE 2476827", "1838"],
         ],
+        startY: tablaBancosY, // tu variable de Y si la usas
+        theme: "plain", // O 'grid' si quieres líneas de tabla
+        headStyles: {
+          fillColor: [0, 0, 0], // Fondo negro
+          textColor: [255, 255, 255], // Texto blanco
+          fontStyle: "bold",
+          fontSize: 8,
+          halign: "center",
+          valign: "middle",
+        },
+        // Opcional: para que las celdas no tengan borde
+        styles: {
+          lineWidth: 0.2,
+          lineColor: [0, 0, 0],
+          fontSize: 8,
+        },
+
         theme: "plain", // Sin bordes, puro alineado como quieres
         styles: { fontSize: 8, cellPadding: 1, halign: "center" },
         margin: { left: 10 },
@@ -2927,6 +3145,7 @@ function Transporte() {
         headStyles: { textColor: [0, 0, 0], fontStyle: "bold" },
         bodyStyles: { textColor: [0, 0, 0] },
       });
+
       // CAJA OBSERVACIONES (alineada a la derecha)
       // =============== CAJA DE OBSERVACIONES ===============
       const obsBoxX = 133;
@@ -2975,11 +3194,16 @@ function Transporte() {
       currentY = leyendaY + 4; // Si necesitas continuar después
 
       addPageNumber(doc);
-      doc.save(`PackingList_de_${pedido}.pdf`);
-      alert(`PDF generado con éxito para el pedido ${pedido}`);
+
+      if (modo === "descargar") {
+        doc.save(`PackingList_de_${pedido}.pdf`);
+      }
+
+      return await doc.output("blob");
     } catch (error) {
       console.error("Error al generar el PDF:", error);
       alert("Hubo un error al generar el PDF.");
+      return null;
     }
   };
 
@@ -3574,6 +3798,7 @@ function Transporte() {
 
   const [filtroGeneral, setFiltroGeneral] = useState(""); // para No Orden y Num Cliente
   const [filtroEstado, setFiltroEstado] = useState(""); // separado
+  const [filterFactura, setFilterFactura] = useState("");
 
   const toggleMostrarSinGuia = () => {
     setMostrarSinGuia((prev) => !prev);
@@ -3603,12 +3828,20 @@ function Transporte() {
       const coincideGuia =
         !mostrarSinGuia || !routeData.GUIA || routeData.GUIA.trim() === "";
 
+      const coincideFactura =
+        !filterFactura ||
+        routeData["NO_FACTURA"]
+          ?.toString()
+          .toLowerCase()
+          .includes(filterFactura.toLowerCase());
+
       return (
         coincideGeneral &&
         coincideEstado &&
         coincidePaqueteria &&
         coincideEstatus &&
-        coincideGuia
+        coincideGuia &&
+        coincideFactura
       );
     });
   }, [
@@ -3618,6 +3851,7 @@ function Transporte() {
     paqueteriaSeleccionada,
     estatusSeleccionado,
     mostrarSinGuia,
+    filterFactura, // ¡Aquí lo agregas!
   ]);
 
   const [facturaSeleccionada, setFacturaSeleccionada] = useState(""); // Filtro por factura
@@ -3667,16 +3901,28 @@ function Transporte() {
         !fechaEntregaSeleccionada ||
         item.FECHA_DE_ENTREGA_CLIENTE === fechaEntregaSeleccionada;
 
+      const cumpleFactura =
+        !filterFactura ||
+        item["NO_FACTURA"]
+          ?.toString()
+          .toLowerCase()
+          .includes(filterFactura.toLowerCase());
+
       return (
-        cumpleGeneral && cumpleEstado && cumpleEstatus && cumpleFechaEntrega
+        cumpleGeneral &&
+        cumpleEstado &&
+        cumpleEstatus &&
+        cumpleFechaEntrega &&
+        cumpleFactura
       );
     });
   }, [
+    directaData,
     filtroGeneral,
     filtroEstado,
-    directaData,
     estatusSeleccionado,
     fechaEntregaSeleccionada,
+    filterFactura, // ✅ No olvides agregarlo aquí
   ]);
 
   const ventaEmpleadoFiltrada = useMemo(() => {
@@ -4919,6 +5165,16 @@ function Transporte() {
                   }}
                 >
                   📂 Subir Archivo
+                </Button>
+
+                <Button
+                  variant={modoCarga === "api" ? "contained" : "outlined"}
+                  onClick={() => {
+                    setModoCarga("api");
+                    fetchPedidosDesdeAPI();
+                  }}
+                >
+                  Cargar desde JDI
                 </Button>
               </label>
 
@@ -6472,8 +6728,8 @@ function Transporte() {
               <option value="4">Abril</option>
               <option value="5">Mayo</option>
               <option value="6">Junio</option>
-              {/*  <option value="7">Julio</option>
-                <option value="8">Agosto</option>
+              <option value="7">Julio</option>
+              {/* <option value="8">Agosto</option>
                 <option value="9">Septiembre</option>
                 <option value="10">Octubre</option>
                 <option value="11">Noviembre</option>
@@ -6782,6 +7038,15 @@ function Transporte() {
                   onChange={(e) => setFiltroEstado(e.target.value)}
                   variant="outlined"
                   size="small"
+                />
+
+                <TextField
+                  label="Buscar por Factura"
+                  variant="outlined"
+                  size="small"
+                  value={filterFactura}
+                  onChange={(e) => setFilterFactura(e.target.value)}
+                  style={{ marginRight: 16 }}
                 />
 
                 <FormControl
@@ -7155,19 +7420,14 @@ function Transporte() {
                   size="small"
                 />
 
-                <FormControl
+                <TextField
+                  label="Buscar por Factura"
                   variant="outlined"
-                  style={{ minWidth: 200, marginRight: 10 }}
-                >
-                  <InputLabel>Filtrar por Factura</InputLabel>
-                  <TextField
-                    label="Filtrar por Factura"
-                    variant="outlined"
-                    value={facturaSeleccionada}
-                    onChange={(e) => setFacturaSeleccionada(e.target.value)}
-                    style={{ minWidth: 200, marginRight: 10 }}
-                  />
-                </FormControl>
+                  size="small"
+                  value={filterFactura}
+                  onChange={(e) => setFilterFactura(e.target.value)}
+                  style={{ marginRight: 16 }}
+                />
 
                 <br />
 

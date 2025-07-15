@@ -42,7 +42,7 @@ const actualizarEstadoPedido = async (req, res) => {
     }
   } catch (error) {
     if (connection) await connection.rollback();
-    console.error("Error en la transacción:", error);
+  console.error("Error en la transacción:", error);
     res.status(500).send("Error en la transacción");
   } finally {
     if (connection) connection.release();

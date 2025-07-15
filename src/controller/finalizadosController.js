@@ -1,5 +1,6 @@
-const pool = require('../config/database');
-const moment = require('moment');
+const pool = require("../config/database");
+const moment = require("moment");
+
 const getFinalizados = async (req, res) => {
   try {
     const [rows] = await pool.query(`
@@ -58,11 +59,12 @@ const getFinalizados = async (req, res) => {
     // Ya no necesitas agrupar en el controlador
     res.json(rows);
   } catch (error) {
-    console.error('Error al obtener los pedidos finalizados:', error);
-    res.status(500).json({ message: 'Error al obtener los pedidos', error: error.message });
+    console.error("Error al obtener los pedidos finalizados:", error);
+    res
+      .status(500)
+      .json({ message: "Error al obtener los pedidos", error: error.message });
   }
 };
-
 
 const getPedidoDetalles = async (req, res) => {
   const { pedido, tipo } = req.params;
@@ -184,14 +186,17 @@ LEFT JOIN usuarios us_surtido ON pf.id_usuario_surtido = us_surtido.id_usu
 LEFT JOIN usuarios us_paqueteria ON pf.id_usuario_paqueteria = us_paqueteria.id_usu
 WHERE
     pf.pedido = ? AND pf.tipo = ?;
-`, 
+`,
       [pedido, tipo, pedido, tipo, pedido, tipo] // 👈 Agrega los parámetros en el orden correcto
     );
 
     res.json(rows);
   } catch (error) {
-    console.error('Error al obtener los detalles del pedido:', error);
-    res.status(500).json({ message: 'Error al obtener los detalles del pedido', error: error.message });
+    console.error("Error al obtener los detalles del pedido:", error);
+    res.status(500).json({
+      message: "Error al obtener los detalles del pedido",
+      error: error.message,
+    });
   }
 };
 
@@ -200,8 +205,8 @@ const getMotivos = async (req, res) => {
     let { desde, hasta } = req.query;
 
     if (!desde || !hasta) {
-      const inicioMes = moment().startOf('month').format('YYYY-MM-DD');
-      const finHoy = moment().endOf('day').format('YYYY-MM-DD');
+      const inicioMes = moment().startOf("month").format("YYYY-MM-DD");
+      const finHoy = moment().endOf("day").format("YYYY-MM-DD");
       desde = inicioMes;
       hasta = finHoy;
     }
@@ -256,21 +261,115 @@ WHERE pf.motivo IS NOT NULL
     }
 
     res.json({
-      status: 'success',
+      status: "success",
       desde,
       hasta,
       total: rows.length,
       motivos_unicos: Object.keys(motivoContador).length,
       motivos_contador: motivoContador, // 👈 Puedes quitar esto si no quieres el detalle
-      resultados: rows
+      resultados: rows,
     });
   } catch (error) {
-    console.error('Error al obtener motivos:', error);
-    res.status(500).json({ message: 'Error al obtener motivos', error: error.message });
+    console.error("Error al obtener motivos:", error);
+    res
+      .status(500)
+      .json({ message: "Error al obtener motivos", error: error.message });
   }
 };
 
+// GET /api/paqueteria/cliente/:numero
+const getClientePorNumero = async (req, res) => {
+  const { numero } = req.params;
 
+  try {
+    const [rows] = await pool.query(
+      `
+      SELECT * FROM paqueteria
+      WHERE \`NUM. CLIENTE\` = ?
+      ORDER BY FECHA DESC
+      LIMIT 5
+    `,
+      [numero]
+    );
 
-module.exports = { getFinalizados, getPedidoDetalles, getMotivos };
+    res.json(rows);
+  } catch (err) {
+    console.error("Error al consultar paqueteria:", err);
+    res.status(500).json({ error: "Error al buscar en paqueteria" });
+  }
+};
 
+const getPedidoDetallesPorMes = async (req, res) => {
+  const { mes, anio } = req.query;
+  const anioFinal = anio || new Date().getFullYear();
+
+  if (!mes || mes.length !== 2 || isNaN(parseInt(mes))) {
+    return res
+      .status(400)
+      .json({ error: "Mes inválido. Debe enviarse como 'MM'" });
+  }
+
+  const fechaInicio = `${anioFinal}-${mes}-01`;
+  const fechaFin = `${anioFinal}-${mes}-31`;
+
+  try {
+    const [rows] = await pool.query(
+      `
+     
+      SELECT
+          'pedido_fin' AS origen,
+          pf.pedido,
+          pf.codigo_ped,
+          prod3.des AS descripcion,
+          pf.cantidad,
+          pf.cant_surti,
+          pf.cant_no_env,
+          pf.ubi_bahia AS bahias, 
+          pf.um,
+          pf._pz,
+          pf._pq,
+          pf._inner,
+          pf._master,
+          pf.v_pz,         
+          pf.v_pq,           
+          pf.v_inner,          
+          pf.v_master,
+          us_surtido.name AS usuario_surtido,
+          us_paqueteria.name AS usuario_paqueteria,
+          pf.registro,
+          pf.registro_surtido,
+          pf.inicio_surtido,
+          pf.fin_surtido,
+          pf.inicio_embarque,
+          pf.fin_embarque,
+          pf.motivo,
+          pf.unificado,
+          pf.registro_fin
+      FROM pedido_finalizado pf
+      LEFT JOIN productos prod3 ON pf.codigo_ped = prod3.codigo_pro
+      LEFT JOIN usuarios us_surtido ON pf.id_usuario_surtido = us_surtido.id_usu
+      LEFT JOIN usuarios us_paqueteria ON pf.id_usuario_paqueteria = us_paqueteria.id_usu
+      WHERE pf.registro BETWEEN ? AND ?
+
+      ORDER BY pedido DESC;
+      `,
+      [fechaInicio, fechaFin, fechaInicio, fechaFin, fechaInicio, fechaFin]
+    );
+
+    res.json(rows);
+  } catch (error) {
+    console.error("❌ Error al obtener detalles por mes:", error);
+    res.status(500).json({
+      message: "Error al obtener los detalles por mes",
+      error: error.message,
+    });
+  }
+};
+
+module.exports = {
+  getFinalizados,
+  getPedidoDetalles,
+  getMotivos,
+  getClientePorNumero,
+  getPedidoDetallesPorMes,
+};

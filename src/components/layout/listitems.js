@@ -112,10 +112,11 @@ export const mainListItems = (user) => {
         "Master",
         "VentAdmin",
         "VEN",
-        "VENT2"
+        "VENT2",        
+        "VENT3",
       ], // Ajusta los roles que deberían ver esta opción"
       external: true,
-      path: "http://192.168.3.27:3000/menu/estadisticos",
+      path: "http://66.232.105.108:3000/menu/estadisticos",
       icon: <AnalyticsIcon />,
       text: "SanPlan",
     },
@@ -179,7 +180,6 @@ export const mainListItems = (user) => {
         "Master",
         "Master2",
         "VENT",
-        "VENT3",
         "VentAdmin",
         "INV",
         "VEN",
@@ -205,6 +205,7 @@ export const mainListItems = (user) => {
         "INV",
         "VEN",
         "VENT2",
+        "Tran"
       ],
       path: "/dashboard/finalizados",
       icon: <PlaylistAddCheckIcon />,

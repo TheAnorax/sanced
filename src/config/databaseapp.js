@@ -3,7 +3,7 @@ const mysql = require('mysql2/promise');
 const Respuesta = require('../modelaplication/Respuesta.js');
 
 const pool1 = mysql.createPool({
-    host: 'localhost',
+    host: '192.168.3.154',
     user: 'root',
     password: '',
     database: 'savawms',

@@ -45,7 +45,7 @@ function TareaDev() {
     const fetchTareas = async () => {
       try {
         const response = await axios.get(
-          "http://localhost:3007/api/devs/tareas"
+          "http://192.168.3.154:3007/api/devs/tareas"
         );
         setTareas(response.data);
       } catch (error) {
@@ -60,7 +60,7 @@ function TareaDev() {
   useEffect(() => {
     const fetchUsuarios = async () => {
       try {
-        const response = await axios.get("http://localhost:3007/api/usuarios/usuarios");
+        const response = await axios.get("http://192.168.3.154:3007/api/usuarios/usuarios");
         console.log("Datos de la API:", response.data); // Para verificar la estructura
   
         // Busca el grupo con turno === 4
@@ -87,7 +87,7 @@ function TareaDev() {
       console.log("Tarea que se enviará al backend:", tareaConAsignador);
   
       const response = await axios.post(
-        "http://localhost:3007/api/devs/tareas",
+        "http://192.168.3.154:3007/api/devs/tareas",
         tareaConAsignador
       );
   
@@ -124,7 +124,7 @@ function TareaDev() {
   // Delete a task
   const handleEliminarTarea = async (id) => {
     try {
-      await axios.delete(`http://localhost:3007/api/devs/tareas/${id}`);
+      await axios.delete(`http://192.168.3.154:3007/api/devs/tareas/${id}`);
       setTareas(tareas.filter((tarea) => tarea.id !== id));
       setAlerta("Tarea eliminada correctamente");
     } catch (error) {
@@ -139,7 +139,7 @@ function TareaDev() {
     if (!tarea) return;
   
     try {
-      await axios.put(`http://localhost:3007/api/devs/tareas/${id}`, {
+      await axios.put(`http://192.168.3.154:3007/api/devs/tareas/${id}`, {
         ...tarea, // Enviar todos los datos actuales de la tarea
         estado, // Actualizar únicamente el estado
       });

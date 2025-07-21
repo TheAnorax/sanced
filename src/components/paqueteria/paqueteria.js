@@ -58,7 +58,7 @@ function Paqueteria() {
   useEffect(() => {
     const fetchPedidos = async () => {
       try {
-        const response = await axios.get('http://localhost:3007/api/paqueterias/paqueteria'); 
+        const response = await axios.get('http://192.168.3.154:3007/api/paqueterias/paqueteria'); 
         setOriginalPedidos(response.data); // Guardar los datos originales
         setPedidos(response.data);
       } catch (error) {
@@ -68,7 +68,7 @@ function Paqueteria() {
     
     const fetchUsuarios = async () => {
       try {
-        const response = await axios.get('http://localhost:3007/api/pedidos/usuarios');
+        const response = await axios.get('http://192.168.3.154:3007/api/pedidos/usuarios');
         
         // Filtra usuarios que tienen un rol definido y contienen 'PQ' en cualquier parte
         const paqueteriaUsuarios = response.data.filter(usuario =>     usuario.role && usuario.role.toUpperCase().includes('PQ')
@@ -121,7 +121,7 @@ function Paqueteria() {
   
     try {
       await axios.put(
-        `http://localhost:3007/api/paqueterias/paqueteria/${pedidoId}/usuario-paqueteria`,
+        `http://192.168.3.154:3007/api/paqueterias/paqueteria/${pedidoId}/usuario-paqueteria`,
         {
           id_usuario_paqueteria: value,
           tipo, // importante
@@ -146,14 +146,14 @@ function Paqueteria() {
     if (!confirmacion) return;
   
     try {
-      await axios.put(`http://localhost:3007/api/embarque/reset-usuario/${pedidoLiberarManual}`);
+      await axios.put(`http://192.168.3.154:3007/api/embarque/reset-usuario/${pedidoLiberarManual}`);
       setSnackbarMessage(`Usuario de paquetería liberado para el pedido ${pedidoLiberarManual}`);
       setSnackbarSeverity('success');
       setSnackbarOpen(true);
       setPedidoLiberarManual('');
   
       // Recarga pedidos
-      const response = await axios.get('http://localhost:3007/api/embarque/embarque');
+      const response = await axios.get('http://192.168.3.154:3007/api/embarque/embarque');
       setPedidos(response.data);
     } catch (error) {
       console.error('Error al liberar usuario de paquetería:', error);

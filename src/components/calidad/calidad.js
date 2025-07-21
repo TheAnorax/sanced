@@ -51,7 +51,7 @@ function Calidad({ onCloseModal }) {
 
   const fetchCalidadData = async () => {
     try {
-      const response = await axios.get("http://localhost:3007/api/calidad/calidad");
+      const response = await axios.get("http://192.168.3.154:3007/api/calidad/calidad");
       setDatosCalidad(response.data);
     } catch (error) {
       console.error("Error al obtener los datos de calidad:", error);
@@ -73,7 +73,7 @@ function Calidad({ onCloseModal }) {
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
-          await axios.put("http://localhost:3007/api/calidad/calidad/autorizar", {
+          await axios.put("http://192.168.3.154:3007/api/calidad/calidad/autorizar", {
             codigo: recibo.codigo,
             oc: recibo.oc,
             cantidad_recibida: recibo.cantidad_recibida,
@@ -105,7 +105,7 @@ function Calidad({ onCloseModal }) {
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
-          await axios.put("http://localhost:3007/api/calidad/calidad/cuarentena", {
+          await axios.put("http://192.168.3.154:3007/api/calidad/calidad/cuarentena", {
             codigo: recibo.codigo,
             oc: recibo.oc,
             cantidad_recibida: recibo.cantidad_recibida,
@@ -136,7 +136,7 @@ function Calidad({ onCloseModal }) {
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
-          await axios.put("http://localhost:3007/api/calidad/calidad/segundas", {
+          await axios.put("http://192.168.3.154:3007/api/calidad/calidad/segundas", {
             codigo: recibo.codigo,
             oc: recibo.oc,
             cantidad_recibida: recibo.cantidad_recibida,
@@ -157,7 +157,7 @@ function Calidad({ onCloseModal }) {
   const fetchProductoDetalles = async (codigo) => {
     setLoading(true);
     try {
-      const response = await axios.post("http://localhost:3007/api/calidad/calidad/codigo", { codigo_pro: codigo });
+      const response = await axios.post("http://192.168.3.154:3007/api/calidad/calidad/codigo", { codigo_pro: codigo });
       setProductoDetalles(response.data);
     } catch (error) {
       console.error("Error al obtener los detalles del producto:", error);
@@ -168,7 +168,7 @@ function Calidad({ onCloseModal }) {
 
   const handleSave = async () => {
     try {
-      await axios.put("http://localhost:3007/api/calidad/calidad/updatecodigo", {
+      await axios.put("http://192.168.3.154:3007/api/calidad/calidad/updatecodigo", {
         ...productoDetalles,
         codigo_pro: selectedProducto.codigo,
       });
@@ -236,7 +236,7 @@ function Calidad({ onCloseModal }) {
   const handleSearchProduct = async (e) => {
     if (e.key === "Enter" && searchCode.trim() !== "") {
       try {
-        const response = await axios.post("http://localhost:3007/api/calidad/calidad/codigo", { codigo_pro: searchCode });
+        const response = await axios.post("http://192.168.3.154:3007/api/calidad/calidad/codigo", { codigo_pro: searchCode });
         setProductoDetalles(response.data);
       } catch (error) {
         console.error("Error al buscar el producto:", error);
@@ -247,7 +247,7 @@ function Calidad({ onCloseModal }) {
 
   const handleSaveNewProduct = async () => {
     try {
-      const response = await axios.post("http://localhost:3007/api/calidad/calidad/insertarBuscar", {
+      const response = await axios.post("http://192.168.3.154:3007/api/calidad/calidad/insertarBuscar", {
         ...productoDetalles,
         codigo_pro: searchCode // Asegúrate de que `searchCode` sea un string o un número aquí
       });
@@ -263,7 +263,7 @@ function Calidad({ onCloseModal }) {
 
   const fetchInactiveProducts = async () => {
     try {
-      const response = await axios.get("http://localhost:3007/api/calidad/calidad/activoinactivo");
+      const response = await axios.get("http://192.168.3.154:3007/api/calidad/calidad/activoinactivo");
       setInactiveProducts(response.data);
     } catch (error) {
       console.error("Error al obtener productos inactivos:", error);

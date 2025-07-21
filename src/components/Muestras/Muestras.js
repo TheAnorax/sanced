@@ -116,7 +116,7 @@ function Muestras() {
     if (productos.length > 0) {
       try {
         const response = await axios.get(
-          `http://localhost:3007/api/muestras/ubicaciones/${productos[0].codigo}`
+          `http://192.168.3.154:3007/api/muestras/ubicaciones/${productos[0].codigo}`
         );
         setUbicaciones(response.data.map((u) => u.ubicacion));
       } catch (error) {
@@ -137,7 +137,7 @@ function Muestras() {
   const obtenerDepartamentos = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:3007/api/muestras/departamentos"
+        "http://192.168.3.154:3007/api/muestras/departamentos"
       );
 
       let deps = response.data.map((d) => {
@@ -269,7 +269,7 @@ function Muestras() {
 
     try {
       const response = await axios.get(
-        `http://localhost:3007/api/muestras/producto/${codigo}`
+        `http://192.168.3.154:3007/api/muestras/producto/${codigo}`
       );
 
       // Verifica la estructura de la respuesta
@@ -345,7 +345,7 @@ function Muestras() {
     try {
       // Actualiza en el backend
       await axios.patch(
-        `http://localhost:3007/api/muestras/solicitudes/${folio}`,
+        `http://192.168.3.154:3007/api/muestras/solicitudes/${folio}`,
         {
           autorizado: true,
           enviadoParaAutorizar: true,
@@ -393,7 +393,7 @@ function Muestras() {
 
       if (confirmacion.isConfirmed) {
         await axios.delete(
-          `http://localhost:3007/api/muestras/solicitudes/${folio}`
+          `http://192.168.3.154:3007/api/muestras/solicitudes/${folio}`
         );
 
         // 🔁 ACTUALIZA EL ESTADO PARA QUE LA TABLA SE REFRESQUE
@@ -434,7 +434,7 @@ function Muestras() {
 
       try {
         await axios.post(
-          "http://localhost:3007/api/muestras/solicitudes",
+          "http://192.168.3.154:3007/api/muestras/solicitudes",
           lastSolicitud
         );
 
@@ -459,7 +459,7 @@ function Muestras() {
     setSolicitudes(arr);
     try {
       await axios.post(
-        "http://localhost:3007/api/muestras/solicitudes",
+        "http://192.168.3.154:3007/api/muestras/solicitudes",
         arr[arr.length - 1]
       );
     } catch (error) {
@@ -473,7 +473,7 @@ function Muestras() {
     setSolicitudesAutorizadas(arr);
     try {
       await axios.post(
-        "http://localhost:3007/api/muestras/solicitudes",
+        "http://192.168.3.154:3007/api/muestras/solicitudes",
         arr
       );
     } catch (error) {
@@ -510,7 +510,7 @@ function Muestras() {
       // 🔥 Eliminar del backend solo si ya fue guardado
       if (folio) {
         await axios.delete(
-          `http://localhost:3007/api/muestras/solicitudes/${folio}/producto/${codigo}`
+          `http://192.168.3.154:3007/api/muestras/solicitudes/${folio}/producto/${codigo}`
         );
       }
 
@@ -545,7 +545,7 @@ function Muestras() {
     const cargarSolicitudes = async () => {
       try {
         const response = await axios.get(
-          "http://localhost:3007/api/muestras/solicitudes"
+          "http://192.168.3.154:3007/api/muestras/solicitudes"
         );
         setSolicitudes(response.data);
       } catch (error) {
@@ -568,7 +568,7 @@ function Muestras() {
   const obtenerSolicitudes = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:3007/api/muestras/solicitudes"
+        "http://192.168.3.154:3007/api/muestras/solicitudes"
       );
       const normalizadas = normalizarSolicitudes(response.data);
       setSolicitudes(normalizadas);
@@ -580,7 +580,7 @@ function Muestras() {
   const obtenerSolicitudesAutorizadas = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:3007/api/muestras/autorizadas"
+        "http://192.168.3.154:3007/api/muestras/autorizadas"
       );
       const normalizadas = normalizarSolicitudes(response.data);
       setSolicitudesAutorizadas(normalizadas);
@@ -602,7 +602,7 @@ function Muestras() {
 
       if (confirmacion.isConfirmed) {
         await axios.delete(
-          `http://localhost:3007/api/muestras/solicitudes/${folio}`
+          `http://192.168.3.154:3007/api/muestras/solicitudes/${folio}`
         );
 
         // 🔁 ACTUALIZA EL ESTADO PARA QUE LA TABLA SE REFRESQUE
@@ -627,7 +627,7 @@ function Muestras() {
   const cancelarSolicitud = async (folio) => {
     try {
       await axios.patch(
-        `http://localhost:3007/api/muestras/solicitudes/${folio}`,
+        `http://192.168.3.154:3007/api/muestras/solicitudes/${folio}`,
         {
           autorizado: 2, // ❌ Cancelado
           enviadoParaAutorizar: true,
@@ -698,7 +698,7 @@ function Muestras() {
       };
 
       await axios.post(
-        "http://localhost:3007/api/muestras/surtido",
+        "http://192.168.3.154:3007/api/muestras/surtido",
         payload
       );
 
@@ -746,7 +746,7 @@ function Muestras() {
         if (!confirmar.isConfirmed) return;
 
         await axios.patch(
-          `http://localhost:3007/api/muestras/embarque/${folio}`,
+          `http://192.168.3.154:3007/api/muestras/embarque/${folio}`,
           {
             fin_embarcado_por: user.name,
           }
@@ -774,7 +774,7 @@ function Muestras() {
       if (!confirmarSalida.isConfirmed) return;
 
       await axios.patch(
-        `http://localhost:3007/api/muestras/salida/${folio}`,
+        `http://192.168.3.154:3007/api/muestras/salida/${folio}`,
         {
           salida_por: user.name,
         }
@@ -1047,7 +1047,7 @@ function Muestras() {
     for (const item of solicitud.carrito) {
       try {
         const res = await axios.get(
-          `http://localhost:3007/api/muestras/ubicaciones/${item.codigo}`
+          `http://192.168.3.154:3007/api/muestras/ubicaciones/${item.codigo}`
         );
         const ubicaciones = res.data.map((u) => u.ubi);
         ubicacionesTemp[item.codigo] =
@@ -1122,7 +1122,7 @@ function Muestras() {
           solicitud.carrito.map(async (item) => {
             try {
               const res = await axios.get(
-                `http://localhost:3007/api/muestras/ubicaciones/${item.codigo}`
+                `http://192.168.3.154:3007/api/muestras/ubicaciones/${item.codigo}`
               );
               const ubicaciones = res.data.map((u) => u.ubi).join(" | ");
               return { ...item, ubicacion: ubicaciones || "N/A" };
@@ -1154,7 +1154,7 @@ function Muestras() {
 
       // 🔄 Actualiza contador
       await axios.put(
-        `http://localhost:3007/api/muestras/contador-pdf/${solicitud.folio}`
+        `http://192.168.3.154:3007/api/muestras/contador-pdf/${solicitud.folio}`
       );
       await obtenerSolicitudesAutorizadas();
     } catch (error) {
@@ -1292,7 +1292,7 @@ function Muestras() {
     setMarcandoSinMaterial(true);
     try {
       await axios.post(
-        `http://localhost:3007/api/muestras/sin-material/${folio}`,
+        `http://192.168.3.154:3007/api/muestras/sin-material/${folio}`,
         { sin_material_por: user.name } // Aquí mandas el nombre correctamente
       );
       Swal.fire(

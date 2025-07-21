@@ -141,7 +141,7 @@
     const exportUbi7050ToExcel = async () => {
       try {
         const response = await axios.get(
-          "http://localhost:3007/api/inventarios/inventarios/obtenerUbiAlma"
+          "http://192.168.3.154:3007/api/inventarios/inventarios/obtenerUbiAlma"
         );
   
         const data = response.data.resultado.list.map((item) => ({
@@ -204,7 +204,7 @@
       const fetchInventariosData = async () => {
         try {
           const response = await axios.get(
-            "http://localhost:3007/api/inventarios/inventarios"
+            "http://192.168.3.154:3007/api/inventarios/inventarios"
           );
           setDatosInventarios(response.data);
         } catch (error) {
@@ -284,7 +284,7 @@
         if (result.isConfirmed) {
           try {
             await axios.put(
-              "http://localhost:3007/api/inventarios/inventarios/autorizar",
+              "http://192.168.3.154:3007/api/inventarios/inventarios/autorizar",
               {
                 codigo: recibo.codigo,
                 oc: recibo.oc,
@@ -452,7 +452,7 @@
       setError(null);
       try {
         const response = await axios.post(
-          `http://localhost:3007/api/Inventario_P/obtnercodigoInv`,
+          `http://192.168.3.154:3007/api/Inventario_P/obtnercodigoInv`,
           {
             code_prod: searchTerm,
           }
@@ -505,7 +505,7 @@
 
       try {
         const response = await axios.post(
-          "http://localhost:3007/api/Inventario_P/ReduccionInv",
+          "http://192.168.3.154:3007/api/Inventario_P/ReduccionInv",
           payload
         );
         // Verificar si la solicitud fue exitosa
@@ -532,7 +532,7 @@
 
       try {
         const response = await axios.post(
-          "http://localhost:3007/api/Inventario_P/Obtredinv"
+          "http://192.168.3.154:3007/api/Inventario_P/Obtredinv"
         );
 
         if (
@@ -578,7 +578,7 @@
         if (!confirm.isConfirmed) return;
     
         const response = await axios.post(
-          "http://localhost:3007/api/inventarios/inventarios/borrarPick",
+          "http://192.168.3.154:3007/api/inventarios/inventarios/borrarPick",
           { id_ubi }
         );
         
@@ -604,7 +604,7 @@
 
       try {
         const response = await axios.get(
-          "http://localhost:3007/api/inventarios/inventarios/obtenerUbiAlma"
+          "http://192.168.3.154:3007/api/inventarios/inventarios/obtenerUbiAlma"
         );
 
         if (response.data && !response.data.resultado.error) {
@@ -646,7 +646,7 @@
 
       try {
         const response = await axios.post(
-          "http://localhost:3007/api/Inventario_P/ObtenerUbi",
+          "http://192.168.3.154:3007/api/Inventario_P/ObtenerUbi",
           {
             ubi: nuevoCodigo, // Envío del código para buscar
           }
@@ -716,7 +716,7 @@
 
         // Realiza la solicitud a la API
         const response = await axios.post(
-          "http://localhost:3007/api/inventarios/inventarios/ActualizarUbi",
+          "http://192.168.3.154:3007/api/inventarios/inventarios/ActualizarUbi",
           filteredData
         );
 
@@ -760,7 +760,7 @@
     const fetchDepInsumos = async () => {
       try {
         const response = await axios.post(
-          "http://localhost:3007/api/Inventario_P/Obtredinv"
+          "http://192.168.3.154:3007/api/Inventario_P/Obtredinv"
         );
 
         if (response.data?.resultado?.list) {
@@ -792,7 +792,7 @@
       setError(null);
       try {
         const response = await axios.post(
-          "http://localhost:3007/api/Inventario_P/ObtenerMaq"
+          "http://192.168.3.154:3007/api/Inventario_P/ObtenerMaq"
         );
 
         if (response.data && !response.data.resultado.error) {
@@ -825,7 +825,7 @@
       setError(null);
       try {
         const response = await axios.post(
-          "http://localhost:3007/api/Inventario_P/ObtenerCua"
+          "http://192.168.3.154:3007/api/Inventario_P/ObtenerCua"
         );
         if (response.data && !response.data.resultado.error) {
           const list = response.data.resultado.list.map((item, index) => ({
@@ -857,7 +857,7 @@
       setError(null);
       try {
         const response = await axios.post(
-          "http://localhost:3007/api/Inventario_P/ObtenerExp"
+          "http://192.168.3.154:3007/api/Inventario_P/ObtenerExp"
         );
 
         if (response.data && !response.data.resultado.error) {
@@ -890,7 +890,7 @@
       setError(null);
       try {
         const response = await axios.post(
-          "http://localhost:3007/api/Inventario_P/ObtenerSeg"
+          "http://192.168.3.154:3007/api/Inventario_P/ObtenerSeg"
         );
 
         if (response.data && !response.data.resultado.error) {
@@ -923,7 +923,7 @@
       setError(null);
       try {
         const response = await axios.post(
-          "http://localhost:3007/api/Inventario_P/ObtenerDev"
+          "http://192.168.3.154:3007/api/Inventario_P/ObtenerDev"
         );
         if (response.data && !response.data.resultado.error) {
           const list = response.data.resultado.list.map((item, index) => ({
@@ -955,7 +955,7 @@
       setError(null);
       try {
         const response = await axios.post(
-          "http://localhost:3007/api/Inventario_P/ObtenerDiv"
+          "http://192.168.3.154:3007/api/Inventario_P/ObtenerDiv"
         );
         if (response.data && !response.data.resultado.error) {
           const list = response.data.resultado.list.map((item, index) => ({
@@ -987,7 +987,7 @@
       setError(null);
       try {
         const response = await axios.post(
-          "http://localhost:3007/api/Inventario_P/ObtenerMue"
+          "http://192.168.3.154:3007/api/Inventario_P/ObtenerMue"
         );
         if (response.data && !response.data.resultado.error) {
           const list = response.data.resultado.list.map((item, index) => ({
@@ -1019,7 +1019,7 @@
     const fetchPickingData = async () => {
       try {
         const response = await axios.get(
-          "http://localhost:3007/api/inventarios/inventarios/peacking"
+          "http://192.168.3.154:3007/api/inventarios/inventarios/peacking"
         );
         setDatosPicking(response.data);
         setFilteredData(response.data);
@@ -1088,7 +1088,7 @@
 
       try {
         const response = await axios.post(
-          "http://localhost:3007/api/inventarios/inventarios/AgregarNuevaUbi",
+          "http://192.168.3.154:3007/api/inventarios/inventarios/AgregarNuevaUbi",
           formData
         );
 
@@ -1130,7 +1130,7 @@
 
       try {
         const response = await axios.post(
-          "http://localhost:3007/api/inventarios/inventarios/insertNuevaUbicacion",
+          "http://192.168.3.154:3007/api/inventarios/inventarios/insertNuevaUbicacion",
           {
             ubi: newData.ubi,
             code_prod: newData.code_prod,
@@ -1230,7 +1230,7 @@
 
           // Realiza la solicitud PUT para actualizar los datos
           await axios.put(
-            `http://localhost:3007/api/inventarios/inventarios/updatePeacking`,
+            `http://192.168.3.154:3007/api/inventarios/inventarios/updatePeacking`,
             {
               id_ubi: selectedDato.id_ubi,
               ...editedData,
@@ -1276,7 +1276,7 @@
       try {
         // Realiza la solicitud DELETE
         const response = await axios.delete(
-          "http://localhost:3007/api/inventarios/inventarios/borrar",
+          "http://192.168.3.154:3007/api/inventarios/inventarios/borrar",
           {
             data: { id_ubi: id_ubi }, // Asegúrate de que estamos enviando el id_ubi
           }
@@ -1313,7 +1313,7 @@
         try {
           // Realiza la solicitud POST para insertar los datos
           const response = await axios.post(
-            `http://localhost:3007/api/inventarios/inventarios/insertarPeacking`,
+            `http://192.168.3.154:3007/api/inventarios/inventarios/insertarPeacking`,
             {
               id_ubi: editedData.id_ubi,
               code_prod: editedData.code_prod,
@@ -1356,7 +1356,7 @@
       setError(null);
       try {
         const response = await axios.post(
-          "http://localhost:3007/api/Inventario_P/Red_Ubi"
+          "http://192.168.3.154:3007/api/Inventario_P/Red_Ubi"
         ); // Cambia la URL aquí
         if (response.data && !response.data.resultado.error) {
           const nuevosInsumos = response.data.resultado.list.map((insumo) => ({
@@ -1395,7 +1395,7 @@
           const cant_stock = parseInt(form.cant_stock, 10);
 
           const response = await axios.post(
-            "http://localhost:3007/api/inventarios/inventarios/AgregarNuevaUbi",
+            "http://192.168.3.154:3007/api/inventarios/inventarios/AgregarNuevaUbi",
             {
               new_code_prod: form.code_prod,
               new_cant_stock: cant_stock,
@@ -1426,7 +1426,7 @@
 
       try {
         const response = await fetch(
-          "http://localhost:3007/api/inventarios/impares"
+          "http://192.168.3.154:3007/api/inventarios/impares"
         );
         if (!response.ok) throw new Error("Error al obtener datos de impares");
 
@@ -1456,7 +1456,7 @@
 
       try {
         const response = await fetch(
-          "http://localhost:3007/api/inventarios/pares"
+          "http://192.168.3.154:3007/api/inventarios/pares"
         );
         if (!response.ok) throw new Error("Error al obtener datos de pares");
 

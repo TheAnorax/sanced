@@ -62,7 +62,7 @@ function ProyectoQueretaro() {
 
     useEffect(() => {
         if (currentDay && selectedRuta) {
-            axios.get(`http://localhost:3007/api/Queretaro/proyectoqueretaro?dia_visita=${currentDay}&ruta=${selectedRuta}`)
+            axios.get(`http://192.168.3.154:3007/api/Queretaro/proyectoqueretaro?dia_visita=${currentDay}&ruta=${selectedRuta}`)
                 .then((response) => {
                     const ordenados = response.data.sort((a, b) => (a.orden_visita || 9999) - (b.orden_visita || 9999));
                     setData(ordenados);
@@ -135,31 +135,59 @@ function ProyectoQueretaro() {
     const [loadingCompra, setLoadingCompra] = useState(false);
 
 
+    const [segmento, setSegmento] = useState('');
+    const [precios, setPrecios] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    // 🔁 Función para obtener precios por segmento
+    const fetchPrecios = async (segmentoReal) => {
+        setLoading(true);
+        try {
+            const res = await axios.get(`http://192.168.3.154:3007/api/Queretaro/precios_${segmentoReal.toLowerCase()}`);
+            console.log("📦 Datos de precios recibidos:", res.data);
+            setPrecios(res.data);
+        } catch (error) {
+            console.error(`❌ Error al cargar precios (${segmentoReal}):`, error);
+            setPrecios([]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // 🧩 Función principal al abrir modal
     const handleClickOpen = (project) => {
         console.log('Proyecto seleccionado:', project);
         setSelectedProject(project);
         setOpen(true);
-        setLoadingCompra(true); // ⏳ Activa loading
+        setLoadingCompra(true);
 
-        const { giro, portafolio, segmento, exhibidores } = project;
+        // Normalizar campos
+        const giro = project.giro?.trim() || '';
+        const portafolio = project.portafolio?.trim() || '';
+        const segmentoReal = project.segmento?.trim().toLowerCase() || '';
+        const exhibidores = project.exhibidores || [];
 
+        setSegmento(segmentoReal); // 🔄 Para que quede reflejado también en el estado
+        setExhibitors(exhibidores);
+
+        // ⚡ Llamar precios con el segmento real
+        if (segmentoReal) {
+            fetchPrecios(segmentoReal); // ✅ Llama directo desde aquí
+        }
+
+        // Codificar para categoría
         const encodedGiro = encodeURIComponent(giro);
         const encodedPortafolio = encodeURIComponent(portafolio);
-        const encodedSegmento = encodeURIComponent(segmento);
+        const encodedSegmento = encodeURIComponent(segmentoReal);
 
-        setExhibitors(exhibidores || []);
-
-        // Promesa: productos comprados desde API externa
         const promProductosComprados = axios.get('http://66.232.105.79:9100/hdia')
             .then(response => {
                 if (response.data && Array.isArray(response.data.lista)) {
                     const productosCliente = response.data.lista.filter(p =>
                         String(p.cliente).trim() === String(project.Num_Cliente).trim()
                     );
-                    console.log("✅ Productos comprados:", productosCliente);
                     setProductosComprados(productosCliente);
                 } else {
-                    console.warn("⚠️ La API no regresó una lista válida");
                     setProductosComprados([]);
                 }
             })
@@ -168,14 +196,11 @@ function ProyectoQueretaro() {
                 setProductosComprados([]);
             });
 
-        // Promesa: datos por categoría y segmento
-        const promDatosCategoria = axios.get(`http://localhost:3007/api/Queretaro/category/${encodedGiro}/${encodedPortafolio}/${encodedSegmento}`)
+        const promDatosCategoria = axios.get(`http://192.168.3.154:3007/api/Queretaro/category/${encodedGiro}/${encodedPortafolio}/${encodedSegmento}`)
             .then((response) => {
                 if (response.data.data && response.data.data.length > 0) {
-                    console.log('📦 Datos por categoría y segmento:', response.data.data);
                     setTabData(response.data.data);
                 } else {
-                    console.warn("⚠️ No se encontraron datos filtrados");
                     setTabData([]);
                 }
             })
@@ -184,12 +209,13 @@ function ProyectoQueretaro() {
                 setTabData([]);
             });
 
-        // Esperar ambas respuestas antes de continuar
         Promise.all([promProductosComprados, promDatosCategoria])
             .then(() => {
-                setLoadingCompra(false); // ✅ Ya cargó todo
+                setLoadingCompra(false);
             });
     };
+
+
 
 
 
@@ -222,7 +248,7 @@ function ProyectoQueretaro() {
         setSelectedZone(zone);
 
         // Filtrar los proyectos según la zona seleccionada
-        axios.get(`http://localhost:3007/api/Queretaro/proyectoqueretaro?zona=${zone}`)
+        axios.get(`http://192.168.3.154:3007/api/Queretaro/proyectoqueretaro?zona=${zone}`)
             .then((response) => {
                 setFilteredData(response.data);
                 setPage(0); // Reset the page when changing the filter
@@ -282,7 +308,7 @@ function ProyectoQueretaro() {
 
     const enviarOrdenAlServidor = async (nuevoOrdenIds) => {
         try {
-            await axios.post('http://localhost:3007/api/Queretaro/proyectoqueretaro/ordenar', {
+            await axios.post('http://192.168.3.154:3007/api/Queretaro/proyectoqueretaro/ordenar', {
                 orden: nuevoOrdenIds
             });
             alert('Orden guardado correctamente');
@@ -290,6 +316,8 @@ function ProyectoQueretaro() {
             console.error('Error al guardar el orden:', error);
         }
     };
+
+
 
 
     const renderVistaPrincipal = () => (
@@ -657,10 +685,15 @@ function ProyectoQueretaro() {
 
                         {tabIndex === 1 && (
                             <Box sx={{ paddingTop: 2 }}>
-
                                 {tabData.length > 0 ? (
-                                    <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '10px 8px', marginTop: '16px' }}>
-
+                                    <table
+                                        style={{
+                                            width: '100%',
+                                            borderCollapse: 'separate',
+                                            borderSpacing: '10px 8px',
+                                            marginTop: '16px',
+                                        }}
+                                    >
                                         <thead>
                                             <tr style={{ backgroundColor: '#f5f5f5', borderBottom: '2px solid #ddd' }}>
                                                 <th style={{ padding: '8px', textAlign: 'left' }}>Código</th>
@@ -668,44 +701,61 @@ function ProyectoQueretaro() {
                                                 <th style={{ padding: '8px', textAlign: 'left' }}>Precio</th>
                                                 <th style={{ padding: '8px', textAlign: 'left' }}>Inner</th>
                                                 <th style={{ padding: '8px', textAlign: 'left' }}>Master</th>
-                                                <th style={{ padding: '8px', textAlign: 'left' }}>TP</th>
-                                                <th style={{ padding: '8px', textAlign: 'left' }}>Precio TP</th>
+                                                <th>Precio AKSI</th>
+                                                <th>AK vs ST</th>
+                                                <th>Precio TP</th>
+                                                <th>TR vs ST</th>
                                             </tr>
                                         </thead>
 
                                         <tbody>
-
                                             {tabData.map((item, index) => {
-                                                const comprado = fueComprado(item.Codigo); // solo se evalúa una vez
+                                                const comprado = fueComprado(item.Codigo);
+
+                                                // 🔎 Buscar los precios por código
+                                                const precioMatch = precios.find(
+                                                    (p) => Number(p.Codigo) === Number(item.Codigo)
+                                                );
 
                                                 return (
-                                                    <tr key={index} style={{
-                                                        borderBottom: '1px solid #ddd',
-                                                        backgroundColor: comprado ? '#d4edda' : 'transparent'
-                                                    }}>
+                                                    <tr
+                                                        key={index}
+                                                        style={{
+                                                            borderBottom: '1px solid #ddd',
+                                                            backgroundColor: comprado ? '#d4edda' : 'transparent',
+                                                        }}
+                                                    >
                                                         <td style={{ padding: '8px' }}>
-                                                            {item.Codigo} {comprado && <span style={{ color: 'green' }}>✔</span>}
+                                                            {item.Codigo}{' '}
+                                                            {comprado && <span style={{ color: 'green' }}>✔</span>}
                                                         </td>
                                                         <td style={{ padding: '8px' }}>{item.Descripcion}</td>
                                                         <td style={{ padding: '8px' }}>{item.Precio}</td>
                                                         <td style={{ padding: '8px' }}>{item.Inner}</td>
                                                         <td style={{ padding: '8px' }}>{item.Master}</td>
-                                                        <td style={{ padding: '8px' }}>{item.TP}</td>
-                                                        <td style={{ padding: '8px' }}>{item.Precio_T}</td>
+                                                        <td style={{ padding: '8px' }}>
+                                                            {precioMatch ? `$${precioMatch.PrecioAksi}` : ''}
+                                                        </td>
+                                                        <td style={{ padding: '8px' }}>
+                                                            {precioMatch ? precioMatch.AKvsST : ''}
+                                                        </td>
+                                                        <td style={{ padding: '8px' }}>
+                                                            {precioMatch ? `$${precioMatch.PrecioTruper}` : ''}
+                                                        </td>
+                                                        <td style={{ padding: '8px' }}>
+                                                            {precioMatch ? precioMatch.TrvsST : ''}
+                                                        </td>
                                                     </tr>
                                                 );
                                             })}
-
                                         </tbody>
-
                                     </table>
                                 ) : (
                                     <Typography variant="body1">No hay datos disponibles</Typography>
                                 )}
-
-
                             </Box>
                         )}
+
 
                         {tabIndex === 2 && (
                             <Box sx={{ paddingTop: 2 }}>
@@ -1202,7 +1252,7 @@ function ProyectoQueretaro() {
         const diaManana = getTomorrowName();
 
         if (selectedRuta) {
-            axios.get(`http://localhost:3007/api/Queretaro/proyectoqueretaro?dia_visita=${diaManana}&ruta=${selectedRuta}`)
+            axios.get(`http://192.168.3.154:3007/api/Queretaro/proyectoqueretaro?dia_visita=${diaManana}&ruta=${selectedRuta}`)
                 .then((response) => {
                     const ordenados = response.data.sort((a, b) => (a.orden_visita || 9999) - (b.orden_visita || 9999));
                     setOrdenData(ordenados); // <- aquí llenas el ordenData correctamente

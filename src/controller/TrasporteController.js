@@ -473,32 +473,38 @@ const actualizarGuia = async (req, res) => {
   }
 };
 
+
+
 const getPedidosEmbarque = async (req, res) => {
   try {
-    const { codigo_ped } = req.params;
+    const { pedido, tipo } = req.params;
 
-    // Consulta principal en pedido_finalizado
+    if (!pedido || !tipo) {
+      return res.status(400).json({ message: "Faltan parámetros: pedido o tipo" });
+    }
+
     const queryFinalizado = `
       SELECT pe.pedido, pe.codigo_ped, p.des, pe.cantidad, pe.um, pe._pz,  
              pe._inner, pe._master, pe.cantidad, pe.caja, pe.estado, pe.cajas, pe.tipo_caja   
       FROM pedido_finalizado pe
       LEFT JOIN productos p ON pe.codigo_ped = p.codigo_pro
-      WHERE pe.pedido = ? LIMIT 100;
+      WHERE pe.pedido = ? AND pe.tipo = ? 
+      LIMIT 100;
     `;
 
-    let [rows] = await pool.query(queryFinalizado, [codigo_ped]);
+    let [rows] = await pool.query(queryFinalizado, [pedido, tipo]);
 
-    // Si no encontró nada en pedido_finalizado, busca en embarques
     if (rows.length === 0) {
       const queryEmbarque = `
         SELECT em.pedido, em.codigo_ped, p.des, em.cantidad, em.um, em._pz,  
                em._inner, em._master, em.cantidad, em.caja, em.estado, em.cajas, em.tipo_caja   
         FROM pedido_embarque em
         LEFT JOIN productos p ON em.codigo_ped = p.codigo_pro
-        WHERE em.pedido = ? LIMIT 100;
+        WHERE em.pedido = ? AND em.tipo = ? 
+        LIMIT 100;
       `;
 
-      [rows] = await pool.query(queryEmbarque, [codigo_ped]);
+      [rows] = await pool.query(queryEmbarque, [pedido, tipo]);
     }
 
     if (rows.length === 0) {
@@ -511,6 +517,7 @@ const getPedidosEmbarque = async (req, res) => {
     res.status(500).json({ message: "Error al obtener pedidos de embarque" });
   }
 };
+
 
 
 const getTransportistas = async (req, res) => {

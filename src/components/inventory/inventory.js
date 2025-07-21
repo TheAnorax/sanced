@@ -69,11 +69,11 @@ function Inventory() {
           manualRes,
           inventarioRes,
         ] = await Promise.all([
-          axios.get("http://localhost:3007/api/inventory/porcentaje"),
-          axios.get("http://localhost:3007/api/inventory/ubicaciones"),
-          axios.get("http://localhost:3007/api/inventory/persona"),
-          axios.get("http://localhost:3007/api/inventory/Manuealsi"),
-          axios.get("http://localhost:3007/api/inventory/obtenerinventario"),
+          axios.get("http://192.168.3.154:3007/api/inventory/porcentaje"),
+          axios.get("http://192.168.3.154:3007/api/inventory/ubicaciones"),
+          axios.get("http://192.168.3.154:3007/api/inventory/persona"),
+          axios.get("http://192.168.3.154:3007/api/inventory/Manuealsi"),
+          axios.get("http://192.168.3.154:3007/api/inventory/obtenerinventario"),
         ]);
 
         if (isMounted) {
@@ -110,7 +110,7 @@ function Inventory() {
         try {
           setLoading(true);
           const response = await axios.get(
-            "http://localhost:3007/api/inventory/getInventoryDet"
+            "http://192.168.3.154:3007/api/inventory/getInventoryDet"
           );
           setInventoryReport(response.data.data || []);
           setFilteredData(response.data.data || []); // Inicializa los datos filtrados
@@ -140,7 +140,7 @@ function Inventory() {
 
       // Llamada a la API para obtener los datos
       const response = await axios.get(
-        "http://localhost:3007/api/inventory/obtenerDistribucionInventario"
+        "http://192.168.3.154:3007/api/inventory/obtenerDistribucionInventario"
       );
 
       const data = response.data;
@@ -394,13 +394,13 @@ function Inventory() {
       const [pickResponse, almacenajeResponse, consolidatedResponse] =
         await Promise.all([
           axios.get(
-            "http://localhost:3007/api/inventory/reportFinishInventory"
+            "http://192.168.3.154:3007/api/inventory/reportFinishInventory"
           ),
           axios.get(
-            "http://localhost:3007/api/inventory/reportFinishInventoryAlma"
+            "http://192.168.3.154:3007/api/inventory/reportFinishInventoryAlma"
           ),
           axios.get(
-            "http://localhost:3007/api/inventory/reportConsolidatedInventory"
+            "http://192.168.3.154:3007/api/inventory/reportConsolidatedInventory"
           ),
         ]);
 
@@ -493,7 +493,7 @@ function Inventory() {
     try {
       setLoading(true);
       const response = await axios.get(
-        "http://localhost:3007/api/inventory/obtenerinventario"
+        "http://192.168.3.154:3007/api/inventory/obtenerinventario"
       );
       setInventoryData(response.data.data || []);
     } catch (error) {
@@ -520,7 +520,7 @@ function Inventory() {
       console.log("Editando fila con datos:", editValues);
 
       const response = await axios.put(
-        `http://localhost:3007/api/inventory/update/${editRowId}`,
+        `http://192.168.3.154:3007/api/inventory/update/${editRowId}`,
         editValues
       );
 

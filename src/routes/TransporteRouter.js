@@ -26,7 +26,8 @@ router.get("/pedido/detalles/:noOrden", getFechaYCajasPorPedido);
 
 router.put("/paqueteria/actualizar-guia/:id", actualizarGuia);
 
-router.get("/embarque/:codigo_ped", getPedidosEmbarque);
+router.get("/embarque/:pedido/:tipo", getPedidosEmbarque);
+
 
 router.get("/transportistas", getTransportistas);
 
@@ -76,7 +77,7 @@ router.get('/referencias', getReferenciasClientes);
 router.post('/enviar-correo-asignacion', upload.single('pdf'), enviarCorreoAsignacion);
 
 // backend local (Node.js + Express)
-const axios = require("axios"); // Asegúrate de importar axios al inicio si no está
+const axios = require("axios");
 
 router.post("/obtenerPedidos", async (req, res) => {
   try {

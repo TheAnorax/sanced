@@ -15,6 +15,10 @@ import {
   Tab,
   Chip,
   Stack,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import { Visibility as VisibilityIcon } from "@mui/icons-material";
@@ -55,7 +59,7 @@ function Finalizados() {
     const fetchPedidos = async () => {
       try {
         const response = await axios.get(
-          "http://localhost:3007/api/finalizados/pedidos-finalizados"
+          "http://192.168.3.154:3007/api/finalizados/pedidos-finalizados"
         );
         const dataWithFormattedTimes = response.data.map((pedido) => ({
           id: `${pedido.pedido}-${pedido.tipo}`, // Identificador único basado en pedido y tipo
@@ -95,14 +99,13 @@ function Finalizados() {
     fetchPedidos();
     fetchMotivos();
   }, []);
-
   const fetchMotivos = async () => {
     try {
       const desde = rangoInicio.format("YYYY-MM-DD");
       const hasta = rangoFin.format("YYYY-MM-DD");
 
       const res = await axios.get(
-        `http://localhost:3007/api/finalizados/pedidos-finalizados/motivos`,
+        `http://192.168.3.154:3007/api/finalizados/pedidos-finalizados/motivos`,
         {
           params: { desde, hasta },
         }
@@ -121,7 +124,7 @@ function Finalizados() {
     const fetchBahias = async () => {
       try {
         const res = await axios.get(
-          "http://localhost:3007/api/pedidos/bahias"
+          "http://192.168.3.154:3007/api/pedidos/bahias"
         );
         setBahias(res.data);
       } catch (err) {
@@ -167,7 +170,7 @@ function Finalizados() {
     const combined = selectedBahias.map((b) => b.bahia).join(", ");
     try {
       await axios.put(
-        `http://localhost:3007/api/pedidos-surtidos/pedidos-surtido-finalizado/${selectedPedido.pedido}/${selectedPedido.tipo}/bahias`,
+        `http://192.168.3.154:3007/api/pedidos-surtidos/pedidos-surtido-finalizado/${selectedPedido.pedido}/${selectedPedido.tipo}/bahias`,
         { ubi_bahia: combined }
       );
 
@@ -203,9 +206,9 @@ function Finalizados() {
 
   const handleOpenModal = async (pedido) => {
     try {
-      // const response = await axios.get(`http://localhost:3007/api/finalizados/pedido/${pedido.pedido}`);
+      // const response = await axios.get(`http://192.168.3.154:3007/api/finalizados/pedido/${pedido.pedido}`);
       const response = await axios.get(
-        `http://localhost:3007/api/finalizados/pedido/${pedido.pedido}/${pedido.tipo}`
+        `http://192.168.3.154:3007/api/finalizados/pedido/${pedido.pedido}/${pedido.tipo}`
       );
       const detallesOrdenados = response.data
         .sort((a, b) => {
@@ -596,12 +599,19 @@ function Finalizados() {
         <IconButton
           variant="contained"
           style={{ color: "black" }}
-          onClick={() => generatePDF(params.row.pedido)}
+          onClick={() =>
+            generatePDF(
+              String(params.row.pedido),
+              String(params.row.tipo_original).toUpperCase().trim()
+            )
+          }
         >
           <ArticleIcon />
         </IconButton>
+
       ),
     },
+
     {
       field: "acciones",
       headerName: "Acciones",
@@ -684,13 +694,13 @@ function Finalizados() {
     setTabValue(newValue);
   };
 
-  //funciones del pdf
+  //feuncion del pdf
 
   const [referenciasClientes, setReferenciasClientes] = useState([]);
 
   useEffect(() => {
     axios
-      .get("http://localhost:3007/api/Trasporte/referencias")
+      .get("http://192.168.3.154:3007/api/Trasporte/referencias")
       .then((res) => setReferenciasClientes(res.data))
       .catch((err) => console.error("Error cargando referencias", err));
   }, []);
@@ -755,18 +765,19 @@ function Finalizados() {
     return cleanedAddress;
   };
 
-
   const getTipoDominante = (productos) => {
-    const tipos = productos.map(p => (p.tipo_caja || "").toUpperCase());
+    const tipos = productos.map((p) => (p.tipo_caja || "").toUpperCase());
     const cuenta = {};
     for (const tipo of tipos) cuenta[tipo] = (cuenta[tipo] || 0) + 1;
 
-    const tipoMasUsado = Object.entries(cuenta).sort((a, b) => b[1] - a[1])[0]?.[0] || "CAJA";
+    const tipoMasUsado =
+      Object.entries(cuenta).sort((a, b) => b[1] - a[1])[0]?.[0] || "CAJA";
     return tipoMasUsado === "ATA" ? "ATADO" : tipoMasUsado;
   };
 
 
-  const generatePDF = async (pedido) => {
+
+  const generatePDF = async (pedido, tipo_original) => {
     try {
       let numero = "";
       let numeroFactura = "";
@@ -776,10 +787,8 @@ function Finalizados() {
       let rawTotal = 0;
       let tipo_original = "";
 
-
-
       const responseRoutes = await fetch(
-        "http://localhost:3007/api/Trasporte/ruta-unica"
+        "http://192.168.3.154:3007/api/Trasporte/ruta-unica"
       );
       const routesData = await responseRoutes.json();
       const route = routesData.find(
@@ -787,46 +796,64 @@ function Finalizados() {
       );
 
       if (!route) {
-        alert("No se encontró la ruta, debes capturar manualmente los datos.");
-
-        // Pedir al usuario los valores necesarios
-        numero = prompt("Ingrese el número de cliente:");
-        numeroFactura = prompt("Ingrese el número de factura:");
-
-        if (!numero || !numeroFactura) {
-          
-          return alert("Datos obligatorios no proporcionados. Cancelado.");
-        }
-
-        // Si tienes endpoint para buscar info con el número de cliente:
         try {
-          const resCliente = await fetch(`http://localhost:3007/api/finalizados/cliente/${numero}`);
-          const datosCliente = await resCliente.json();
+          const direccionAPI = await axios.post(
+            "http://192.168.3.154:3007/api/Trasporte/obtenerPedidos"
+          );
+          const pedidosExternos = direccionAPI.data;
 
-          if (datosCliente.length > 0) {
-            const cliente = datosCliente[0];
-            nombreCliente = cliente["NOMBRE DEL CLIENTE"] || nombreCliente;
-            direccion = cliente["DIRECCION"] || direccion;
-            telefono = cliente["TELEFONO"] || telefono;
-            rawTotal = cliente["TOTAL"] || 0;
+          const pedidoEncontrado = pedidosExternos.find(
+            (p) => String(p.NoOrden) === String(pedido)
+          );
+
+          if (!pedidoEncontrado) {
+            return alert(
+              "❌ No se encontró información del pedido en la API externa."
+            );
           }
-        } catch (err) {
-          console.warn("Error consultando cliente manual:", err);
-        }
 
+          direccion = cleanAddress(
+            pedidoEncontrado.Direccion || "No disponible"
+          );
+          numeroFactura = pedidoEncontrado.NoFactura || "No disponible";
+          nombreCliente = pedidoEncontrado.NombreCliente || "No disponible";
+          telefono = pedidoEncontrado.Telefono || "No disponible";
+          numero = pedidoEncontrado.NumCliente || "No disponible";
+
+          const totalManual = parseFloat(
+            String(pedidoEncontrado.Total).replace(/[^0-9.-]+/g, "")
+          );
+          rawTotal = !isNaN(totalManual) ? totalManual : 0;
+        } catch (error) {
+          console.error("❌ Error al consultar pedido externo:", error);
+          return alert("Error al obtener datos del pedido desde API externa.");
+        }
       } else {
         tipo_original = route["tipo_original"] || tipo_original;
         nombreCliente = route["NOMBRE DEL CLIENTE"] || nombreCliente;
-        numeroFactura = route["NO_FACTURA"] || numeroFactura;
-        direccion = cleanAddress(route["DIRECCION"]) || direccion;
+
+        // 🔸 Obtener la dirección desde la API externa usando NoOrden
+        const direccionAPI = await axios.post(
+          "http://192.168.3.154:3007/api/Trasporte/obtenerPedidos"
+        );
+        const pedidosExternos = direccionAPI.data;
+
+        const pedidoEncontrado = pedidosExternos.find(
+          (p) => String(p.NoOrden) === String(pedido)
+        );
+        direccion = cleanAddress(
+          pedidoEncontrado?.Direccion || route["DIRECCION"] || "No disponible"
+        );
+        numeroFactura =
+          pedidoEncontrado?.NoFactura || route["NO_FACTURA"] || "No disponible";
+
         numero = route["NUM. CLIENTE"] || numero;
         telefono = route["TELEFONO"] || telefono;
         rawTotal = route["TOTAL"];
       }
 
-
       const responseEmbarque = await fetch(
-        `http://localhost:3007/api/Trasporte/embarque/${pedido}`
+        `http://192.168.3.154:3007/api/Trasporte/embarque/${pedido}/${tipo_original}`
       );
       const data = await responseEmbarque.json();
       if (!data || !Array.isArray(data) || data.length === 0)
@@ -871,8 +898,6 @@ function Finalizados() {
       doc.line(10, currentY, 200, currentY);
       currentY += 4;
 
-
-
       const referenciaCliente = buscarReferenciaCliente(
         numero,
         nombreCliente,
@@ -889,17 +914,24 @@ function Finalizados() {
       doc.setFont("helvetica", "bold");
       doc.setFontSize(9.5);
       doc.setTextColor(0, 0, 0);
+
       doc.text(
         `CLIENTE NO.: ${numero}                      NOMBRE DEL CLIENTE: ${nombreCliente}`,
         marginLeft,
         currentY
       );
       currentY += 4;
-      doc.text(
-        `TELÉFONO: ${telefono}     DIRECCIÓN: ${direccion}`,
-        marginLeft,
-        currentY
-      );
+      doc.text(`TELÉFONO: ${telefono}`, marginLeft, currentY);
+      currentY += 4;
+
+      const direccionFormateada = `DIRECCIÓN: ${direccion}`;
+      doc.text(direccionFormateada, marginLeft, currentY, {
+        maxWidth: 180,
+      });
+
+      const lineCount = Math.ceil(doc.getTextWidth(direccionFormateada) / 180);
+      currentY += 4 * lineCount;
+
       currentY += 4;
       doc.text(`No Orden: ${pedido}-${tipo_original}`, marginLeft, currentY);
       currentY += 4;
@@ -941,8 +973,8 @@ function Finalizados() {
 
         const cajas = String(cajasTexto)
           .split(",")
-          .map(c => c.trim())
-          .filter(c => c !== "")
+          .map((c) => c.trim())
+          .filter((c) => c !== "")
           .sort((a, b) => parseInt(a) - parseInt(b)); // asegura orden
 
         const claveCaja = cajas.join(","); // ejemplo: "2,6"
@@ -952,32 +984,16 @@ function Finalizados() {
         cajasAgrupadasOriginal[clave].push(item);
       }
 
+      const cajasOrdenadas = Object.entries(cajasAgrupadasOriginal).sort(
+        (a, b) => {
+          const getMin = (key) => {
+            const parts = key.split("_")[1]; // "2,6"
+            return Math.min(...parts.split(",").map((p) => parseInt(p.trim())));
+          };
+          return getMin(a[0]) - getMin(b[0]);
+        }
+      );
 
-
-      const cajasOrdenadas = Object.entries(cajasAgrupadasOriginal).sort((a, b) => {
-        const getMin = (key) => {
-          const parts = key.split("_")[1]; // "2,6"
-          return Math.min(...parts.split(",").map(p => parseInt(p.trim())));
-        };
-        return getMin(a[0]) - getMin(b[0]);
-      });
-
-
-
-      // const totalINNER_MASTER = productosSinCaja.reduce(
-      //   (s, i) => s + (i._inner || 0) + (i._master || 0),
-      //   0
-      // );
-      // const totalCajasArmadas = cajasOrdenadas.length;
-      // const totalCajas = totalINNER_MASTER + totalCajasArmadas;
-
-      // const totalTarimas = data.reduce((s, i) => s + (i.tarimas || 0), 0);
-      // const atadosProductos = data.filter(
-      //   (i) => (i.um || "").toUpperCase() === "ATA"
-      // );
-      // const totalAtados = atadosProductos.length;
-
-      // === Contador REAL de cajas por tipo ===
       // === Contador REAL de cajas por tipo ===
       const cajasArmadas = new Set();
       const cajasAtados = new Set();
@@ -985,7 +1001,10 @@ function Finalizados() {
 
       for (const key of Object.keys(cajasAgrupadasOriginal)) {
         const [tipo, cajasStr] = key.split("_");
-        const cajas = cajasStr.split(",").map(c => c.trim()).filter(c => c !== "");
+        const cajas = cajasStr
+          .split(",")
+          .map((c) => c.trim())
+          .filter((c) => c !== "");
 
         for (const caja of cajas) {
           const clave = `${tipo}_${caja}`;
@@ -1004,16 +1023,24 @@ function Finalizados() {
       const totalINNER_MASTER = data.reduce((s, i) => {
         const tipo = (i.tipo_caja || "").toUpperCase();
         if (["INNER", "MASTER"].includes(tipo)) {
+          return (
+            s + (i._pz || 0) + (i._pq || 0) + (i._inner || 0) + (i._master || 0)
+          );
+        }
+
+        // También suma productos sin tipo de caja pero que tienen INNER o MASTER
+        if (!tipo || tipo === "") {
           return s + (i._inner || 0) + (i._master || 0);
         }
+
         return s;
       }, 0);
 
       const totalCajasArmadas = cajasArmadas.size;
       const totalAtados = cajasAtados.size;
       const totalTarimas = cajasTarimas.size;
-      const totalCajas = totalINNER_MASTER + totalCajasArmadas + totalAtados + totalTarimas;
-
+      const totalCajas =
+        totalINNER_MASTER + totalCajasArmadas + totalAtados + totalTarimas;
 
       currentY = verificarEspacio(doc, currentY, 2);
       doc.autoTable({
@@ -1050,9 +1077,6 @@ function Finalizados() {
         const [_, numeroCaja] = key.split("_");
         const tipoVisible = getTipoDominante(productos);
         const titulo = `Productos en  ${tipoVisible} ${numeroCaja}`;
-
-
-
 
         // Título de la tabla
         doc.autoTable({
@@ -1244,210 +1268,6 @@ function Finalizados() {
         currentY = doc.lastAutoTable.finalY + 4;
       }
       // Agrupar los productos sin caja en dos: con algo (INNER, MASTER, TARIMA, ATADOS) y completamente vacíos
-      const productosNoEnviados = productosSinCaja.filter(
-        (item) =>
-          (item._inner || 0) === 0 &&
-          (item._master || 0) === 0 &&
-          (item.tarimas || 0) === 0 &&
-          (item.atados || 0) === 0 &&
-          (item._pz || 0) === 0 &&
-          (item._pq || 0) === 0
-      );
-
-      const productosSinCajaValidos = productosSinCaja.filter(
-        (item) => !productosNoEnviados.includes(item)
-      );
-
-      if (productosNoEnviados.length > 0) {
-        currentY = verificarEspacio(doc, currentY, 2);
-        doc.autoTable({
-          startY: currentY,
-          head: [["Productos no enviados"]],
-          body: [],
-          theme: "grid",
-          styles: { halign: "center", fontSize: 9 },
-          margin: { left: 10 },
-          tableWidth: 190,
-          headStyles: {
-            fillColor: [255, 255, 255],
-            textColor: [0, 0, 0],
-            fontStyle: "bold",
-          },
-        });
-        currentY = doc.lastAutoTable.finalY;
-
-        let yaContinua = false;
-
-        doc.autoTable({
-          startY: currentY,
-          head: [
-            [
-              "SKU",
-              "DESCRIPCIÓN",
-              "CANTIDAD",
-              "UM",
-              "PZ",
-              "INNER",
-              "MASTER",
-              "TARIMAS",
-              "ATADOS",
-              "VALIDAR",
-            ],
-          ],
-          body: productosNoEnviados.map((item) => [
-            item.codigo_ped || "",
-            item.des || "",
-            item.cantidad || "",
-            item.um || "",
-            item._pz || 0,
-            item._inner || 0,
-            item._master || 0,
-            item.tarimas || 0,
-            item.atados || 0,
-            "",
-          ]),
-          theme: "grid",
-          margin: { left: 10 },
-          tableWidth: 190,
-          styles: {
-            fontSize: 5.5,
-            halign: "center",
-            cellPadding: 2,
-            lineColor: [200, 200, 200],
-            lineWidth: 0.1,
-          },
-          columnStyles: {
-            0: { cellWidth: 15 },
-            1: { cellWidth: 80 },
-            2: { cellWidth: 15 },
-            3: { cellWidth: 10 },
-            4: { cellWidth: 10 },
-            5: { cellWidth: 12 },
-            6: { cellWidth: 12 },
-            7: { cellWidth: 12 },
-            8: { cellWidth: 12 },
-            9: { cellWidth: 12 },
-          },
-          headStyles: {
-            fillColor: [20, 20, 20],
-            textColor: [255, 255, 255],
-            fontSize: 5.5,
-          },
-          didDrawCell: function (data) {
-            if (
-              data.row.index === 0 &&
-              data.section === "body" &&
-              data.cursor.y < 30 &&
-              !yaContinua
-            ) {
-              const text = "Continuación de productos no enviados";
-              doc.setFontSize(8);
-              doc.text(text, 105, data.cursor.y - 6, { align: "center" });
-              yaContinua = true;
-            }
-          },
-        });
-
-        currentY = doc.lastAutoTable.finalY + 4;
-      }
-
-
-
-      if (productosSinCaja.length > 0) {
-        // Título principal
-        currentY = verificarEspacio(doc, currentY, 2);
-        doc.autoTable({
-          startY: currentY,
-          head: [["Productos sin caja"]],
-          body: [],
-          theme: "grid",
-          styles: { halign: "center", fontSize: 9 },
-          margin: { left: 10 },
-          tableWidth: 190,
-          headStyles: {
-            fillColor: [255, 255, 255],
-            textColor: [0, 0, 0],
-            fontStyle: "bold",
-          },
-        });
-        currentY = doc.lastAutoTable.finalY;
-
-        let yaContinua = false;
-
-        doc.autoTable({
-          startY: currentY,
-          head: [
-            [
-              "SKU",
-              "DESCRIPCIÓN",
-              "CANTIDAD",
-              "UM",
-              "PZ",
-              "INNER",
-              "MASTER",
-              "TARIMAS",
-              "ATADOS",
-              "VALIDAR",
-            ],
-          ],
-          body: productosSinCaja
-            .filter((item) => (item.um || "").toUpperCase() !== "ATA")
-            .map((item) => [
-              item.codigo_ped || "",
-              item.des || "",
-              item.cantidad || "",
-              item.um || "",
-              item._pz || 0,
-              item._inner || 0,
-              item._master || 0,
-              item.tarimas || 0,
-              item.atados || 0,
-              "",
-            ]),
-          theme: "grid",
-          margin: { left: 10 },
-          tableWidth: 190,
-          styles: {
-            fontSize: 5.5,
-            halign: "center",
-            cellPadding: 2,
-            lineColor: [200, 200, 200],
-            lineWidth: 0.1,
-          },
-          columnStyles: {
-            0: { cellWidth: 15 },
-            1: { cellWidth: 80 },
-            2: { cellWidth: 15 },
-            3: { cellWidth: 10 },
-            4: { cellWidth: 10 },
-            5: { cellWidth: 12 },
-            6: { cellWidth: 12 },
-            7: { cellWidth: 12 },
-            8: { cellWidth: 12 },
-            9: { cellWidth: 12 },
-          },
-          headStyles: {
-            fillColor: [20, 20, 20],
-            textColor: [255, 255, 255],
-            fontSize: 5.5,
-          },
-          didDrawCell: function (data) {
-            if (
-              data.row.index === 0 &&
-              data.section === "body" &&
-              data.cursor.y < 30 &&
-              !yaContinua
-            ) {
-              const text = "Continuación de productos sin caja";
-              doc.setFontSize(8);
-              doc.text(text, 105, data.cursor.y - 6, { align: "center" });
-              yaContinua = true;
-            }
-          },
-        });
-
-        currentY = doc.lastAutoTable.finalY + 4;
-      }
 
       currentY = doc.lastAutoTable.finalY + 5;
       currentY = verificarEspacio(doc, currentY, 1);
@@ -1548,7 +1368,7 @@ function Finalizados() {
       // Coordenadas para colocar el texto vertical (ajusta según altura de tu hoja)
       doc.text(
         "Documento expedido sobre resolución miscelánea vigente",
-        5,          // X inicial al borde izquierdo
+        5, // X inicial al borde izquierdo
         doc.internal.pageSize.getHeight() / 2 + 30, // Y centrado vertical con ajuste
         {
           angle: 270, // Rota el texto vertical
@@ -1557,7 +1377,6 @@ function Finalizados() {
       );
 
       doc.restoreGraphicsState(); // Restaura el estado gráfico original
-
 
       const instrucciones = [
         "•Estimado cliente, nuestro transportista cuenta con ruta asignada por lo que agradeceríamos agilizar el tiempo de recepción de su mercancía, el material viaja consignado por lo que solo podrá entregarse en la dirección estipulada en este documento.",
@@ -1731,18 +1550,60 @@ function Finalizados() {
       currentY = leyendaY + 4; // Si necesitas continuar después
 
       addPageNumber(doc);
-      doc.save(`PackingList_de_${pedido}.pdf`);
-      alert(`PDF generado con éxito para el pedido ${pedido}`);
+      doc.save(`PackingList_de_${pedido}-${tipo_original}.pdf`);
+      alert(`PDF generado con éxito para el pedido ${pedido}-${tipo_original}`);
     } catch (error) {
       console.error("Error al generar el PDF:", error);
       alert("Hubo un error al generar el PDF.");
     }
   };
 
+  const [mes, setMes] = useState("");
+  const [anio, setAnio] = useState(new Date().getFullYear().toString());
 
+  const exportarExcel = async () => {
+    if (!mes) {
+      alert("⚠️ Selecciona un mes válido");
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `http://192.168.3.154:3007/api/finalizados/detalles-mes?mes=${mes}&anio=${anio}`
+      );
+      const data = await response.json();
+
+      if (!data || data.length === 0) {
+        alert("⚠️ No hay pedidos para ese mes.");
+        return;
+      }
+
+      // Crear hoja Excel
+      const worksheet = XLSX.utils.json_to_sheet(data);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(
+        workbook,
+        worksheet,
+        `Finalizados_${mes}_${anio}`
+      );
+
+      // Convertir a blob y descargar
+      const excelBuffer = XLSX.write(workbook, {
+        bookType: "xlsx",
+        type: "array",
+      });
+      const blob = new Blob([excelBuffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+
+      saveAs(blob, `Pedidos_Finalizados_${anio}_${mes}.xlsx`);
+    } catch (error) {
+      console.error("❌ Error exportando:", error);
+      alert("Ocurrió un error al generar el archivo.");
+    }
+  };
 
   return (
-
     <Box p={3}>
       <Typography variant="h4" component="h1" gutterBottom>
         Pedidos Finalizados
@@ -1752,6 +1613,59 @@ function Finalizados() {
         <Tab label="Motivos No Enviados" />
       </Tabs>
 
+      <Box
+        sx={{
+          display: "flex",
+          gap: 2,
+          alignItems: "center",
+          flexWrap: "wrap",
+          my: 2,
+        }}
+      >
+        <Typography variant="h6">
+          Exportar pedidos finalizados por mes
+        </Typography>
+
+        <FormControl size="small" sx={{ minWidth: 120 }}>
+          <InputLabel>Mes</InputLabel>
+          <Select
+            value={mes}
+            onChange={(e) => setMes(e.target.value)}
+            label="Mes"
+          >
+            <MenuItem value="">--</MenuItem>
+            <MenuItem value="01">Enero</MenuItem>
+            <MenuItem value="02">Febrero</MenuItem>
+            <MenuItem value="03">Marzo</MenuItem>
+            <MenuItem value="04">Abril</MenuItem>
+            <MenuItem value="05">Mayo</MenuItem>
+            <MenuItem value="06">Junio</MenuItem>
+            <MenuItem value="07">Julio</MenuItem>
+            <MenuItem value="08">Agosto</MenuItem>
+            <MenuItem value="09">Septiembre</MenuItem>
+            <MenuItem value="10">Octubre</MenuItem>
+            <MenuItem value="11">Noviembre</MenuItem>
+            <MenuItem value="12">Diciembre</MenuItem>
+          </Select>
+        </FormControl>
+
+        <FormControl size="small" sx={{ minWidth: 100 }}>
+          <InputLabel>Año</InputLabel>
+          <Select
+            value={anio}
+            onChange={(e) => setAnio(e.target.value)}
+            label="Año"
+          >
+            <MenuItem value="2023">2023</MenuItem>
+            <MenuItem value="2024">2024</MenuItem>
+            <MenuItem value="2025">2025</MenuItem>
+          </Select>
+        </FormControl>
+
+        <Button variant="contained" onClick={exportarExcel}>
+          Exportar Excel
+        </Button>
+      </Box>
       {tabValue === 0 && (
         <>
           <TextField
@@ -1849,7 +1763,6 @@ function Finalizados() {
           </div>
         </Box>
       )}
-
       <Dialog
         open={openModal}
         onClose={handleCloseModal}
@@ -1960,9 +1873,7 @@ function Finalizados() {
           )}
         </DialogContent>
       </Dialog>
-
     </Box>
-
   );
 }
 

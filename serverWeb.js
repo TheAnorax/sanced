@@ -76,7 +76,6 @@ app.use('/api/Ventas', Tracking)
 app.use('/api/cobertura', COBERTURA)
 app.use('/api/planeacion', planeacion)
 
-
 app.listen(port, () => {
-  console.log(`Server is running on http://localhost:${port}`);
+  console.log(`Server is running on http://192.168.3.154:${port}`);
 });

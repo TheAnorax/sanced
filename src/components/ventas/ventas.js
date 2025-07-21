@@ -219,7 +219,7 @@ function Tracking() {
 
     try {
       const response = await axios.post(
-        `http://localhost:3007/api/Ventas/status`,
+        `http://192.168.3.154:3007/api/Ventas/status`,
         { orderNumbers }
       );
       console.log(`✅ Respuesta recibida para ${tabName}:`, response.data);
@@ -1002,7 +1002,7 @@ function Tracking() {
     mes = "",
   } = {}) => {
     try {
-      let url = `http://localhost:3007/api/Ventas/rutas?expandir=true`;
+      let url = `http://192.168.3.154:3007/api/Ventas/rutas?expandir=true`;
 
       if (filtro) url += `&guia=${filtro}`;
       if (desde && hasta) url += `&desde=${desde}&hasta=${hasta}`;
@@ -1052,7 +1052,7 @@ function Tracking() {
 
   const fetchAdditionalData = async (noOrden) => {
     try {
-      const url = `http://localhost:3007/api/Ventas/pedido/detalles/${noOrden}`; // Usamos el parámetro en la URL
+      const url = `http://192.168.3.154:3007/api/Ventas/pedido/detalles/${noOrden}`; // Usamos el parámetro en la URL
       const response = await fetch(url);
       const data = await response.json();
 
@@ -1084,7 +1084,7 @@ function Tracking() {
 
     try {
       const response = await axios.post(
-        "http://localhost:3007/api/Ventas/clientes/observaciones",
+        "http://192.168.3.154:3007/api/Ventas/clientes/observaciones",
         { clientes: clientesUnicos }
       );
 
@@ -1182,7 +1182,7 @@ function Tracking() {
 
       try {
         const response = await fetch(
-          "http://localhost:3007/api/Ventas/insertarRutas",
+          "http://192.168.3.154:3007/api/Ventas/insertarRutas",
           {
             method: "POST",
             headers: {
@@ -1283,7 +1283,7 @@ function Tracking() {
     }
 
     try {
-      const url = `http://localhost:3007/api/Ventas/paqueteria/actualizar-guia/${selectedNoOrden}`;
+      const url = `http://192.168.3.154:3007/api/Ventas/paqueteria/actualizar-guia/${selectedNoOrden}`;
 
       const response = await fetch(url, {
         method: "PUT",
@@ -1823,7 +1823,7 @@ function Tracking() {
   const generatePDF = async (pedido) => {
     try {
       const responseRoutes = await fetch(
-        "http://localhost:3007/api/Trasporte/ruta-unica"
+        "http://192.168.3.154:3007/api/Trasporte/ruta-unica"
       );
       const routesData = await responseRoutes.json();
       const route = routesData.find(
@@ -1832,7 +1832,7 @@ function Tracking() {
       if (!route) return alert("No se encontró la ruta");
 
       const responseEmbarque = await fetch(
-        `http://localhost:3007/api/Trasporte/embarque/${pedido}`
+        `http://192.168.3.154:3007/api/Trasporte/embarque/${pedido}`
       );
       const data = await responseEmbarque.json();
       if (!data || !Array.isArray(data) || data.length === 0)
@@ -1956,7 +1956,7 @@ function Tracking() {
       doc.autoTable({
         startY: currentY,
         head: [
-          ["INNER/MASTER", "TARIMAS", "ATADOS", "CAJAS ARMADAS", "TOTAL CAJAS"],
+          ["INNER/MASTER", "TARIMAS", "ATADOS", "CAJAS ARMADAS", "TOTAL DE ENTREGA"],
         ],
         body: [
           [
@@ -2468,7 +2468,7 @@ function Tracking() {
   const fetchTransportistas = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:3007/api/Ventas/transportistas"
+        "http://192.168.3.154:3007/api/Ventas/transportistas"
       );
       // console.log("Datos de transportistas:", response.data); // Verifica que contenga datos
       setTransportistaData(response.data);
@@ -2480,7 +2480,7 @@ function Tracking() {
   const fetchEmpresas = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:3007/api/Ventas/transportistas/empresas"
+        "http://192.168.3.154:3007/api/Ventas/transportistas/empresas"
       );
 
       // console.log("Datos de empresa:", response.data); // Verifica que contenga datos
@@ -2577,7 +2577,7 @@ function Tracking() {
 
       // Enviar la solicitud al backend
       const response = await axios.post(
-        "http://localhost:3007/api/Ventas/insertar-visita",
+        "http://192.168.3.154:3007/api/Ventas/insertar-visita",
         dataToSend
       );
 
@@ -2604,7 +2604,7 @@ function Tracking() {
     try {
       setLoading(true); // Muestra el loading
       const response = await axios.delete(
-        `http://localhost:3007/api/Ventas/ruta/eliminar/${noOrden}`
+        `http://192.168.3.154:3007/api/Ventas/ruta/eliminar/${noOrden}`
       );
       alert(response.data.message); // Muestra el mensaje de éxito
       // Aquí puedes también actualizar el estado para eliminar la ruta de la vista sin necesidad de recargar
@@ -2724,7 +2724,7 @@ function Tracking() {
     }
     try {
       const response = await axios.get(
-        "http://localhost:3007/api/Ventas/historico"
+        "http://192.168.3.154:3007/api/Ventas/historico"
       );
       setHistoricoData(response.data);
     } catch (error) {
@@ -2741,7 +2741,7 @@ function Tracking() {
 
     try {
       const response = await axios.get(
-        "http://localhost:3007/api/Ventas/historico",
+        "http://192.168.3.154:3007/api/Ventas/historico",
         {
           params: {
             cliente: selectedCliente || "",
@@ -2761,7 +2761,7 @@ function Tracking() {
   const fetchClientesRegistrados = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:3007/api/Ventas/historico_clientes"
+        "http://192.168.3.154:3007/api/Ventas/historico_clientes"
       );
 
       // Limpiar comillas innecesarias en nombres de clientes
@@ -2787,7 +2787,7 @@ function Tracking() {
   const fetchColumnasDisponibles = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:3007/api/Ventas/historico_columnas"
+        "http://192.168.3.154:3007/api/Ventas/historico_columnas"
       );
       setColumnasDisponibles(response.data);
     } catch (error) {
@@ -3190,7 +3190,7 @@ function Tracking() {
       console.log("Llamando a la API con No Ordenes:", noOrdenes);
       // Construimos la URL, uniendo los pedidos con comas
       const response = await axios.get(
-        `http://localhost:3007/api/Ventas/pedido/ultimas-fechas-embarque?pedidos=${noOrdenes.join(
+        `http://192.168.3.154:3007/api/Ventas/pedido/ultimas-fechas-embarque?pedidos=${noOrdenes.join(
           ","
         )}`
       );
@@ -3253,7 +3253,7 @@ function Tracking() {
 
     try {
       const response = await fetch(
-        "http://localhost:3007/api/Ventas/subir-excel",
+        "http://192.168.3.154:3007/api/Ventas/subir-excel",
         {
           method: "POST",
           body: formData,

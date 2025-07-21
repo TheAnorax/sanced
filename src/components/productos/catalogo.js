@@ -55,7 +55,7 @@ function Catalogo() {
   const [filteredProductos, setFilteredProductos] = useState([]);
   const [editandoImagenes, setEditandoImagenes] = useState(false);
   const [imagenesSeleccionadas, setImagenesSeleccionadas] = useState({});
-  const baseURL = "http://localhost:3011"; // Puedes mover esto a un archivo config.js si gustas
+  const baseURL = "http://192.168.3.154:3011"; // Puedes mover esto a un archivo config.js si gustas
 
   const [detalleOriginal, setDetalleOriginal] = useState(null);
   const isSmallScreen = useMediaQuery("(max-width:600px)");
@@ -69,7 +69,7 @@ function Catalogo() {
 
     try {
       const res = await fetch(
-        `http://localhost:3007/api/productos/catalogo-detall?codigo_pro=${producto.codigo_pro}`
+        `http://192.168.3.154:3007/api/productos/catalogo-detall?codigo_pro=${producto.codigo_pro}`
       );
       const data = await res.json();
       setDetalleProducto(data);
@@ -165,7 +165,7 @@ function Catalogo() {
   const handleGuardarCambios = async () => {
     try {
       const res = await fetch(
-        "http://localhost:3007/api/productos/catalogo-detall-update",
+        "http://192.168.3.154:3007/api/productos/catalogo-detall-update",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -203,7 +203,7 @@ function Catalogo() {
 
     try {
       const res = await fetch(
-        "http://localhost:3007/api/productos/catalogo-detall-img",
+        "http://192.168.3.154:3007/api/productos/catalogo-detall-img",
         {
           method: "POST",
           body: formData, // ❗ NO agregues headers, fetch lo hace automáticamente
@@ -235,7 +235,7 @@ function Catalogo() {
     const obtenerCatalogo = async () => {
       try {
         const response = await fetch(
-          "http://localhost:3007/api/productos/catalogo"
+          "http://192.168.3.154:3007/api/productos/catalogo"
         );
         const data = await response.json();
         const dataConId = data.map((item, index) => ({
@@ -487,7 +487,7 @@ function Catalogo() {
                           ) : (
                             // Puedes mover esto a un archivo config.js si gustas
 <img
-  src={`http://localhost:3011/imagenes/img_${suffix}/${detalleProducto?.codigo_pro}.jpg`}
+  src={`http://192.168.3.154:3011/imagenes/img_${suffix}/${detalleProducto?.codigo_pro}.jpg`}
   alt={`${unidad}`}
   style={{
     width: 120,
@@ -497,12 +497,12 @@ function Catalogo() {
   }}
   onClick={() =>
     setImagenZoom(
-      `http://localhost:3011/imagenes/img_${suffix}/${detalleProducto?.codigo_pro}.jpg`
+      `http://192.168.3.154:3011/imagenes/img_${suffix}/${detalleProducto?.codigo_pro}.jpg`
     )
   }
   onError={(e) => {
     e.target.onerror = null;
-    e.target.src = `http://localhost:3011/imagenes/img_${suffix}/noimage.png`;
+    e.target.src = `http://192.168.3.154:3011/imagenes/img_${suffix}/noimage.png`;
   }}
 />
 

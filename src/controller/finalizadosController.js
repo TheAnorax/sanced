@@ -1,5 +1,7 @@
 const pool = require('../config/database');
 const moment = require('moment');
+
+
 const getFinalizados = async (req, res) => {
   try {
     const [rows] = await pool.query(`
@@ -286,4 +288,87 @@ const getClientePorNumero = async (req, res) => {
   }
 };
 
-module.exports = { getFinalizados, getPedidoDetalles, getMotivos, getClientePorNumero };
+const getFinalizadosPorMes = async (req, res) => {
+  const { mes, anio } = req.query;
+  const anioActual = anio || new Date().getFullYear();
+
+  if (!mes || mes.length !== 2 || isNaN(parseInt(mes))) {
+    return res.status(400).json({ error: "Mes inválido. Debe ser en formato MM, por ejemplo: '07'" });
+  }
+
+  const fechaInicio = `${anioActual}-${mes}-01`;
+  const fechaFin = `${anioActual}-${mes}-31`;
+
+  try {
+    const [rows] = await pool.query(
+      `
+      SELECT 
+        pedido,
+        tipo,
+        origen,
+        ubi_bahia,
+        MIN(registro) AS registro,
+        MIN(registro_surtido) AS registro_surtido,
+        MIN(registro_embarque) AS registro_embarque, 
+        COUNT(codigo_ped) AS partidas
+      FROM (
+        SELECT
+          'pedido_surtido' AS origen,
+          ps.pedido,
+          ps.tipo,
+          ps.ubi_bahia,
+          ps.codigo_ped,
+          ps.registro,
+          ps.registro_surtido,
+          NULL AS registro_embarque
+        FROM pedido_surtido ps
+        WHERE ps.registro BETWEEN ? AND ?
+
+        UNION ALL
+
+        SELECT
+          'pedido_embarque' AS origen,
+          pe.pedido,
+          pe.tipo, 
+          pe.ubi_bahia,
+          pe.codigo_ped,
+          pe.registro,
+          pe.registro_surtido,
+          pe.registro_embarque
+        FROM pedido_embarque pe
+        WHERE pe.registro BETWEEN ? AND ?
+
+        UNION ALL
+
+        SELECT
+          'pedido_fin' AS origen,
+          pf.pedido,
+          pf.tipo,
+          pf.ubi_bahia,
+          pf.codigo_ped,
+          pf.registro,
+          pf.registro_surtido,
+          NULL AS registro_embarque
+        FROM pedido_finalizado pf
+        WHERE pf.registro BETWEEN ? AND ?
+      ) AS pedidos
+
+      GROUP BY pedido, tipo, origen, ubi_bahia
+      ORDER BY pedido DESC;
+      `,
+      [
+        fechaInicio, fechaFin,
+        fechaInicio, fechaFin,
+        fechaInicio, fechaFin
+      ]
+    );
+
+    res.json(rows);
+  } catch (error) {
+    console.error("❌ Error al obtener pedidos por mes:", error);
+    res.status(500).json({ error: "Error al obtener pedidos por mes", detalle: error.message });
+  }
+};
+
+
+module.exports = { getFinalizados, getPedidoDetalles, getMotivos, getClientePorNumero, getFinalizadosPorMes };

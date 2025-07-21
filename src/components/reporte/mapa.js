@@ -25,7 +25,7 @@ export default function MapaMexico() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch("http://localhost:3007/api/kpi/getHstorico2024");
+        const response = await fetch("http://192.168.3.154:3007/api/kpi/getHstorico2024");
         const data = await response.json();
         setDatosEstados(data);
       } catch (error) {
@@ -39,15 +39,15 @@ export default function MapaMexico() {
   useEffect(() => {
     const fetchTop10 = async () => {
       try {
-        const response2024 = await fetch("http://localhost:3007/api/kpi/getTop102024");
+        const response2024 = await fetch("http://192.168.3.154:3007/api/kpi/getTop102024");
         const data2024 = await response2024.json();
         setTop10(data2024);
 
-        const response2025 = await fetch("http://localhost:3007/api/kpi/getTop102025");
+        const response2025 = await fetch("http://192.168.3.154:3007/api/kpi/getTop102025");
         const data2025 = await response2025.json();
         setTop10_2025(data2025);
 
-        const responseEstado = await fetch("http://localhost:3007/api/kpi/getTopProductosPorEstado");
+        const responseEstado = await fetch("http://192.168.3.154:3007/api/kpi/getTopProductosPorEstado");
         const dataEstado = await responseEstado.json();
         setTopProductosPorEstado(dataEstado);
       } catch (error) {

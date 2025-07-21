@@ -34,7 +34,7 @@ function Embarques() {
   useEffect(() => {
     const fetchPedidos = async () => {
       try {
-        const response = await axios.get('http://localhost:3007/api/embarque/embarque');
+        const response = await axios.get('http://192.168.3.154:3007/api/embarque/embarque');
         setPedidos(response.data);
       } catch (error) {
         console.error('Error fetching pedidos:', error);
@@ -43,7 +43,7 @@ function Embarques() {
  
     const fetchUsuarios = async () => {
       try {
-        const response = await axios.get('http://localhost:3007/api/pedidos/usuarios');
+        const response = await axios.get('http://192.168.3.154:3007/api/pedidos/usuarios');
     
         // Filtrar usuarios con validación de que 'role' no sea null o undefined
         const paqueteriaUsuarios = response.data.filter(usuario => 
@@ -73,14 +73,14 @@ function Embarques() {
     if (!confirmacion) return;
   
     try {
-      await axios.put(`http://localhost:3007/api/embarque/reset-usuario/${pedidoLiberarManual}`);
+      await axios.put(`http://192.168.3.154:3007/api/embarque/reset-usuario/${pedidoLiberarManual}`);
       setSnackbarMessage(`Usuario de paquetería liberado para el pedido ${pedidoLiberarManual}`);
       setSnackbarSeverity('success');
       setSnackbarOpen(true);
       setPedidoLiberarManual('');
   
       // Recarga pedidos
-      const response = await axios.get('http://localhost:3007/api/embarque/embarque');
+      const response = await axios.get('http://192.168.3.154:3007/api/embarque/embarque');
       setPedidos(response.data);
     } catch (error) {
       console.error('Error al liberar usuario de paquetería:', error);
@@ -106,7 +106,7 @@ function Embarques() {
   
     try {
       await axios.put(
-        `http://localhost:3007/api/embarque/embarque/${pedidoId}/usuario-embarque`,
+        `http://192.168.3.154:3007/api/embarque/embarque/${pedidoId}/usuario-embarque`,
         {
           id_usuario_paqueteria: value,
           tipo,

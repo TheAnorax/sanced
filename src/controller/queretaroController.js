@@ -200,6 +200,107 @@ const updateOrdenVisita = async (req, res) => {
 };
 
 
+//obtner los datos de los vendedores externos
 
 
-module.exports = { getProyectoQueretaro, getCategoryData, getFilteredProyectoQueretaro, updateOrdenVisita };
+// 🔸 BRONCE
+const getPreciosBronce = async (req, res) => {
+  try {
+    const query = `
+      SELECT Codigo, 
+             Descuento_Bronce, 
+             Precio_Aksi, 
+             AK_vs_ST, 
+             Precio_Truper, 
+             Tr_vs_ST
+      FROM savawms.precios_bronce
+    `;
+
+    const [rows] = await pool.query(query);
+
+    const cleanNumber = (val) => parseFloat((val || "").toString().replace(/[^0-9.-]+/g, "")) || 0;
+
+    const result = rows.map(row => ({
+      Codigo: row.Codigo,
+      DescuentoBronce: cleanNumber(row.Descuento_Bronce).toFixed(2),
+      PrecioAksi: cleanNumber(row.Precio_Aksi).toFixed(2),
+      AKvsST: row.AK_vs_ST || "0%",
+      PrecioTruper: cleanNumber(row.Precio_Truper).toFixed(2),
+      TrvsST: row.Tr_vs_ST || "0%"
+    }));
+
+    res.json(result);
+  } catch (error) {
+    console.error("❌ Error al obtener precios BRONCE:", error.message);
+    res.status(500).json({ message: "Error interno al obtener precios BRONCE" });
+  }
+};
+
+
+// 🔸 PLATA
+const getPreciosPlata = async (req, res) => {
+  try {
+    const query = `
+      SELECT Codigo, 
+             Precio_Aksi, 
+             AK_vs_ST, 
+             Precio_Truper, 
+             Tr_vs_ST
+      FROM savawms.precios_plata
+    `;
+
+    const [rows] = await pool.query(query);
+
+    const cleanNumber = (val) => parseFloat((val || "").toString().replace(/[^0-9.-]+/g, "")) || 0;
+
+    const result = rows.map(row => ({
+      Codigo: row.Codigo,
+      PrecioAksi: cleanNumber(row.Precio_Aksi).toFixed(2),
+      AKvsST: row.AK_vs_ST || "0%",
+      PrecioTruper: cleanNumber(row.Precio_Truper).toFixed(2),
+      TrvsST: row.Tr_vs_ST || "0%"
+    }));
+
+    res.json(result);
+  } catch (error) {
+    console.error("❌ Error al obtener precios PLATA:", error.message);
+    res.status(500).json({ message: "Error interno al obtener precios PLATA" });
+  }
+};
+
+
+// 🔸 ORO
+const getPreciosOro = async (req, res) => {
+  try {
+    const query = `
+      SELECT Codigo, 
+             Precio_Aksi, 
+             AK_vs_ST, 
+             Precio_Truper, 
+             Tr_vs_ST
+      FROM savawms.precios_oro
+    `;
+
+    const [rows] = await pool.query(query);
+
+    const cleanNumber = (val) => parseFloat((val || "").toString().replace(/[^0-9.-]+/g, "")) || 0;
+
+    const result = rows.map(row => ({
+      Codigo: row.Codigo,
+      PrecioAksi: cleanNumber(row.Precio_Aksi).toFixed(2),
+      AKvsST: row.AK_vs_ST || "0%",
+      PrecioTruper: cleanNumber(row.Precio_Truper).toFixed(2),
+      TrvsST: row.Tr_vs_ST || "0%"
+    }));
+
+    res.json(result);
+  } catch (error) {
+    console.error("❌ Error al obtener precios ORO:", error.message);
+    res.status(500).json({ message: "Error interno al obtener precios ORO" });
+  }
+};
+
+
+
+
+module.exports = { getProyectoQueretaro, getCategoryData, getFilteredProyectoQueretaro, updateOrdenVisita, getPreciosBronce, getPreciosPlata, getPreciosOro };

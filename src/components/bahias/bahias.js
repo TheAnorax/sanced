@@ -16,7 +16,7 @@ function Bahias() {
   const [selectedBahia, setSelectedBahia] = useState(null);
 
   const fetchBahias = () => {
-    fetch("http://localhost:3007/api/bahias/bahias")
+    fetch("http://192.168.3.154:3007/api/bahias/bahias")
       .then((response) => {
         if (!response.ok) {
           throw new Error("Network response was not ok");
@@ -71,7 +71,7 @@ function Bahias() {
   };
 
   const handleConfirm = (bahia) => {
-    fetch(`http://localhost:3007/api/bahias/liberar/${bahia.id_bahia}`, {
+    fetch(`http://192.168.3.154:3007/api/bahias/liberar/${bahia.id_bahia}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",

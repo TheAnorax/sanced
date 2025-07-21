@@ -263,7 +263,7 @@ function Transporte() {
 
     try {
       const response = await axios.post(
-        `http://localhost:3007/api/Trasporte/status`,
+        `http://192.168.3.154:3007/api/Trasporte/status`,
         { orderNumbers }
       );
 
@@ -359,7 +359,7 @@ function Transporte() {
 
     try {
       const response = await axios.post(
-        `http://localhost:3007/api/Trasporte/fusion`,
+        `http://192.168.3.154:3007/api/Trasporte/fusion`,
         { orderNumbers }
       );
 
@@ -662,7 +662,7 @@ function Transporte() {
 
   const fetchPedidosDesdeAPI = async () => {
     try {
-      const response = await axios.post("http://localhost:3007/api/Trasporte/obtenerPedidos");
+      const response = await axios.post("http://192.168.3.154:3007/api/Trasporte/obtenerPedidos");
       const datos = response.data;
 
       // 🔸 Crear Set de pedidos ya registrados
@@ -682,7 +682,7 @@ function Transporte() {
 
         while (businessDays.length < numDays) {
           if (current.getDay() !== 0 && current.getDay() !== 6) {
-            businessDays.push(new Date(current)); 
+            businessDays.push(new Date(current));
           }
           current.setDate(current.getDate() - 1);
         }
@@ -700,7 +700,7 @@ function Transporte() {
           const clave = `${orden}_${tipo}`;
           return diasValidos.includes(fechaTexto) && !pedidosRegistrados.has(clave);
         })
-        
+
         .map((row) => ({
           RUTA: "Sin Ruta",
           FECHA: dayjs(row.Fecha).format("DD/MM/YYYY"),
@@ -729,8 +729,6 @@ function Transporte() {
       console.error("Error al obtener los pedidos desde API:", error);
     }
   };
-
-
 
   const mapColumns = (row) => ({
     RUTA: "Sin Ruta",
@@ -1426,7 +1424,7 @@ function Transporte() {
     mes = "",
   } = {}) => {
     try {
-      let url = `http://localhost:3007/api/Trasporte/rutas?expandir=true`;
+      let url = `http://192.168.3.154:3007/api/Trasporte/rutas?expandir=true`;
 
       if (filtro) url += `&guia=${filtro}`;
       if (desde && hasta) url += `&desde=${desde}&hasta=${hasta}`;
@@ -1475,7 +1473,7 @@ function Transporte() {
 
   const fetchAdditionalData = async (noOrden) => {
     try {
-      const url = `http://localhost:3007/api/Trasporte/pedido/detalles/${noOrden}`; // Usamos el parámetro en la URL
+      const url = `http://192.168.3.154:3007/api/Trasporte/pedido/detalles/${noOrden}`; // Usamos el parámetro en la URL
       const response = await fetch(url);
       const data = await response.json();
 
@@ -1507,7 +1505,7 @@ function Transporte() {
 
     try {
       const response = await axios.post(
-        "http://localhost:3007/api/Trasporte/clientes/observaciones",
+        "http://192.168.3.154:3007/api/Trasporte/clientes/observaciones",
         { clientes: clientesUnicos }
       );
 
@@ -1608,7 +1606,7 @@ function Transporte() {
 
       try {
         const response = await fetch(
-          "http://localhost:3007/api/Trasporte/insertarRutas",
+          "http://192.168.3.154:3007/api/Trasporte/insertarRutas",
           {
             method: "POST",
             headers: {
@@ -1713,7 +1711,7 @@ function Transporte() {
     }
 
     try {
-      const url = `http://localhost:3007/api/Trasporte/paqueteria/actualizar-guia/${selectedId}`;
+      const url = `http://192.168.3.154:3007/api/Trasporte/paqueteria/actualizar-guia/${selectedId}`;
 
       const response = await fetch(url, {
         method: "PUT",
@@ -2292,7 +2290,7 @@ function Transporte() {
   const [referenciasClientes, setReferenciasClientes] = useState([]);
 
   useEffect(() => {
-    axios.get("http://localhost:3007/api/Trasporte/referencias")
+    axios.get("http://192.168.3.154:3007/api/Trasporte/referencias")
       .then(res => setReferenciasClientes(res.data))
       .catch(err => console.error("Error cargando referencias", err));
   }, []);
@@ -2352,10 +2350,10 @@ function Transporte() {
 
 
 
-  const generatePDF = async (pedido, modo = "descargar") => {
+  const generatePDF = async (pedido, tipo, modo = "descargar") => {
     try {
       const responseRoutes = await fetch(
-        "http://localhost:3007/api/Trasporte/ruta-unica"
+        "http://192.168.3.154:3007/api/Trasporte/ruta-unica"
       );
       const routesData = await responseRoutes.json();
       const route = routesData.find(
@@ -2364,7 +2362,7 @@ function Transporte() {
       if (!route) return alert("No se encontró la ruta");
 
       const responseEmbarque = await fetch(
-        `http://localhost:3007/api/Trasporte/embarque/${pedido}` //toma la informacion de embarques 
+        `http://192.168.3.154:3007/api/Trasporte/embarque/${pedido}/${tipo}`
       );
       const data = await responseEmbarque.json();
       if (!data || !Array.isArray(data) || data.length === 0)
@@ -2411,8 +2409,27 @@ function Transporte() {
 
       const tipo_original = route["tipo_original"] || "No definido";
       const nombreCliente = route["NOMBRE DEL CLIENTE"] || "No disponible";
-      const numeroFactura = route["NO_FACTURA"] || "No disponible";
-      const direccion = cleanAddress(route["DIRECCION"]) || "No disponible";
+
+
+      // 🔸 Obtener la dirección desde la API externa usando NoOrden
+      const direccionAPI = await axios.post("http://192.168.3.154:3007/api/Trasporte/obtenerPedidos");
+      const pedidosExternos = direccionAPI.data;
+
+      // ✅ Ahora sí puedes buscar con pedido + tipo
+      const pedidoEncontrado = pedidosExternos.find(p =>
+        String(p.NoOrden) === String(pedido) &&
+        String(p.TpoOriginal).toUpperCase() === String(tipo).toUpperCase()
+      );
+
+      if (!pedidoEncontrado) {
+        alert(`No se encontró el pedido ${pedido}-${tipo}`);
+        return null;
+      }
+
+      const numeroFactura = pedidoEncontrado?.NoFactura || route["NO_FACTURA"] || "No disponible";
+      const direccion = cleanAddress(pedidoEncontrado?.Direccion || route["DIRECCION"] || "No disponible");
+
+
       const numero = route["NUM. CLIENTE"] || "No disponible";
       const telefono = route["TELEFONO"] || "Sin número";
       const rawTotal = route["TOTAL"];
@@ -2434,11 +2451,17 @@ function Transporte() {
         currentY
       );
       currentY += 4;
-      doc.text(
-        `TELÉFONO: ${telefono}     DIRECCIÓN: ${direccion}`,
-        marginLeft,
-        currentY
-      );
+      doc.text(`TELÉFONO: ${telefono}`, marginLeft, currentY);
+      currentY += 4;
+
+      const direccionFormateada = `DIRECCIÓN: ${direccion}`;
+      doc.text(direccionFormateada, marginLeft, currentY, {
+        maxWidth: 180, // controla el ancho antes de saltar de línea
+      });
+
+      const lineCount = Math.ceil(doc.getTextWidth(direccionFormateada) / 180);
+      currentY += 4 * lineCount;
+
       currentY += 4;
       doc.text(`No Orden: ${pedido}-${tipo_original}`, marginLeft, currentY);
       currentY += 4;
@@ -2542,7 +2565,7 @@ function Transporte() {
       doc.autoTable({
         startY: currentY,
         head: [
-          ["INNER/MASTER", "TARIMAS", "ATADOS", "CAJAS ARMADAS", "TOTAL CAJAS"],
+          ["INNER/MASTER", "TARIMAS", "ATADOS", "CAJAS ARMADAS", "TOTAL DE ENTREGA"],
         ],
         body: [
           [
@@ -3149,7 +3172,7 @@ function Transporte() {
       addPageNumber(doc);
 
       if (modo === 'descargar') {
-        doc.save(`PackingList_de_${pedido}.pdf`);
+        doc.save(`PackingList_de_${pedido}-${tipo}.pdf`);
       }
 
       return await doc.output('blob');
@@ -3319,7 +3342,7 @@ function Transporte() {
   const fetchTransportistas = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:3007/api/Trasporte/transportistas"
+        "http://192.168.3.154:3007/api/Trasporte/transportistas"
       );
       // console.log("Datos de transportistas:", response.data); // Verifica que contenga datos
       setTransportistaData(response.data);
@@ -3331,7 +3354,7 @@ function Transporte() {
   const fetchEmpresas = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:3007/api/Trasporte/transportistas/empresas"
+        "http://192.168.3.154:3007/api/Trasporte/transportistas/empresas"
       );
 
       // console.log("Datos de empresa:", response.data); // Verifica que contenga datos
@@ -3428,7 +3451,7 @@ function Transporte() {
 
       // Enviar la solicitud al backend
       const response = await axios.post(
-        "http://localhost:3007/api/Trasporte/insertar-visita",
+        "http://192.168.3.154:3007/api/Trasporte/insertar-visita",
         dataToSend
       );
 
@@ -3455,7 +3478,7 @@ function Transporte() {
     try {
       setLoading(true); // Muestra el loading
       const response = await axios.delete(
-        `http://localhost:3007/api/Trasporte/ruta/eliminar/${noOrden}`
+        `http://192.168.3.154:3007/api/Trasporte/ruta/eliminar/${noOrden}`
       );
       alert(response.data.message); // Muestra el mensaje de éxito
       // Aquí puedes también actualizar el estado para eliminar la ruta de la vista sin necesidad de recargar
@@ -3552,7 +3575,7 @@ function Transporte() {
     }
     try {
       const response = await axios.get(
-        "http://localhost:3007/api/Trasporte/historico"
+        "http://192.168.3.154:3007/api/Trasporte/historico"
       );
       setHistoricoData(response.data);
     } catch (error) {
@@ -3569,7 +3592,7 @@ function Transporte() {
 
     try {
       const response = await axios.get(
-        "http://localhost:3007/api/Trasporte/historico",
+        "http://192.168.3.154:3007/api/Trasporte/historico",
         {
           params: {
             cliente: selectedCliente || "",
@@ -3589,7 +3612,7 @@ function Transporte() {
   const fetchClientesRegistrados = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:3007/api/Trasporte/historico_clientes"
+        "http://192.168.3.154:3007/api/Trasporte/historico_clientes"
       );
 
       // Limpiar comillas innecesarias en nombres de clientes
@@ -3615,7 +3638,7 @@ function Transporte() {
   const fetchColumnasDisponibles = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:3007/api/Trasporte/historico_columnas"
+        "http://192.168.3.154:3007/api/Trasporte/historico_columnas"
       );
       setColumnasDisponibles(response.data);
     } catch (error) {
@@ -3752,6 +3775,8 @@ function Transporte() {
 
   const [filtroGeneral, setFiltroGeneral] = useState(""); // para No Orden y Num Cliente
   const [filtroEstado, setFiltroEstado] = useState(""); // separado
+  const [filterFactura, setFilterFactura] = useState("");
+
 
   const toggleMostrarSinGuia = () => {
     setMostrarSinGuia((prev) => !prev);
@@ -3781,12 +3806,20 @@ function Transporte() {
       const coincideGuia =
         !mostrarSinGuia || !routeData.GUIA || routeData.GUIA.trim() === "";
 
+      const coincideFactura =
+        !filterFactura ||
+        routeData["NO_FACTURA"]
+          ?.toString()
+          .toLowerCase()
+          .includes(filterFactura.toLowerCase());
+
       return (
         coincideGeneral &&
         coincideEstado &&
         coincidePaqueteria &&
         coincideEstatus &&
-        coincideGuia
+        coincideGuia &&
+        coincideFactura
       );
     });
   }, [
@@ -3796,7 +3829,9 @@ function Transporte() {
     paqueteriaSeleccionada,
     estatusSeleccionado,
     mostrarSinGuia,
+    filterFactura, // ¡Aquí lo agregas!
   ]);
+
 
   const [facturaSeleccionada, setFacturaSeleccionada] = useState(""); // Filtro por factura
   const [fechaEntregaSeleccionada, setFechaEntregaSeleccionada] = useState(""); // Filtro por fecha
@@ -3845,17 +3880,30 @@ function Transporte() {
         !fechaEntregaSeleccionada ||
         item.FECHA_DE_ENTREGA_CLIENTE === fechaEntregaSeleccionada;
 
+      const cumpleFactura =
+        !filterFactura ||
+        item["NO_FACTURA"]
+          ?.toString()
+          .toLowerCase()
+          .includes(filterFactura.toLowerCase());
+
       return (
-        cumpleGeneral && cumpleEstado && cumpleEstatus && cumpleFechaEntrega
+        cumpleGeneral &&
+        cumpleEstado &&
+        cumpleEstatus &&
+        cumpleFechaEntrega &&
+        cumpleFactura
       );
     });
   }, [
+    directaData,
     filtroGeneral,
     filtroEstado,
-    directaData,
     estatusSeleccionado,
     fechaEntregaSeleccionada,
+    filterFactura, // ✅ No olvides agregarlo aquí
   ]);
+
 
   const ventaEmpleadoFiltrada = useMemo(() => {
     return ventaEmpleadoData.filter((item) => {
@@ -3981,7 +4029,7 @@ function Transporte() {
       console.log("Llamando a la API con No Ordenes:", noOrdenes);
       // Construimos la URL, uniendo los pedidos con comas
       const response = await axios.get(
-        `http://localhost:3007/api/Trasporte/pedido/ultimas-fechas-embarque?pedidos=${noOrdenes.join(
+        `http://192.168.3.154:3007/api/Trasporte/pedido/ultimas-fechas-embarque?pedidos=${noOrdenes.join(
           ","
         )}`
       );
@@ -4044,7 +4092,7 @@ function Transporte() {
 
     try {
       const response = await fetch(
-        "http://localhost:3007/api/Trasporte/subir-excel",
+        "http://192.168.3.154:3007/api/Trasporte/subir-excel",
         {
           method: "POST",
           body: formData,
@@ -4100,7 +4148,7 @@ function Transporte() {
         queryParams.append("numeroFacturaLT", facturaNormalizada);
 
       const response = await fetch(
-        `http://localhost:3007/api/Trasporte/rutas?${queryParams.toString()}`
+        `http://192.168.3.154:3007/api/Trasporte/rutas?${queryParams.toString()}`
       );
       const data = await response.json();
 
@@ -4244,7 +4292,7 @@ function Transporte() {
 
     try {
       const response = await fetch(
-        `http://localhost:3007/api/Trasporte/actualizar-por-guia/${guia}`,
+        `http://192.168.3.154:3007/api/Trasporte/actualizar-por-guia/${guia}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -4309,7 +4357,7 @@ function Transporte() {
       for (const route of rutasArray) {
         try {
           const response = await axios.post(
-            "http://localhost:3007/api/Trasporte/rutas",
+            "http://192.168.3.154:3007/api/Trasporte/rutas",
             {
               nombre: route,
             }
@@ -4354,7 +4402,7 @@ function Transporte() {
 
           try {
             const response = await axios.post(
-              "http://localhost:3007/api/Trasporte/rutas/pedidos",
+              "http://192.168.3.154:3007/api/Trasporte/rutas/pedidos",
               mappedPedido
             );
             console.log("✅ Pedido sincronizado:", response.data);
@@ -4408,7 +4456,7 @@ function Transporte() {
   const fetchRutasConPedidos = async () => {
     try {
       const response = await axios.get(
-        "http://localhost:3007/api/Trasporte/Rutasconpedido"
+        "http://192.168.3.154:3007/api/Trasporte/Rutasconpedido"
       );
       console.log("✅ Rutas obtenidas:", response.data);
       setRutasConPedidos(response.data);
@@ -4429,7 +4477,7 @@ function Transporte() {
 
     try {
       const response = await axios.post(
-        `http://localhost:3007/api/Trasporte/status`,
+        `http://192.168.3.154:3007/api/Trasporte/status`,
         { orderNumbers: ordenes }
       );
 
@@ -4516,7 +4564,7 @@ function Transporte() {
     const fetchResumenDelDia = async () => {
       try {
         const response = await axios.get(
-          "http://localhost:3007/api/Trasporte/resumen-dia"
+          "http://192.168.3.154:3007/api/Trasporte/resumen-dia"
         );
         setResumen(response.data);
       } catch (error) {
@@ -4660,7 +4708,7 @@ function Transporte() {
     for (const orden of ordenes) {
       try {
         const response = await fetch(
-          `http://localhost:3007/api/Trasporte/actualizar-guia-completa/${orden}`, // 🔥 nueva ruta aquí
+          `http://192.168.3.154:3007/api/Trasporte/actualizar-guia-completa/${orden}`, // 🔥 nueva ruta aquí
           {
             method: "PUT",
             headers: {
@@ -4755,7 +4803,7 @@ function Transporte() {
 
       // 4. Envía al backend
       const response = await axios.post(
-        "http://localhost:3007/api/Trasporte/enviar-correo-asignacion",
+        "http://192.168.3.154:3007/api/Trasporte/enviar-correo-asignacion",
         formData,
       );
 
@@ -5036,7 +5084,7 @@ function Transporte() {
 
     try {
       const response = await axios.post(
-        "http://localhost:3007/api/Trasporte/actualizar-tipo-original",
+        "http://192.168.3.154:3007/api/Trasporte/actualizar-tipo-original",
         formData
       );
 
@@ -5047,6 +5095,9 @@ function Transporte() {
       alert("Error al subir el archivo.");
     }
   };
+
+
+
 
   return (
     <Paper elevation={3} style={{ padding: "20px" }}>
@@ -6679,8 +6730,8 @@ function Transporte() {
             <option value="4">Abril</option>
             <option value="5">Mayo</option>
             <option value="6">Junio</option>
-            {/*  <option value="7">Julio</option>
-                <option value="8">Agosto</option>
+            <option value="7">Julio</option>
+            {/*    <option value="8">Agosto</option>
                 <option value="9">Septiembre</option>
                 <option value="10">Octubre</option>
                 <option value="11">Noviembre</option>
@@ -6989,6 +7040,16 @@ function Transporte() {
                 variant="outlined"
                 size="small"
               />
+
+              <TextField
+                label="Buscar por Factura"
+                variant="outlined"
+                size="small"
+                value={filterFactura}
+                onChange={(e) => setFilterFactura(e.target.value)}
+                style={{ marginRight: 16 }}
+              />
+
 
               <FormControl
                 variant="outlined"
@@ -7361,19 +7422,14 @@ function Transporte() {
                 size="small"
               />
 
-              <FormControl
+              <TextField
+                label="Buscar por Factura"
                 variant="outlined"
-                style={{ minWidth: 200, marginRight: 10 }}
-              >
-                <InputLabel>Filtrar por Factura</InputLabel>
-                <TextField
-                  label="Filtrar por Factura"
-                  variant="outlined"
-                  value={facturaSeleccionada}
-                  onChange={(e) => setFacturaSeleccionada(e.target.value)}
-                  style={{ minWidth: 200, marginRight: 10 }}
-                />
-              </FormControl>
+                size="small"
+                value={filterFactura}
+                onChange={(e) => setFilterFactura(e.target.value)}
+                style={{ marginRight: 16 }}
+              />
 
               <br />
 
@@ -7644,7 +7700,10 @@ function Transporte() {
                                     variant="contained"
                                     style={{ color: "black" }} // Negro con texto blanco
                                     onClick={() =>
-                                      generatePDF(routeData["NO ORDEN"])
+                                      generatePDF(
+                                        String(routeData["NO ORDEN"]),
+                                        String(routeData["tipo_original"]).toUpperCase().trim()
+                                      )
                                     }
                                   >
                                     <ArticleIcon />

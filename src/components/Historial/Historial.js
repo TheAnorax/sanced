@@ -33,7 +33,7 @@ function Historial() {
     // Obtener movimientos
     const fetchMovimientos = async () => {
       try {
-        const response = await axios.get('http://localhost:3007/api/historial/histo');
+        const response = await axios.get('http://192.168.3.154:3007/api/historial/histo');
         const modifiedData = response.data.map(movimiento => ({
           ...movimiento,
           ubi_origen: (movimiento.ubi_origen === 9999) ? 'recibido' : movimiento.ubi_origen
@@ -50,7 +50,7 @@ function Historial() {
     // Obtener datos KPI
     const fetchKpiData = async () => {
       try {
-        const response = await axios.get('http://localhost:3007/api/historial/kpi');
+        const response = await axios.get('http://192.168.3.154:3007/api/historial/kpi');
         setKpiData(response.data);
         setLoadingKPI(false);
       } catch (error) {

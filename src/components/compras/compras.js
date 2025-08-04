@@ -1599,7 +1599,7 @@ function Compras() {
               {detalleData?.pdf_1 ? (
                 <div>
                   <Button
-                    href={`http://66.232.105.87:3011/docs/${detalleData.pdf_1}`}
+                    href={`https://sanced.santulconnect.com:3011/docs/${detalleData.pdf_1}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     variant="contained"
@@ -1666,7 +1666,7 @@ function Compras() {
                   {detalleData.pdf_2.split(",").map((pdfName, index) => (
                     <Button
                       key={index}
-                      href={`http://66.232.105.87:3011/docs/${pdfName.trim()}`}
+                      href={`https://sanced.santulconnect.com:3011/docs/${pdfName.trim()}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       variant="contained"
@@ -1741,7 +1741,7 @@ function Compras() {
               {detalleData?.pdf_3 ? (
                 <div>
                   <Button
-                    href={`http://66.232.105.87:3011/docs/${detalleData.pdf_3}`}
+                    href={`https://sanced.santulconnect.com:3011/docs/${detalleData.pdf_3}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     variant="contained"
@@ -1808,7 +1808,7 @@ function Compras() {
                   {detalleData.pdf_4.split(",").map((pdfName, index) => (
                     <Button
                       key={index}
-                      href={`http://66.232.105.87:3011/docs/${pdfName.trim()}`}
+                      href={`https://sanced.santulconnect.com:3011/docs/${pdfName.trim()}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       variant="contained"
@@ -1882,7 +1882,7 @@ function Compras() {
               {detalleData?.pdf_5 ? (
                 <div>
                   <Button
-                    href={`http://66.232.105.87:3011/docs/${detalleData.pdf_5}`}
+                    href={`https://sanced.santulconnect.com:3011/docs/${detalleData.pdf_5}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     variant="contained"

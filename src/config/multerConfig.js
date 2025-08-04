@@ -1,49 +1,40 @@
-const multer = require('multer');
 const express = require('express');
+const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
+const https = require('https');
+
 const app = express();
 
-
-// server.js
-
-const cors = require("cors");
-
-require("dotenv").config();
-const fs = require("fs");
-const https = require("https");
-const fetch = require("./fetch"); // ✅ SOLUCIÓN FINAL
-
-
-// ───── Servidor HTTPS separado solo para imagenes ─────
-const imageApp = express();
-
-imageApp.get("/imagenes/img_pz/:img", async (req, res) => {
-  const { img } = req.params;
-  const remoteUrl = `http://66.232.105.87:3011/imagenes/img_pz/${img}`;
-
-  try {
-    const response = await fetch(remoteUrl);
-    if (!response.ok) {
-      return res.status(404).send("Imagen no encontrada");
-    }
-
-    res.set("Content-Type", response.headers.get("content-type"));
-    response.body.pipe(res);
-  } catch (err) {
-    console.error("❌ Error al obtener la imagen:", err.message);
-    res.status(500).send("Error al conectar con imagen remota");
-  }
-});
-
-// Certificados autofirmados o reales
+// === Configuración de certificados ===
 const sslOptions = {
-  key: fs.readFileSync(path.join(__dirname, "ssl", "key.pem")),
-  cert: fs.readFileSync(path.join(__dirname, "ssl", "cert.pem")),
-};
+  key: fs.readFileSync('C:/certificados/sanced/sanced.santulconnect.com-key.pem'),
+  cert: fs.readFileSync('C:/certificados/sanced/sanced.santulconnect.com-crt.pem'),  
+}; 
 
-const httpsPort = 3011;
-https.createServer(sslOptions, imageApp).listen(httpsPort, () => {
-  console.log(
-    `🔐 Servidor HTTPS (imagenes) en https://localhost:${httpsPort}/imagenes/...`
-  );
+// === Configuración de Multer ===
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => { 
+    cb(null, path.join(__dirname, 'C:/Users/rodrigo/Desktop/react/docs'));
+  },
+  filename: (req, file, cb) => {
+  const currentDate = new Date().toISOString().slice(0, 10);
+  cb(null, `${currentDate}-${file.originalname}`);
+}
+
 });
+
+const upload = multer({ storage: storage, limits: { files: 5 } });
+
+// === Rutas estáticas ===
+app.use('/docs', express.static('C:/Users/rodrigo/Desktop/react/docs'));
+app.use('/docsOC', express.static('C:/Users/rodrigo/Desktop/react/docsOC'));
+app.use('/imagenes', express.static('C:/Users/rodrigo/Desktop/react/imagenes'));
+
+// === Levantar el servidor HTTPS ===
+https.createServer(sslOptions, app).listen(3011, () => {
+  console.log('🔐 Servidor HTTPS corriendo en el puerto 3011');
+});
+
+
+module.exports = upload;

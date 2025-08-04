@@ -167,61 +167,7 @@ const getSaleArrive = async (req, res) => {
   }
 };
 
-  // consulta con el pedido
-// const getSalesByStatus = async (req, res) => {
-//   try {
-//     const { fecha_inicio, NoCorto } = req.query;
-//     const fechaDesde = fecha_inicio || '2025-06-01';
-
-//     let codigoPedFilter = '';
-//     const params = [fechaDesde];
-
-//     if (NoCorto) {
-//       const codigoPed = parseInt(NoCorto, 10);
-//       if (!isNaN(codigoPed)) {
-//         codigoPedFilter = 'AND pe.codigo_ped = ?';
-//         params.push(codigoPed);
-//       }
-//     }
-
-//     const query = `
-//       SELECT 
-//         LPAD(pe.codigo_ped, 4, '0') AS NoCorto,
-//         pe.pedido,
-//         pe.cant_surti AS total_vendido,
-//         DATE_FORMAT(pe.inicio_surtido, '%M') AS mes,
-//         p.ESTADO AS estado
-//       FROM (
-//         SELECT pedido, codigo_ped, cant_surti, inicio_surtido FROM pedido_embarque
-//         UNION ALL
-//         SELECT pedido, codigo_ped, cant_surti, inicio_surtido FROM pedido_finalizado
-//       ) pe
-//       LEFT JOIN paqueteria p ON pe.pedido = p.no_orden_int
-//       WHERE pe.inicio_surtido >= ?
-//       ${codigoPedFilter}
-//       ORDER BY pe.codigo_ped
-//     `;
-
-//     const [rows] = await pool.query(query, params);
-
-//     return res.status(200).json({
-//       success: true,
-//       fecha_inicio: fechaDesde,
-//       filtro_NoCorto: NoCorto || "NO APLICADO",
-//       total_resultados: rows.length,
-//       datos: rows,
-//     });
-//   } catch (error) {
-//     console.error("❌ Error en getSalesByStatus:", error);
-//     return res.status(500).json({
-//       success: false,
-//       message: "Error interno al obtener las ventas por estado.",
-//       error: error.message,
-//     });
-//   }
-// };
-
-
+ 
 const getSalesByStatus = async (req, res) => {
   try {
     const { fecha_inicio, NoCorto } = req.query;
@@ -297,7 +243,172 @@ const getSalesByStatus = async (req, res) => {
   }
 };
 
-module.exports = { getSalesByStatus };
+
+const getFactura = async (req, res) => {
+  try {
+    const { no_factura } = req.body;
+
+    if (!no_factura || isNaN(no_factura)) {
+      return res.status(400).json({
+        success: false,
+        message: "El parámetro 'no_factura' es requerido y debe ser un número.",
+      });
+    }
+
+    const query = `
+      SELECT
+        \`NUM. CLIENTE\` AS clave_dir,
+        \`NOMBRE DEL CLIENTE\` AS nombre,
+        \`FECHA_DE_ENTREGA_CLIENTE\` AS fecha_entrega,
+        \`DIRECCION\` AS direccion,
+        \`NO_FACTURA\` AS numero_factura
+      FROM paqueteria
+      WHERE \`NO_FACTURA\` = ?
+    `;
+
+    const [rows] = await pool.query(query, [no_factura]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Factura no encontrada.",
+        datos: [],
+      });
+    }
+
+    // ✅ Función para formatear fecha como dd-mm-yyyy
+    const formatearFecha = (fecha) => {
+      const date = new Date(fecha);
+      const dia = String(date.getDate()).padStart(2, '0');
+      const mes = String(date.getMonth() + 1).padStart(2, '0');
+      const anio = date.getFullYear();
+      return `${dia}-${mes}-${anio}`;
+    };
+
+    // ✅ Limpiar dirección y formatear fecha
+    const datos = rows.map(row => ({
+      clave_dir: row.clave_dir,
+      nombre: row.nombre,
+      direccion: row.direccion
+        ? row.direccion.replace(/\s+/g, ' ').trim()
+        : null,
+      fecha_entrega: row.fecha_entrega
+        ? formatearFecha(row.fecha_entrega)
+        : null,
+      numero_factura: row.numero_factura
+    }));
+
+    return res.status(200).json({
+      success: true,
+      total_resultados: datos.length,
+      datos: datos,
+    });
+  } catch (error) {
+    console.error("❌ Error en getFactura:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error interno al obtener la factura.",
+      error: error.message,
+    });
+  }
+};
+
+const getArriveOC = async (req, res) => {
+  try {
+    const query = `
+      SELECT 
+        c.oc,
+        c.codigo,
+        prod.des,
+        c.cant_recibir,
+        DATE_FORMAT(c.arribo, '%d-%m-%y') AS arribo, 
+        prod.clave,
+        c.contenedor,
+        c.referencia
+      FROM recibo_compras c 
+      LEFT JOIN productos prod ON c.codigo = prod.codigo_pro
+      WHERE c.arribo >= CURDATE() AND c.estado IN ("C", "F");
+    `;
+
+    const [rows] = await pool.query(query);
+
+    if (rows.length === 0) {
+      const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+      return res.status(200).json({
+        success: false,
+        message: "No hay arribos a partir de hoy.",
+        fecha_actual: today,
+        datos: [],
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      total_resultados: rows.length,
+      datos: rows,
+    });
+  } catch (error) {
+    console.error("❌ Error en getArriveOC:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error interno al obtener los datos de llegada.",
+      error: error.message,
+    });
+  }
+};
+
+
+const postQueretaro = async (req, res) => {
+  try {
+    const query = `
+      SELECT 
+        nombre,
+        Num_cliente,
+        nombre_encargado,
+        num_telf,
+        correro,
+        lat,
+        \`long\`,
+        foto,
+        zona,
+        giro,
+        portafolio,
+        segmento,
+        ruta,
+        dia_visita,
+        dia_reparto,
+        exibido,
+        STATUS
+      FROM proyectoqueretaro;
+    `;
+
+    const [rows] = await pool.query(query);
+
+    if (rows.length === 0) {
+      return res.status(200).json({
+        success: false,
+        message: "No hay registros en la tabla proyectoqueretaro.",
+        datos: [],
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      total_resultados: rows.length,
+      datos: rows,
+    });
+  } catch (error) {
+    console.error("❌ Error en postQueretaro:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error interno al obtener los datos de Queretaro.",
+      error: error.message,
+    });
+  }
+};
+
+
+
 
 
 
@@ -308,4 +419,4 @@ module.exports = { getSalesByStatus };
   
 
 
-module.exports = { getSales, getSaleArrive, getSalesByStatus, getPlacedOrders };
+module.exports = { getSales, getSaleArrive, getSalesByStatus, getPlacedOrders, getFactura, getArriveOC,postQueretaro };

@@ -617,6 +617,7 @@ const handleCreateUbicacionDepartamental = async () => {
         lote: updateData.lote || null,
         almacen: updateData.almacen || null,
         estado: updateData.estado || null,
+        caducidad: updateData.caducidad || null, 
         user_id: user.id_usu,
       };
 
@@ -1181,6 +1182,22 @@ const sinUbiColumns = [
 
   
   const columns = [
+    {
+    field: "imagen",
+    headerName: "Imagen",
+    width: 100,
+    renderCell: (params) => (
+      <img
+        src={`../assets/image/img_pz/${params.row.code_prod}.jpg`}
+        alt="Producto"
+        style={{ width: 50, height: 50, objectFit: "cover" }}
+        onError={(e) => {
+          e.target.onerror = null;
+          e.target.src = "../assets/image/img_pz/noimage.png"; // Imagen por defecto si no se encuentra
+        }}
+      />
+    ),
+  },
     { field: "des", headerName: "Descripción", width: 300 },
     { field: "ubi", headerName: "Ubicación", width: 200 },
     {
@@ -1199,9 +1216,17 @@ const sinUbiColumns = [
         return params.value === 0 ? "" : params.value;
       },
     },
-
-    { field: "nivel", headerName: "Nivel", width: 160 },
     { field: "ingreso", headerName: "Ingreso", width: 160 },
+    {
+        field: "caducidad",
+        headerName: "Caducidad",
+        width: 100,
+        renderCell: (params) =>
+          params.value
+            ? new Date(params.value).toLocaleDateString("es-ES")
+            : "Sin fecha",
+      },
+
     {
       field: "movimiento",
       headerName: "Movimiento",
@@ -1676,6 +1701,21 @@ const sinUbiColumns = [
               fullWidth
               margin="normal"
             />
+           <TextField
+  label="Caducidad"
+  type="date"
+  value={updateData.caducidad || ""}
+  onChange={(e) =>
+    setUpdateData({ ...updateData, caducidad: e.target.value })
+  }
+  fullWidth
+  margin="normal"
+  InputLabelProps={{
+    shrink: true, // Mantiene el label siempre arriba
+  }}
+/>
+
+ 
 
             {/* RadioGroup para seleccionar el Estado */}
 

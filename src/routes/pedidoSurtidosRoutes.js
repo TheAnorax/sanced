@@ -12,7 +12,7 @@ const { getSurtidos, updatePedido, updateBahias, authorizePedido, cancelPedido, 
 
 router.get('/pedidos-surtido', getSurtidos);
 router.get('/pedidos-dia', getPedidosDelDia);
-router.put('/pedidos-surtido/:pedidoId', updatePedido);
+
 router.put('/pedidos-surtido/:pedidoId/bahias', updateBahias); 
 
 router.get('/pedidos-surtido', getSurtidos);
@@ -24,4 +24,4 @@ router.put('/pedidos-surtido-finalizado/:pedidoId/:tipo/bahias', updateBahiasfin
 router.put('/pedidos-surtido/:pedidoId/cancel', cancelPedido); 
 
 module.exports = router; 
-
+ 

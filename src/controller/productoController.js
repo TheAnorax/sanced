@@ -62,14 +62,18 @@ const getAllProducts = async (req, res) => {
   p.peso_master,
   p.img_pz,
 
-  -- Sumar correctamente el stock en almacenamiento
+  -- Concatenar ubicaciones de picking
+  COALESCE(u.ubi, 'SIN UBICACIÓN') AS ubicaciones,
+
+  -- Stock en almacenamiento
   COALESCE(ua.cant_stock, 0) AS stock_almacen,
 
-  -- Sumar correctamente el stock en picking
-  COALESCE(u.cant_stock_real, 0) AS stock_picking,
+  -- Stock en picking
+  COALESCE(up.cant_stock_real, 0) AS stock_picking,
 
-  -- Calcular el total como la suma de ambos
-  COALESCE(ua.cant_stock, 0) + COALESCE(u.cant_stock_real, 0) AS stock_total
+  -- Stock total
+  COALESCE(ua.cant_stock, 0) + COALESCE(up.cant_stock_real, 0) AS stock_total
+
 FROM productos p
 
 -- Unión con almacenamiento
@@ -81,43 +85,28 @@ LEFT JOIN (
   GROUP BY code_prod
 ) ua ON p.codigo_pro = ua.code_prod
 
--- Unión con picking
+-- Unión con picking (stock)
 LEFT JOIN (
   SELECT 
     code_prod, 
     SUM(cant_stock_real) AS cant_stock_real
   FROM ubicaciones
   GROUP BY code_prod
+) up ON p.codigo_pro = up.code_prod
+
+-- Unión para obtener las ubicaciones (concatenadas)
+LEFT JOIN (
+  SELECT 
+    code_prod, 
+    GROUP_CONCAT(ubi SEPARATOR ', ') AS ubi
+  FROM ubicaciones
+  GROUP BY code_prod
 ) u ON p.codigo_pro = u.code_prod
 
 -- Agrupar por producto
 GROUP BY 
-  p.id_prod,              
-  p.codigo_pro,                 
-  p.des,                      
-  p.code_pz,               
-  p.code_pq,               
-  p.code_master,           
-  p.code_inner,            
-  p.code_palet,            
-  p._pz,                     
-  p._pq,                     
-  p._inner,                  
-  p._master,                 
-  p._palet,                  
-  p.um,                       
-  p.largo_pz,              
-  p.largo_inner,           
-  p.largo_master,          
-  p.ancho_pz,              
-  p.ancho_inner,           
-  p.ancho_master,          
-  p.alto_pz,               
-  p.alto_inner,            
-  p.alto_master,           
-  p.peso_pz,               
-  p.peso_inner,            
-  p.peso_master;
+  p.id_prod, p.codigo_pro;
+
 `);
     res.json(rows);
   } catch (error) {

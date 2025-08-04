@@ -1349,6 +1349,8 @@ function Tracking() {
           "Rep",
           "Vent",
           "VENT",
+          "VENT3",
+          "VENT3",
           "Tran",
           "Audi",
           "Rep",
@@ -1368,6 +1370,7 @@ function Tracking() {
           "Rep",
           "Vent",
           "VENT",
+          "VENT3",
           "Tran",
           "Audi",
           "Rep",
@@ -1386,6 +1389,7 @@ function Tracking() {
           "Rep",
           "Vent",
           "VENT",
+          "VENT3",
           "Tran",
           "Audi",
           "Rep",
@@ -1404,6 +1408,7 @@ function Tracking() {
           "Rep",
           "Vent",
           "VENT",
+          "VENT3",
           "Tran",
           "Audi",
           "Rep",
@@ -1423,6 +1428,7 @@ function Tracking() {
           "Rep",
           "Vent",
           "VENT",
+          "VENT3",
           "Tran",
           "Audi",
           "Rep",
@@ -1454,6 +1460,7 @@ function Tracking() {
           "Rep",
           "Vent",
           "VENT",
+          "VENT3",
           "Tran",
           "Audi",
           "Rep",
@@ -1473,6 +1480,7 @@ function Tracking() {
           "PQ1",
           "Vent",
           "VENT",
+          "VENT3",
           "Tran",
           "Audi",
           "Rep",
@@ -1498,6 +1506,7 @@ function Tracking() {
           "Control",
           "Vent",
           "VENT",
+          "VENT3",
           "Tran",
           "Audi",
           "Rep",
@@ -1513,6 +1522,7 @@ function Tracking() {
           "Control",
           "Vent",
           "VENT",
+          "VENT3",
           "Tran",
           "Audi",
           "Rep",
@@ -1527,6 +1537,7 @@ function Tracking() {
           "Trans",
           "Vent",
           "VENT",
+          "VENT3",
           "Tran",
           "Audi",
           "Rep",
@@ -1560,6 +1571,7 @@ function Tracking() {
           "Audi",
           "Rep",
           "VENT",
+          "VENT3",
         ],
       },
       {
@@ -1574,10 +1586,12 @@ function Tracking() {
           "Control",
           "Vent",
           "VENT",
+          "VENT3",
           "Tran",
           "Audi",
           "Rep",
           "VENT",
+          "VENT3",
         ],
       },
       {
@@ -1591,6 +1605,7 @@ function Tracking() {
           "Paquet",
           "Vent",
           "VENT",
+          "VENT3",
           "Tran",
           "Audi",
           "Rep",
@@ -1608,6 +1623,7 @@ function Tracking() {
           "Embar",
           "Vent",
           "VENT",
+          "VENT3",
           "Tran",
           "Audi",
           "Rep",
@@ -1640,6 +1656,7 @@ function Tracking() {
           "Rep",
           "Vent",
           "VENT",
+          "VENT3",
           "Tran",
           "Audi",
           "Rep",
@@ -1673,6 +1690,7 @@ function Tracking() {
           "Rep",
           "Vent",
           "VENT",
+          "VENT3",
           "Tran",
           "Audi",
           "Rep",
@@ -1820,18 +1838,26 @@ function Tracking() {
 
   function addPageNumber(doc) {
     const pageCount = doc.internal.getNumberOfPages();
-    if (pageCount >= 1) {
-      doc.setPage(1);
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(0, 0, 0);
-      doc.text(`PÁGINA 1 de ${pageCount}`, 200, 59, { align: "right" });
-    }
+    const pageWidth = doc.internal.pageSize.getWidth();
 
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i);
-      const pageHeight = doc.internal.pageSize.height;
-      doc.addImage(barraFooter, "JPEG", 10, pageHeight - 15, 190, 8);
+      doc.setFontSize(9);
+      doc.setTextColor(0, 0, 0);
+      doc.setFont("helvetica", "bold");
+
+      if (i === 1) {
+        // Página 1: debajo del logo
+        const posX = 190;
+        const posY = 50;
+        doc.text(`PÁGINA ${i} de ${pageCount}`, posX, posY, { align: "right" });
+      }
+
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        const pageHeight = doc.internal.pageSize.height;
+        doc.addImage(barraFooter, "JPEG", 10, pageHeight - 15, 190, 8);
+      }
     }
   }
 
@@ -1845,7 +1871,17 @@ function Tracking() {
     return currentY;
   }
 
-  const generatePDF = async (pedido) => {
+  const getTipoDominante = (productos) => {
+    const tipos = productos.map((p) => (p.tipo_caja || "").toUpperCase());
+    const cuenta = {};
+    for (const tipo of tipos) cuenta[tipo] = (cuenta[tipo] || 0) + 1;
+
+    const tipoMasUsado =
+      Object.entries(cuenta).sort((a, b) => b[1] - a[1])[0]?.[0] || "CAJA";
+    return tipoMasUsado === "ATA" ? "ATADO" : tipoMasUsado;
+  };
+
+  const generatePDF = async (pedido, tipo, modo = "descargar") => {
     try {
       const responseRoutes = await fetch(
         "http://66.232.105.87:3007/api/Trasporte/ruta-unica"
@@ -1857,7 +1893,7 @@ function Tracking() {
       if (!route) return alert("No se encontró la ruta");
 
       const responseEmbarque = await fetch(
-        `http://66.232.105.87:3007/api/Trasporte/embarque/${pedido}`
+        `http://66.232.105.87:3007/api/Trasporte/embarque/${pedido}/${tipo}`
       );
       const data = await responseEmbarque.json();
       if (!data || !Array.isArray(data) || data.length === 0)
@@ -1904,8 +1940,31 @@ function Tracking() {
 
       const tipo_original = route["tipo_original"] || "No definido";
       const nombreCliente = route["NOMBRE DEL CLIENTE"] || "No disponible";
-      const numeroFactura = route["NO_FACTURA"] || "No disponible";
-      const direccion = cleanAddress(route["DIRECCION"]) || "No disponible";
+
+      // 🔸 Obtener la dirección desde la API externa usando NoOrden
+      const direccionAPI = await axios.post(
+        "http://66.232.105.87:3007/api/Trasporte/obtenerPedidos"
+      );
+      const pedidosExternos = direccionAPI.data;
+
+      // ✅ Ahora sí puedes buscar con pedido + tipo
+      const pedidoEncontrado = pedidosExternos.find(
+        (p) =>
+          String(p.NoOrden) === String(pedido) &&
+          String(p.TpoOriginal).toUpperCase() === String(tipo).toUpperCase()
+      );
+
+      if (!pedidoEncontrado) {
+        alert(`No se encontró el pedido ${pedido}-${tipo}`);
+        return null;
+      }
+
+      const numeroFactura =
+        pedidoEncontrado?.NoFactura || route["NO_FACTURA"] || "No disponible";
+      const direccion = cleanAddress(
+        pedidoEncontrado?.Direccion || route["DIRECCION"] || "No disponible"
+      );
+
       const numero = route["NUM. CLIENTE"] || "No disponible";
       const telefono = route["TELEFONO"] || "Sin número";
       const rawTotal = route["TOTAL"];
@@ -1926,16 +1985,22 @@ function Tracking() {
       doc.setFontSize(9.5);
       doc.setTextColor(0, 0, 0);
       doc.text(
-        `CLIENTE NO.: ${numero}                      NOMBRE DEL CLIENTE: ${nombreCliente}`,
+        `CLIENTE NO.: ${numero}     NOMBRE DEL CLIENTE: ${nombreCliente}`,
         marginLeft,
         currentY
       );
       currentY += 4;
-      doc.text(
-        `TELÉFONO: ${telefono}     DIRECCIÓN: ${direccion}`,
-        marginLeft,
-        currentY
-      );
+      doc.text(`TELÉFONO: ${telefono}`, marginLeft, currentY);
+      currentY += 4;
+
+      const direccionFormateada = `DIRECCIÓN: ${direccion}`;
+      doc.text(direccionFormateada, marginLeft, currentY, {
+        maxWidth: 180, // controla el ancho antes de saltar de línea
+      });
+
+      const lineCount = Math.ceil(doc.getTextWidth(direccionFormateada) / 180);
+      currentY += 4 * lineCount;
+
       currentY += 4;
       doc.text(`No Orden: ${pedido}-${tipo_original}`, marginLeft, currentY);
       currentY += 4;
@@ -1961,33 +2026,93 @@ function Tracking() {
       const productosConCaja = data.filter((i) => i.caja && i.caja > 0);
       const productosSinCaja = data.filter((i) => !i.caja || i.caja === 0);
 
-      // ✔️ Primero agrupamos productos por caja original
+      const productosSinCajaAtados = productosSinCaja.filter(
+        (p) => (p.um || "").toUpperCase() === "ATA"
+      );
 
-      const cajasAgrupadasOriginal = productosConCaja.reduce((acc, item) => {
-        if (!acc[item.caja]) acc[item.caja] = [];
-        acc[item.caja].push(item);
-        return acc;
-      }, {});
+      // ✅ AGRUPAR por tipo + cajas (fusionadas respetadas)
+      const cajasAgrupadasOriginal = {};
+
+      for (const item of productosConCaja) {
+        const tipo = (item.tipo_caja || "").toUpperCase().trim();
+        const cajasTexto = item.cajas || item.caja;
+
+        if (!cajasTexto) continue;
+
+        const cajas = String(cajasTexto)
+          .split(",")
+          .map((c) => c.trim())
+          .filter((c) => c !== "")
+          .sort((a, b) => parseInt(a) - parseInt(b)); // asegura orden
+
+        const claveCaja = cajas.join(","); // ejemplo: "2,6"
+        const clave = `${tipo}_${claveCaja}`;
+
+        if (!cajasAgrupadasOriginal[clave]) cajasAgrupadasOriginal[clave] = [];
+        cajasAgrupadasOriginal[clave].push(item);
+      }
 
       const cajasOrdenadas = Object.entries(cajasAgrupadasOriginal).sort(
-        (a, b) => Number(a[0]) - Number(b[0])
+        (a, b) => {
+          const getMin = (key) => {
+            const parts = key.split("_")[1]; // "2,6"
+            return Math.min(...parts.split(",").map((p) => parseInt(p.trim())));
+          };
+          return getMin(a[0]) - getMin(b[0]);
+        }
       );
 
-      const totalINNER_MASTER = productosSinCaja.reduce(
-        (s, i) => s + (i._inner || 0) + (i._master || 0),
-        0
-      );
-      const totalCajasArmadas = cajasOrdenadas.length;
-      const totalCajas = totalINNER_MASTER + totalCajasArmadas;
+      // === Contador REAL de cajas por tipo ===
+      const cajasArmadas = new Set();
+      const cajasAtados = new Set();
+      const cajasTarimas = new Set();
 
-      const totalTarimas = data.reduce((s, i) => s + (i.tarimas || 0), 0);
-      const totalAtados = data.reduce((s, i) => s + (i.atados || 0), 0);
+      for (const key of Object.keys(cajasAgrupadasOriginal)) {
+        const [tipo, cajasStr] = key.split("_");
+        const cajas = cajasStr
+          .split(",")
+          .map((c) => c.trim())
+          .filter((c) => c !== "");
+
+        for (const caja of cajas) {
+          const clave = `${tipo}_${caja}`;
+
+          if (tipo === "CAJA") {
+            cajasArmadas.add(clave); // solo cuenta como caja si es física
+          } else if (["ATA", "ATADO"].includes(tipo)) {
+            cajasAtados.add(clave);
+          } else if (tipo === "TARIMA") {
+            cajasTarimas.add(clave);
+          }
+        }
+      }
+
+      // 💡 INNER y MASTER sólo si están sueltos (sin tipo_caja = CAJA)
+      const totalINNER_MASTER = data.reduce((s, i) => {
+        const tipo = (i.tipo_caja || "").toUpperCase();
+        if (["INNER", "MASTER"].includes(tipo)) {
+          return s + (i._inner || 0) + (i._master || 0);
+        }
+        return s;
+      }, 0);
+
+      const totalCajasArmadas = cajasArmadas.size;
+      const totalAtados = cajasAtados.size;
+      const totalTarimas = cajasTarimas.size;
+      const totalCajas =
+        totalINNER_MASTER + totalCajasArmadas + totalAtados + totalTarimas;
 
       currentY = verificarEspacio(doc, currentY, 2);
       doc.autoTable({
         startY: currentY,
         head: [
-          ["INNER/MASTER", "TARIMAS", "ATADOS", "CAJAS ARMADAS", "TOTAL CAJAS"],
+          [
+            "INNER/MASTER",
+            "TARIMAS",
+            "ATADOS",
+            "CAJAS ARMADAS",
+            "TOTAL DE ENTREGA",
+          ],
         ],
         body: [
           [
@@ -2014,8 +2139,10 @@ function Tracking() {
 
       let numeroCajaSecuencial = 1;
 
-      for (const [, productos] of cajasOrdenadas) {
-        const titulo = `Productos en la Caja ${numeroCajaSecuencial}`;
+      for (const [key, productos] of cajasOrdenadas) {
+        const [_, numeroCaja] = key.split("_");
+        const tipoVisible = getTipoDominante(productos);
+        const titulo = `Productos en  ${tipoVisible} ${numeroCaja}`;
 
         // Título de la tabla
         doc.autoTable({
@@ -2057,7 +2184,7 @@ function Tracking() {
           body: productos.map((item) => [
             item.codigo_ped || "",
             item.des || "",
-            item.cantidad || "",
+            item.cant_surti || "",
             item.um || "",
             item._pz || 0,
             item._pq || 0,
@@ -2095,31 +2222,16 @@ function Tracking() {
             textColor: [255, 255, 255],
             fontSize: 5.5,
           },
-          didDrawCell: function (data) {
-            if (
-              data.row.index === 0 &&
-              data.section === "body" &&
-              data.cursor.y < 30 && // Está en una nueva página
-              !yaContinua
-            ) {
-              const text = `Continuación de la Caja ${numeroCajaSecuencial}`;
-              doc.setFontSize(8);
-              doc.text(text, 105, data.cursor.y - 6, { align: "center" });
-              yaContinua = true;
-            }
-          },
         });
 
         currentY = doc.lastAutoTable.finalY + 4;
-        numeroCajaSecuencial++;
       }
 
-      if (productosSinCaja.length > 0) {
-        // Título principal
+      if (productosSinCajaAtados.length > 0) {
         currentY = verificarEspacio(doc, currentY, 2);
         doc.autoTable({
           startY: currentY,
-          head: [["Productos sin caja"]],
+          head: [["Lotes Atados"]],
           body: [],
           theme: "grid",
           styles: { halign: "center", fontSize: 9 },
@@ -2151,10 +2263,10 @@ function Tracking() {
               "VALIDAR",
             ],
           ],
-          body: productosSinCaja.map((item) => [
+          body: productosSinCajaAtados.map((item) => [
             item.codigo_ped || "",
             item.des || "",
-            item.cantidad || "",
+            item.cant_surti || "",
             item.um || "",
             item._pz || 0,
             item._inner || 0,
@@ -2197,7 +2309,7 @@ function Tracking() {
               data.cursor.y < 30 &&
               !yaContinua
             ) {
-              const text = "Continuación de productos sin caja";
+              const text = "Continuación de productos atados sin caja";
               doc.setFontSize(8);
               doc.text(text, 105, data.cursor.y - 6, { align: "center" });
               yaContinua = true;
@@ -2207,6 +2319,16 @@ function Tracking() {
 
         currentY = doc.lastAutoTable.finalY + 4;
       }
+
+      const productosNoEnviados = productosSinCaja.filter(
+        (item) =>
+          (item._inner || 0) === 0 &&
+          (item._master || 0) === 0 &&
+          (item.tarimas || 0) === 0 &&
+          (item.atados || 0) === 0 &&
+          (item._pz || 0) === 0 &&
+          (item._pq || 0) === 0
+      );
 
       currentY = doc.lastAutoTable.finalY + 5;
       currentY = verificarEspacio(doc, currentY, 1);
@@ -2253,8 +2375,14 @@ function Tracking() {
         ],
         body: [
           [
-            `$${totalImporte.toFixed(2)}`,
-            `$${totalImporte.toFixed(2)}`,
+            `$${totalImporte.toLocaleString("en-US", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}`,
+            `$${totalImporte.toLocaleString("en-US", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}`,
             "100.00 %",
           ],
         ],
@@ -2298,6 +2426,8 @@ function Tracking() {
       });
 
       currentY = doc.lastAutoTable.finalY + 0;
+
+      // === LEYENDA VERTICAL AL COSTADO DE LA TABLA DE BANCOS ===
 
       const instrucciones = [
         "•Estimado cliente, nuestro transportista cuenta con ruta asignada por lo que agradeceríamos agilizar el tiempo de recepción de su mercancía, el material viaja consignado por lo que solo podrá entregarse en la dirección estipulada en este documento.",
@@ -2369,7 +2499,19 @@ function Tracking() {
       //informacion bancaria
       // === Información Bancaria + Observaciones alineadas ===
 
-      const tablaBancosY = currentY + 3; // Ajusta el +3 si lo quieres más arriba o abajo
+      const tablaBancosY = currentY + 10; // Ajusta el +3 si lo quieres más arriba o abajo
+
+      // Muestra la referencia bancaria arriba de la tabla
+      doc.setFontSize(10);
+      doc.text("Referencia bancaria:", 20, tablaBancosY - 5, {
+        styles: { fontStyle: "bold" },
+      });
+      doc.setFont(undefined, "bold");
+      doc.text(`${referenciaCliente}`, 75, tablaBancosY - 5, {
+        align: "right",
+        styles: { fontStyle: "bold" },
+      }); // Ajusta la posición x para alinearlo a la derecha
+      doc.setFont(undefined, "normal");
 
       // TABLA DE BANCOS
       doc.autoTable({
@@ -2394,17 +2536,34 @@ function Tracking() {
             },
           ],
         ],
+
         body: [
           ["BANAMEX", "6860432", "7006", "002180700668604325"],
           [
-            { content: "BANORTE ", styles: { fontStyle: "bold" } },
-            { content: "0890771176", styles: { fontStyle: "bold" } },
-            { content: "04", styles: { fontStyle: "bold" } },
-            { content: "072180008907711766", styles: { fontStyle: "bold" } },
+            { content: "BANORTE" },
+            { content: "0890771176" },
+            { content: "04" },
+            { content: "072180008907711766" },
           ],
-          ["        ", "Con. CEI", "    ", "Referencia"],
-          ["BANCOMER", "02476827", "1838", `${referenciaCliente}`],
+          ["BANCOMER", "CIE 2476827", "1838"],
         ],
+        startY: tablaBancosY, // tu variable de Y si la usas
+        theme: "plain", // O 'grid' si quieres líneas de tabla
+        headStyles: {
+          fillColor: [0, 0, 0], // Fondo negro
+          textColor: [255, 255, 255], // Texto blanco
+          fontStyle: "bold",
+          fontSize: 8,
+          halign: "center",
+          valign: "middle",
+        },
+        // Opcional: para que las celdas no tengan borde
+        styles: {
+          lineWidth: 0.2,
+          lineColor: [0, 0, 0],
+          fontSize: 8,
+        },
+
         theme: "plain", // Sin bordes, puro alineado como quieres
         styles: { fontSize: 8, cellPadding: 1, halign: "center" },
         margin: { left: 10 },
@@ -2461,11 +2620,16 @@ function Tracking() {
       currentY = leyendaY + 4; // Si necesitas continuar después
 
       addPageNumber(doc);
-      doc.save(`PackingList_de_${pedido}.pdf`);
-      alert(`PDF generado con éxito para el pedido ${pedido}`);
+
+      if (modo === "descargar") {
+        doc.save(`PackingList_de_${pedido}-${tipo}.pdf`);
+      }
+
+      return await doc.output("blob");
     } catch (error) {
       console.error("Error al generar el PDF:", error);
       alert("Hubo un error al generar el PDF.");
+      return null;
     }
   };
 
@@ -3481,8 +3645,8 @@ function Tracking() {
                 <option value="5">Mayo</option>
                 <option value="6">Junio</option>
                 <option value="7">Julio</option>
-                {/*  <option value="8">Agosto</option>
-                <option value="9">Septiembre</option>
+                <option value="8">Agosto</option>
+                {/*  <option value="9">Septiembre</option>
                 <option value="10">Octubre</option>
                 <option value="11">Noviembre</option>
                 <option value="12">Diciembre</option> */}
@@ -3747,7 +3911,12 @@ function Tracking() {
                                 variant="contained"
                                 style={{ color: "black" }} // Negro con texto blanco
                                 onClick={() =>
-                                  generatePDF(routeData["NO ORDEN"])
+                                  generatePDF(
+                                    String(routeData["NO ORDEN"]),
+                                    String(routeData["tipo_original"])
+                                      .toUpperCase()
+                                      .trim()
+                                  )
                                 }
                               >
                                 <ArticleIcon />
@@ -4051,7 +4220,12 @@ function Tracking() {
                                   variant="contained"
                                   style={{ color: "black" }} // Negro con texto blanco
                                   onClick={() =>
-                                    generatePDF(routeData["NO ORDEN"])
+                                    generatePDF(
+                                      String(routeData["NO ORDEN"]),
+                                      String(routeData["tipo_original"])
+                                        .toUpperCase()
+                                        .trim()
+                                    )
                                   }
                                 >
                                   <ArticleIcon />
@@ -4228,7 +4402,12 @@ function Tracking() {
                                   variant="contained"
                                   style={{ color: "black" }} // Negro con texto blanco
                                   onClick={() =>
-                                    generatePDF(routeData["NO ORDEN"])
+                                    generatePDF(
+                                      String(routeData["NO ORDEN"]),
+                                      String(routeData["tipo_original"])
+                                        .toUpperCase()
+                                        .trim()
+                                    )
                                   }
                                 >
                                   <ArticleIcon />
@@ -4584,8 +4763,15 @@ function Tracking() {
                           <Grid item>
                             <IconButton
                               variant="contained"
-                              style={{ color: "black" }}
-                              onClick={() => generatePDF(routeData["NO ORDEN"])}
+                              style={{ color: "black" }} // Negro con texto blanco
+                              onClick={() =>
+                                generatePDF(
+                                  String(routeData["NO ORDEN"]),
+                                  String(routeData["tipo_original"])
+                                    .toUpperCase()
+                                    .trim()
+                                )
+                              }
                             >
                               <ArticleIcon />
                             </IconButton>

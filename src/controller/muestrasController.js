@@ -213,12 +213,14 @@ const actualizarSolicitud = async (req, res) => {
     autorizado = Number(autorizado);
 
     // 1) Actualizar los campos en la BD
+    // 1) Actualizar los campos en la BD
     await pool.query(
-      `UPDATE Solicitudes_muestras SET 
-       autorizado = ?, 
-       enviado_para_autorizar = ?, 
-       autorizado_por = ? 
-     WHERE folio = ?`,
+      `UPDATE solicitudes_muestras SET 
+        autorizado = ?, 
+        enviado_para_autorizar = ?, 
+        autorizado_por = ?, 
+        autorizado_at = NOW()
+    WHERE folio = ?`,
       [autorizado, enviadoParaAutorizar, autorizado_por, folio]
     );
 
@@ -485,28 +487,42 @@ const eliminarProductoDeSolicitud = async (req, res) => {
 };
 
 const guardarCantidadSurtida = async (req, res) => {
-  const { folio, carrito } = req.body;
+  const { folio, carrito, it } = req.body; // 👈 ahora también llega "it"
+
+  const connection = await pool.getConnection();
 
   try {
+    await connection.beginTransaction();
+
+    // Actualizar campo IT en la tabla de solicitudes
+    await connection.query(
+      `UPDATE solicitudes_muestras SET IT = ? WHERE folio = ?`,
+      [it, folio]
+    );
+
+    // Actualizar cantidades surtidas
     for (const producto of carrito) {
-      await pool.query(
+      await connection.query(
         `UPDATE Carrito_muestras
-           SET cantidad_surtida = ?
-           WHERE solicitud_id = (
-             SELECT id FROM Solicitudes_muestras WHERE folio = ?
-           ) AND codigo = ?`,
+         SET cantidad_surtida = ?
+         WHERE solicitud_id = (
+           SELECT id FROM Solicitudes_muestras WHERE folio = ?
+         ) AND codigo = ?`,
         [producto.cantidad_surtida, folio, producto.codigo]
       );
     }
 
-    res
-      .status(200)
-      .json({ message: "Cantidades surtidas actualizadas correctamente." });
+    await connection.commit();
+
+    res.status(200).json({
+      message: "Cantidades surtidas e IT actualizados correctamente.",
+    });
   } catch (error) {
-    console.error("❌ Error al actualizar cantidades surtidas:", error);
-    res
-      .status(500)
-      .json({ message: "Error al actualizar cantidades surtidas." });
+    await connection.rollback();
+    console.error("❌ Error al actualizar cantidades o IT:", error);
+    res.status(500).json({ message: "Error al actualizar cantidades o IT." });
+  } finally {
+    connection.release();
   }
 };
 
@@ -771,6 +787,7 @@ const correosPorNombre = {
   "Nadia Cano": "nadia.cano@santul.net",
   "Rocio Mancilla": "rocio.mancilla@santul.net ",
   "Abraham arenas": "abraham.arenas@santul.net",
+  "Laura Carbajal": "laura.carbajal@santul.net",
   "Ariel Ramírez": "ariel.ramirez@santul.net",
   "Daniela Mondragón": "dani.mondragon@santul.net",
   "Katia Daniela Martinez Mo": "katia.martinez@santul.net",
@@ -948,12 +965,10 @@ const marcarSinMaterial = async (req, res) => {
 
   // Validación
   if (!sin_material_por) {
-    return res
-      .status(400)
-      .json({
-        ok: false,
-        message: "Falta el nombre del usuario que marca sin material.",
-      });
+    return res.status(400).json({
+      ok: false,
+      message: "Falta el nombre del usuario que marca sin material.",
+    });
   }
 
   try {

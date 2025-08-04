@@ -717,7 +717,7 @@ function Transporte() {
           FECHA: dayjs(row.Fecha).format("DD/MM/YYYY"),
           "NO ORDEN": row.NoOrden,
           "NO FACTURA": row.NoFactura,
-          "NUM. CLIENTE": row.NumCliente,
+          "NUM. CLIENTE": row.NumConsigna,
           "NOMBRE DEL CLIENTE": row.Nombre_Cliente,
           Codigo_Postal: row.Postal,
           ZONA: row.Zona,
@@ -2319,18 +2319,26 @@ function Transporte() {
 
   function addPageNumber(doc) {
     const pageCount = doc.internal.getNumberOfPages();
-    if (pageCount >= 1) {
-      doc.setPage(1);
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(0, 0, 0);
-      doc.text(`PÁGINA 1 de ${pageCount}`, 200, 59, { align: "right" });
-    }
+    const pageWidth = doc.internal.pageSize.getWidth();
 
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i);
-      const pageHeight = doc.internal.pageSize.height;
-      doc.addImage(barraFooter, "JPEG", 10, pageHeight - 15, 190, 8);
+      doc.setFontSize(9);
+      doc.setTextColor(0, 0, 0);
+      doc.setFont("helvetica", "bold");
+
+      if (i === 1) {
+        // Página 1: debajo del logo
+        const posX = 190;
+        const posY = 50;
+        doc.text(`PÁGINA ${i} de ${pageCount}`, posX, posY, { align: "right" });
+      }
+
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        const pageHeight = doc.internal.pageSize.height;
+        doc.addImage(barraFooter, "JPEG", 10, pageHeight - 15, 190, 8);
+      }
     }
   }
 
@@ -2354,7 +2362,7 @@ function Transporte() {
     return tipoMasUsado === "ATA" ? "ATADO" : tipoMasUsado;
   };
 
-  const generatePDF = async (pedido, modo = "descargar") => {
+  const generatePDF = async (pedido, tipo, modo = "descargar") => {
     try {
       const responseRoutes = await fetch(
         "http://66.232.105.87:3007/api/Trasporte/ruta-unica"
@@ -2366,11 +2374,20 @@ function Transporte() {
       if (!route) return alert("No se encontró la ruta");
 
       const responseEmbarque = await fetch(
-        `http://66.232.105.87:3007/api/Trasporte/embarque/${pedido}` //toma la informacion de embarques
+        `http://66.232.105.87:3007/api/Trasporte/embarque/${pedido}/${tipo}`
       );
-      const data = await responseEmbarque.json();
-      if (!data || !Array.isArray(data) || data.length === 0)
+      const result = await responseEmbarque.json();
+
+      // Validar que tenga datos
+      if (!result || !result.datos || result.datos.length === 0) {
         return alert("No hay productos");
+      }
+
+      // Extraer datos y conteos
+      const data = result.datos; // Productos reales para imprimir
+      const totalLineasDB = result.totalLineas || 0;
+      const totalMotivo = result.totalMotivo || 0;
+      const totalLineasPDF = result.totalLineasPDF || data.length;
 
       const doc = new jsPDF();
       const marginLeft = 10;
@@ -2413,8 +2430,31 @@ function Transporte() {
 
       const tipo_original = route["tipo_original"] || "No definido";
       const nombreCliente = route["NOMBRE DEL CLIENTE"] || "No disponible";
-      const numeroFactura = route["NO_FACTURA"] || "No disponible";
-      const direccion = cleanAddress(route["DIRECCION"]) || "No disponible";
+
+      // 🔸 Obtener la dirección desde la API externa usando NoOrden
+      const direccionAPI = await axios.post(
+        "http://66.232.105.87:3007/api/Trasporte/obtenerPedidos"
+      );
+      const pedidosExternos = direccionAPI.data;
+
+      // ✅ Ahora sí puedes buscar con pedido + tipo
+      const pedidoEncontrado = pedidosExternos.find(
+        (p) =>
+          String(p.NoOrden) === String(pedido) &&
+          String(p.TpoOriginal).toUpperCase() === String(tipo).toUpperCase()
+      );
+
+      if (!pedidoEncontrado) {
+        alert(`No se encontró el pedido ${pedido}-${tipo}`);
+        return null;
+      }
+
+      const numeroFactura =
+        pedidoEncontrado?.NoFactura || route["NO_FACTURA"] || "No disponible";
+      const direccion = cleanAddress(
+        pedidoEncontrado?.Direccion || route["DIRECCION"] || "No disponible"
+      );
+
       const numero = route["NUM. CLIENTE"] || "No disponible";
       const telefono = route["TELEFONO"] || "Sin número";
       const rawTotal = route["TOTAL"];
@@ -2435,20 +2475,40 @@ function Transporte() {
       doc.setFontSize(9.5);
       doc.setTextColor(0, 0, 0);
       doc.text(
-        `CLIENTE NO.: ${numero}                      NOMBRE DEL CLIENTE: ${nombreCliente}`,
+        `CLIENTE NO.: ${numero}     NOMBRE DEL CLIENTE: ${nombreCliente}`,
         marginLeft,
         currentY
       );
       currentY += 4;
-      doc.text(
-        `TELÉFONO: ${telefono}     DIRECCIÓN: ${direccion}`,
-        marginLeft,
-        currentY
-      );
+      doc.text(`TELÉFONO: ${telefono}`, marginLeft, currentY);
+      currentY += 4;
+
+      const direccionFormateada = `DIRECCIÓN: ${direccion}`;
+      doc.text(direccionFormateada, marginLeft, currentY, {
+        maxWidth: 180, // controla el ancho antes de saltar de línea
+      });
+
+      const lineCount = Math.ceil(doc.getTextWidth(direccionFormateada) / 180);
+      currentY += 4 * lineCount;
+
       currentY += 4;
       doc.text(`No Orden: ${pedido}-${tipo_original}`, marginLeft, currentY);
       currentY += 4;
       doc.text(`FACTURA No.: ${numeroFactura}`, marginLeft, currentY);
+      currentY += 4;
+
+      const textoLineas = `Líneas BD: ${totalLineasDB} | Líneas PDF: ${totalLineasPDF} | Motivo: ${totalMotivo}`;
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "bold");
+
+      // Si hay diferencia, marcar en rojo
+      if (totalLineasDB !== totalLineasPDF + totalMotivo) {
+        doc.setTextColor(255, 0, 0); // Rojo si hay diferencia
+      } else {
+        doc.setTextColor(0, 0, 0); // Negro si coincide
+      }
+
+      doc.text(textoLineas, marginLeft, currentY);
       currentY += 4;
 
       const infoY = currentY;
@@ -2490,7 +2550,7 @@ function Transporte() {
           .sort((a, b) => parseInt(a) - parseInt(b)); // asegura orden
 
         const claveCaja = cajas.join(","); // ejemplo: "2,6"
-        const clave = `${tipo}_${claveCaja}`; // ejemplo: "CAJA_2,6"
+        const clave = `${tipo}_${claveCaja}`;
 
         if (!cajasAgrupadasOriginal[clave]) cajasAgrupadasOriginal[clave] = [];
         cajasAgrupadasOriginal[clave].push(item);
@@ -2506,20 +2566,6 @@ function Transporte() {
         }
       );
 
-      // const totalINNER_MASTER = productosSinCaja.reduce(
-      //   (s, i) => s + (i._inner || 0) + (i._master || 0),
-      //   0
-      // );
-      // const totalCajasArmadas = cajasOrdenadas.length;
-      // const totalCajas = totalINNER_MASTER + totalCajasArmadas;
-
-      // const totalTarimas = data.reduce((s, i) => s + (i.tarimas || 0), 0);
-      // const atadosProductos = data.filter(
-      //   (i) => (i.um || "").toUpperCase() === "ATA"
-      // );
-      // const totalAtados = atadosProductos.length;
-
-      // === Contador REAL de cajas por tipo ===
       // === Contador REAL de cajas por tipo ===
       const cajasArmadas = new Set();
       const cajasAtados = new Set();
@@ -2642,7 +2688,7 @@ function Transporte() {
           body: productos.map((item) => [
             item.codigo_ped || "",
             item.des || "",
-            item.cantidad || "",
+            item.cant_surti || "",
             item.um || "",
             item._pz || 0,
             item._pq || 0,
@@ -2738,7 +2784,7 @@ function Transporte() {
           body: productosSinCajaAtados.map((item) => [
             item.codigo_ped || "",
             item.des || "",
-            item.cantidad || "",
+            item.cant_surti || "",
             item.um || "",
             item._pz || 0,
             item._inner || 0,
@@ -2839,13 +2885,13 @@ function Transporte() {
               "MASTER",
               "TARIMAS",
               "ATADOS",
-              "VALIDA",
+              "VALIDAR",
             ],
           ],
           body: productosNoEnviados.map((item) => [
             item.codigo_ped || "",
             item.des || "",
-            item.cantidad || "",
+            item.cant_surti || "",
             item.um || "",
             item._pz || 0,
             item._inner || 0,
@@ -2944,9 +2990,17 @@ function Transporte() {
         ],
         body: [
           [
-            `$${totalImporte.toFixed(2)}`,
-            `$${totalImporte.toFixed(2)}`,
-            "100.00 %",
+            [
+              `$${totalImporte.toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}`,
+              `$${totalImporte.toLocaleString("en-US", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}`,
+              "100.00 %",
+            ],
           ],
         ],
         theme: "grid",
@@ -2973,7 +3027,7 @@ function Transporte() {
               styles: { fontSize: 7, halign: "justify", textColor: [0, 0, 0] },
             },
             {
-              content: "Firma del Transporte",
+              content: "Firma del Transportista",
               styles: { fontSize: 7, halign: "center", fontStyle: "bold" },
             },
           ],
@@ -3029,7 +3083,7 @@ function Transporte() {
       ).toLocaleDateString("es-MX");
 
       const textoPagare =
-        `En cualquier lugar de este documento donde se estampe la firma en este compromiso de pago debo(emos) y pagare(mos) ` +
+        `En cualquier lugar de este documento donde se estampe la firma por este pagaré debo(emos) y pagaré(mos) ` +
         `incondicionalmente a la vista y a la orden de SANTUL HERRAMIENTAS S.A. DE C.V., la cantidad de: $${totalImporte.toFixed(
           2
         )} ` +
@@ -3059,23 +3113,12 @@ function Transporte() {
       currentY = doc.lastAutoTable.finalY + 0;
       currentY = verificarEspacio(doc, currentY, 5);
 
-      // LEYENDA FINAL HORIZONTAL ABAJO DEL PAGARÉ
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(8);
-      doc.setTextColor(0, 0, 0);
-
-      doc.text(
-        "Documento expedido sobre resolución miscelánea vigente",
-        10, // X: alineado a la izquierda
-        currentY
-      );
-
-      currentY += 5;
-
+      //informacion bancaria
       // === Información Bancaria + Observaciones alineadas ===
 
-      const tablaBancosY = currentY + 10;
+      const tablaBancosY = currentY + 10; // Ajusta el +3 si lo quieres más arriba o abajo
 
+      // Muestra la referencia bancaria arriba de la tabla
       doc.setFontSize(10);
       doc.text("Referencia bancaria:", 20, tablaBancosY - 5, {
         styles: { fontStyle: "bold" },
@@ -3196,7 +3239,7 @@ function Transporte() {
       addPageNumber(doc);
 
       if (modo === "descargar") {
-        doc.save(`PackingList_de_${pedido}.pdf`);
+        doc.save(`PackingList_de_${pedido}-${tipo}.pdf`);
       }
 
       return await doc.output("blob");
@@ -6729,8 +6772,8 @@ function Transporte() {
               <option value="5">Mayo</option>
               <option value="6">Junio</option>
               <option value="7">Julio</option>
-              {/* <option value="8">Agosto</option>
-                <option value="9">Septiembre</option>
+              <option value="8">Agosto</option>
+              {/* <option value="9">Septiembre</option>
                 <option value="10">Octubre</option>
                 <option value="11">Noviembre</option>
                 <option value="12">Diciembre</option> */}
@@ -7367,7 +7410,12 @@ function Transporte() {
                                     variant="contained"
                                     style={{ color: "black" }} // Negro con texto blanco
                                     onClick={() =>
-                                      generatePDF(routeData["NO ORDEN"])
+                                      generatePDF(
+                                        String(routeData["NO ORDEN"]),
+                                        String(routeData["tipo_original"])
+                                          .toUpperCase()
+                                          .trim()
+                                      )
                                     }
                                   >
                                     <ArticleIcon />
@@ -7698,7 +7746,12 @@ function Transporte() {
                                       variant="contained"
                                       style={{ color: "black" }} // Negro con texto blanco
                                       onClick={() =>
-                                        generatePDF(routeData["NO ORDEN"])
+                                        generatePDF(
+                                          String(routeData["NO ORDEN"]),
+                                          String(routeData["tipo_original"])
+                                            .toUpperCase()
+                                            .trim()
+                                        )
                                       }
                                     >
                                       <ArticleIcon />
@@ -7891,7 +7944,12 @@ function Transporte() {
                                       variant="contained"
                                       style={{ color: "black" }} // Negro con texto blanco
                                       onClick={() =>
-                                        generatePDF(routeData["NO ORDEN"])
+                                        generatePDF(
+                                          String(routeData["NO ORDEN"]),
+                                          String(routeData["tipo_original"])
+                                            .toUpperCase()
+                                            .trim()
+                                        )
                                       }
                                     >
                                       <ArticleIcon />
@@ -8219,9 +8277,14 @@ function Transporte() {
                                 <Grid item>
                                   <IconButton
                                     variant="contained"
-                                    style={{ color: "black" }}
+                                    style={{ color: "black" }} // Negro con texto blanco
                                     onClick={() =>
-                                      generatePDF(routeData["NO ORDEN"])
+                                      generatePDF(
+                                        String(routeData["NO ORDEN"]),
+                                        String(routeData["tipo_original"])
+                                          .toUpperCase()
+                                          .trim()
+                                      )
                                     }
                                   >
                                     <ArticleIcon />

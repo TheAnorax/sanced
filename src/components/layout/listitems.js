@@ -91,6 +91,8 @@ export const mainListItems = (user) => {
         "Nac",
         "VEN",
         "CALI",
+        "Recibo",
+        "ECOMERCE"
       ],
       path: "/dashboard/productos",
       icon: <HandymanIcon />,
@@ -152,7 +154,7 @@ export const mainListItems = (user) => {
         "Audi",
       ],
       path: "/dashboard/Tracking",
-      icon: <PlaceIcon />,
+      icon: <PlaceIcon />, 
       text: "Tracking",
     },
     {
@@ -244,7 +246,8 @@ export const mainListItems = (user) => {
     //   text: "Plan",
     // },
     {
-      role: ["Admin", "Control", "Embar", "Master", "Paquet", "INV"],
+      role: ["Admin", "Control", "Embar", "Master", "Paquet", "INV", 
+        "ECOMERCE"],
       path: "/dashboard/bahias",
       icon: <ViewModuleIcon />,
       text: "Bahias",
@@ -357,7 +360,7 @@ export const mainListItems = (user) => {
       text: "Tareas",
     },
     {
-      role: ["Admin", "Master", "RH"],
+      role: ["Admin", "Master"],
       path: "/dashboard/RH",
       icon: <ManageSearchIcon />,
       text: "RH",
@@ -378,6 +381,7 @@ export const mainListItems = (user) => {
         "CONTROL",
         "RH",
         "TRAFICO",
+        "Tran",
       ],
       path: "/dashboard/visitas",
       icon: <PersonPinCircleIcon />,

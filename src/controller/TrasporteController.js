@@ -107,7 +107,6 @@ const insertarRutas = async (req, res) => {
 
       const formattedDate = moment(FECHA, "DD/MM/YYYY").format("YYYY-MM-DD");
 
-      // 👉 Validación: si ya existe ese NO ORDEN con ese tipo_original, no lo insertes
       const [existe] = await connection.query(
         `SELECT 1 FROM paqueteria WHERE \`NO ORDEN\` = ? AND tipo_original = ? LIMIT 1`,
         [noOrden, tipo_original || null]
@@ -117,7 +116,7 @@ const insertarRutas = async (req, res) => {
         console.log(
           `⏭️ Ya existe NO ORDEN ${noOrden} con tipo_original ${tipo_original}, no se insertará.`
         );
-        continue; // Saltar este registro
+        continue;
       }
 
       const insertQuery = `
@@ -130,36 +129,37 @@ const insertarRutas = async (req, res) => {
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
 
+      const clean = (v) => (typeof v === "string" ? v.trim() : v);
+
       const values = [
-        routeName,
+        clean(routeName),
         formattedDate,
         noOrden,
-        noFactura,
-        numCliente,
-        nombreCliente,
-        ZONA,
-        MUNICIPIO,
-        ESTADO,
-        OBSERVACIONES,
+        clean(noFactura),
+        clean(numCliente),
+        clean(nombreCliente),
+        clean(ZONA),
+        clean(MUNICIPIO),
+        clean(ESTADO),
+        clean(OBSERVACIONES),
         TOTAL,
         PARTIDAS,
         PIEZAS,
-        routeName,
-        routeName,
-        TIPO,
-        DIRECCION,
-        TELEFONO,
-        CORREO,
-        ejecutivoVtas,
-        GUIA,
-        tipo_original || null,
+        clean(routeName),
+        clean(routeName),
+        clean(TIPO),
+        clean(DIRECCION),
+        clean(TELEFONO),
+        clean(CORREO),
+        clean(ejecutivoVtas),
+        clean(GUIA),
+        clean(tipo_original) || null,
       ];
 
       await connection.query(insertQuery, values);
     }
 
     await connection.commit();
-
     res.status(200).json({
       message:
         "✅ Rutas insertadas correctamente (sin duplicados por NO ORDEN y tipo_original).",
@@ -475,37 +475,67 @@ const actualizarGuia = async (req, res) => {
 
 const getPedidosEmbarque = async (req, res) => {
   try {
-    const { codigo_ped } = req.params;
+    const { pedido, tipo } = req.params;
 
-    // Consulta principal en pedido_finalizado
+    if (!pedido || !tipo) {
+      return res
+        .status(400)
+        .json({ message: "Faltan parámetros: pedido o tipo" });
+    }
+
+    console.log("📥 Buscando pedido:", pedido, "tipo:", tipo);
+
     const queryFinalizado = `
-      SELECT pe.pedido, pe.codigo_ped, p.des, pe.cantidad, pe.um, pe._pz,  
-             pe._inner, pe._master, pe.cantidad, pe.caja, pe.estado, pe.cajas, pe.tipo_caja   
+      SELECT pe.pedido, pe.codigo_ped, p.des, pe.cant_surti, pe.um, pe._pz,  
+             pe._inner, pe._master, pe.cant_surti, pe.caja, pe.estado, 
+             pe.cajas, pe.tipo_caja, pe.motivo  
       FROM pedido_finalizado pe
       LEFT JOIN productos p ON pe.codigo_ped = p.codigo_pro
-      WHERE pe.pedido = ? LIMIT 100;
+      WHERE pe.pedido = ? AND pe.tipo = ?
+      ORDER BY pe.codigo_ped ASC;
     `;
 
-    let [rows] = await pool.query(queryFinalizado, [codigo_ped]);
+    let [rows] = await pool.query(queryFinalizado, [pedido, tipo]);
 
-    // Si no encontró nada en pedido_finalizado, busca en embarques
     if (rows.length === 0) {
+      console.log(
+        "⚠️ No encontrado en pedido_finalizado, buscando en pedido_embarque..."
+      );
       const queryEmbarque = `
-        SELECT em.pedido, em.codigo_ped, p.des, em.cantidad, em.um, em._pz,  
-               em._inner, em._master, em.cantidad, em.caja, em.estado, em.cajas, em.tipo_caja   
+        SELECT em.pedido, em.codigo_ped, p.des, em.cant_surti, em.um, em._pz,  
+               em._inner, em._master, em.cant_surti, em.caja, em.estado, 
+               em.cajas, em.tipo_caja, em.motivo
         FROM pedido_embarque em
         LEFT JOIN productos p ON em.codigo_ped = p.codigo_pro
-        WHERE em.pedido = ? LIMIT 100;
+        WHERE em.pedido = ? AND em.tipo = ?
+        ORDER BY em.codigo_ped ASC;
       `;
-
-      [rows] = await pool.query(queryEmbarque, [codigo_ped]);
+      [rows] = await pool.query(queryEmbarque, [pedido, tipo]);
     }
 
     if (rows.length === 0) {
+      console.log("❌ No se encontraron registros en ninguna tabla.");
       return res.status(404).json({ message: "No se encontraron registros." });
     }
 
-    res.json(rows);
+    // ✅ Contar líneas totales, líneas con motivo y calcular líneas PDF
+    const totalLineasDB = rows.length;
+    const totalMotivo = rows.filter(
+      (r) => r.motivo && r.motivo.trim() !== ""
+    ).length;
+    const totalLineasPDF = totalLineasDB - totalMotivo;
+
+    console.log(
+      `✅ BD: ${totalLineasDB} | Motivo: ${totalMotivo} | PDF: ${totalLineasPDF}`
+    );
+
+    // 🔑 Respuesta con conteo y datos
+    res.json({
+      totalLineas: totalLineasDB,
+      totalMotivo,
+      totalLineasPDF,
+      datos: rows,
+    });
   } catch (error) {
     console.error("Error al obtener pedidos de embarque:", error);
     res.status(500).json({ message: "Error al obtener pedidos de embarque" });

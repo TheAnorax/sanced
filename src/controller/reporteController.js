@@ -1218,116 +1218,9 @@ const getTop102025 = async (req, res) => {
   };
   
 
-// const getHistorico2025 = async (req, res) => {
-//   try {
-//     const [rows] = await pool.query(`
-//       SELECT
-//         TRIM(ESTADO) AS ESTADO,
-//         FECHA,
-//         CAST(TOTAL_FACTURA_LT AS UNSIGNED) AS TOTAL_FACTURA_LT,
-//         CAST(SUMA_FLETE AS UNSIGNED) AS SUMA_FLETE,
-//         DIAS_DE_ENTREGA,
-//         \`NUM. CLIENTE\` AS NUM_CLIENTE
-//       FROM paqueteria
-//       WHERE ESTADO IS NOT NULL AND ESTADO != ''
-//     `);
-
-//     if (rows.length === 0) {
-//       return res.status(404).json({ message: "No hay datos disponibles." });
-//     }
-
-//     const resultado = {};
-//     const totalGeneral = {};
-
-//     rows.forEach((row) => {
-//       const estado = row.ESTADO;
-//       const fecha = new Date(row.FECHA);
-//       const mes = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, "0")}`;
-
-//       if (!resultado[estado]) resultado[estado] = {};
-//       if (!resultado[estado][mes]) {
-//         resultado[estado][mes] = {
-//           total_factura_lt: 0,
-//           total_flete: 0,
-//           total_dias_entrega: 0,
-//           total_registros: 0,
-//           clientes: new Set(),
-//         };
-//       }
-
-//       const grupo = resultado[estado][mes];
-//       grupo.total_factura_lt += row.TOTAL_FACTURA_LT || 0;
-//       grupo.total_flete += row.SUMA_FLETE || 0;
-//       grupo.total_dias_entrega += row.DIAS_DE_ENTREGA || 0;
-//       grupo.total_registros += 1;
-//       if (row.NUM_CLIENTE) grupo.clientes.add(row.NUM_CLIENTE);
-
-//       if (!totalGeneral[mes]) {
-//         totalGeneral[mes] = {
-//           total_factura_lt: 0,
-//           total_flete: 0,
-//           total_dias_entrega: 0,
-//           total_registros: 0,
-//           clientes: new Set(),
-//         };
-//       }
-
-//       const total = totalGeneral[mes];
-//       total.total_factura_lt += row.TOTAL_FACTURA_LT || 0;
-//       total.total_flete += row.SUMA_FLETE || 0;
-//       total.total_dias_entrega += row.DIAS_DE_ENTREGA || 0;
-//       total.total_registros += 1;
-//       if (row.NUM_CLIENTE) total.clientes.add(row.NUM_CLIENTE);
-//     });
-
-//     for (const estado in resultado) {
-//       for (const mes in resultado[estado]) {
-//         const grupo = resultado[estado][mes];
-//         grupo.promedio_dias_entrega = parseFloat(
-//           (grupo.total_dias_entrega / grupo.total_registros).toFixed(1)
-//         );
-//         grupo.total_clientes = grupo.clientes.size;
-//         grupo.porcentaje_flete = parseFloat(
-//           ((grupo.total_flete / grupo.total_factura_lt) * 100).toFixed(1)
-//         );
-//         grupo.total_factura_lt = `$${grupo.total_factura_lt.toLocaleString()}`;
-//         grupo.total_flete = `$${grupo.total_flete.toLocaleString()}`;
-
-//         delete grupo.clientes;
-//         delete grupo.total_dias_entrega;
-//         delete grupo.total_registros;
-//       }
-//     }
-
-//     const resumenGeneral = {};
-//     for (const mes in totalGeneral) {
-//       const grupo = totalGeneral[mes];
-//       resumenGeneral[mes] = {
-//         total_factura_lt: `$${grupo.total_factura_lt.toLocaleString()}`,
-//         total_flete: `$${grupo.total_flete.toLocaleString()}`,
-//         promedio_dias_entrega: parseFloat(
-//           (grupo.total_dias_entrega / grupo.total_registros).toFixed(1)
-//         ),
-//         total_clientes: grupo.clientes.size,
-//         porcentaje_flete: parseFloat(
-//           ((grupo.total_flete / grupo.total_factura_lt) * 100).toFixed(1)
-//         )
-//       };
-//     }
-
-//     resultado["total_general"] = resumenGeneral;
-
-//     res.status(200).json(resultado);
-//   } catch (error) {
-//     console.error("Error en getHistorico2025:", error);
-//     res.status(500).json({ message: "Error en el servidor", error: error.message });
-//   }
-// };
-
 const getHistorico2025 = async (req, res) => {
   try {
-    // 1. Datos históricos
-    const [historicoRows] = await pool.query(`
+    const [rows] = await pool.query(`
       SELECT
         TRIM(ESTADO) AS ESTADO,
         FECHA,
@@ -1339,50 +1232,14 @@ const getHistorico2025 = async (req, res) => {
       WHERE ESTADO IS NOT NULL AND ESTADO != ''
     `);
 
-    if (historicoRows.length === 0) {
-      return res.status(404).json({ message: "No hay datos históricos." });
+    if (rows.length === 0) {
+      return res.status(404).json({ message: "No hay datos disponibles." });
     }
 
-    // 2. Datos de pedidos enviados
-    const [enviosRows] = await pool.query(`
-      SELECT
-        tipo_caja,
-        pedido,
-        YEAR(registro) AS anio,
-        MONTH(registro) AS mes
-      FROM pedido_finalizado
-      WHERE registro IS NOT NULL
-    `);
-
-    const enviosPorMesEstado = {};
-
-    // Agrupar envíos por estado/mes
-    enviosRows.forEach((row) => {
-      const pedido = row.pedido;
-      const mes = `${row.anio}-${String(row.mes).padStart(2, "0")}`;
-      const enviosRelacionados = historicoRows.filter((h) => h.NUM_CLIENTE == pedido);
-
-      enviosRelacionados.forEach((h) => {
-        const estado = h.ESTADO;
-        if (!enviosPorMesEstado[estado]) enviosPorMesEstado[estado] = {};
-        if (!enviosPorMesEstado[estado][mes]) {
-          enviosPorMesEstado[estado][mes] = {
-            pedidos_enviados: new Set(),
-            cajas_por_tipo: {}
-          };
-        }
-
-        const grupo = enviosPorMesEstado[estado][mes];
-        grupo.pedidos_enviados.add(pedido);
-        grupo.cajas_por_tipo[row.tipo_caja] = (grupo.cajas_por_tipo[row.tipo_caja] || 0) + 1;
-      });
-    });
-
-    // 3. Procesar datos históricos como antes
     const resultado = {};
     const totalGeneral = {};
 
-    historicoRows.forEach((row) => {
+    rows.forEach((row) => {
       const estado = row.ESTADO;
       const fecha = new Date(row.FECHA);
       const mes = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, "0")}`;
@@ -1423,21 +1280,18 @@ const getHistorico2025 = async (req, res) => {
       if (row.NUM_CLIENTE) total.clientes.add(row.NUM_CLIENTE);
     });
 
-    // 4. Enriquecer resultado con envíos
     for (const estado in resultado) {
       for (const mes in resultado[estado]) {
         const grupo = resultado[estado][mes];
-
-        grupo.promedio_dias_entrega = parseFloat((grupo.total_dias_entrega / grupo.total_registros).toFixed(1));
+        grupo.promedio_dias_entrega = parseFloat(
+          (grupo.total_dias_entrega / grupo.total_registros).toFixed(1)
+        );
         grupo.total_clientes = grupo.clientes.size;
-        grupo.porcentaje_flete = parseFloat(((grupo.total_flete / grupo.total_factura_lt) * 100).toFixed(1));
+        grupo.porcentaje_flete = parseFloat(
+          ((grupo.total_flete / grupo.total_factura_lt) * 100).toFixed(1)
+        );
         grupo.total_factura_lt = `$${grupo.total_factura_lt.toLocaleString()}`;
         grupo.total_flete = `$${grupo.total_flete.toLocaleString()}`;
-
-        // Agregar información de envíos
-        const envios = enviosPorMesEstado[estado]?.[mes];
-        grupo.pedidos_enviados = envios ? envios.pedidos_enviados.size : 0;
-        grupo.cajas_por_tipo = envios ? envios.cajas_por_tipo : {};
 
         delete grupo.clientes;
         delete grupo.total_dias_entrega;
@@ -1445,16 +1299,19 @@ const getHistorico2025 = async (req, res) => {
       }
     }
 
-    // 5. Total general como antes
     const resumenGeneral = {};
     for (const mes in totalGeneral) {
       const grupo = totalGeneral[mes];
       resumenGeneral[mes] = {
         total_factura_lt: `$${grupo.total_factura_lt.toLocaleString()}`,
         total_flete: `$${grupo.total_flete.toLocaleString()}`,
-        promedio_dias_entrega: parseFloat((grupo.total_dias_entrega / grupo.total_registros).toFixed(1)),
+        promedio_dias_entrega: parseFloat(
+          (grupo.total_dias_entrega / grupo.total_registros).toFixed(1)
+        ),
         total_clientes: grupo.clientes.size,
-        porcentaje_flete: parseFloat(((grupo.total_flete / grupo.total_factura_lt) * 100).toFixed(1))
+        porcentaje_flete: parseFloat(
+          ((grupo.total_flete / grupo.total_factura_lt) * 100).toFixed(1)
+        )
       };
     }
 
@@ -1462,15 +1319,10 @@ const getHistorico2025 = async (req, res) => {
 
     res.status(200).json(resultado);
   } catch (error) {
-    console.error("Error en getHistoricoConEnvios:", error);
+    console.error("Error en getHistorico2025:", error);
     res.status(500).json({ message: "Error en el servidor", error: error.message });
   }
 };
-
-  
-  
-  
-  
   
 
 module.exports = {

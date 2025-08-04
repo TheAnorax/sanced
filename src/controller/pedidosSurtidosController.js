@@ -9,6 +9,7 @@ SELECT
   p.pedido,
   p.tipo,
   pq.routeName,
+  pq.\`NOMBRE DEL CLIENTE\` AS nombre_cliente,  -- ✅ Corregido
   p.codigo_ped,
   prod.des,
   prod._pz AS pieza,
@@ -38,7 +39,8 @@ SELECT
 FROM pedido_surtido p
 LEFT JOIN productos prod ON p.codigo_ped = prod.codigo_pro
 LEFT JOIN paqueteria pq 
-  ON p.pedido = pq.\`NO ORDEN\` AND p.tipo = pq.tipo_original
+  ON p.pedido = pq.\`NO ORDEN\`
+  AND p.tipo = pq.tipo_original
 LEFT JOIN ubicaciones u ON p.codigo_ped = u.code_prod
 WHERE p.estado = 'S' OR p.estado = 'B'
 GROUP BY p.id_pedi
@@ -61,6 +63,7 @@ ORDER BY u.ubi ASC;
         id_pedi: pedido.id_pedi,
         tipo: pedido.tipo,
         routeName: pedido.routeName,
+        nombre_cliente:pedido.nombre_cliente,
         codigo_ped: pedido.codigo_ped,
         des: pedido.des,
         cantidad: pedido.cantidad,
@@ -94,20 +97,30 @@ ORDER BY u.ubi ASC;
   }
 };
 
-const updatePedido = async (req, res) => {
+const updatePedido = async (req, res) => { 
   try {
     const { pedidoId } = req.params;
     const { items } = req.body;
 
     const updateQueries = items.map(item => {
-      const params = [item.cant_surti, item.cant_no_env, item.estado, item.id_pedi];
-      let query = 'UPDATE pedido_surtido SET cant_surti = ?, cant_no_env = ?, estado = ?';
+      // 🔥 Determinar el estado dinámicamente
+      const estado = (item.cant_surti + item.cant_no_env === item.cantidad) ? 'B' : 'S';
 
+      console.log(`Item ${item.id_pedi}: Estado calculado -> ${estado}`);
+
+      const params = [item.cant_surti, item.cant_no_env, estado, item.motivo, item.id_pedi];
+
+      let query = 'UPDATE pedido_surtido SET cant_surti = ?, cant_no_env = ?, estado = ?, motivo = ?';
+
+      // Si hay cantidad no enviada, registrar inicio y fin de surtido
       if (item.cant_no_env > 0) {
         query += ', inicio_surtido = NOW(), fin_surtido = NOW()';
       }
-
+ 
       query += ' WHERE id_pedi = ?';
+
+      console.log('🔄 Ejecutando:', query, params); // Para depuración
+
       return pool.query(query, params);
     }); 
 
@@ -115,9 +128,11 @@ const updatePedido = async (req, res) => {
 
     res.status(200).json({ message: 'Pedido actualizado correctamente' });
   } catch (error) {
+    console.error('❌ Error en updatePedido:', error);
     res.status(500).json({ message: 'Error al actualizar el pedido', error: error.message });
   }
 };
+
 
 
 const authorizePedido = async (req, res) => {
@@ -625,7 +640,6 @@ const updateUM = async (req, res) => {
 
 
 
-
 const updateUMLogic = async () => {
   const connection = await pool.getConnection();
   try {
@@ -659,14 +673,26 @@ const updateUMLogic = async () => {
         ubicaciones u ON p.codigo_ped = u.code_prod
       LEFT JOIN
         usuarios us ON p.id_usuario = us.id_usu
-      WHERE p.cant_no_env != p.cantidad
-        AND (
-          (p._pz * prod._pz) +
-          (p._pq * prod._pq) +
-          (p._inner * prod._inner) +
-          (p._master * prod._master)
-        ) != p.cantidad
-        AND p.motivo IS NULL
+      WHERE 
+        (
+          (
+            p.cant_no_env != p.cantidad AND
+            (
+              (p._pz * prod._pz) +
+              (p._pq * prod._pq) +
+              (p._inner * prod._inner) +
+              (p._master * prod._master)
+            ) != p.cantidad
+          )
+          OR
+          (
+            p.um IS NOT NULL AND
+            p._pz = 0 AND
+            p._pq = 0 AND
+            p._inner = 0 AND
+            p._master = 0
+          )
+        )
       GROUP BY
         p.id_pedi
       ORDER BY
@@ -696,12 +722,9 @@ const updateUMLogic = async () => {
         min_master
       } = row;
 
-      // Usar cant_surti como base si es menor y mayor que 0
-      const cantidadReal = (cant_surti > 0 && cant_surti < cantidad)
-        ? cant_surti
-        : cantidad;
+      const cantidadReal = cant_surti;
 
-      // Calcular unidades corregidas
+
       const correctedUnits = calculateUnits(
         cantidadReal,
         min_pz,
@@ -710,7 +733,6 @@ const updateUMLogic = async () => {
         min_master
       );
 
-      // Evitar update si ya están bien
       if (
         correctedUnits._pz === _pz &&
         correctedUnits._pq === _pq &&
@@ -720,15 +742,14 @@ const updateUMLogic = async () => {
         continue;
       }
 
-      // Realizar actualización
       await connection.query(
         `
         UPDATE pedido_embarque 
         SET _pz = ?, 
             _pq = ?, 
             _inner = ?, 
-            _master = ?
-        WHERE pedido = ? AND codigo_ped = ? AND motivo IS NULL;
+            _master = ? 
+        WHERE pedido = ? AND codigo_ped = ?;
         `,
         [
           correctedUnits._pz,
@@ -742,10 +763,10 @@ const updateUMLogic = async () => {
     }
 
     await connection.commit();
-    console.log("Unidades actualizadas correctamente.");
+    console.log("✅ Unidades actualizadas correctamente.");
   } catch (error) {
     await connection.rollback();
-    console.error("Error durante la actualización de unidades:", error.message);
+    console.error("❌ Error durante la actualización de unidades:", error.message);
     throw error;
   } finally {
     connection.release();

@@ -73,6 +73,7 @@ const actualizarUbicacion = async (req, res) => {
     almacen,
     estado,
     user_id,
+    caducidad,
   } = req.body;
 
   console.log("Datos para actualizar Alma :", req.body);  
@@ -82,6 +83,7 @@ const actualizarUbicacion = async (req, res) => {
   const finalLote = lote || null;
   const finalAlmacen = almacen || null;
   const finalEstado = estado || null;
+  const finalCaducidad = caducidad || null;
 
   // 🔴 Usamos 7050 si almacen es nulo
   const almacenOrigen = almacen || 7050;
@@ -93,7 +95,7 @@ const actualizarUbicacion = async (req, res) => {
 
     const [result] = await connection.query(
       `UPDATE ubi_alma 
-       SET code_prod = ?, cant_stock = ?, lote = ?, almacen = ?, estado = ?
+       SET code_prod = ?, cant_stock = ?, lote = ?, almacen = ?, estado = ?, caducidad = ?
        WHERE id_ubi = ?`,
       [
         finalCodeProd,
@@ -101,6 +103,7 @@ const actualizarUbicacion = async (req, res) => {
         finalLote,
         finalAlmacen,
         finalEstado,
+        finalCaducidad,
         id_ubi,
       ]
     );
@@ -367,7 +370,7 @@ const insertPeacking = async (req, res) => {
   }
 };
 
-const obtenerUbiAlma = async (req, res) => {
+const obtenerUbiAlma = async (req, res) => { 
   try {
     // Realizar la consulta para obtener todos los registros
     const [rows] = await pool.query(`
@@ -383,6 +386,7 @@ const obtenerUbiAlma = async (req, res) => {
         u.codigo_ubi, 
         u.ingreso, 
         u.nivel,
+        u.caducidad,
         CASE 
           WHEN u.pasillo REGEXP '^[0-9]+$' THEN 'Almacen' 
           WHEN u.pasillo REGEXP 'AV' THEN 'Picking'

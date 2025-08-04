@@ -17,6 +17,7 @@ import Empaquetando from './components/paqueteria/empaquetando'
 import Ubicaciones from './components/ubicaciones/ubis';
 import Compras from './components/compras/compras';
 import Recibo from './components/recibo/recibo'
+
 import Embarques from './components/embarques/embarques'
 import Usuarios from './components/usuarios/usuarios'
 import  {UserProvider }  from './components/context/UserContext'

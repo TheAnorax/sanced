@@ -9,7 +9,7 @@ router.put('/inventarios/autorizar', autorizarRecibo); // Nueva ruta para autori
 router.post('/inventarios/ActualizarUbi', actualizarUbicacion);
 router.post('/inventarios/AgregarNuevaUbi', insertarNuevoProducto);
 router.post('/inventarios/insertarPeaking', insertPeacking )
-router.get('/inventarios/obtenerUbiAlma', obtenerUbiAlma)
+router.get('/inventarios/obtenerUbiAlma', obtenerUbiAlma) 
 router.delete('/inventarios/borrar', deleteTarea)
 router.get("/impares", getUbicacionesImpares)
 router.get("/pares", getUbicacionesPares);

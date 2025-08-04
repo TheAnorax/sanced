@@ -507,82 +507,99 @@ function EnSurtido() {
     setIncidences(newIncidences);
   };
 
-  const handleSave = async () => {
-    const newIncidences = {};
-    const errorMessages = [];
+const handleSave = async () => {
+  // 🔥 Validación de motivo ANTES de guardar
+  const missingMotives = selectedPedido.items.filter(
+    (item) => !item.ubi && item.cant_no_env > 0 && !item.motivo
+  );
 
-    for (let [index, item] of selectedPedido.items.entries()) {
-      if (
-        !item.ubi &&
-        item.cant_surti !== item.cantidad &&
-        item.cant_surti + item.cant_no_env !== item.cantidad
-      ) {
-        newIncidences[index] = true;
-        errorMessages.push(
-          `Producto ${item.codigo_ped}: La cantidad surtida y la cantidad no enviada no coinciden con la cantidad total.`
-        );
-      }
-    }
+  if (missingMotives.length > 0) {
+    setOpenModal(false);
+    Swal.fire({
+      icon: "warning",
+      title: "Motivo requerido",
+      text: "Debes agregar un motivo para los productos sin ubicación y con cantidad no enviada antes de guardar el pedido.",
+    }).then(() => setOpenModal(true));
+    return;
+  }
 
-    if (Object.keys(newIncidences).length > 0) {
-      setIncidences(newIncidences);
-      setSnackbarMessage(
-        `No se puede guardar el pedido debido a las siguientes incidencias:\n${errorMessages.join(
-          "\n"
-        )}`
+  // 🔎 Validación de incidencias normales
+  const newIncidences = {};
+  const errorMessages = [];
+
+  for (let [index, item] of selectedPedido.items.entries()) {
+    if (
+      !item.ubi &&
+      item.cant_surti !== item.cantidad &&
+      item.cant_surti + item.cant_no_env !== item.cantidad
+    ) {
+      newIncidences[index] = true;
+      errorMessages.push(
+        `Producto ${item.codigo_ped}: La cantidad surtida y la cantidad no enviada no coinciden con la cantidad total.`
       );
-      setSnackbarSeverity("error");
-      setSnackbarOpen(true);
-      return;
     }
+  }
 
-    setIsSaving(true);
-    try {
-      const updatedItems = selectedPedido.items.map((item, index) => {
-        if (editedItems[index]) {
-          return editedItems[index];
-        }
-        return item;
-      });
+  if (Object.keys(newIncidences).length > 0) {
+    setIncidences(newIncidences);
+    setSnackbarMessage(
+      `No se puede guardar el pedido debido a las siguientes incidencias:\n${errorMessages.join("\n")}`
+    );
+    setSnackbarSeverity("error");
+    setSnackbarOpen(true);
+    return;
+  }
 
-      const existingBahias = selectedPedido.ubi_bahia
-        ? selectedPedido.ubi_bahia.split(", ")
-        : [];
-      const combinedBahias = [
-        ...new Set([...existingBahias, ...selectedBahias.map((b) => b.bahia)]),
-      ].join(", ");
+  // 🔄 Guardado del pedido
+  setIsSaving(true);
+  try {
+    const updatedItems = selectedPedido.items.map((item, index) => {
+      const baseItem = editedItems[index] ? { ...editedItems[index] } : { ...item };
+      return { ...baseItem, motivo: item.motivo || "" }; // ✅ Incluye siempre el motivo
+    });
 
-      const updatedPedido = {
-        ...selectedPedido,
-        items: updatedItems,
-        ubi_bahia: combinedBahias,
-      };
+    const existingBahias = selectedPedido.ubi_bahia
+      ? selectedPedido.ubi_bahia.split(", ")
+      : [];
+    const combinedBahias = [
+      ...new Set([...existingBahias, ...selectedBahias.map((b) => b.bahia)]),
+    ].join(", ");
 
-      await axios.put(
-        `http://66.232.105.87:3007/api/pedidos-surtidos/pedidos-surtido/${selectedPedido.pedido}`,
-        updatedPedido
-      );
-      const updatedPedidos = pedidos.map((pedido) =>
-        pedido.pedido === selectedPedido.pedido
-          ? { ...selectedPedido, items: updatedItems }
-          : pedido
-      );
+    const updatedPedido = {
+      ...selectedPedido,
+      items: updatedItems,
+      ubi_bahia: combinedBahias,
+    };
 
-      setPedidos(updatedPedidos);
-      setFilteredPedidos(updatedPedidos);
-      handleCloseModal();
-      setSnackbarMessage("Pedido guardado exitosamente");
-      setSnackbarSeverity("success");
-      setSnackbarOpen(true);
-    } catch (error) {
-      console.error("Error saving pedido:", error);
-      setSnackbarMessage("Error al guardar el pedido");
-      setSnackbarSeverity("error");
-      setSnackbarOpen(true);
-    } finally {
-      setIsSaving(false);
-    }
-  };
+    console.log("📤 Datos enviados en actualización:", updatedPedido);
+
+    await axios.put(
+      `http://66.232.105.87:3007/api/pedidos-surtidos/pedidos-surtido/${selectedPedido.pedido}`,
+      updatedPedido
+    );
+
+    const updatedPedidos = pedidos.map((pedido) =>
+      pedido.pedido === selectedPedido.pedido
+        ? { ...selectedPedido, items: updatedItems } 
+        : pedido
+    );
+
+    setPedidos(updatedPedidos);
+    setFilteredPedidos(updatedPedidos);
+    handleCloseModal();
+    setSnackbarMessage("Pedido guardado exitosamente");
+    setSnackbarSeverity("success");
+    setSnackbarOpen(true);
+  } catch (error) {
+    console.error("Error saving pedido:", error);
+    setSnackbarMessage("Error al guardar el pedido");
+    setSnackbarSeverity("error");
+    setSnackbarOpen(true);
+  } finally {
+    setIsSaving(false);
+  }
+};
+
 
   const updateAllBahias = async () => {
     try {
@@ -634,56 +651,57 @@ function EnSurtido() {
     }
   };
 
-  const authorizePedido = async () => {
-    const newIncidences = {};
-    const errorMessages = [];
+const authorizePedido = async () => {
 
-    for (let [index, item] of selectedPedido.items.entries()) {
-      if (item.cant_surti > item.cantidad) {
-        newIncidences[index] =
-          "El producto cuenta con cantidades surtidas de más.";
-        errorMessages.push(
-          `Producto ${item.codigo_ped}: Cantidad surtida (${item.cant_surti}) es mayor que la cantidad (${item.cantidad}).`
-        );
-      } else if (item.cant_surti + item.cant_no_env !== item.cantidad) {
-        newIncidences[index] =
-          "La cantidad surtida y la cantidad no mandada no coinciden con la cantidad.";
-        errorMessages.push(
-          `Producto ${item.codigo_ped}: La suma de cantidad surtida (${item.cant_surti}) y cantidad no enviada (${item.cant_no_env}) no coincide con la cantidad (${item.cantidad}).`
-        );
-      }
-    }
 
-    if (Object.keys(newIncidences).length > 0) {
-      setIncidences(newIncidences);
-      setSnackbarMessage(
-        `No se puede autorizar el pedido debido a las siguientes incidencias:\n${errorMessages.join(
-          "\n"
-        )}`
+
+  // (Tu código actual de validaciones sigue aquí)
+  const newIncidences = {};
+  const errorMessages = [];
+
+  for (let [index, item] of selectedPedido.items.entries()) {
+    if (item.cant_surti > item.cantidad) {
+      newIncidences[index] = "El producto cuenta con cantidades surtidas de más.";
+      errorMessages.push(
+        `Producto ${item.codigo_ped}: Cantidad surtida (${item.cant_surti}) es mayor que la cantidad (${item.cantidad}).`
       );
-      setSnackbarSeverity("error");
-      setSnackbarOpen(true);
-      return;
-    }
-
-    try {
-      console.log("📦 Pedido:", selectedPedido.pedido);
-      console.log("📄 Tipo:", selectedPedido.tipo);
-      const updatedItems = selectedPedido.items.map((item) => ({
-        ...item,
-        estado: "E",
-        cant_surti: item.cant_surti,
-        cant_no_env: item.cant_no_env,
-        tipo: selectedPedido.tipo,
-      }));
-
-      await axios.post(
-        `http://66.232.105.87:3007/api/pedidos-surtidos/pedidos-surtido/${selectedPedido.pedido}/authorize`,
-        {
-          tipo: selectedPedido.tipo, // ← agregar tipo aquí
-          items: updatedItems,
-        }
+    } else if (item.cant_surti + item.cant_no_env !== item.cantidad) {
+      newIncidences[index] =
+        "La cantidad surtida y la cantidad no mandada no coinciden con la cantidad.";
+      errorMessages.push(
+        `Producto ${item.codigo_ped}: La suma de cantidad surtida (${item.cant_surti}) y cantidad no enviada (${item.cant_no_env}) no coincide con la cantidad (${item.cantidad}).`
       );
+    }
+  }
+
+  if (Object.keys(newIncidences).length > 0) {
+    setIncidences(newIncidences);
+    setSnackbarMessage(
+      `No se puede autorizar el pedido debido a las siguientes incidencias:\n${errorMessages.join("\n")}`
+    );
+    setSnackbarSeverity("error");
+    setSnackbarOpen(true);
+    return;
+  }
+
+   try {
+
+  const updatedItems = selectedPedido.items.map((item) => ({
+    ...item,
+    estado: "E",
+    cant_surti: item.cant_surti,
+    cant_no_env: item.cant_no_env,
+    tipo: selectedPedido.tipo,
+  }));
+
+ 
+  await axios.post(
+    `http://66.232.105.87:3007/api/pedidos-surtidos/pedidos-surtido/${selectedPedido.pedido}/authorize`,
+    {
+      tipo: selectedPedido.tipo,
+      items: updatedItems,
+    }
+  );
 
       const updatedPedidos = pedidos.filter(
         (pedido) => pedido.pedido !== selectedPedido.pedido
@@ -751,6 +769,7 @@ function EnSurtido() {
       bahiaFromItems,
       fusion,
       route,
+      nombreCliente, 
       tipoFusionado,
       isFaltantes = false,
       esUnificado = false
@@ -773,7 +792,7 @@ function EnSurtido() {
 
       doc.text(`Bahías: ${bahiaFromItems}`, 10, y);
       y += rowHeight;
-      doc.text(`Tipo de Ruta: ${route}`, 10, y);
+       doc.text(`Cliente: ${nombreCliente || "N/A"}    |    Tipo de Ruta: ${route}`, 10, y);
       y += rowHeight;
 
       return y + 4; // espacio extra
@@ -802,6 +821,7 @@ function EnSurtido() {
 
       const unidos = items.filter((i) => i.unido === 1);
       const noUnidos = items.filter((i) => i.unido !== 1);
+      const nombreCliente = items[0]?.nombre_cliente || "N/A"; // ✅ Nuevo
       const sortedItems = [...unidos, ...noUnidos].sort(
         (a, b) => b.cant_no_env - a.cant_no_env
       );
@@ -814,6 +834,7 @@ function EnSurtido() {
         bahiaFromItems,
         fusion,
         route,
+         nombreCliente, // ✅ Aquí lo pasamos
         tipoFusionado,
         false,
         unidos.length > 0
@@ -1316,7 +1337,7 @@ function EnSurtido() {
               Sin Ubicación
             </Button>
             <Button variant="contained" color="alert">
-              Unificado
+              Unificado 
             </Button>
           </Box>
         </Box>
@@ -1440,86 +1461,113 @@ function EnSurtido() {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {selectedPedido.items.map((item, index) => {
-                      const isOrange =
-                        item.cantidad % item.pieza !== 0 &&
-                        item.cant_no_env > 0; // Modifica esta lógica
-                      const noUbi = !item.ubi;
-                      const noEnv = item.cant_no_env !== 0;
+  {selectedPedido.items.map((item, index) => {
+    const isOrange = item.cantidad % item.pieza !== 0 && item.cant_no_env > 0;
+    const noUbi = !item.ubi;
+    const noEnv = item.cant_no_env !== 0;
 
-                      return (
-                        <Tooltip
-                          key={index}
-                          title={
-                            isOrange
-                              ? "La cantidad a surtir de este producto no es múltiplo de la venta mínima"
-                              : noUbi
-                              ? "El producto no tiene ubicación"
-                              : ""
-                          }
-                          placement="top"
-                        >
-                          <TableRow
-                            style={{
-                              backgroundColor: isOrange
-                                ? theme.palette.warning.main // Color naranja para la condición específica
-                                : noEnv
-                                ? "red" // Color rojo si no cumple la condición de isOrange
-                                : noUbi
-                                ? theme.palette.secondary.main // Otro color si no tiene ubicación
-                                : "transparent", // Sin color para los casos normales
-                            }}
-                          >
-                            <>
-                              <TableCell>{item.codigo_ped}</TableCell>
-                              <TableCell>{item.des}</TableCell>
-                              <TableCell>
-                                {item.cantidad} {item.um}
-                              </TableCell>
-                              <TableCell>
-                                <TextField
-                                  fullWidth
-                                  name="cant_surti"
-                                  value={item.cant_surti}
-                                  onChange={(event) =>
-                                    handleInputChange(event, index)
-                                  }
-                                  variant="outlined"
-                                  type="number"
-                                  disabled={
-                                    !(
-                                      isOrange ||
-                                      noUbi ||
-                                      item.cant_surti > item.cantidad
-                                    )
-                                  }
-                                />
-                              </TableCell>
-                              <TableCell>
-                                <TextField
-                                  fullWidth
-                                  name="cant_no_env"
-                                  value={item.cant_no_env}
-                                  onChange={(event) =>
-                                    handleInputChange(event, index)
-                                  }
-                                  variant="outlined"
-                                  type="number"
-                                  disabled={!(isOrange || noUbi)}
-                                />
-                              </TableCell>
-                              {isEditing && (
-                                <>
-                                  <TableCell>{item.ubi}</TableCell>
-                                  <TableCell>{item.estado}</TableCell>
-                                </>
-                              )}
-                            </>
-                          </TableRow>
-                        </Tooltip>
-                      );
-                    })}
-                  </TableBody>
+    return (
+      <Tooltip
+        key={index}
+        title={
+          isOrange
+            ? "La cantidad a surtir de este producto no es múltiplo de la venta mínima"
+            : noUbi
+            ? "El producto no tiene ubicación"
+            : ""
+        }
+        placement="top"
+      >
+        <TableRow
+          style={{
+            backgroundColor: isOrange
+              ? theme.palette.warning.main // Naranja
+              : noEnv
+              ? "red" // Rojo
+              : noUbi
+              ? theme.palette.secondary.main // Morado
+              : "transparent", // Normal
+          }}
+        >
+          <>
+            <TableCell>{item.codigo_ped}</TableCell>
+            <TableCell>{item.des}</TableCell>
+            <TableCell>
+              {item.cantidad} {item.um}
+            </TableCell>
+            <TableCell>
+              <TextField
+                fullWidth
+                name="cant_surti"
+                value={item.cant_surti}
+                onChange={(event) => handleInputChange(event, index)}
+                variant="outlined"
+                type="number"
+                disabled={
+                  !(
+                    isOrange ||
+                    noUbi ||
+                    item.cant_surti > item.cantidad
+                  )
+                }
+              />
+            </TableCell>
+            <TableCell>
+              <TextField
+                fullWidth
+                name="cant_no_env"
+                value={item.cant_no_env}
+                onChange={(event) => handleInputChange(event, index)}
+                variant="outlined"
+                type="number"
+                disabled={!(isOrange || noUbi)}
+              />
+            </TableCell>
+
+            {/* Mostrar select solo si no tiene ubicación y tiene cantidad no enviada */}
+            {(!item.ubi && item.cant_no_env > 0) && (
+              <TableCell>
+               <FormControl fullWidth>
+                <TextField
+                  select
+                  label="Motivo"
+                  value={item.motivo || ""}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setSelectedPedido((prevState) => {
+                      const updatedItems = [...prevState.items];
+                      updatedItems[index] = { ...updatedItems[index], motivo: value };
+                      return { ...prevState, items: updatedItems };
+                    });
+                  }}
+                  SelectProps={{ native: true }}
+                  InputLabelProps={{ shrink: true }}
+                >
+                  <option value="">Seleccione un motivo</option>
+                  <option value="A MENOS X FALTA DE INVENTARIO">A MENOS X FALTA DE INVENTARIO</option>
+                  <option value="CERO X FALTA DE EXISTENCIA">CERO X FALTA DE EXISTENCIA</option>
+                  <option value="CUARENTENA">CUARENTENA</option>
+                  <option value="ELIMINADO X VENTAS">ELIMINADO X VENTAS</option>
+                  <option value="UM NO COINCIDE">UM NO COINCIDE</option>
+                </TextField>
+              </FormControl>
+
+              </TableCell>
+            )}
+
+            {isEditing && (
+              <>
+                <TableCell>{item.ubi}</TableCell>
+                <TableCell>{item.estado}</TableCell>
+              </>
+            )}
+          </>
+        </TableRow>
+      </Tooltip>
+    );
+  })}
+</TableBody>
+
                 </Table>
               </TableContainer>
               {!isEditing && (

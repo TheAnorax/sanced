@@ -66,7 +66,7 @@ const actualizarCantidadSurtida = async (req, res) => {
     const { cant_surti, cantidad } = pedidoCheck[0];
 
     if (cant_surti >= cantidad) {
-      console.log(`El pedido ${pedidoId} con producto ${id_pedi} ya está completamente surtido.`);
+      //console.log(`El pedido ${pedidoId} con producto ${id_pedi} ya está completamente surtido.`);
       return res.status(200).json({ message: "El pedido ya ha sido surtido completamente. No se descuenta stock." });
     }
 

@@ -170,21 +170,53 @@ function ProyectoQueretaro() {
 
   const [loadingCompra, setLoadingCompra] = useState(false);
 
+  const [segmento, setSegmento] = useState("");
+  const [precios, setPrecios] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // 🔁 Función para obtener precios por segmento
+  const fetchPrecios = async (segmentoReal) => {
+    setLoading(true);
+    try {
+      const res = await axios.get(
+        `http://66.232.105.87:3007/api/Queretaro/precios_${segmentoReal.toLowerCase()}`
+      );
+      console.log("📦 Datos de precios recibidos:", res.data);
+      setPrecios(res.data);
+    } catch (error) {
+      console.error(`❌ Error al cargar precios (${segmentoReal}):`, error);
+      setPrecios([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 🧩 Función principal al abrir modal
   const handleClickOpen = (project) => {
     console.log("Proyecto seleccionado:", project);
     setSelectedProject(project);
     setOpen(true);
-    setLoadingCompra(true); // ⏳ Activa loading
+    setLoadingCompra(true);
 
-    const { giro, portafolio, segmento, exhibidores } = project;
+    // Normalizar campos
+    const giro = project.giro?.trim() || "";
+    const portafolio = project.portafolio?.trim() || "";
+    const segmentoReal = project.segmento?.trim().toLowerCase() || "";
+    const exhibidores = project.exhibidores || [];
 
+    setSegmento(segmentoReal); // 🔄 Para que quede reflejado también en el estado
+    setExhibitors(exhibidores);
+
+    // ⚡ Llamar precios con el segmento real
+    if (segmentoReal) {
+      fetchPrecios(segmentoReal); // ✅ Llama directo desde aquí
+    }
+
+    // Codificar para categoría
     const encodedGiro = encodeURIComponent(giro);
     const encodedPortafolio = encodeURIComponent(portafolio);
-    const encodedSegmento = encodeURIComponent(segmento);
+    const encodedSegmento = encodeURIComponent(segmentoReal);
 
-    setExhibitors(exhibidores || []);
-
-    // Promesa: productos comprados desde API externa
     const promProductosComprados = axios
       .get("http://66.232.105.79:9100/hdia")
       .then((response) => {
@@ -193,10 +225,8 @@ function ProyectoQueretaro() {
             (p) =>
               String(p.cliente).trim() === String(project.Num_Cliente).trim()
           );
-          console.log("✅ Productos comprados:", productosCliente);
           setProductosComprados(productosCliente);
         } else {
-          console.warn("⚠️ La API no regresó una lista válida");
           setProductosComprados([]);
         }
       })
@@ -205,17 +235,14 @@ function ProyectoQueretaro() {
         setProductosComprados([]);
       });
 
-    // Promesa: datos por categoría y segmento
     const promDatosCategoria = axios
       .get(
         `http://66.232.105.87:3007/api/Queretaro/category/${encodedGiro}/${encodedPortafolio}/${encodedSegmento}`
       )
       .then((response) => {
         if (response.data.data && response.data.data.length > 0) {
-          console.log("📦 Datos por categoría y segmento:", response.data.data);
           setTabData(response.data.data);
         } else {
-          console.warn("⚠️ No se encontraron datos filtrados");
           setTabData([]);
         }
       })
@@ -224,9 +251,8 @@ function ProyectoQueretaro() {
         setTabData([]);
       });
 
-    // Esperar ambas respuestas antes de continuar
     Promise.all([promProductosComprados, promDatosCategoria]).then(() => {
-      setLoadingCompra(false); // ✅ Ya cargó todo
+      setLoadingCompra(false);
     });
   };
 
@@ -752,18 +778,21 @@ function ProyectoQueretaro() {
                         <th style={{ padding: "8px", textAlign: "left" }}>
                           Master
                         </th>
-                        <th style={{ padding: "8px", textAlign: "left" }}>
-                          TP
-                        </th>
-                        <th style={{ padding: "8px", textAlign: "left" }}>
-                          Precio TP
-                        </th>
+                        <th>Precio AK</th>
+                        <th>AK vs ST</th>
+                        <th>Precio TP</th>
+                        <th>TR vs ST</th>
                       </tr>
                     </thead>
 
                     <tbody>
                       {tabData.map((item, index) => {
-                        const comprado = fueComprado(item.Codigo); // solo se evalúa una vez
+                        const comprado = fueComprado(item.Codigo);
+
+                        // 🔎 Buscar los precios por código
+                        const precioMatch = precios.find(
+                          (p) => Number(p.Codigo) === Number(item.Codigo)
+                        );
 
                         return (
                           <tr
@@ -787,8 +816,20 @@ function ProyectoQueretaro() {
                             <td style={{ padding: "8px" }}>{item.Precio}</td>
                             <td style={{ padding: "8px" }}>{item.Inner}</td>
                             <td style={{ padding: "8px" }}>{item.Master}</td>
-                            <td style={{ padding: "8px" }}>{item.TP}</td>
-                            <td style={{ padding: "8px" }}>{item.Precio_T}</td>
+                            <td style={{ padding: "8px" }}>
+                              {precioMatch ? `$${precioMatch.PrecioAksi}` : ""}
+                            </td>
+                            <td style={{ padding: "8px" }}>
+                              {precioMatch ? precioMatch.AKvsST : ""}
+                            </td>
+                            <td style={{ padding: "8px" }}>
+                              {precioMatch
+                                ? `$${precioMatch.PrecioTruper}`
+                                : ""}
+                            </td>
+                            <td style={{ padding: "8px" }}>
+                              {precioMatch ? precioMatch.TrvsST : ""}
+                            </td>
                           </tr>
                         );
                       })}
@@ -860,7 +901,7 @@ function ProyectoQueretaro() {
 
             {tabIndex === 3 && (
               <Box sx={{ paddingTop: 2 }}>
-                <p>ProduCtos nuevos</p>
+                <p>Productos nuevos</p>
               </Box>
             )}
 
@@ -1058,7 +1099,6 @@ function ProyectoQueretaro() {
             <TableCell>{row.nombre}</TableCell>
             <TableCell>{row.zona}</TableCell>
             <TableCell>{row.ruta}</TableCell>
-            <TableCell>{row.dia_visita}</TableCell>
             <TableCell>{row.segmento}</TableCell>
           </TableRow>
         ))}
@@ -1625,6 +1665,6 @@ function ProyectoQueretaro() {
       </Modal>
     </>
   );
-}
+}    
 
 export default ProyectoQueretaro;

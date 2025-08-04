@@ -429,6 +429,17 @@ function Muestras() {
     const lastSolicitudIndex = solicitudes.length - 1;
     const lastSolicitud = { ...solicitudes[lastSolicitudIndex] };
 
+    if (!lastSolicitud.carrito || lastSolicitud.carrito.length === 0) {
+      setEnviandoSolicitud(false);
+      await Swal.fire({
+        icon: "warning",
+        title: "Sin Productos para las Muestras",
+        text: "Debes agregar al menos un producto antes de enviar la solicitud.",
+        confirmButtonText: "Entendido",
+      });
+      return;
+    }
+
     if (!lastSolicitud.enviadoParaAutorizar) {
       lastSolicitud.enviadoParaAutorizar = true;
 
@@ -691,6 +702,7 @@ function Muestras() {
     try {
       const payload = {
         folio: solicitudSeleccionada.folio,
+        it: solicitudSeleccionada.IT || "",
         carrito: solicitudSeleccionada.carrito.map((item) => ({
           codigo: item.codigo,
           cantidad_surtida: parseInt(item.cantidad_surtida || 0),
@@ -700,6 +712,14 @@ function Muestras() {
       await axios.post(
         "http://66.232.105.87:3007/api/muestras/surtido",
         payload
+      );
+
+      setSolicitudesAutorizadas((prev) =>
+        prev.map((sol) =>
+          sol.folio === solicitudSeleccionada.folio
+            ? { ...sol, IT: solicitudSeleccionada.IT }
+            : sol
+        )
       );
 
       setModalSurtidoOpen(false);
@@ -994,6 +1014,7 @@ function Muestras() {
     "Nadia Cano": "Compras",
     "Rocio Mancilla": "Compras",
     "Abraham arenas": "Compras",
+    "Laura Carbajal": "Compras",
     "Ariel Ramírez": "Compras",
     "Daniela Mondragón": "Compras",
     "Katia Daniela Martinez Mo": "Departamental",
@@ -1189,6 +1210,7 @@ function Muestras() {
   const totalPaginasAutorizadas = Math.ceil(
     autorizadasFiltradas.length / registrosPorPagina
   );
+
   const totalPaginasCanceladas = Math.ceil(
     canceladasFiltradas.length / registrosPorPagina
   );
@@ -1853,7 +1875,8 @@ function Muestras() {
           </Paper>
         )}
 
-        {currentTab === 1 && (user?.role === "Admin" || user?.role === "Master") && (
+        {currentTab === 1 &&
+          (user?.role === "Admin" || user?.role === "Master") && (
             <Paper elevation={3} style={{ padding: "20px" }}>
               <Typography variant="h5" align="center" gutterBottom>
                 Autorizar Solicitudes
@@ -2053,7 +2076,7 @@ function Muestras() {
                     <TableBody>
                       {autorizadasPaginadas.map((sol) => (
                         <TableRow key={sol.folio}>
-                          <TableCell>58826</TableCell>
+                          <TableCell>{sol.IT}</TableCell>
                           <TableCell>
                             {moment(sol.created_at).format("DD/MM/YYYY")}
                           </TableCell>
@@ -2080,51 +2103,55 @@ function Muestras() {
                           <TableCell>{sol.salida_por || "Pendiente"}</TableCell>
 
                           <TableCell>
-                            {/* Si está marcada como SIN MATERIAL */}
-                            {sol.sin_material ? (
-                              <Tooltip title="Sin material disponible">
-                                <CancelIcon color="error" fontSize="large" />
-                              </Tooltip>
-                            ) : sol.salida_por ? (
-                              <CheckCircleIcon
-                                color="success"
-                                titleAccess="Finalizado"
-                              />
-                            ) : (
-                              <>
-                                <Tooltip
-                                  title={`Generar PDF (${sol.pdf_generado}/2)`}
-                                >
-                                  <span>
-                                    {(sol.pdf_generado < 2 ||
-                                      user?.role === "Admin" ||
-                                      user?.role === "Master" ||
-                                      user?.role === "admin Audi") && (
-                                      <IconButton
-                                        onClick={() => handleGenerarPDF(sol)}
-                                        title="Generar PDF"
-                                      >
-                                        <LocalPrintshopIcon />
-                                      </IconButton>
-                                    )}
-                                  </span>
+                            <Box
+                              display="flex"
+                              alignItems="center"
+                              justifyContent="center"
+                              gap={1} // espacio entre íconos
+                            >
+                              <IconButton
+                                onClick={() => handleOpenSurtidoModal(sol)}
+                                color="info"
+                                title="Ver productos"
+                              >
+                                <VisibilityIcon />
+                              </IconButton>
+
+                              {sol.sin_material ? (
+                                <Tooltip title="Sin material disponible">
+                                  <CancelIcon color="error" fontSize="medium" />
                                 </Tooltip>
-
-                                {(user?.role === "Admin" ||
-                                  user?.role === "Master" ||
-                                  user?.role === "INV") && (
-                                  <IconButton
-                                    onClick={() => handleOpenSurtidoModal(sol)}
-                                    color="info"
-                                    title="Registrar cantidades surtidas"
+                              ) : sol.salida_por ? (
+                                <Tooltip title="Solicitud finalizada">
+                                  <CheckCircleIcon
+                                    color="success"
+                                    fontSize="medium"
+                                  />
+                                </Tooltip>
+                              ) : (
+                                <>
+                                  <Tooltip
+                                    title={`Generar PDF (${sol.pdf_generado}/2)`}
                                   >
-                                    <VisibilityIcon />
-                                  </IconButton>
-                                )}
+                                    <span>
+                                      {(user?.role === "Admin" ||
+                                        user?.role === "INV") &&
+                                        sol.pdf_generado < 2 && (
+                                          <IconButton
+                                            onClick={() =>
+                                              handleGenerarPDF(sol)
+                                            }
+                                            title="Generar PDF"
+                                          >
+                                            <LocalPrintshopIcon />
+                                          </IconButton>
+                                        )}
+                                    </span>
+                                  </Tooltip>
 
-                                {(!sol.fin_embarcado_at || !sol.salida_por) &&
-                                  (user?.role === "INV" ||
-                                    user?.role === "Admin") && (
+                                  {(user?.role === "INV" ||
+                                    user?.role === "Admin" ||
+                                    user?.role === "Master") && (
                                     <IconButton
                                       onClick={() => registrarSalida(sol.folio)}
                                       color="success"
@@ -2138,15 +2165,12 @@ function Muestras() {
                                     </IconButton>
                                   )}
 
-                                {/* SOLO SI NO es sin_material ni salida ni fin embarque */}
-                                {(user?.role === "INV" ||
-                                  user?.role === "Admin") &&
-                                  !sol.sin_material &&
-                                  !sol.salida_por && (
+                                  {(user?.role === "INV" ||
+                                    user?.role === "Admin") && (
                                     <Tooltip title="Marcar como SIN MATERIAL">
                                       <IconButton
                                         color="primary"
-                                        size="large"
+                                        size="medium"
                                         disabled={marcandoSinMaterial}
                                         onClick={() =>
                                           Swal.fire({
@@ -2162,17 +2186,13 @@ function Muestras() {
                                           })
                                         }
                                       >
-                                        <DoNotDisturbIcon
-                                          sx={{
-                                            color: "#f51b05",
-                                            fontSize: 28,
-                                          }}
-                                        />
+                                        <DoNotDisturbIcon />
                                       </IconButton>
                                     </Tooltip>
                                   )}
-                              </>
-                            )}
+                                </>
+                              )}
+                            </Box>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -2346,6 +2366,23 @@ function Muestras() {
           </DialogTitle>
 
           <DialogContent dividers>
+            {/* Campo de texto para IT */}
+            <Box mb={2}>
+              <TextField
+                label="Número de IT"
+                variant="outlined"
+                fullWidth
+                value={solicitudSeleccionada?.IT || ""}
+                onChange={(e) => {
+                  const itValue = e.target.value;
+                  setSolicitudSeleccionada((prev) => ({
+                    ...prev,
+                    IT: itValue,
+                  }));
+                }}
+              />
+            </Box>
+
             <TableContainer component={Paper}>
               <Table>
                 <TableHead>
@@ -2443,13 +2480,16 @@ function Muestras() {
             >
               Cancelar
             </Button>
-            <Button
-              onClick={guardarSurtido}
-              variant="contained"
-              color="primary"
-            >
-              Guardar
-            </Button>
+
+            {(user?.role === "INV" || user?.role === "Admin") && (
+              <Button
+                onClick={guardarSurtido}
+                variant="contained"
+                color="primary"
+              >
+                Guardar
+              </Button>
+            )}
           </DialogActions>
         </Dialog>
       </Box>

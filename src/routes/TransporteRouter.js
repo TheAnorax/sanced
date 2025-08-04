@@ -58,7 +58,7 @@ router.get("/pedido/detalles/:noOrden", getFechaYCajasPorPedido);
 
 router.put("/paqueteria/actualizar-guia/:id", actualizarGuia);
 
-router.get("/embarque/:codigo_ped", getPedidosEmbarque);
+router.get("/embarque/:pedido/:tipo", getPedidosEmbarque);
 
 router.get("/transportistas", getTransportistas);
 

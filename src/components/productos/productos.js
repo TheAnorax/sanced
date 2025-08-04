@@ -134,7 +134,7 @@ function ProductoCRUD() {
   const fetchProductos = async () => {
     try {
       const response = await axios.get(
-        "http://66.232.105.87:3007/api/productos"
+        "http://66.232.105.87:3007/api/productos" 
       );
       setProductos(response.data);
       setFilteredProductos(response.data);
@@ -599,11 +599,12 @@ function ProductoCRUD() {
             />
           ),
         },
-        { field: "codigo_pro", headerName: "Código", width: 100 },
-        { field: "des", headerName: "Descripción", width: 300 },
-        { field: "_pz", headerName: "PZ", width: 150 },
-        { field: "_inner", headerName: "Inner", width: 150 },
-        { field: "_master", headerName: "Master", width: 150 },
+        { field: "codigo_pro", headerName: "Código", width: 80 },
+        { field: "des", headerName: "Descripción", width: 300 },        
+        { field: "ubicaciones", headerName: "Ubi.", width: 150 },
+        { field: "_pz", headerName: "PZ", width: 80 },
+        { field: "_inner", headerName: "Inner", width: 80 },
+        { field: "_master", headerName: "Master", width: 80 },
         {
           field: "stock_total",
           headerName: "Total",

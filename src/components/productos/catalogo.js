@@ -57,7 +57,7 @@ function Catalogo() {
   const [filteredProductos, setFilteredProductos] = useState([]);
   const [editandoImagenes, setEditandoImagenes] = useState(false);
   const [imagenesSeleccionadas, setImagenesSeleccionadas] = useState({});
-  const baseURL = "http://66.232.105.87:3011"; // Puedes mover esto a un archivo config.js si gustas
+  const baseURL = "https://sanced.santulconnect.com:3011"; // Puedes mover esto a un archivo config.js si gustas
 
   const [detalleOriginal, setDetalleOriginal] = useState(null);
   const isSmallScreen = useMediaQuery("(max-width:600px)");
@@ -497,7 +497,7 @@ function Catalogo() {
                           ) : (
                             // Puedes mover esto a un archivo config.js si gustas
                             <img
-                              src={`http://66.232.105.87:3011/imagenes/img_${suffix}/${detalleProducto?.codigo_pro}.jpg`}
+                              src={`https://sanced.santulconnect.com:3011/imagenes/img_${suffix}/${detalleProducto?.codigo_pro}.jpg`}
                               alt={`${unidad}`}
                               style={{
                                 width: 120,
@@ -507,12 +507,12 @@ function Catalogo() {
                               }}
                               onClick={() =>
                                 setImagenZoom(
-                                  `http://66.232.105.87:3011/imagenes/img_${suffix}/${detalleProducto?.codigo_pro}.jpg`
+                                  `https://sanced.santulconnect.com:3011/imagenes/img_${suffix}/${detalleProducto?.codigo_pro}.jpg`
                                 )
                               }
                               onError={(e) => {
                                 e.target.onerror = null;
-                                e.target.src = `http://66.232.105.87:3011/imagenes/img_${suffix}/noimage.png`;
+                                e.target.src = `https://sanced.santulconnect.com:3011/imagenes/img_${suffix}/noimage.png`;
                               }}
                             />
                           )}

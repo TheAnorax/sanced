@@ -2,16 +2,18 @@ import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import {Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Box, Button, Tabs, Tab, IconButton, Tooltip, Dialog, DialogTitle, DialogContent, Typography, TextField, ButtonGroup, Avatar, DialogActions, FormControl, Divider, InputLabel, Select, MenuItem, Alert, Snackbar, Menu} from "@mui/material";
 import { format } from 'date-fns';
-import { es, is } from 'date-fns/locale';
+import { es, is, se } from 'date-fns/locale';
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import moment from "moment";
 import { useMediaQuery} from "@mui/material";
-import { CancelOutlined, CheckCircleOutline, CloudUpload, CloudDownload, PhotoCamera, ModeEditOutline, PaymentsOutlined,  HelpOutline, Visibility,  Circle, AccountCircle, UploadFile, UploadFileOutlined, Backup, MonetizationOn, Block, Edit, ErrorOutline, PersonOffOutlined, PermIdentityOutlined, KeyboardArrowDown } from "@mui/icons-material";
+import { CancelOutlined, CheckCircleOutline, CloudUpload, CloudDownload, PhotoCamera, ModeEditOutline, PaymentsOutlined,  HelpOutline, Visibility,  Circle, AccountCircle, UploadFile, UploadFileOutlined, Backup, MonetizationOn, Block, Edit, ErrorOutline, PersonOffOutlined, PermIdentityOutlined, KeyboardArrowDown, Person } from "@mui/icons-material";
 import Webcam from "react-webcam";
 import ejemplo from './ej_empleados.png';
 
 function VisitasReporte (){
+  // const api = "http://localhost:3007/api/visitas";
+  // const foto = "http://localhost:3007/api/fotos";
   const api = "http://66.232.105.87:3007/api/visitas";
   const foto = "http://66.232.105.87:3007/api/fotos";
 
@@ -22,7 +24,9 @@ function VisitasReporte (){
   const isMobile = useMediaQuery('(max-width:1024px)');
 
   const [empleados, setEmpleados] = useState([]);
+  const [areaT, setAreaT] = useState([]);
   const [selectedEmpleados, setSelectedEmpleados] = useState([]);
+  const [selectedAreaT, setSelectedAreaT] = useState(null);
   const [reporte, setReporte] = useState([]);
   const [multas, setMultas] = useState([]);
   const [vehiculos, setVehiculos] = useState([]);
@@ -62,6 +66,7 @@ function VisitasReporte (){
     "colonia",
     "delegacion",
     "estado",
+    "area_trabajo",
   ];
 
   //dialog
@@ -103,7 +108,7 @@ function VisitasReporte (){
   const [updateSuccess, setUpdateSuccess] = useState(false);
   const [updateClaveSuccess, setUpdateClaveSuccess] = useState(false);
 
-
+  
   // Función para filtrar las multas
   const filteredMultas = (multas || []).filter((multa) => {
     if (filter === "pagada") {
@@ -186,51 +191,103 @@ function VisitasReporte (){
       }
     }, [openCam]);
 
-    const handleFileUpload = (event) => {
-      const file = event.target.files[0];
-      const reader = new FileReader();
-    
-      reader.onload = (e) => {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: "array" });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet);
-    
-        const fileColumns = Object.keys(jsonData[0] || {});
-    
-        const missingColumns = expectedColumns.filter((col) => !fileColumns.includes(col));
-        const extraColumns = fileColumns.filter((col) => !expectedColumns.includes(col));
-        const isOrdered = expectedColumns.every((col, index) => fileColumns[index] === col);
-    
-        const validationErrors = [];
-        const invalidCols = [];
-    
-        if (missingColumns.length > 0) {
-          validationErrors.push(`Faltan las columnas: ${missingColumns.join(", ")}`);
-          invalidCols.push(...missingColumns);
-        }
-        if (extraColumns.length > 0) {
-          validationErrors.push(`Columnas adicionales detectadas: ${extraColumns.join(", ")}`);
-          invalidCols.push(...extraColumns);
-        }
-        if (!isOrdered) {
-          validationErrors.push("Orden de las columnas incorrecto.");
-          invalidCols.push(...fileColumns.filter((col, index) => expectedColumns[index] !== col));
-        }
-    
-        setErrorExcel(validationErrors);
-        setInvalidColumns(invalidCols);
-        setDataExcel(jsonData); 
-      };
-    
-      reader.readAsArrayBuffer(file);
+  const handleFileUpload = (event) => {
+    const file = event.target.files[0];
+    const reader = new FileReader();
+  
+    reader.onload = (e) => {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: "array" });
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet);
+  
+      const fileColumns = Object.keys(jsonData[0] || {});
+  
+      const missingColumns = expectedColumns.filter((col) => !fileColumns.includes(col));
+      const extraColumns = fileColumns.filter((col) => !expectedColumns.includes(col));
+      const isOrdered = expectedColumns.every((col, index) => fileColumns[index] === col);
+  
+      const validationErrors = [];
+      const invalidCols = [];
+  
+      if (missingColumns.length > 0) {
+        validationErrors.push(`Faltan las columnas: ${missingColumns.join(", ")}`);
+        invalidCols.push(...missingColumns);
+      }
+      if (extraColumns.length > 0) {
+        validationErrors.push(`Columnas adicionales detectadas: ${extraColumns.join(", ")}`);
+        invalidCols.push(...extraColumns);
+      }
+      if (!isOrdered) {
+        validationErrors.push("Orden de las columnas incorrecto.");
+        invalidCols.push(...fileColumns.filter((col, index) => expectedColumns[index] !== col));
+      }
+  
+      setErrorExcel(validationErrors);
+      setInvalidColumns(invalidCols);
+      setDataExcel(jsonData); 
     };
+  
+    reader.readAsArrayBuffer(file);
+  };
+
+  const exportExcel = () => {
+    try {
+
+      const data = {
+        ['nombre']: 'JUANA',
+        ['apellidos']: 'LOPEZ LOPEZ',
+        ['no_empleado']: '2525',
+        ['no_ine']: '00000000000',
+        ['telefono']: '555555555',
+        ['puesto']: 'GERENTE',
+        ['area_trabajo']: 'CEDIS SANTUL / CORPORATIVO SANTUL',
+        ['tel_emergencia']: '555555555',
+        ['nom_emergencia']: 'LILIA CRUZ LOPEZ',
+        ['parentesco_contacto']: 'MAMA',
+        ['calle']: 'ROVERETO',
+        ['colonia']: 'BUENAVISTA',
+        ['delegacion']: 'TECAMAC',
+        ['estado']: 'ESTADO DE MEXICO',
+      };
+
+      const ws = XLSX.utils.json_to_sheet([data]);
+
+      ws['!cols'] = [
+        { wch: 13 }, // NOMBRE
+        { wch: 18 }, // APELLIDOS
+        { wch: 13 }, // NO EMPLEADO
+        { wch: 18 }, // INE
+        { wch: 11 }, // TEL
+        { wch: 11 }, // PUESTO
+        { wch: 35 }, // AREA TRABAJO
+        { wch: 14 }, // TEL EMR
+        { wch: 16 }, // NOM EMER
+        { wch: 20 }, // PERENTESCO
+        { wch: 15 }, // CALLE
+        { wch: 14 }, // COLONIA
+        { wch: 13 }, // DELEGACION
+        { wch: 18 }, // ESTADO
+      ];
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Plantilla.");
+
+      XLSX.writeFile(wb, "plantilla_empleados.xlsx");
+    } catch (error) {
+      console.error("Error al exportar a Excel:", error);
+    }
+  };
 
   const getEmpleados = async () => {
     try {
         const response = await axios.get(`${api}/list/empleados`);
         setEmpleados(response.data.empleados);
+        setAreaT([
+          { id_catv: 8, area: 'PERSONAL CEDIS' },
+          { id_catv: 1, area: 'PERSONAL CORPORATIVO' },
+        ]);
     } catch (error) {
         console.error('Error al obtener los datos:', error);
     }
@@ -258,6 +315,7 @@ function VisitasReporte (){
     try {
         const response = await axios.get(`${api}/list/multas`);
         setMultas(response.data.multas);
+        // console.log('response', response.data.multas)
     } catch (error) {
         console.error('Error al obtener los datos:', error);
     }
@@ -531,7 +589,6 @@ const validateInfo = () => {
         isValid = false;
     }
 
-  
     // Validar número de INE
     if (!selectedVisitante?.no_ine?.trim()) {
         errorsDatos.no_ine = "Este dato es obligatorio.";
@@ -742,41 +799,45 @@ const cancelEmpleado = async ( idEmp, est) => {
     console.error('Error al enviar los datos:', error);
   }
 }
-const handleCancelarEmpleado = async (idEmp) => {
-  if (!idEmp.id_emp) {
-    console.error(' id_vehpr:', idEmp);
-    return;
-  }
-  setSelectedEmpleados(idEmp);
 
+const handleCancelarEmpleado = (emp) => {
+  if (!emp.id_emp) {
+    console.error('El objeto emp no contiene el campo clave:', emp);
+    return;
+  } 
+  console.log('selectedCancelVisitante:', emp);
+  setSelectedEmpleados(emp);
   setOpenBloquearEmpleado(true);
 }
 
-const [empleado, setEmpleado] = useState(
-    {
-      id_catv: 8,
-      nombre: "",
-      apellidos:"",
-      foto: "",
-      no_empleado: "",
-      no_ine: "",
-      telefono: "",
-      puesto:"", 
-      tel_emergencia: "",
-      nom_emergencia: "",
-      parentesco_contacto: "",
-      calle: "",
-      colonia: "",
-      delegacion: "",
-      estado: "",
-    }
-);
+  const [empleado, setEmpleado] = useState({
+    id_catv: 0,
+    nombre: "",
+    apellidos:"",
+    foto: "",
+    no_empleado: "",
+    no_ine: "",
+    telefono: "",
+    puesto:"", 
+    tel_emergencia: "",
+    nom_emergencia: "",
+    parentesco_contacto: "",
+    calle: "",
+    colonia: "",
+    delegacion: "",
+    estado: "",
+    num: 0,
+  });
 
 const validateEmpleado= () => {
   let validationErrors = {};
     let isValid = true;
 
     // Validación de los campos generales
+    if(!empleado.id_catv){
+      validationErrors.id_catv = "Este campo es obligatorio.";
+      isValid = false;
+    }
     if(!(empleado.nombre || '').trim()) {
       validationErrors.nombre = "Este dato es obligatorio.";
       isValid = false;
@@ -813,37 +874,39 @@ const validateEmpleado= () => {
       validationErrors.puesto = "Este dato es obligatorio.";
       isValid = false;
     }
-    if(!(empleado.tel_emergencia || '').trim()){
-      validationErrors.tel_emergencia = "Este dato es obligatorio.";
-      isValid = false;
-    } else if(!/^\d{10}$/.test(empleado.tel_emergencia)){
-      validationErrors.tel_emergencia = "Se requieren al menos 10 números.";
-      isValid = false;
-    }
-    if(!(empleado.nom_emergencia || '').trim()) { 
-      validationErrors.nom_emergencia = "Este dato es obligatorio.";
-      isValid = false;
-    }
-    if(!(empleado.parentesco_contacto || '').trim()) {
-      validationErrors.parentesco_contacto = "Este dato es obligatorio.";
-      isValid = false;
-    }
 
-    if(!(empleado.calle || '').trim()) {
-      validationErrors.calle = "Este dato es obligatorio.";
-      isValid = false;
-    }
-    if(!(empleado.colonia || '').trim()) {
-      validationErrors.colonia = "Este dato es obligatorio.";
-      isValid = false;
-    }
-    if(!(empleado.delegacion || '').trim()) {
-      validationErrors.delegacion = "Este dato es obligatorio.";
-      isValid = false;
-    }
-    if(!(empleado.estado || '').trim()) {
-      validationErrors.estado = "Este dato es obligatorio.";
-      isValid = false;
+    if(selectedAreaT?.num === 8 ) {
+      if(!(empleado.tel_emergencia || '').trim()){
+        validationErrors.tel_emergencia = "Este dato es obligatorio.";
+        isValid = false;
+      } else if(!/^\d{10}$/.test(empleado.tel_emergencia)){
+        validationErrors.tel_emergencia = "Se requieren al menos 10 números.";
+        isValid = false;
+      }
+      if(!(empleado.nom_emergencia || '').trim()) { 
+        validationErrors.nom_emergencia = "Este dato es obligatorio.";
+        isValid = false;
+      }
+      if(!(empleado.parentesco_contacto || '').trim()) {
+        validationErrors.parentesco_contacto = "Este dato es obligatorio.";
+        isValid = false;
+      }
+      if(!(empleado.calle || '').trim()) {
+        validationErrors.calle = "Este dato es obligatorio.";
+        isValid = false;
+      }
+      if(!(empleado.colonia || '').trim()) {
+        validationErrors.colonia = "Este dato es obligatorio.";
+        isValid = false;
+      }
+      if(!(empleado.delegacion || '').trim()) {
+        validationErrors.delegacion = "Este dato es obligatorio.";
+        isValid = false;
+      }
+      if(!(empleado.estado || '').trim()) {
+        validationErrors.estado = "Este dato es obligatorio.";
+        isValid = false;
+      }
     }
     setErrorEmpleado(validationErrors);
     return isValid;
@@ -865,6 +928,18 @@ const inputChange = (event) => {
   }));
 };
 
+
+
+const handleDropdownChangeTipo = (event) => {
+  const selectedId = event.target.value;
+  const selectedObj = areaT.find(item => item.id_catv === selectedId);
+  setSelectedAreaT(selectedObj);
+  setEmpleado((prevState) => ({
+    ...prevState,
+    id_catv: selectedObj?.id_catv || "",
+  }));
+};
+
 const inputChangeUpdateEmpleado = (event) => {
   const { name, value } = event.target;
   setSelectedEmpleados((prevState) => ({
@@ -872,9 +947,11 @@ const inputChangeUpdateEmpleado = (event) => {
       [name]: value,
   }));
 };
+
 const handleClickOpenCreateEmpleado = () => {
   setOpenCreateEmpleado(true);
 };
+
 const handleCloseCreateEmpleado = () => {
   setOpenCreateEmpleado(false);
   setSelectedArea(null);
@@ -897,11 +974,13 @@ const handleCloseCreateEmpleado = () => {
 
 const handleCloseUpdateEmpleado = () => {
   setOpenUpdateEmpleado(false);
-}
+};
+
 const closeErrorDialog = () => {
   setIsErrorDialogVisible(false);
   setErrorEmpleado('');
 };
+
 const handleClickOpenEditEmpleado = (emp) => {
   if (!emp.id_emp) {
     console.error('El objeto emp no contiene el campo clave:', emp);
@@ -911,6 +990,7 @@ const handleClickOpenEditEmpleado = (emp) => {
   setSelectedEmpleados(emp);
   setOpenUpdateEmpleado(true); 
 };
+
 const closebloquearDialog = () => {
   setOpenBloquearEmpleado(false);
 };
@@ -918,7 +998,6 @@ const closebloquearDialog = () => {
 const handleBloquearEmpleado = async () => {
   setOpenBloquearEmpleado(false); 
   setShowAlertCancelEmploye(true);
-
   try {
     await cancelEmpleado(selectedEmpleados.id_emp, "C");
     console.log("Empleado desactivado");
@@ -1103,7 +1182,7 @@ const handleSaveData = async () => {
       window.location.reload();
   } catch (error) {
       console.error("Error al guardar los datos:", error);
-      alert("Error al guardar los datos");
+      //alert("Error al guardar los datos");
   }
 };
 
@@ -1143,7 +1222,8 @@ const tomarFotoPago = () => {
 };
 const pagarMulta = async (idMul) => {
   if (!imagePago) {
-    alert("Selecciona una imagen antes de continuar.");
+    //alert("Selecciona una imagen antes de continuar.");
+    console.error("Selecciona una imagen antes de continuar.");
     return;
   }
 
@@ -1396,7 +1476,7 @@ const tomarFotoEmpleado = () => {
       const devices = await navigator.mediaDevices.enumerateDevices();
       const videoDevices = devices.filter((device) => device.kind === "videoinput");
   
-      console.log("Cámaras disponibles:", videoDevices);
+      // console.log("Cámaras disponibles:", videoDevices);
   
       // Seleccionar cámara USB por nombre (si sabes el nombre)
       const usbCamera = videoDevices.find((device) =>
@@ -1406,17 +1486,19 @@ const tomarFotoEmpleado = () => {
       // Si encuentras una cámara USB, configúrala
       if (usbCamera) {
         setVideoConstraints({ deviceId: { exact: usbCamera.deviceId } });
-        console.log("Cámara USB seleccionada:", usbCamera.label);
+        // console.log("Cámara USB seleccionada:", usbCamera.label);
       } else if (videoDevices.length > 0) {
         // Si no encuentras una cámara USB, selecciona la primera disponible
         setVideoConstraints({ deviceId: { exact: videoDevices[0].deviceId } });
-        console.log("Cámara predeterminada seleccionada:", videoDevices[0].label);
+        // console.log("Cámara predeterminada seleccionada:", videoDevices[0].label);
       } else {
-        alert("No se encontraron cámaras disponibles.");
+        //alert("No se encontraron cámaras disponibles.");
+        // console.error("No se encontraron cámaras disponibles.");
       }
     } catch (error) {
       console.error("Error al enumerar dispositivos:", error);
       //alert("Error al acceder a las cámaras. Verifica los permisos.");
+      console.error("Error al acceder a las cámaras. Verifica los permisos.");
     }
   };
 
@@ -1426,7 +1508,7 @@ const tomarFotoEmpleado = () => {
 
   const handleUserMediaError = (error) => {
     console.error("Error al acceder a la cámara:", error);
-    //alert("No se pudo acceder a la cámara. Verifica los permisos.");
+    alert("No se pudo acceder a la cámara. Verifica los permisos.");
   };
 
   useEffect(() => {
@@ -1445,166 +1527,27 @@ const tomarFotoEmpleado = () => {
   const [anchorEl, setAnchorEl] = useState(null);
     const open = Boolean(anchorEl);
   
-    const handleClick = (event) => {
-      setAnchorEl(event.currentTarget);
-    };
-  
-    const handleCloseFiltro = (callback) => {
-      setAnchorEl(null);
-      if (callback) callback();
-    };
+  const handleClick = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
 
-    return (
-      <div>
-        <Paper elevation={3} sx={{ p: 3, overflow: "auto" }}>
-          <>
-          <Tabs value={tabIndex} onChange={handleTabChange} variant="scrollable" scrollButtons allowScrollButtonsMobile>
-          {(user?.role === "CONTROL" || user?.role === "Admin" || user?.role === "RH") &&(<Tab label="visitantes"/>)}
-          {(user?.role === "CONTROL" || user?.role === "Admin" || user?.role === "RH") &&(<Tab label="Visitantes multados"/>)}
-          {(user?.role === "Admin" || user?.role === "RH") && (<Tab label="reporte visitas"/>)}
-          {(user?.role === 'Admin' || user?.role === "RH") &&(<Tab label="Permisos autos"/>)}
-          {(user?.role === 'Admin'  || user?.role === "RH")&&(<Tab label="EMPLEADOS CEDIS"/>)}
-        </Tabs>
-          {tabIndex === 0  &&
-            <div>
-            <Box
-            display="flex"
-            justifyContent="space-between"
-            alignItems="center"
-            flexDirection={isSmallScreen ? "column" : "row"}
-          >
-            <h2 style={{marginLeft: "10px"}}>VISITANTES</h2>
-            </Box>
-            {isMobile ? (
-              <div>
-                <ButtonGroup>
-                <Button onClick={() => setFilterVisitas("otros")}>
-                  VISITAS
-                </Button>
-                <Button
-                  onClick={handleClick}
-                  endIcon={<KeyboardArrowDown />}
-                />
-                </ButtonGroup>
-                  <Menu anchorEl={anchorEl} open={open} onClose={() => handleCloseFiltro()}>
-                    <MenuItem onClick={() => setFilterVisitas("otros")}>TODOS</MenuItem>
-                    <MenuItem onClick={() => setFilterVisitas("PERSONAL CORPORATIVO")}>CORPORATIVO</MenuItem>
-                    <MenuItem onClick={() => setFilterVisitas("TRANSPORTISTA")}>TRANSPORTISTAS</MenuItem>
-                    <MenuItem onClick={() => setFilterVisitas("CANDIDATO (ENTREVISTA)")}>ENTREVISTA</MenuItem>
-                    <MenuItem onClick={() => setFilterVisitas("INVITADO (EVENTOS)")}>INVITADO</MenuItem>
-                    <MenuItem onClick={() => setFilterVisitas("PROVEEDOR")}>PROVEEDORES</MenuItem>
-                    <MenuItem onClick={() => setFilterVisitas("PAQUETERIA")}>PAQUETERIAS</MenuItem>
-                </Menu>
-              </div>
-            ): (
-              <div style={{ marginBottom: "10px", textAlign:'center' }}>
-              <ButtonGroup variant="text" aria-label="Basic button group">
-                <Button onClick={() => setFilterVisitas("otros")}>TODOS</Button>
-                <Button onClick={() => setFilterVisitas("PERSONAL CORPORATIVO")}>CORPORATIVO</Button>
-                <Button onClick={() => setFilterVisitas("PROVEEDOR")}>PROVEEDORES</Button>
-                <Button onClick={() => setFilterVisitas("CANDIDATO (ENTREVISTA)")}>ENTREVISTA</Button>
-                <Button onClick={() => setFilterVisitas("INVITADO (EVENTOS)")}>INVITADO</Button>
-                <Button onClick={() => setFilterVisitas("TRANSPORTISTA")}>TRANSPORTISTAS</Button>
-                <Button onClick={() => setFilterVisitas("PAQUETERIA")}>PAQUETERIAS</Button>
-              </ButtonGroup>
-                
-            </div>
-            )}
-            
-            <TableContainer component={Paper} sx={{ maxHeight: 440 }}>
-              
-              <Table stickyHeader aria-label="sticky table">
-                <TableHead>
-                  <TableRow>
-                  <TableCell>FOTO</TableCell>
-                    <TableCell align="center">NOMBRE</TableCell>
-                    <TableCell align="center">EMPRESA</TableCell>
-                    <TableCell align="center">CLAVE</TableCell>
-                    <TableCell align="center">PLACAS</TableCell>
-                    <TableCell align="center"></TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {filteredVisitantes.length > 0 ? (
-                    filteredVisitantes.filter((item) => {
-                      if (user?.role === "CONTROL") {
-                        return item.clave.startsWith("TR") || item.clave.startsWith("MN");
-                      }
-                      if (user?.role === "RH") {
-                        return item.clave.startsWith("VT");
-                      }
-                      return true; 
-                    }).map((visit, index) => (
-                      <TableRow key={index}>
-                        <TableCell>
-                          <Avatar
-                            src={`${foto}/${visit.foto}`}
-                            alt={`Foto de ${visit.nombre_completo || "visitante"}`}
-                            sx={{ width: 100, height: 100, marginRight: '15px', objectFit: 'cover' }}
-                          />
-                        </TableCell>
-                        {visit.id_catv === 4 ? (
-                          <TableCell align="left">
-                          {visit.nombre_com_acomp} <br />
-                          <small style={{ marginLeft: "10px" }}>{visit.tipo} {visit.id_catv === 4 &&(<small> | CONDUCTOR </small>)}</small>
-                        </TableCell>
-                        ): (
-                          <TableCell align="left">
-                            {visit.nombre_completo} <br />
-                            <small style={{ marginLeft: "10px" }}>{visit.tipo} {visit.id_catv === 1 &&(<small> | {visit.puesto}</small>)}</small>
-                          </TableCell>
-                        )}
-                        <TableCell align="center">
-                          {visit.id_catv === 2 || visit.id_catv === 4 ? (
-                            <span>NO APLICA</span>
-                          ): visit.id_catv === 1 ? (
-                            <span>COLABORADOR SANTUL</span>
-                          ): visit.id_catv === 7 ?(
-                            <span>{visit.paqueteria}</span>
-                          ): visit.id_catv === 10 ?(
-                            <span>DIRECCION GENERAL</span>
-                          ):(
-                            <span>{visit.empresa}</span>
-                          )}
-                        </TableCell>
-                        <TableCell align="center" >
-                          {visit.clave}
-                        </TableCell>
-                        <TableCell align="center">
-                          {(visit.placa === null || visit.placa === 'null' || visit.placa === '') ? (
-                            "NO APLICA"
-                          ) : visit.id_catv === 5 && visit.placa === '' ? (
-                            "POR ASIGNAR"
-                          ) : visit.id_catv === 4 ? (
-                            <div>{visit.contenedor} <br/>{visit.id_catv === 4 &&(<small> CONTENEDOR </small>)}</div>
-                          ):(
-                            visit.placa
-                          )}
-                        </TableCell>
-                        <TableCell align="center" >
-                          <Button size="small" variant="text" onClick={() => handleClickDeatailInfo(visit)} endIcon={<Visibility/>}></Button>
-                          {visit.id_catv === 4 || visit.id_catv === 7 ? (
-                            <div></div>
-                          ): (
-                            <Button size="small" variant="text" onClick={() => handleClickOpenEdit(visit)} endIcon={<ModeEditOutline/>}></Button>
-                          )}
-                          
-                          
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={5}>
-                        No hay visitantes que coincidan con el filtro seleccionado.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
-            </div>}
-          {tabIndex === 1  && 
+  const handleCloseFiltro = (callback) => {
+    setAnchorEl(null);
+    if (callback) callback();
+  };
+
+  return (
+    <div>
+      <Paper elevation={3} sx={{ p: 3, overflow: "auto" }}>
+        <>
+        <Tabs value={tabIndex} onChange={handleTabChange} variant="scrollable" scrollButtons allowScrollButtonsMobile>
+        {(user?.role === "CONTROL" || user?.role === "Admin" || user?.role === "RH") &&(<Tab label="visitantes"/>)}
+        {(user?.role === "CONTROL" || user?.role === "Admin" || user?.role === "RH") &&(<Tab label="Visitantes multados"/>)}
+        {(user?.role === "Admin" || user?.role === "RH") && (<Tab label="reporte visitas"/>)}
+        {(user?.role === 'Admin' || user?.role === "RH") &&(<Tab label="Permisos autos"/>)}
+        {(user?.role === 'Admin'  || user?.role === "RH")&&(<Tab label="EMPLEADOS"/>)}
+      </Tabs>
+        {tabIndex === 0  &&
           <div>
           <Box
           display="flex"
@@ -1612,8 +1555,139 @@ const tomarFotoEmpleado = () => {
           alignItems="center"
           flexDirection={isSmallScreen ? "column" : "row"}
         >
-          <h2>VISITANTES MULTADOS</h2>
-          <Button variant="contained" startIcon={<CloudDownload/>} onClick={handleDownloadReportMultas}>Descargar reporte</Button>
+          <h2 style={{marginLeft: "10px"}}>VISITANTES</h2>
+          </Box>
+          {isMobile ? (
+            <div>
+              <ButtonGroup>
+              <Button onClick={() => setFilterVisitas("otros")}>
+                VISITAS
+              </Button>
+              <Button
+                onClick={handleClick}
+                endIcon={<KeyboardArrowDown />}
+              />
+              </ButtonGroup>
+                <Menu anchorEl={anchorEl} open={open} onClose={() => handleCloseFiltro()}>
+                  <MenuItem onClick={() => setFilterVisitas("otros")}>TODOS</MenuItem>
+                  <MenuItem onClick={() => setFilterVisitas("PERSONAL CORPORATIVO")}>CORPORATIVO</MenuItem>
+                  <MenuItem onClick={() => setFilterVisitas("TRANSPORTISTA")}>TRANSPORTISTAS</MenuItem>
+                  <MenuItem onClick={() => setFilterVisitas("CANDIDATO (ENTREVISTA)")}>ENTREVISTA</MenuItem>
+                  <MenuItem onClick={() => setFilterVisitas("INVITADO (EVENTOS)")}>INVITADO</MenuItem>
+                  <MenuItem onClick={() => setFilterVisitas("PROVEEDOR")}>PROVEEDORES</MenuItem>
+                  <MenuItem onClick={() => setFilterVisitas("PAQUETERIA")}>PAQUETERIAS</MenuItem>
+              </Menu>
+            </div>
+          ): (
+            <div style={{ marginBottom: "10px", textAlign:'center' }}>
+            <ButtonGroup variant="text" aria-label="Basic button group">
+              <Button onClick={() => setFilterVisitas("otros")}>TODOS</Button>
+              <Button onClick={() => setFilterVisitas("PERSONAL CORPORATIVO")}>CORPORATIVO</Button>
+              <Button onClick={() => setFilterVisitas("PROVEEDOR")}>PROVEEDORES</Button>
+              <Button onClick={() => setFilterVisitas("CANDIDATO (ENTREVISTA)")}>ENTREVISTA</Button>
+              <Button onClick={() => setFilterVisitas("INVITADO (EVENTOS)")}>INVITADO</Button>
+              <Button onClick={() => setFilterVisitas("TRANSPORTISTA")}>TRANSPORTISTAS</Button>
+              <Button onClick={() => setFilterVisitas("PAQUETERIA")}>PAQUETERIAS</Button>
+            </ButtonGroup>
+          </div>
+          )}
+          <TableContainer component={Paper} sx={{ maxHeight: 440 }}>
+            <Table stickyHeader aria-label="sticky table">
+              <TableHead>
+                <TableRow>
+                <TableCell>FOTO</TableCell>
+                  <TableCell align="center">NOMBRE</TableCell>
+                  <TableCell align="center">EMPRESA</TableCell>
+                  <TableCell align="center">CLAVE</TableCell>
+                  <TableCell align="center">PLACAS</TableCell>
+                  <TableCell align="center"></TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {filteredVisitantes.length > 0 ? (
+                  filteredVisitantes.filter((item) => {
+                    if (user?.role === "CONTROL") {
+                      return item.clave.startsWith("TR") || item.clave.startsWith("MN");
+                    }
+                    if (user?.role === "RH") {
+                      return item.clave.startsWith("VT");
+                    }
+                    return true; 
+                  }).map((visit, index) => (
+                    <TableRow key={index}>
+                      <TableCell>
+                        <Avatar
+                          src={`${foto}/${visit.foto}`}
+                          alt={`Foto de ${visit.nombre_completo || "visitante"}`}
+                          sx={{ width: 100, height: 100, marginRight: '15px', objectFit: 'cover' }}
+                        />
+                      </TableCell>
+                      {visit.id_catv === 4 ? (
+                        <TableCell align="left">
+                        {visit.nombre_com_acomp} <br />
+                        <small style={{ marginLeft: "10px" }}>{visit.tipo} {visit.id_catv === 4 &&(<small> | CONDUCTOR </small>)}</small>
+                      </TableCell>
+                      ): (
+                        <TableCell align="left">
+                          {visit.nombre_completo} <br />
+                          <small style={{ marginLeft: "10px" }}>{visit.tipo} {visit.id_catv === 1 &&(<small> | {visit.puesto}</small>)}</small>
+                        </TableCell>
+                      )}
+                      <TableCell align="center">
+                        {visit.id_catv === 2 || visit.id_catv === 4 ? (
+                          <span>NO APLICA</span>
+                        ): visit.id_catv === 1 ? (
+                          <span>COLABORADOR SANTUL</span>
+                        ): visit.id_catv === 7 ?(
+                          <span>{visit.paqueteria}</span>
+                        ): visit.id_catv === 10 ?(
+                          <span>DIRECCION GENERAL</span>
+                        ):(
+                          <span>{visit.empresa}</span>
+                        )}
+                      </TableCell>
+                      <TableCell align="center" >
+                        {visit.clave}
+                      </TableCell>
+                      <TableCell align="center">
+                        {(visit.placa === null || visit.placa === 'null' || visit.placa === '') ? (
+                          "NO APLICA"
+                        ) : visit.id_catv === 5 && visit.placa === '' ? (
+                          "POR ASIGNAR"
+                        ) : visit.id_catv === 4 ? (
+                          <div>{visit.contenedor} <br/>{visit.id_catv === 4 &&(<small> CONTENEDOR </small>)}</div>
+                        ):(
+                          visit.placa
+                        )}
+                      </TableCell>
+                      <TableCell align="center" >
+                        <Button size="small" variant="text" onClick={() => handleClickDeatailInfo(visit)} endIcon={<Visibility/>}></Button>
+                        {visit.id_catv === 4 || visit.id_catv === 7 ? (
+                          <div></div>
+                        ): (
+                          <Button size="small" variant="text" onClick={() => handleClickOpenEdit(visit)} endIcon={<ModeEditOutline/>}></Button>
+                        )}
+                        
+                        
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={5}>
+                      No hay visitantes que coincidan con el filtro seleccionado.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+          </div>}
+        {tabIndex === 1  && 
+          <div>
+          <Box display="flex" justifyContent="space-between" alignItems="center" flexDirection={isSmallScreen ? "column" : "row"}>
+            <h2>VISITANTES MULTADOS</h2>
+            <Button variant="contained" startIcon={<CloudDownload/>} onClick={handleDownloadReportMultas}>Descargar reporte</Button>
           </Box>
           <div style={{ marginBottom: "10px", margin:'5px' }}>
             <ButtonGroup variant="text" aria-label="Basic button group">
@@ -1623,7 +1697,6 @@ const tomarFotoEmpleado = () => {
             </ButtonGroup>
           </div>
           <TableContainer component={Paper} sx={{ maxHeight: 440 }}>
-            {/* Tabla de multas */}
             <Table stickyHeader aria-label="sticky table">
               <TableHead>
                 <TableRow>
@@ -1637,15 +1710,15 @@ const tomarFotoEmpleado = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {filteredMultas.length > 0 ? (
-                  filteredMultas.filter((item) => {
-                    if (!item.clave) return false; // Verifica que item.clave exista antes de continuar
+                {filteredMultas.length > 0 ? (filteredMultas.filter((item) => {
+                  if (!item.clave) return false; // Verifica que item.clave exista antes de continuar
                     switch (user?.role) {
                       case "CONTROL":
                         return (
                           item.clave.startsWith("TR") ||
                           item.clave.startsWith("MN") ||
-                          item.clave.startsWith("PR")
+                          item.clave.startsWith("PR") ||
+                          item.clave.startsWith("PQ")
                         );
                       case "RH":
                         return item.clave.startsWith("VT");
@@ -1661,7 +1734,7 @@ const tomarFotoEmpleado = () => {
                         <small style={{ marginLeft: "10px" }}>{multa.tipo}</small>
                       </TableCell>
                       <TableCell align="center" component="th" scope="row">
-                        {multa.empresa === '' ? (
+                        {multa.empresa === '' || multa.empresa === null ? (
                           'N/A'
                         ): <span>{multa.empresa}</span>}
                       </TableCell>
@@ -1686,12 +1759,9 @@ const tomarFotoEmpleado = () => {
                       )}
                       <TableCell align="center">
                         <Tooltip title='Gnerar monto'>
-
                           <Button endIcon={<PaymentsOutlined/>} onClick={() => handleClickOpenMulta(multa)}>
-
                         </Button>
                         </Tooltip>
-                        
                       </TableCell>
                     </TableRow>
                   ))
@@ -1860,8 +1930,9 @@ const tomarFotoEmpleado = () => {
             </Dialog>
 
           </TableContainer>
-          </div>}
-          {tabIndex === 2  &&
+          </div>
+        }
+        {tabIndex === 2  &&
           <div>
             <Box
               display="flex"
@@ -1928,102 +1999,84 @@ const tomarFotoEmpleado = () => {
               </Table>
             </TableContainer>
             
-          </div>}
-          {tabIndex === 3  &&
-          <div>
-            <Box
-            display="flex"
-            justifyContent="space-between"
-            alignItems="center"
-            flexDirection={isSmallScreen ? "column" : "row"}
-          >
-            <h2>PERMISOS DE VEHICULOS</h2>
-          </Box>
-          <TableContainer component={Paper} sx={{ maxHeight: 440 }}>
-            {showSuccessAlert && (
-              <Alert icon={<CheckCircleOutline fontSize="inherit" />} severity="success">
-                ¡Permiso actualizado con exito.!
-              </Alert>
-            )}
-            <Table stickyHeader aria-label="sticky table">
-              <TableHead>
-                <TableRow>
-                  <TableCell>VISITANTE</TableCell>
-                  <TableCell align="center">DÍA</TableCell>
-                  <TableCell align="center">HORA</TableCell>
-                  <TableCell align="center">MOTIVO</TableCell>
-                  <TableCell align="center">ACCESO</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {vehiculos && vehiculos.length > 0 ? (
-                  vehiculos.map((veh, index) => (
-                    <TableRow key={index}>
-                      <TableCell component="th" scope="row">
-                        {veh.nombre_completo} {' '}<br/>
-                        <small style={{ marginLeft: '10px' }}>{veh.tipo}</small>
-                      </TableCell>
-                      <TableCell align="center">
-                        {veh.reg_entrada &&
-                          new Date(veh.reg_entrada).toLocaleDateString('es-ES', {
-                            day: '2-digit',
-                            month: 'long',
-                            year: 'numeric',
-                          })}
-                      </TableCell>
-                      <TableCell align="center">{veh.hora_entrada && formatTo12Hour(veh.hora_entrada)}</TableCell>
-                      <TableCell align="center">{veh.motivo_acc}</TableCell>
-                      {user?.role === 'Admin' && (
-                      <TableCell align="center">
-                        <IconButton color="success" onClick={() => handlePermisoAcc(veh, 'S')}>
-                          <CheckCircleOutline />
-                        </IconButton>
-                        <IconButton color="error" onClick={() => handlePermisoAcc(veh, 'N')}>
-                          <CancelOutlined />
-                        </IconButton>
-                      </TableCell>)}
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={5} >
-                      No hay solicitud de permisos pendientes.
+          </div>
+        }
+        {tabIndex === 3  &&
+        <div>
+          <Box
+          display="flex"
+          justifyContent="space-between"
+          alignItems="center"
+          flexDirection={isSmallScreen ? "column" : "row"}
+        >
+          <h2>PERMISOS DE VEHICULOS</h2>
+        </Box>
+        <TableContainer component={Paper} sx={{ maxHeight: 440 }}>
+          {showSuccessAlert && (
+            <Alert icon={<CheckCircleOutline fontSize="inherit" />} severity="success">
+              ¡Permiso actualizado con exito.!
+            </Alert>
+          )}
+          <Table stickyHeader aria-label="sticky table">
+            <TableHead>
+              <TableRow>
+                <TableCell>VISITANTE</TableCell>
+                <TableCell align="center">DÍA</TableCell>
+                <TableCell align="center">HORA</TableCell>
+                <TableCell align="center">MOTIVO</TableCell>
+                <TableCell align="center">ACCESO</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {vehiculos && vehiculos.length > 0 ? (
+                vehiculos.map((veh, index) => (
+                  <TableRow key={index}>
+                    <TableCell component="th" scope="row">
+                      {veh.nombre_completo} {' '}<br/>
+                      <small style={{ marginLeft: '10px' }}>{veh.tipo}</small>
                     </TableCell>
+                    <TableCell align="center">
+                      {veh.reg_entrada &&
+                        new Date(veh.reg_entrada).toLocaleDateString('es-ES', {
+                          day: '2-digit',
+                          month: 'long',
+                          year: 'numeric',
+                        })}
+                    </TableCell>
+                    <TableCell align="center">{veh.hora_entrada && formatTo12Hour(veh.hora_entrada)}</TableCell>
+                    <TableCell align="center">{veh.motivo_acc}</TableCell>
+                    {user?.role === 'Admin' && (
+                    <TableCell align="center">
+                      <IconButton color="success" onClick={() => handlePermisoAcc(veh, 'S')}>
+                        <CheckCircleOutline />
+                      </IconButton>
+                      <IconButton color="error" onClick={() => handlePermisoAcc(veh, 'N')}>
+                        <CancelOutlined />
+                      </IconButton>
+                    </TableCell>)}
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
-          </div>}
-          {tabIndex === 4 && 
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={5} >
+                    No hay solicitud de permisos pendientes.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+        </div>}
+        {tabIndex === 4 && 
           <div>
-            <Box
-              display="flex"
-              justifyContent="space-between"
-              alignItems="center"
-              flexDirection={isSmallScreen ? "column" : "row"}
-            >
-              <h2 style={{fontSize: isMobile ? '20px': ''}}>EMPLEADOS CEDIS SANTUL</h2>
-              {isMobile ? (
-                <ButtonGroup variant="text" aria-label="Basic button group">
-                  <Button variant="contained" startIcon={<CloudUpload/>} onClick={handleClickOpenUpExcel}>Importar empleados</Button>
-                  <Button variant="contained" startIcon={<AccountCircle/>} onClick={handleClickOpenCreateEmpleado}>Registrar empleado</Button>
-                </ButtonGroup>
-                  ): (
-                    <Box display="flex" gap={2}>
-                      
-                      <Button variant="contained" startIcon={<CloudUpload/>} onClick={handleClickOpenUpExcel}>Importar empleados</Button>
-                      <Button variant="contained" startIcon={<AccountCircle/>} onClick={handleClickOpenCreateEmpleado}>Registrar empleado</Button>
-                    </Box>
-                  )}
-              <Box display="flex" gap={2}>
-                {/* <Button variant="contained" startIcon={<CloudUpload/>} onClick={handleClickOpenUpExcel}>Importar empleados</Button> */}
-                <Dialog
-                open={openUpExcel}
-                onClose={handleCloseUpExcel}
-                maxWidth="md"
-                fullWidth
-              >
+            <Box display="flex" justifyContent="space-between" alignItems="center" flexDirection={isSmallScreen ? "column" : "row"}>
+              <h2>EMPLEADOS SANTUL</h2>
+              <div display="flex" >
+                <Button variant="contained" startIcon={<CloudUpload/>} onClick={handleClickOpenUpExcel} style={{margin: '2px'}}>Importar empleados</Button>
+                <Button variant="contained" startIcon={<AccountCircle/>} onClick={handleClickOpenCreateEmpleado} style={{margin: '2px'}}>Registrar empleado</Button>
+              </div>
+              {/* <Button variant="contained" startIcon={<CloudUpload/>} onClick={handleClickOpenUpExcel}>Importar empleados</Button> */}
+              <Dialog open={openUpExcel} onClose={handleCloseUpExcel} maxWidth="md" fullWidth>
                 <Box >
                   <DialogTitle>
                     <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} flexDirection={isSmallScreen ? "column" : "row"} marginTop={3}>
@@ -2031,29 +2084,25 @@ const tomarFotoEmpleado = () => {
                         Importar información
                       </Typography>
                       <div>
+                        <Button variant="outlined" endIcon={<CloudDownload />} component="span" fontSize="small" style={{margin:'3px'}} onClick={exportExcel}>
+                          Descargar plantilla
+                        </Button>
                         <input
                           type="file"
                           accept=".xlsx, .xls"
                           onChange={handleFileUpload}
-                          style={{ display: 'none' }}
+                          style={{ display: 'none'}}
                           id="upload-excel"
                         />
                         <label htmlFor="upload-excel">
-                          <Button
-                            variant="outlined"
-                            endIcon={<UploadFile />}
-                            component="span"
-                            fontSize="small"
-                          >
+                          <Button variant="outlined" endIcon={<UploadFile />} component="span" fontSize="small" style={{margin:'3px'}}>
                             Seleccionar archivo
                           </Button>
                         </label>
                       </div>
                     </Box>
-                    
                   </DialogTitle>
                   <DialogContent>
-
                     {dataExcel.length > 0 ? (
                       <>
                       <TableContainer component={Paper}>
@@ -2114,109 +2163,47 @@ const tomarFotoEmpleado = () => {
                     <Box>
                     {dataExcel.length > 0 && (
                       <Box sx={{ textAlign: "center", mt: 4 }}>
-                        <Button
-                        variant="outlined"
-                        color="primary"
-                        onClick={handleClearExcel}
-                        sx={{ mr: 2 }}>
+                        <Button variant="outlined" color="primary" onClick={handleClearExcel} sx={{ mr: 2 }}>
                           Cancelar 
                         </Button>
                         <Snackbar open={openAlert} autoHideDuration={6000} onClose={handleCloseSave}>
                           <Alert severity="error" onClose={handleCloseSave}>{errorSave}</Alert>
                         </Snackbar>
-                        <Button
-                          variant="outlined"
-                          color="primary"
-                          endIcon={<Backup />}
-                          onClick={handleSaveData}
-                          disabled={dataExcel.length === 0}
-                        >
+                        <Button variant="outlined" color="primary" endIcon={<Backup />} onClick={handleSaveData} disabled={dataExcel.length === 0}>
                           Guardar Datos
                         </Button>
-                        
                       </Box>
                     )}
                   </Box>
                   </DialogActions>
-                    
-                  
                 </Box>
               </Dialog>
-                {/* <Button variant="contained" startIcon={<AccountCircle/>} onClick={handleClickOpenCreateEmpleado}>Registrar empleado</Button> */}
-                <Dialog open={openCreateEmpleado} onClose={handleCloseCreateEmpleado} maxWidth="md" fullWidth>
-                  <DialogTitle >NUEVO EMPLEADO</DialogTitle>
-                  <DialogContent style={{ marginLeft: '5px', display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start', margin: '15px' }}>
-                      <div>
-                        <Box
-                          sx={{
-                            display: "flex",
-                            flexDirection: "column",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            border: "1px dashed #ccc",
-                            width: 210,
-                            height: 280,
-                            textAlign: "center",
-                            margin: "auto",
-                          }}
-                        >
-                          {imageEmpleado ? (
-                            <Box
-                              sx={{ textAlign: "center", width: "100%", height: "100%" }}
-                            >
-                              <img
-                                src={
-                                  typeof imageEmpleado === "string"
-                                    ? imageEmpleado
-                                    : URL.createObjectURL(imageEmpleado)
-                                }
-                                alt="preview"
-                                style={{ width: "100%", maxHeight: 170, borderRadius: 8 }}
-                              />
-                              <Typography variant="body2" sx={{ color: "black" }}>
-                                {imageEmpleado.name || "Captura de Webcam"}
-                              </Typography>
-                              <Button
-                                variant="contained"
-                                color="error"
-                                size="small"
-                                onClick={removeImageEmpleado}
-                                sx={{ mt: 1 }}
-                              >
-                                Quitar Imagen
-                              </Button>
-                            </Box>
-                          ) : (
-                            <Box>
-                              <Button
-                                variant="outlined"
-                                startIcon={<CloudUpload />}
-                                sx={{ width: "95%", mb: 1 }}
-                                component="label"
-                              >
-                                Seleccionar Foto
-                                <input
-                                  type="file"
-                                  accept="image/*"
-                                  onChange={onTemplateSelectEmpleado}
-                                  hidden
-                                />
-                              </Button>
-                              <Button
-                                variant="outlined"
-                                startIcon={<PhotoCamera />}
-                                sx={{ width: "95%", mb: 1 }}
-                                onClick={handleClickOpenCamEmpleado}
-                              >
-                                Tomar Foto
-                              </Button>
-                              <Dialog
-                                header="TOMAR FOTO"
-                                open={openCamEmpleado}
-                                onClose={handleCloseCamEmpleado}
-                              >
-                                <Box style={{ textAlign: "center", margin:'20px'  }}>
+              {/* <Button variant="contained" startIcon={<AccountCircle/>} onClick={handleClickOpenCreateEmpleado}>Registrar empleado</Button> */}
+              <Dialog open={openCreateEmpleado} onClose={handleCloseCreateEmpleado} maxWidth="md" fullWidth>
+                <DialogTitle >NUEVO EMPLEADO</DialogTitle>
+                <DialogContent style={{ marginLeft: '5px', display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start', margin: '15px' }}>
+                    <div>
+                      <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", border: "1px dashed #ccc", width: 210, height: 280, textAlign: "center", margin: "auto", }}>
+                        {imageEmpleado ? (
+                          <Box sx={{ textAlign: "center", width: "100%", height: "100%" }}>
+                            <img src={ typeof imageEmpleado === "string" ? imageEmpleado : URL.createObjectURL(imageEmpleado)} alt="preview" style={{ width: "100%", maxHeight: 170, borderRadius: 8 }}/>
+                            <Typography variant="body2" sx={{ color: "black" }}>
+                              {imageEmpleado.name || "Captura de Webcam"}
+                            </Typography>
+                            <Button variant="contained" color="error" size="small" onClick={removeImageEmpleado} sx={{ mt: 1 }}>Quitar Imagen</Button>
+                          </Box>
+                        ) : (
+                          <Box>
+                            <Button variant="outlined" startIcon={<CloudUpload />} sx={{ width: "95%", mb: 1 }} component="label">
+                              Seleccionar Foto
+                              <input type="file" accept="image/*" onChange={onTemplateSelectEmpleado} hidden />
+                            </Button>
+                            <Button variant="outlined" startIcon={<PhotoCamera />} sx={{ width: "95%", mb: 1 }} onClick={handleClickOpenCamEmpleado}>
+                              Tomar Foto
+                            </Button>
+                            <Dialog header="TOMAR FOTO" open={openCamEmpleado} onClose={handleCloseCamEmpleado}>
+                              <Box style={{ textAlign: "center", margin:'20px'  }}>
                                 <Webcam
                                   audio={false}
                                   ref={webcamRef}
@@ -2225,202 +2212,216 @@ const tomarFotoEmpleado = () => {
                                   onUserMedia={handleUserMedia} // La cámara está lista
                                   onUserMediaError={handleUserMediaError} // Manejo de errores de la cámara
                                 />
-                                  {!isCameraReady && webcamRef ? ( // Mostrar mensaje de carga mientras la cámara no esté lista
-                                    <p style={{ marginTop: "20px", fontSize: "16px", color: "#888", textAlign:'center' }}>
-                                      Cargando cámara...
-                                    </p>
-                                  ) : (
-                                    <Button
-                                      severity="danger"
-                                      variant="outlined"
-                                      startIcon={<PhotoCamera />}
-                                      style={{ width: "100%", marginTop: "20px" }}
-                                      onClick={tomarFotoEmpleado}
-                                    > 
-                                      Tomar Foto
-                                    </Button>
-                                  )}
-                                  
-                                </Box>
-                              </Dialog>
-                            </Box>
-                          )}
-                        </Box>
-                        <small style={{color:'gray'}}>
-                          * Opcional
+                                {!isCameraReady && webcamRef ? ( // Mostrar mensaje de carga mientras la cámara no esté lista
+                                  <p style={{ marginTop: "20px", fontSize: "16px", color: "#888", textAlign:'center' }}>
+                                    Cargando cámara...
+                                  </p>
+                                ) : (
+                                  <Button severity="danger" variant="outlined" startIcon={<PhotoCamera />} style={{ width: "100%", marginTop: "20px" }} onClick={tomarFotoEmpleado}> 
+                                    Tomar Foto
+                                  </Button>
+                                )}
+                              </Box>
+                            </Dialog>
+                          </Box>
+                        )}
+                      </Box>
+                      <small style={{color:'gray'}}>
+                        * Opcional
+                      </small>
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "20px", marginTop:'10px' }} >
+                      <FormControl fullWidth>
+                        <InputLabel id="id_catv">Area de trabajo</InputLabel>
+                        <Select
+                          labelId="id_catv"
+                          id="id_catv"
+                          value={selectedAreaT?.id_catv || ''}
+                          label="Area de trabajo"
+                          onChange={handleDropdownChangeTipo}
+                        >
+                          <MenuItem value="">SELECCIONAR TIPO</MenuItem>
+                          {areaT.map((item) => (
+                            <MenuItem key={item.id_catv} value={item.id_catv}>
+                              {item.area}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                        <small>{errorEmpleado.id_catv && (
+                          <span style={{color: 'red'}}>* {errorEmpleado.id_catv}</span>)}
                         </small>
-                      </div>
-
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: "20px", marginTop:'10px' }} >
-                        <FormControl fullWidth>
-                          <TextField
-                            id="nombre"
-                            name="nombre"
-                            value={empleado.nombre}
-                            onChange={inputChange}
-                            variant="outlined"
-                            label="Nombre (s)"
-                            inputProps={{ style: { textTransform: "uppercase" } }}
-                          />
-                          <small>
-                            {errorEmpleado.nombre && (
-                              <span style={{color: 'red'}}>
-                                * {errorEmpleado.nombre}
-                              </span>
-                            )}
-                          </small>
-                        </FormControl>
-                        <FormControl fullWidth>
-                          <TextField
-                            id="telefono"
-                            name="telefono"
-                            label="Teléfono"
-                            value={empleado.telefono}
-                            onChange={inputChange}
-                          />
-                          <small>
-                            {errorEmpleado.telefono && (
-                              <span style={{color: 'red'}}>
-                                * {errorEmpleado.telefono}
-                              </span>
-                            )}
-                          </small>
-                        </FormControl>
-                        <FormControl fullWidth>
-                          <TextField
-                            id="no_ine"
-                            name="no_ine"
-                            label="No. INE"
-                            value={empleado.no_ine}
-                            onChange={inputChange}
-                          />
-                          <small>
-                          {errorEmpleado.no_ine && (
+                      </FormControl>
+                      <FormControl fullWidth >
+                        <TextField
+                          id="apellidos"
+                          name="apellidos"
+                          label="Apellidos"
+                          value={empleado.apellidos}
+                          onChange={inputChange}
+                          variant="outlined"
+                          inputProps={{ style: { textTransform: "uppercase" } }}
+                        />
+                        <small>
+                          {errorEmpleado.apellidos && (
                             <span style={{color: 'red'}}>
-                              * {errorEmpleado.no_ine}
+                              * {errorEmpleado.apellidos}
                             </span>
                           )}
                         </small>
-                        </FormControl>
-                        <FormControl fullWidth >
-                          <TextField
-                            id="tel_emergencia"
-                            name="tel_emergencia"
-                            label="Teléfono de emergencia"
-                            value={empleado.tel_emergencia}
-                            onChange={inputChange}
-                            variant="outlined"
-                            inputProps={{ style: { textTransform: "uppercase" } }}
-                          />
-                          <small>
-                            {errorEmpleado.tel_emergencia && (
-                              <span style={{color: 'red'}}>
-                                * {errorEmpleado.tel_emergencia}
-                              </span>
-                            )}
-                          </small>
-                        </FormControl>
-                        <FormControl fullWidth >
-                          <TextField
-                            id="parentesco_contacto"
-                            name="parentesco_contacto"
-                            label="Parentesco del contacto"
-                            value={empleado.parentesco_contacto}
-                            onChange={inputChange}
-                            variant="outlined"
-                            inputProps={{ style: { textTransform: "uppercase" } }}
-                          />
-                          <small>
-                            {errorEmpleado.parentesco_contacto && (
-                              <span style={{color: 'red'}}>
-                                * {errorEmpleado.parentesco_contacto}
-                              </span>
-                            )}
-                          </small>
-                        </FormControl>
-                      </div>
-
-                      {/* Más campos de texto */}
-                      <div style={{  display: "flex", flexWrap: "wrap", gap: "20px", marginTop:'10px'  }}>
-                        <FormControl fullWidth >
-                          <TextField
-                            id="apellidos"
-                            name="apellidos"
-                            label="Apellidos"
-                            value={empleado.apellidos}
-                            onChange={inputChange}
-                            variant="outlined"
-                            inputProps={{ style: { textTransform: "uppercase" } }}
-                          />
-                          <small>
-                            {errorEmpleado.apellidos && (
-                              <span style={{color: 'red'}}>
-                                * {errorEmpleado.apellidos}
-                              </span>
-                            )}
-                          </small>
-                        </FormControl>
-                        <FormControl fullWidth >
-                          <TextField
-                            fullWidth
-                            id="no_empleado"
-                            name="no_empleado"
-                            label="No. empleado"
-                            value={empleado.no_empleado}
-                            onChange={inputChange}
-                            inputProps={{ style: { textTransform: "uppercase" } }}
-                          />
-                          <small>
-                            {errorEmpleado.no_empleado && (
-                              <span style={{color: 'red'}}>
-                                * {errorEmpleado.no_empleado}
-                              </span>
-                            )}
-                          </small>
-                        </FormControl>
-                        
-                       
-                        <FormControl fullWidth >
-                          <TextField
-                            id="puesto"
-                            name="puesto"
-                            label="Puesto"
-                            value={empleado.puesto}
-                            onChange={inputChange}
-                            variant="outlined"
-                            inputProps={{ style: { textTransform: "uppercase" } }}
-                          />
-                          <small>
-                            {errorEmpleado.puesto && (
-                              <span style={{color: 'red'}}>
-                                * {errorEmpleado.puesto}
-                              </span>
-                            )}
-                          </small>
-                        </FormControl>
-                        <FormControl fullWidth >
-                          <TextField
-                            id="nom_emergencia"
-                            name="nom_emergencia"
-                            label="Nombre del contacto"
-                            value={empleado.nom_emergencia}
-                            onChange={inputChange}
-                            variant="outlined"
-                            inputProps={{ style: { textTransform: "uppercase" } }}
-                          />
-                          <small>
-                            {errorEmpleado.nom_emergencia && (
-                              <span style={{color: 'red'}}>
-                                * {errorEmpleado.nom_emergencia}
-                              </span>
-                            )}
-                          </small>
-                        </FormControl>
-                      </div>
-                      
+                      </FormControl>
+                      <FormControl fullWidth>
+                        <TextField
+                          id="telefono"
+                          name="telefono"
+                          label="Teléfono"
+                          value={empleado.telefono}
+                          onChange={inputChange}
+                        />
+                        <small>
+                          {errorEmpleado.telefono && (
+                            <span style={{color: 'red'}}>
+                              * {errorEmpleado.telefono}
+                            </span>
+                          )}
+                        </small>
+                      </FormControl>
+                      <FormControl fullWidth>
+                        <TextField
+                          id="no_ine"
+                          name="no_ine"
+                          label="No. INE"
+                          value={empleado.no_ine}
+                          onChange={inputChange}
+                        />
+                        <small>
+                        {errorEmpleado.no_ine && (
+                          <span style={{color: 'red'}}>
+                            * {errorEmpleado.no_ine}
+                          </span>
+                        )}
+                      </small>
+                      </FormControl>
+                      {selectedAreaT?.id_catv === 8 && (
+                      <FormControl fullWidth >
+                        <TextField
+                          id="parentesco_contacto"
+                          name="parentesco_contacto"
+                          label="Parentesco del contacto"
+                          value={empleado.parentesco_contacto}
+                          onChange={inputChange}
+                          variant="outlined"
+                          inputProps={{ style: { textTransform: "uppercase" } }}
+                        />
+                        <small>
+                          {errorEmpleado.parentesco_contacto && (
+                            <span style={{color: 'red'}}>
+                              * {errorEmpleado.parentesco_contacto}
+                            </span>
+                          )}
+                        </small>
+                      </FormControl>)}
                     </div>
-                    <Divider/>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: "20px", marginTop:'10px' }} >
+                    {/* Más campos de texto */}
+                    <div style={{  display: "flex", flexWrap: "wrap", gap: "20px", marginTop:'10px'  }}>
+                      <FormControl fullWidth>
+                        <TextField
+                          id="nombre"
+                          name="nombre"
+                          value={empleado.nombre}
+                          onChange={inputChange}
+                          variant="outlined"
+                          label="Nombre (s)"
+                          inputProps={{ style: { textTransform: "uppercase" } }}
+                        />
+                        <small>
+                          {errorEmpleado.nombre && (
+                            <span style={{color: 'red'}}>
+                              * {errorEmpleado.nombre}
+                            </span>
+                          )}
+                        </small>
+                      </FormControl>
+                      <FormControl fullWidth >
+                        <TextField
+                          fullWidth
+                          id="no_empleado"
+                          name="no_empleado"
+                          label="No. empleado"
+                          value={empleado.no_empleado}
+                          onChange={inputChange}
+                          inputProps={{ style: { textTransform: "uppercase" } }}
+                        />
+                        <small>
+                          {errorEmpleado.no_empleado && (
+                            <span style={{color: 'red'}}>
+                              * {errorEmpleado.no_empleado}
+                            </span>
+                          )}
+                        </small>
+                      </FormControl>
+                      <FormControl fullWidth >
+                        <TextField
+                          id="puesto"
+                          name="puesto"
+                          label="Puesto"
+                          value={empleado.puesto}
+                          onChange={inputChange}
+                          variant="outlined"
+                          inputProps={{ style: { textTransform: "uppercase" } }}
+                        />
+                        <small>
+                          {errorEmpleado.puesto && (
+                            <span style={{color: 'red'}}>
+                              * {errorEmpleado.puesto}
+                            </span>
+                          )}
+                        </small>
+                      </FormControl>
+                      {selectedAreaT?.id_catv === 8 && (
+                        <>
+                          <FormControl fullWidth >
+                            <TextField
+                              id="nom_emergencia"
+                              name="nom_emergencia"
+                              label="Nombre del contacto"
+                              value={empleado.nom_emergencia}
+                              onChange={inputChange}
+                              variant="outlined"
+                              inputProps={{ style: { textTransform: "uppercase" } }}
+                            />
+                            <small>
+                              {errorEmpleado.nom_emergencia && (
+                                <span style={{color: 'red'}}>
+                                  * {errorEmpleado.nom_emergencia}
+                                </span>
+                              )}
+                            </small>
+                          </FormControl>
+                          <FormControl fullWidth >
+                            <TextField
+                              id="tel_emergencia"
+                              name="tel_emergencia"
+                              label="Teléfono de emergencia"
+                              value={empleado.tel_emergencia}
+                              onChange={inputChange}
+                              variant="outlined"
+                              inputProps={{ style: { textTransform: "uppercase" } }}
+                            />
+                            <small>
+                              {errorEmpleado.tel_emergencia && (
+                                <span style={{color: 'red'}}>
+                                  * {errorEmpleado.tel_emergencia}
+                                </span>
+                              )}
+                            </small>
+                          </FormControl>
+                          </>)}
+                    </div>
+                  </div>
+                  {selectedAreaT?.id_catv === 8 && (
+                    <>
+                      <Divider/>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: "20px", marginTop:'10px' }} >
                         <FormControl fullWidth>
                           <TextField
                             id="calle"
@@ -2480,43 +2481,38 @@ const tomarFotoEmpleado = () => {
                             onChange={inputChange}
                           />
                           <small>
-                          {errorEmpleado.estado && (
-                            <span style={{color: 'red'}}>
-                              * {errorEmpleado.estado}
-                            </span>
-                          )}
-                        </small>
+                            {errorEmpleado.estado && (
+                              <span style={{color: 'red'}}>* {errorEmpleado.estado}</span>
+                            )}
+                          </small>
                         </FormControl>
                       </div>
-                  </DialogContent>
-                  <DialogActions>
-                    {/* Botones de acción */}
-                    <Box sx={{ textAlign: "center", mt: 4 }}>
-                      <Button variant="outlined" color="secondary" sx={{ mr: 2 }}>
-                        Cancelar
-                      </Button>
-                      <Button
-                        variant="contained"
-                        color="primary"
-                        onClick={saveEmpleado}
-                      >
-                        Finalizar
-                      </Button>
-                    </Box>
-                  </DialogActions>
-                </Dialog>
-              </Box>
+                    </>
+                  )}
+                </DialogContent>
+                <DialogActions>
+                  <Box sx={{ textAlign: "center", mt: 4 }}>
+                    <Button variant="outlined" color="secondary" sx={{ mr: 2 }} onClick={handleCloseCreateEmpleado}>
+                      Cancelar
+                    </Button>
+                    <Button variant="contained" color="primary" onClick={saveEmpleado}>
+                      Finalizar
+                    </Button>
+                  </Box>
+                </DialogActions>
+              </Dialog>
+              
             </Box>
             <TableContainer component={Paper} sx={{ maxHeight: 440 }}> 
-            {showAlertCancelEmploye && (
-              <Alert icon={<CheckCircleOutline fontSize="inherit" />} severity="success">
-                ¡Empleado cancelado correctamente.!
-              </Alert>
-            )}
+              {showAlertCancelEmploye && (
+                <Alert icon={<CheckCircleOutline fontSize="inherit" />} severity="success">
+                  ¡Empleado cancelado correctamente.!
+                </Alert>
+              )}
               <Table  stickyHeader aria-label="sticky table">
                 <TableHead>
                   <TableRow>
-                  <TableCell></TableCell>
+                    <TableCell></TableCell>
                     <TableCell align="center">NOMBRE</TableCell>
                     <TableCell align="center">PUESTO</TableCell>
                     <TableCell align="center">NO. EMPLEADO</TableCell>
@@ -2525,48 +2521,30 @@ const tomarFotoEmpleado = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                {empleados && empleados.length > 0 ? (
-                  empleados.map((emp, index) => (
-                    <TableRow key={index}>
-                      <TableCell component="th" scope="row" align="center">
-                        <Avatar
-                          src={`${foto}/${emp.foto}`}
-                          alt={emp.nombre_completo}
-                          sx={{ width: 100, height: 100, marginRight: '15px' }}
-                          imgProps={{ style: { objectFit: 'cover' } }}
-                        />
-                      </TableCell>
-                      <TableCell align="center">{emp.nombre_completo}</TableCell>
-                      <TableCell align="center">{emp.puesto}</TableCell>
-                      <TableCell align="center">{emp.no_empleado}</TableCell>
-                      <TableCell align="center">{emp.est}</TableCell>
-                      <TableCell align="center">
-                        {emp.est === 'C' ? (
-                          <IconButton
-                            color="gray"
-                            onClick={() => handleCancelarEmpleado(emp)}
-                            aria-label="Cancelar empleado"
-                          >
-                            <PersonOffOutlined />
-                          </IconButton>
-                        ) : (
-                          <IconButton
-                            color="gray"
-                            onClick={() => handleCancelarEmpleado(emp)}
-                            aria-label="Habilitar empleado"
-                          >
-                            <PermIdentityOutlined />
-                          </IconButton>
-                        )}
-                        <IconButton
-                          color="success"
-                          onClick={() => handleClickOpenEditEmpleado(emp)}
-                          aria-label="Editar empleado"
-                        >
-                          <Edit />
+                {empleados && empleados.length > 0 ? ( empleados.map((emp, index) => (
+                  <TableRow key={index}>
+                    <TableCell component="th" scope="row" align="center">
+                      <Avatar src={`${foto}/${emp.foto}`} alt={emp.nombre_completo} sx={{ width: 100, height: 100, marginRight: '15px' }} imgProps={{ style: { objectFit: 'cover' } }}/>
+                    </TableCell>
+                    <TableCell align="center">{emp.nombre_completo}</TableCell>
+                    <TableCell align="center">{emp.puesto}</TableCell>
+                    <TableCell align="center">{emp.no_empleado}</TableCell>
+                    <TableCell align="center">{emp.est}</TableCell>
+                    <TableCell align="center">
+                      {emp.est === 'C' ? (
+                        <IconButton onClick={() => handleCancelarEmpleado(emp)} aria-label="cancelar empleado">
+                          <Person/>
                         </IconButton>
-                      </TableCell>
-                    </TableRow>
+                      ) : (
+                        <Button onClick={() => handleCancelarEmpleado(emp)} aria-label="Habilitar empleado">
+                          <Person />
+                        </Button>
+                      )}
+                      <IconButton color="success" onClick={() => handleClickOpenEditEmpleado(emp)} aria-label="Editar empleado">
+                        <Edit />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
                   ))
                 ) : (
                   <TableRow>
@@ -2575,580 +2553,536 @@ const tomarFotoEmpleado = () => {
                     </TableCell>
                   </TableRow>
                 )}
-
                 </TableBody>
               </Table>
             </TableContainer>
-          </div>}
-          </>
-        
-        
-       </Paper>
-
-          <Dialog
-            open={openEdit}
-            onClose={handleCloseEdit}
-            maxWidth="md"
-            fullWidth
-          >
-            <DialogTitle id="alert-dialog-title">
-              INFORMACIÓN DE {selectedVisitante && (<span>{selectedVisitante.tipo}</span>)}
-            </DialogTitle>
-            <DialogContent style={{ marginLeft: '5px', display: 'flex', flexDirection: 'column' }}>
-            {selectedVisitante && (
-              <>
-                <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start', margin: '15px' }}>
-                  <div>
-                    {/* Mostrar Avatar o Imagen seleccionada */}
-                    <Box 
-                      sx={{
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        border: "1px dashed #ccc",
-                        width: 210,
-                        height: 280,
-                        textAlign: "center",
-                        margin: "auto",
-                      }}
-                    >
-                      {selectedVisitante.foto || image ? (
-                        <Box sx={{ textAlign: "center", width: "100%" }}>
-                          <img
-                            // Determina la fuente de la imagen:
-                            src={
-                              selectedVisitante.foto && !selectedVisitante.foto.startsWith("blob")
-                                ? `${foto}/${selectedVisitante.foto}` // URL relativa a una base conocida
-                                : typeof image === "string"
-                                ? image // Fuente directa si es una cadena
-                                : image
-                                ? URL.createObjectURL(image) // Fuente temporal si es un archivo
-                                : "ruta/placeholder.png" // Imagen por defecto si no hay datos
-                            }
-                            alt={selectedVisitante.nombre_completo || "Imagen del visitante"} // Texto alternativo
-                            style={{
-                              width: 150, // Ancho fijo
-                              height: 150, // Alto fijo
-                              objectFit: "cover", // Ajusta el contenido
-                              borderRadius: "8px", // Bordes redondeados
-                            }}
+          </div>
+        }
+        </>
+      </Paper>
+        <Dialog
+          open={openEdit}
+          onClose={handleCloseEdit}
+          maxWidth="md"
+          fullWidth
+        >
+          <DialogTitle id="alert-dialog-title">
+            INFORMACIÓN DE {selectedVisitante && (<span>{selectedVisitante.tipo}</span>)}
+          </DialogTitle>
+          <DialogContent style={{ marginLeft: '5px', display: 'flex', flexDirection: 'column' }}>
+          {selectedVisitante && (
+            <>
+              <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start', margin: '15px' }}>
+                <div>
+                  {/* Mostrar Avatar o Imagen seleccionada */}
+                  <Box 
+                    sx={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      border: "1px dashed #ccc",
+                      width: 210,
+                      height: 280,
+                      textAlign: "center",
+                      margin: "auto",
+                    }}
+                  >
+                    {selectedVisitante.foto || image ? (
+                      <Box sx={{ textAlign: "center", width: "100%" }}>
+                        <img
+                          // Determina la fuente de la imagen:
+                          src={
+                            selectedVisitante.foto && !selectedVisitante.foto.startsWith("blob")
+                              ? `${foto}/${selectedVisitante.foto}` // URL relativa a una base conocida
+                              : typeof image === "string"
+                              ? image // Fuente directa si es una cadena
+                              : image
+                              ? URL.createObjectURL(image) // Fuente temporal si es un archivo
+                              : "ruta/placeholder.png" // Imagen por defecto si no hay datos
+                          }
+                          alt={selectedVisitante.nombre_completo || "Imagen del visitante"} // Texto alternativo
+                          style={{
+                            width: 150, // Ancho fijo
+                            height: 150, // Alto fijo
+                            objectFit: "cover", // Ajusta el contenido
+                            borderRadius: "8px", // Bordes redondeados
+                          }}
+                        />
+                        <Typography variant="body2" sx={{ color: "black", mt: 1 }}>
+                          {selectedVisitante.nombre_completo || "Foto actual"}
+                        </Typography>
+                        <Button
+                          variant="contained"
+                          color="error"
+                          size="small"
+                          onClick={() => {
+                            setSelectedVisitante((prev) => ({ ...prev, foto: null }));
+                            setImage(null);
+                          }}
+                          sx={{ mt: 1 }}
+                        >
+                          Quitar Imagen
+                        </Button>
+                      </Box>
+                    ) : (
+                      <Box>
+                        {/* Seleccionar o tomar nueva foto */}
+                        <Button
+                          variant="outlined"
+                          startIcon={<CloudUpload />}
+                          sx={{ width: "100%", mb: 1 }}
+                          component="label"
+                        >
+                          Seleccionar Foto
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={onTemplateSelect1}
+                            hidden
                           />
-                          <Typography variant="body2" sx={{ color: "black", mt: 1 }}>
-                            {selectedVisitante.nombre_completo || "Foto actual"}
-                          </Typography>
-                          <Button
-                            variant="contained"
-                            color="error"
-                            size="small"
-                            onClick={() => {
-                              setSelectedVisitante((prev) => ({ ...prev, foto: null }));
-                              setImage(null);
-                            }}
-                            sx={{ mt: 1 }}
-                          >
-                            Quitar Imagen
-                          </Button>
-                        </Box>
-                      ) : (
-                        <Box>
-                          {/* Seleccionar o tomar nueva foto */}
-                          <Button
-                            variant="outlined"
-                            startIcon={<CloudUpload />}
-                            sx={{ width: "100%", mb: 1 }}
-                            component="label"
-                          >
-                            Seleccionar Foto
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={onTemplateSelect1}
-                              hidden
-                            />
-                          </Button>
-                          <Button
-                            variant="outlined"
-                            startIcon={<PhotoCamera />}
-                            sx={{ width: "100%", mb: 1 }}
-                            onClick={handleClickOpenCam}
-                          >
-                            Tomar Foto
-                          </Button>
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          startIcon={<PhotoCamera />}
+                          sx={{ width: "100%", mb: 1 }}
+                          onClick={handleClickOpenCam}
+                        >
+                          Tomar Foto
+                        </Button>
 
-                          {/* Dialog para la cámara */}
-                          <Dialog
-                            header="TOMAR FOTO"
-                            open={openCam}
-                            onClose={handleCloseCam}
-                          >
-                            <Box style={{ textAlign: "center", margin: "20px" }}>
-                            <Webcam
-                              audio={false}
-                              ref={webcamRef}
-                              screenshotFormat="image/jpeg"
-                              style={{ width: "100%" }}
-                              onUserMedia={handleUserMedia} // La cámara está lista
-                              onUserMediaError={handleUserMediaError} // Manejo de errores de la cámara
-                            />
-                              {!isCameraReady ? (
-                                <p
-                                  style={{
-                                    marginTop: "20px",
-                                    fontSize: "16px",
-                                    color: "#888",
-                                    textAlign: "center",
-                                  }}
-                                >
-                                  Cargando cámara...
-                                </p>
-                              ) : (
-                                <Button
-                                  variant="outlined"
-                                  startIcon={<PhotoCamera />}
-                                  style={{ width: "100%", marginTop: "20px" }}
-                                  onClick={() => {
-                                    tomarFoto();
-                                    handleCloseCam(); // Cerrar el diálogo después de tomar la foto
-                                  }}
-                                >
-                                  Tomar Foto
-                                </Button>
-                              )}
-                            </Box>
-                          </Dialog>
-                        </Box>
-                      )}
-                    </Box>
-
-                  </div>
-
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: "20px" }}>
-                    {/* Primera fila */}
-                    <FormControl style={{ flex: "1 1 calc(50% - 10px)", width: '50%' }}>
-                      <TextField
-                        id="nombre"
-                        name="nombre"
-                        value={selectedVisitante.nombre || ''}  
-                        onChange={inputChangeUpdate}
-                        variant="outlined"
-                        label="Nombre (s)"
-                        inputProps={{ style: { textTransform: "uppercase" } }}
-                      />
-                      {errorInfo.nombre && (
-                        <small style={{ color: "red" }}>* {errorInfo.nombre}</small>
-                      )}
-                    </FormControl>
-
-                    <FormControl style={{ flex: "1 1 calc(50% - 10px)" }}>
-                      <TextField
-                        id="apellidos"
-                        name="apellidos"
-                        label="Apellidos"
-                        value={selectedVisitante.apellidos || ""}
-                        onChange={inputChangeUpdate}
-                        variant="outlined"
-                        inputProps={{ style: { textTransform: "uppercase" } }}
-                      />
-                      {errorInfo.apellidos && (
-                        <small style={{ color: "red" }}>* {errorInfo.apellidos}</small>
-                      )}
-                    </FormControl>
-                    <FormControl style={{ flex: "1 1 calc(50% - 10px)" }}>
-                      <TextField
-                        id="tipo"
-                        name="tipo"
-                        label="Tipo de visitante"
-                        value={selectedVisitante.tipo || ""}
-                        variant="outlined"
-                        inputProps={{ style: { textTransform: "uppercase" } }}
-                      />
-                      {errorInfo.tipo && (
-                        <small style={{ color: "red" }}>* {errorInfo.tipo}</small>
-                      )}
-                    </FormControl>
-                    {/* Segunda fila */}
-                    <FormControl style={{ flex: "1 1 calc(50% - 10px)" }}>
-                      <TextField
-                        id="no_ine"
-                        name="no_ine"
-                        value={selectedVisitante.no_ine || ""}
-                        onChange={inputChangeUpdate}
-                        variant="outlined"
-                        label="No. identificación"
-                        inputProps={{ style: { textTransform: "uppercase" } }}
-                      />
-                      {errorInfo.no_ine && (
-                        <small style={{ color: "red" }}>* {errorInfo.no_ine}</small>
-                      )}
-                    </FormControl>
-
-                    <FormControl style={{ flex: "1 1 calc(50% - 10px)" }}>
-                      <TextField
-                        id="telefono"
-                        name="telefono"
-                        label="Teléfono"
-                        value={selectedVisitante.telefono || ""}
-                        onChange={inputChangeUpdate}
-                        variant="outlined"
-                        inputProps={{ style: { textTransform: "uppercase" } }}
-                      />
-                      {errorInfo.telefono && (
-                        <small style={{ color: "red" }}>* {errorInfo.telefono}</small>
-                      )}
-                    </FormControl>
-                    <FormControl style={{ flex: "1 1 calc(50% - 10px)" }}>
-                      <TextField
-                        id="no_licencia"
-                        name="no_licencia"
-                        label="No. licencia"
-                        value={selectedVisitante.no_licencia || ''}
-                        onChange={inputChangeUpdate}
-                        variant="outlined"
-                        inputProps={{ style: { textTransform: "uppercase" } }}
-                      />
-                      {errorInfo.no_licencia &&  (
-                        <small style={{ color: "red" }}>* {errorInfo.no_licencia}</small>
-                      )}
-                    </FormControl>
-                    {selectedVisitante?.id_catv === 1 ? (
-                        <div></div>
-                    ):(
-                      <>
-                        <FormControl style={{ flex: "1 1 calc(50% - 10px)" }}>
-                          <TextField
-                            id="empresa"
-                            name="empresa"
-                            value={selectedVisitante.empresa || ""}
-                            variant="outlined"
-                            label="Empresa"
-                            inputProps={{ style: { textTransform: "uppercase" } }}
+                        {/* Dialog para la cámara */}
+                        <Dialog
+                          header="TOMAR FOTO"
+                          open={openCam}
+                          onClose={handleCloseCam}
+                        >
+                          <Box style={{ textAlign: "center", margin: "20px" }}>
+                          <Webcam
+                            audio={false}
+                            ref={webcamRef}
+                            screenshotFormat="image/jpeg"
+                            style={{ width: "100%" }}
+                            onUserMedia={handleUserMedia} // La cámara está lista
+                            onUserMediaError={handleUserMediaError} // Manejo de errores de la cámara
                           />
-                          {errorInfo.empresa && (
-                            <small style={{ color: "red" }}>* {errorInfo.empresa}</small>
-                          )}
-                        </FormControl>
-                      </>
+                            {!isCameraReady ? (
+                              <p
+                                style={{
+                                  marginTop: "20px",
+                                  fontSize: "16px",
+                                  color: "#888",
+                                  textAlign: "center",
+                                }}
+                              >
+                                Cargando cámara...
+                              </p>
+                            ) : (
+                              <Button
+                                variant="outlined"
+                                startIcon={<PhotoCamera />}
+                                style={{ width: "100%", marginTop: "20px" }}
+                                onClick={() => {
+                                  tomarFoto();
+                                  handleCloseCam(); // Cerrar el diálogo después de tomar la foto
+                                }}
+                              >
+                                Tomar Foto
+                              </Button>
+                            )}
+                          </Box>
+                        </Dialog>
+                      </Box>
                     )}
-                    
-                  </div>
+                  </Box>
+
                 </div>
 
-                <Divider/>
-                <div style={{  display: "flex", flexWrap: "wrap", gap: "20px", margin:'15px', marginTop:'20px' }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "20px" }}>
+                  {/* Primera fila */}
+                  <FormControl style={{ flex: "1 1 calc(50% - 10px)", width: '50%' }}>
+                    <TextField
+                      id="nombre"
+                      name="nombre"
+                      value={selectedVisitante.nombre || ''}  
+                      onChange={inputChangeUpdate}
+                      variant="outlined"
+                      label="Nombre (s)"
+                      inputProps={{ style: { textTransform: "uppercase" } }}
+                    />
+                    {errorInfo.nombre && (
+                      <small style={{ color: "red" }}>* {errorInfo.nombre}</small>
+                    )}
+                  </FormControl>
+
                   <FormControl style={{ flex: "1 1 calc(50% - 10px)" }}>
-                    {["TRANSPORTISTA", "MANIOBRISTA"].includes(selectedVisitante.tipo) ? (
-                      <>
-                        <InputLabel id="placa">Placa</InputLabel>
-                        <Select
-                          labelId="placa"
+                    <TextField
+                      id="apellidos"
+                      name="apellidos"
+                      label="Apellidos"
+                      value={selectedVisitante.apellidos || ""}
+                      onChange={inputChangeUpdate}
+                      variant="outlined"
+                      inputProps={{ style: { textTransform: "uppercase" } }}
+                    />
+                    {errorInfo.apellidos && (
+                      <small style={{ color: "red" }}>* {errorInfo.apellidos}</small>
+                    )}
+                  </FormControl>
+                  <FormControl style={{ flex: "1 1 calc(50% - 10px)" }}>
+                    <TextField
+                      id="tipo"
+                      name="tipo"
+                      label="Tipo de visitante"
+                      value={selectedVisitante.tipo || ""}
+                      variant="outlined"
+                      inputProps={{ style: { textTransform: "uppercase" } }}
+                    />
+                    {errorInfo.tipo && (
+                      <small style={{ color: "red" }}>* {errorInfo.tipo}</small>
+                    )}
+                  </FormControl>
+                  {/* Segunda fila */}
+                  <FormControl style={{ flex: "1 1 calc(50% - 10px)" }}>
+                    <TextField
+                      id="no_ine"
+                      name="no_ine"
+                      value={selectedVisitante.no_ine || ""}
+                      onChange={inputChangeUpdate}
+                      variant="outlined"
+                      label="No. identificación"
+                      inputProps={{ style: { textTransform: "uppercase" } }}
+                    />
+                    {errorInfo.no_ine && (
+                      <small style={{ color: "red" }}>* {errorInfo.no_ine}</small>
+                    )}
+                  </FormControl>
+
+                  <FormControl style={{ flex: "1 1 calc(50% - 10px)" }}>
+                    <TextField
+                      id="telefono"
+                      name="telefono"
+                      label="Teléfono"
+                      value={selectedVisitante.telefono || ""}
+                      onChange={inputChangeUpdate}
+                      variant="outlined"
+                      inputProps={{ style: { textTransform: "uppercase" } }}
+                    />
+                    {errorInfo.telefono && (
+                      <small style={{ color: "red" }}>* {errorInfo.telefono}</small>
+                    )}
+                  </FormControl>
+                  <FormControl style={{ flex: "1 1 calc(50% - 10px)" }}>
+                    <TextField
+                      id="no_licencia"
+                      name="no_licencia"
+                      label="No. licencia"
+                      value={selectedVisitante.no_licencia || ''}
+                      onChange={inputChangeUpdate}
+                      variant="outlined"
+                      inputProps={{ style: { textTransform: "uppercase" } }}
+                    />
+                    {errorInfo.no_licencia &&  (
+                      <small style={{ color: "red" }}>* {errorInfo.no_licencia}</small>
+                    )}
+                  </FormControl>
+                  {selectedVisitante?.id_catv === 1 ? (
+                      <div></div>
+                  ):(
+                    <>
+                      <FormControl style={{ flex: "1 1 calc(50% - 10px)" }}>
+                        <TextField
+                          id="empresa"
+                          name="empresa"
+                          value={selectedVisitante.empresa || ""}
+                          variant="outlined"
+                          label="Empresa"
+                          inputProps={{ style: { textTransform: "uppercase" } }}
+                        />
+                        {errorInfo.empresa && (
+                          <small style={{ color: "red" }}>* {errorInfo.empresa}</small>
+                        )}
+                      </FormControl>
+                    </>
+                  )}
+                  
+                </div>
+              </div>
+
+              <Divider/>
+              <div style={{  display: "flex", flexWrap: "wrap", gap: "20px", margin:'15px', marginTop:'20px' }}>
+                <FormControl style={{ flex: "1 1 calc(50% - 10px)" }}>
+                  {["TRANSPORTISTA", "MANIOBRISTA"].includes(selectedVisitante.tipo) ? (
+                    <>
+                      <InputLabel id="placa">Placa</InputLabel>
+                      <Select
+                        labelId="placa"
+                        id="placa"
+                        name="placa"
+                        value={selectedPlaca || ""}
+                        onChange={handleDropdownChange}
+                        label="Placa"
+                      >
+                        <MenuItem value="">SELECCIONAR PLACA</MenuItem>
+                        {vehiculosAll
+                          .filter((item) => item.empresa === selectedVisitante.empresa)
+                          .map((item) => (
+                            <MenuItem key={item.id_veh} value={item}>
+                              {item.placa} | {item.empresa}
+                            </MenuItem>
+                          ))}
+                      </Select>
+                      {errorInfoVitAuto.placa && (
+                        <small style={{ color: "red" }}>* {errorInfoVitAuto.placa}</small>
+                      )}
+                      <div>
+                        <Box sx={{ textAlign: "center", mt: 4 }}>
+                          <Button variant="outlined" color="secondary" sx={{ mr: 2 }}onClick={handleCloseEdit}>
+                            Cancelar
+                          </Button>
+                          <Button
+                            variant="contained"
+                            color="primary"
+                            onClick={SaveInfo}
+                          >
+                            Finalizar
+                          </Button>
+                        </Box>
+                      </div>
+                    </>
+                  ) : (
+                    <div>
+                      <div  style={{ display: "flex", flexWrap: "wrap", gap: "20px" }}>
+                      <FormControl style={{ flex: "1 1 calc(50% - 10px)", width: '50%' }}>
+                        <TextField
                           id="placa"
-                          name="placa"
-                          value={selectedPlaca || ""}
-                          onChange={handleDropdownChange}
                           label="Placa"
-                        >
-                          <MenuItem value="">SELECCIONAR PLACA</MenuItem>
-                          {vehiculosAll
-                            .filter((item) => item.empresa === selectedVisitante.empresa)
-                            .map((item) => (
-                              <MenuItem key={item.id_veh} value={item}>
-                                {item.placa} | {item.empresa}
-                              </MenuItem>
-                            ))}
-                        </Select>
+                          name="placa"
+                          value={selectedVisitante.placa || ''}
+                          onChange={inputChangeUpdate}
+                          fullWidth
+                          inputProps={{ style: { textTransform: "uppercase" } }}
+                        />
                         {errorInfoVitAuto.placa && (
                           <small style={{ color: "red" }}>* {errorInfoVitAuto.placa}</small>
                         )}
-                        <div>
-                          <Box sx={{ textAlign: "center", mt: 4 }}>
+                      </FormControl>
+                      <FormControl style={{ flex: "1 1 calc(50% - 10px)", width: '50%' }}>
+                        <TextField
+                          id="modelo"
+                          label="Modelo"
+                          name="modelo"
+                          value={selectedVisitante.modelo || ''}
+                          onChange={inputChangeUpdate}
+                          fullWidth
+                          inputProps={{ style: { textTransform: "uppercase" } }}
+                        />
+                        {errorInfoVitAuto.modelo && (
+                          <small style={{ color: "red" }}>* {errorInfoVitAuto.modelo}</small>
+                        )}
+                      </FormControl>
+                      <FormControl style={{ flex: "1 1 calc(50% - 10px)", width: '50%' }}>
+                        <TextField
+                          id="marca"
+                          label="Marca"
+                          name="marca"
+                          value={selectedVisitante.marca || ''}
+                          onChange={inputChangeUpdate}
+                          fullWidth
+                          inputProps={{ style: { textTransform: "uppercase" } }}
+                        />
+                        {errorInfoVitAuto.marca && (
+                          <small style={{ color: "red" }}>* {errorInfoVitAuto.marca}</small>
+                        )}
+                      </FormControl>
+                      <FormControl style={{ flex: "1 1 calc(50% - 10px)", width: '50%' }}>
+                        <TextField
+                          id="anio"
+                          label="Año"
+                          name="anio"
+                          value={selectedVisitante.anio || ''}
+                          onChange={inputChangeUpdate}
+                          fullWidth
+                          inputProps={{ style: { textTransform: "uppercase" } }}
+                        />
+                        {errorInfoVitAuto.anio && (
+                          <small style={{ color: "red" }}>* {errorInfoVitAuto.anio}</small>
+                        )}
+                      </FormControl>
+                      <FormControl style={{ flex: "1 1 calc(50% - 10px)", width: '50%' }}>
+                        <TextField 
+                          id="seguro"
+                          label="Seguro"
+                          name="seguro"
+                          value={selectedVisitante.seguro || ''}
+                          onChange={inputChangeUpdate}
+                          fullWidth
+                          inputProps={{ style: { textTransform: "uppercase" } }}
+                        />
+                          <small style={{ color: "gray", opacity:'0.7' }}>* Opcional</small>
+                      </FormControl>
+                      </div>
+                      <div>
+                        <Box sx={{ textAlign: "center", mt: 4 }}>
                             <Button variant="outlined" color="secondary" sx={{ mr: 2 }}onClick={handleCloseEdit}>
                               Cancelar
                             </Button>
                             <Button
                               variant="contained"
                               color="primary"
-                              onClick={SaveInfo}
+                              onClick={updateInfoVehiculo}
                             >
                               Finalizar
                             </Button>
                           </Box>
-                        </div>
-                      </>
-                    ) : (
-                      <div>
-                        <div  style={{ display: "flex", flexWrap: "wrap", gap: "20px" }}>
-                        <FormControl style={{ flex: "1 1 calc(50% - 10px)", width: '50%' }}>
-                          <TextField
-                            id="placa"
-                            label="Placa"
-                            name="placa"
-                            value={selectedVisitante.placa || ''}
-                            onChange={inputChangeUpdate}
-                            fullWidth
-                            inputProps={{ style: { textTransform: "uppercase" } }}
-                          />
-                          {errorInfoVitAuto.placa && (
-                            <small style={{ color: "red" }}>* {errorInfoVitAuto.placa}</small>
-                          )}
-                        </FormControl>
-                        <FormControl style={{ flex: "1 1 calc(50% - 10px)", width: '50%' }}>
-                          <TextField
-                            id="modelo"
-                            label="Modelo"
-                            name="modelo"
-                            value={selectedVisitante.modelo || ''}
-                            onChange={inputChangeUpdate}
-                            fullWidth
-                            inputProps={{ style: { textTransform: "uppercase" } }}
-                          />
-                          {errorInfoVitAuto.modelo && (
-                            <small style={{ color: "red" }}>* {errorInfoVitAuto.modelo}</small>
-                          )}
-                        </FormControl>
-                        <FormControl style={{ flex: "1 1 calc(50% - 10px)", width: '50%' }}>
-                          <TextField
-                            id="marca"
-                            label="Marca"
-                            name="marca"
-                            value={selectedVisitante.marca || ''}
-                            onChange={inputChangeUpdate}
-                            fullWidth
-                            inputProps={{ style: { textTransform: "uppercase" } }}
-                          />
-                          {errorInfoVitAuto.marca && (
-                            <small style={{ color: "red" }}>* {errorInfoVitAuto.marca}</small>
-                          )}
-                        </FormControl>
-                        <FormControl style={{ flex: "1 1 calc(50% - 10px)", width: '50%' }}>
-                          <TextField
-                            id="anio"
-                            label="Año"
-                            name="anio"
-                            value={selectedVisitante.anio || ''}
-                            onChange={inputChangeUpdate}
-                            fullWidth
-                            inputProps={{ style: { textTransform: "uppercase" } }}
-                          />
-                          {errorInfoVitAuto.anio && (
-                            <small style={{ color: "red" }}>* {errorInfoVitAuto.anio}</small>
-                          )}
-                        </FormControl>
-                        <FormControl style={{ flex: "1 1 calc(50% - 10px)", width: '50%' }}>
-                          <TextField 
-                            id="seguro"
-                            label="Seguro"
-                            name="seguro"
-                            value={selectedVisitante.seguro || ''}
-                            onChange={inputChangeUpdate}
-                            fullWidth
-                            inputProps={{ style: { textTransform: "uppercase" } }}
-                          />
-                            <small style={{ color: "gray", opacity:'0.7' }}>* Opcional</small>
-                        </FormControl>
-                        </div>
-                        <div>
-                          <Box sx={{ textAlign: "center", mt: 4 }}>
-                              <Button variant="outlined" color="secondary" sx={{ mr: 2 }}onClick={handleCloseEdit}>
-                                Cancelar
-                              </Button>
-                              <Button
-                                variant="contained"
-                                color="primary"
-                                onClick={updateInfoVehiculo}
-                              >
-                                Finalizar
-                              </Button>
-                            </Box>
-                        </div>
                       </div>
-                    )}
-                  </FormControl>
-                </div>
-              </>
-            )}
-            </DialogContent>
-          </Dialog>
-          <Dialog open={openUpdateInfo}>
-            <DialogTitle sx={{ textAlign: 'center' }}>
-              {updateSuccess ? (
-                <CheckCircleOutline sx={{ fontSize: '90px', color: 'green', opacity: '0.6' }}/>
-              ):(
-                <HelpOutline sx={{ fontSize: '90px', color: 'gray', opacity: '0.6' }} />
-              )}
-                
-            </DialogTitle>
-            <DialogContent>
-                {updateSuccess ? (
-                    <div style={{ textAlign: 'center' }}>
-                        <h3>¡Actualización exitosa!</h3>
-                        <p>La información del visitante se ha actualizado correctamente.</p>
-                        <Button 
-                            variant="contained" 
-                            color="primary" 
-                            onClick={handleCloseUpdate}
-                            style={{ marginTop: '1rem' }}
-                        >
-                            Cerrar
-                        </Button>
                     </div>
-                ) : (
-                    <>
-                        {updateError.type === 'placaAsignada' && (
-                            <>
-                                <div style={{ textAlign: 'center' }}>
-                                    <h3>El conductor ya tiene un vehículo asignado. </h3>
-                                    <p>¿Desea actualizar la información seleccionada?</p>
-                                </div>
-                                <div style={{ marginTop: '3rem', textAlign: 'center' }}>
-                                    <Button variant="contained" color="primary" onClick={handleAcceptUpdate}>
-                                        Aceptar
-                                    </Button>
-                                    <Button 
-                                        variant="outlined" 
-                                        color="secondary" 
-                                        style={{ marginLeft: '0.5rem' }}
-                                        onClick={handleCloseErrorUpdate}
-                                    >
-                                        Cancelar
-                                    </Button>
-                                </div>
-                            </>
-                        )}
-
-                        {updateError.type === 'placaOtroVisitante' && (
-                            <>
-                                <div style={{ textAlign: 'center' }}>
-                                    <h3>El vehículo ya está asociado a otro conductor.</h3>
-                                    <p>¿Desea actualizar la información seleccionada?</p>
-                                </div>
-                                <div style={{ marginTop: '3rem', textAlign: 'center' }}>
-                                    <Button variant="contained" color="primary" onClick={handleAcceptUpdate}>
-                                        Aceptar
-                                    </Button>
-                                    <Button 
-                                        variant="outlined" 
-                                        color="secondary" 
-                                        style={{ marginLeft: '0.5rem' }}
-                                        onClick={handleCloseErrorUpdate}
-                                    >
-                                        Cancelar
-                                    </Button>
-                                </div>
-                            </>
-                        )}
-
-                        {updateError.type === 'generalError' && (
-                            <>
-                                <span>Ocurrió un error al actualizar la información. Por favor, intente nuevamente.</span>
-                                <div style={{ marginTop: '1rem' }}>
-                                    <Button 
-                                        variant="contained" 
-                                        color="primary" 
-                                        onClick={handleCloseErrorUpdate}
-                                    >
-                                        Cerrar
-                                    </Button>
-                                </div>
-                            </>
-                        )}
-                    </>
-                )}
-            </DialogContent>
-          </Dialog>
-          <Dialog open={openUpdateClave}>
-            <DialogTitle sx={{ textAlign: 'center' }}>
-              
+                  )}
+                </FormControl>
+              </div>
+            </>
+          )}
+          </DialogContent>
+        </Dialog>
+        <Dialog open={openUpdateInfo}>
+          <DialogTitle sx={{ textAlign: 'center' }}>
+            {updateSuccess ? (
               <CheckCircleOutline sx={{ fontSize: '90px', color: 'green', opacity: '0.6' }}/>
+            ):(
+              <HelpOutline sx={{ fontSize: '90px', color: 'gray', opacity: '0.6' }} />
+            )}
               
-                
-            </DialogTitle>
-            <DialogContent>
-                {updateClaveSuccess &&(
+          </DialogTitle>
+          <DialogContent>
+              {updateSuccess ? (
                   <div style={{ textAlign: 'center' }}>
                       <h3>¡Actualización exitosa!</h3>
                       <p>La información del visitante se ha actualizado correctamente.</p>
                       <Button 
                           variant="contained" 
                           color="primary" 
-                          onClick={handleCloseClaveUpdate}
+                          onClick={handleCloseUpdate}
                           style={{ marginTop: '1rem' }}
                       >
                           Cerrar
                       </Button>
                   </div>
-                )}
-            </DialogContent>
-          </Dialog>
-          <Dialog open={openDetailInfo} onClose={handleCloseDetailInfo}>
-            <DialogTitle>
-                DETALLE DE VISITANTE  
-            </DialogTitle>
-            <DialogContent>
-                {selectedVisitante && (
-                  selectedVisitante.id_catv === 4 ? (
-                    <div >
-                    <div style={{display:'flex', margin:'10px'}}>
-                      <div>
-                        <Avatar
-                          src={`${foto}/${selectedVisitante.foto}`}
-                          alt={selectedVisitante.nombre_completo}
-                          sx={{ width: 150, height: 150, marginRight: '15px', objectFit: 'cover' }}
-                        />
+              ) : (
+                  <>
+                      {updateError.type === 'placaAsignada' && (
+                          <>
+                              <div style={{ textAlign: 'center' }}>
+                                  <h3>El conductor ya tiene un vehículo asignado. </h3>
+                                  <p>¿Desea actualizar la información seleccionada?</p>
+                              </div>
+                              <div style={{ marginTop: '3rem', textAlign: 'center' }}>
+                                  <Button variant="contained" color="primary" onClick={handleAcceptUpdate}>
+                                      Aceptar
+                                  </Button>
+                                  <Button 
+                                      variant="outlined" 
+                                      color="secondary" 
+                                      style={{ marginLeft: '0.5rem' }}
+                                      onClick={handleCloseErrorUpdate}
+                                  >
+                                      Cancelar
+                                  </Button>
+                              </div>
+                          </>
+                      )}
 
-                      </div>
-                      <div>
-                        <Typography variant="h5" sx={{ marginBottom: 1 }}><strong>{selectedVisitante.nombre_com_acomp}</strong></Typography>
-                        <Typography variant="body2" sx={{ marginBottom: 1 }}>NO. INE: {selectedVisitante.no_ine_acomp}</Typography>
-                        <Typography variant="body2" sx={{ marginBottom: 1 }}>RELACIÓN: {selectedVisitante.tipo}</Typography>
-                        <Typography variant="body2" sx={{ marginBottom: 1 }}>EMPRESA: NO APLICA</Typography>
-                      </div>
+                      {updateError.type === 'placaOtroVisitante' && (
+                          <>
+                              <div style={{ textAlign: 'center' }}>
+                                  <h3>El vehículo ya está asociado a otro conductor.</h3>
+                                  <p>¿Desea actualizar la información seleccionada?</p>
+                              </div>
+                              <div style={{ marginTop: '3rem', textAlign: 'center' }}>
+                                  <Button variant="contained" color="primary" onClick={handleAcceptUpdate}>
+                                      Aceptar
+                                  </Button>
+                                  <Button 
+                                      variant="outlined" 
+                                      color="secondary" 
+                                      style={{ marginLeft: '0.5rem' }}
+                                      onClick={handleCloseErrorUpdate}
+                                  >
+                                      Cancelar
+                                  </Button>
+                              </div>
+                          </>
+                      )}
+
+                      {updateError.type === 'generalError' && (
+                          <>
+                              <span>Ocurrió un error al actualizar la información. Por favor, intente nuevamente.</span>
+                              <div style={{ marginTop: '1rem' }}>
+                                  <Button 
+                                      variant="contained" 
+                                      color="primary" 
+                                      onClick={handleCloseErrorUpdate}
+                                  >
+                                      Cerrar
+                                  </Button>
+                              </div>
+                          </>
+                      )}
+                  </>
+              )}
+          </DialogContent>
+        </Dialog>
+        <Dialog open={openUpdateClave}>
+          <DialogTitle sx={{ textAlign: 'center' }}>
+            
+            <CheckCircleOutline sx={{ fontSize: '90px', color: 'green', opacity: '0.6' }}/>
+            
+              
+          </DialogTitle>
+          <DialogContent>
+              {updateClaveSuccess &&(
+                <div style={{ textAlign: 'center' }}>
+                    <h3>¡Actualización exitosa!</h3>
+                    <p>La información del visitante se ha actualizado correctamente.</p>
+                    <Button 
+                        variant="contained" 
+                        color="primary" 
+                        onClick={handleCloseClaveUpdate}
+                        style={{ marginTop: '1rem' }}
+                    >
+                        Cerrar
+                    </Button>
+                </div>
+              )}
+          </DialogContent>
+        </Dialog>
+        <Dialog open={openDetailInfo} onClose={handleCloseDetailInfo}>
+          <DialogTitle>
+              DETALLE DE VISITANTE  
+          </DialogTitle>
+          <DialogContent>
+              {selectedVisitante && (
+                selectedVisitante.id_catv === 4 ? (
+                  <div >
+                  <div style={{display:'flex', margin:'10px'}}>
+                    <div>
+                      <Avatar
+                        src={`${foto}/${selectedVisitante.foto}`}
+                        alt={selectedVisitante.nombre_completo}
+                        sx={{ width: 150, height: 150, marginRight: '15px', objectFit: 'cover' }}
+                      />
+
                     </div>
-                    <Divider/>
-                    <div style={{display:'flex', marginTop:'15px'}}>
-                      <div style={{margin:'8px'}}>
-                        
-                        <Typography variant="body2" sx={{ marginBottom: 1 }}>ACCESO PERSONAL: {selectedVisitante.estado_acceso === 'CON ACCESO' ?(<span><Circle sx={{color:'green', fontSize:'12px'}}/> {selectedVisitante.estado_acceso}</span>):(<span><Circle sx={{color:'red', fontSize:'12px'}}/> SIN ACCESO</span>) || 'SIN INFORMACIÓN'}</Typography>
-                        <Typography variant="body2" sx={{ marginBottom: 1 }}>ACCESO DE VEHICULO: {selectedVisitante.acc_dir === 'S' ? (<span><Circle sx={{color:'green', fontSize:'12px'}}/> ACCESO DIRECTO</span>) : (<span><Circle sx={{color:'red', fontSize:'12px'}}/> SIN ACCESO DE VEHICULO</span>) }</Typography>
-                        </div>
-                        <div style={{margin:'8px', marginLeft:'13px'}}>
-                          <Typography variant="body2" sx={{ marginBottom: 1 }}>TOTAL - MULTAS: {selectedVisitante.total_multas || 'SIN MULTAS'}</Typography>
-                          <Typography variant="body2" sx={{ marginBottom: 1 }}>TOTAL - VISITAS: {selectedVisitante.total_visitas || 'SIN VISITAS'}</Typography>
-                        </div>
+                    <div>
+                      <Typography variant="h5" sx={{ marginBottom: 1 }}><strong>{selectedVisitante.nombre_com_acomp}</strong></Typography>
+                      <Typography variant="body2" sx={{ marginBottom: 1 }}>NO. INE: {selectedVisitante.no_ine_acomp}</Typography>
+                      <Typography variant="body2" sx={{ marginBottom: 1 }}>RELACIÓN: {selectedVisitante.tipo}</Typography>
+                      <Typography variant="body2" sx={{ marginBottom: 1 }}>EMPRESA: NO APLICA</Typography>
                     </div>
                   </div>
-                  ):(
-                  <div >
-                    <div style={{display:'flex', margin:'10px'}}>
-                      <div>
-                        <Avatar
-                          src={`${foto}/${selectedVisitante.foto}`}
-                          alt={selectedVisitante.nombre_completo}
-                          sx={{ width: 150, height: 150, marginRight: '15px', objectFit: 'cover' }}
-                        />
-
-                      </div>
-                      <div>
-                        <Typography variant="h5" sx={{ marginBottom: 1 }}><strong>{selectedVisitante.nombre_completo}</strong></Typography>
-                        <Typography variant="body2" sx={{ marginBottom: 1 }}>TELEFONO: {selectedVisitante.telefono}</Typography>
-                        <Typography variant="body2" sx={{ marginBottom: 1 }}>NO. INE: {selectedVisitante.no_ine}</Typography>
-                        <Typography variant="body2" sx={{ marginBottom: 1 }}>RELACIÓN: {selectedVisitante.tipo}</Typography>
-                        <Typography variant="body2" sx={{ marginBottom: 1 }}>EMPRESA: {selectedVisitante.empresa}</Typography>
-                        <Typography variant="body2" sx={{ marginBottom: 1 }}>NO. LICENCIA: {selectedVisitante.no_licencia || 'SIN INFORMACIÓN'}</Typography>
-                      </div>
-                    </div>
-                    <Divider/>
-                    <div style={{display:'flex', marginTop:'15px'}}>
-                      <div style={{margin:'8px'}}>
-                        <Typography variant="body2" sx={{ marginBottom: 1 }}>PLACA: {selectedVisitante.placa || 'SIN INFORMACIÓN'}</Typography>
-                      <Typography variant="body2" sx={{ marginBottom: 1 }}>MARCA: {selectedVisitante.marca || 'SIN INFORMACIÓN'}</Typography>
-                      <Typography variant="body2" sx={{ marginBottom: 1 }}>MODELO: {selectedVisitante.modelo || 'SIN INFORMACIÓN'}</Typography>
-                      <Typography variant="body2" sx={{ marginBottom: 1 }}>AÑO: {selectedVisitante.anio || 'SIN INFORMACIÓN'}</Typography>
-                      <Typography variant="body2" sx={{ marginBottom: 1 }}>NO. SEGURO (POILIZA): {selectedVisitante.seguro === '' || selectedVisitante.seguro === null ? (
-                        <span>SIN INFORMACIÓN</span>
-                      ): (
-                      <span>{selectedVisitante.seguro}</span>
-                      )}</Typography>
+                  <Divider/>
+                  <div style={{display:'flex', marginTop:'15px'}}>
+                    <div style={{margin:'8px'}}>
+                      
                       <Typography variant="body2" sx={{ marginBottom: 1 }}>ACCESO PERSONAL: {selectedVisitante.estado_acceso === 'CON ACCESO' ?(<span><Circle sx={{color:'green', fontSize:'12px'}}/> {selectedVisitante.estado_acceso}</span>):(<span><Circle sx={{color:'red', fontSize:'12px'}}/> SIN ACCESO</span>) || 'SIN INFORMACIÓN'}</Typography>
                       <Typography variant="body2" sx={{ marginBottom: 1 }}>ACCESO DE VEHICULO: {selectedVisitante.acc_dir === 'S' ? (<span><Circle sx={{color:'green', fontSize:'12px'}}/> ACCESO DIRECTO</span>) : (<span><Circle sx={{color:'red', fontSize:'12px'}}/> SIN ACCESO DE VEHICULO</span>) }</Typography>
                       </div>
@@ -3156,17 +3090,58 @@ const tomarFotoEmpleado = () => {
                         <Typography variant="body2" sx={{ marginBottom: 1 }}>TOTAL - MULTAS: {selectedVisitante.total_multas || 'SIN MULTAS'}</Typography>
                         <Typography variant="body2" sx={{ marginBottom: 1 }}>TOTAL - VISITAS: {selectedVisitante.total_visitas || 'SIN VISITAS'}</Typography>
                       </div>
+                  </div>
+                </div>
+                ):(
+                <div >
+                  <div style={{display:'flex', margin:'10px'}}>
+                    <div>
+                      <Avatar
+                        src={`${foto}/${selectedVisitante.foto}`}
+                        alt={selectedVisitante.nombre_completo}
+                        sx={{ width: 150, height: 150, marginRight: '15px', objectFit: 'cover' }}
+                      />
+
+                    </div>
+                    <div>
+                      <Typography variant="h5" sx={{ marginBottom: 1 }}><strong>{selectedVisitante.nombre_completo}</strong></Typography>
+                      <Typography variant="body2" sx={{ marginBottom: 1 }}>TELEFONO: {selectedVisitante.telefono}</Typography>
+                      <Typography variant="body2" sx={{ marginBottom: 1 }}>NO. INE: {selectedVisitante.no_ine}</Typography>
+                      <Typography variant="body2" sx={{ marginBottom: 1 }}>RELACIÓN: {selectedVisitante.tipo}</Typography>
+                      <Typography variant="body2" sx={{ marginBottom: 1 }}>EMPRESA: {selectedVisitante.empresa}</Typography>
+                      <Typography variant="body2" sx={{ marginBottom: 1 }}>NO. LICENCIA: {selectedVisitante.no_licencia || 'SIN INFORMACIÓN'}</Typography>
                     </div>
                   </div>
-                  )
-                )}
-            </DialogContent>
-          </Dialog>
-          <Dialog open={openUpdateEmpleado} onClose={handleCloseUpdateEmpleado} maxWidth="md" fullWidth>
-            <DialogTitle >ACTUALIZAR EMPLEADO</DialogTitle>
-            <DialogContent style={{ marginLeft: '5px', display: 'flex', flexDirection: 'column' }}>
-              {selectedEmpleados && (
-                <>
+                  <Divider/>
+                  <div style={{display:'flex', marginTop:'15px'}}>
+                    <div style={{margin:'8px'}}>
+                      <Typography variant="body2" sx={{ marginBottom: 1 }}>PLACA: {selectedVisitante.placa || 'SIN INFORMACIÓN'}</Typography>
+                    <Typography variant="body2" sx={{ marginBottom: 1 }}>MARCA: {selectedVisitante.marca || 'SIN INFORMACIÓN'}</Typography>
+                    <Typography variant="body2" sx={{ marginBottom: 1 }}>MODELO: {selectedVisitante.modelo || 'SIN INFORMACIÓN'}</Typography>
+                    <Typography variant="body2" sx={{ marginBottom: 1 }}>AÑO: {selectedVisitante.anio || 'SIN INFORMACIÓN'}</Typography>
+                    <Typography variant="body2" sx={{ marginBottom: 1 }}>NO. SEGURO (POILIZA): {selectedVisitante.seguro === '' || selectedVisitante.seguro === null ? (
+                      <span>SIN INFORMACIÓN</span>
+                    ): (
+                    <span>{selectedVisitante.seguro}</span>
+                    )}</Typography>
+                    <Typography variant="body2" sx={{ marginBottom: 1 }}>ACCESO PERSONAL: {selectedVisitante.estado_acceso === 'CON ACCESO' ?(<span><Circle sx={{color:'green', fontSize:'12px'}}/> {selectedVisitante.estado_acceso}</span>):(<span><Circle sx={{color:'red', fontSize:'12px'}}/> SIN ACCESO</span>) || 'SIN INFORMACIÓN'}</Typography>
+                    <Typography variant="body2" sx={{ marginBottom: 1 }}>ACCESO DE VEHICULO: {selectedVisitante.acc_dir === 'S' ? (<span><Circle sx={{color:'green', fontSize:'12px'}}/> ACCESO DIRECTO</span>) : (<span><Circle sx={{color:'red', fontSize:'12px'}}/> SIN ACCESO DE VEHICULO</span>) }</Typography>
+                    </div>
+                    <div style={{margin:'8px', marginLeft:'13px'}}>
+                      <Typography variant="body2" sx={{ marginBottom: 1 }}>TOTAL - MULTAS: {selectedVisitante.total_multas || 'SIN MULTAS'}</Typography>
+                      <Typography variant="body2" sx={{ marginBottom: 1 }}>TOTAL - VISITAS: {selectedVisitante.total_visitas || 'SIN VISITAS'}</Typography>
+                    </div>
+                  </div>
+                </div>
+                )
+              )}
+          </DialogContent>
+        </Dialog>
+        <Dialog open={openUpdateEmpleado} onClose={handleCloseUpdateEmpleado} maxWidth="md" fullWidth>
+          <DialogTitle >ACTUALIZAR EMPLEADO</DialogTitle>
+          <DialogContent style={{ marginLeft: '5px', display: 'flex', flexDirection: 'column' }}>
+            {selectedEmpleados && (
+              <>
               <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start', margin: '15px' }}>
                 
                 <div>
@@ -3436,153 +3411,148 @@ const tomarFotoEmpleado = () => {
                 
                 
               </div>
-              <Divider></Divider>
-                <div style={{  display: "flex", flexWrap: "wrap", gap: "20px", marginTop:'10px'  }}>
-                  <FormControl fullWidth >
-                    <TextField
-                      id="calle"
-                      name="calle"
-                      label="Calle"
-                      value={selectedEmpleados.calle || ''}
-                      onChange={inputChangeUpdateEmpleado}
-                      variant="outlined"
-                      inputProps={{ style: { textTransform: "uppercase" } }}
-                    />
-                    <small>
-                      {errorEmpleadoUp.calle && (
-                        <span style={{color: 'red'}}>
-                          * {errorEmpleadoUp.calle}
-                        </span>
-                      )}
-                    </small>
-                  </FormControl>
-                  <FormControl fullWidth >
-                    <TextField
-                      fullWidth
-                      id="colonia"
-                      name="colonia"
-                      label="Colonia"
-                      value={selectedEmpleados.colonia || ''}
-                      onChange={inputChangeUpdateEmpleado}
-                      inputProps={{ style: { textTransform: "uppercase" } }}
-                    />
-                    <small>
-                      {errorEmpleadoUp.colonia && (
-                        <span style={{color: 'red'}}>
-                          * {errorEmpleadoUp.colonia}
-                        </span>
-                      )}
-                    </small>
-                  </FormControl>
-                  <FormControl fullWidth >
-                    <TextField
-                      id="delegacion"
-                      name="delegacion"
-                      label="Delegación o Municipio"
-                      value={selectedEmpleados.delegacion || ''}
-                      onChange={inputChangeUpdateEmpleado}
-                      variant="outlined"
-                      inputProps={{ style: { textTransform: "uppercase" } }}
-                    />
-                    <small>
-                      {errorEmpleadoUp.delegacion && (
-                        <span style={{color: 'red'}}>
-                          * {errorEmpleadoUp.delegacion}
-                        </span>
-                      )}
-                    </small>
-                  </FormControl>
-                  <FormControl fullWidth>
-                    <TextField
-                      id="estado"
-                      name="estado"
-                      label="Estado"
-                      value={selectedEmpleados.estado || ''}
-                      onChange={inputChangeUpdateEmpleado}
-                    />
-                    <small>
-                    {errorEmpleadoUp.estado && (
+            <Divider></Divider>
+              <div style={{  display: "flex", flexWrap: "wrap", gap: "20px", marginTop:'10px'  }}>
+                <FormControl fullWidth >
+                  <TextField
+                    id="calle"
+                    name="calle"
+                    label="Calle"
+                    value={selectedEmpleados.calle || ''}
+                    onChange={inputChangeUpdateEmpleado}
+                    variant="outlined"
+                    inputProps={{ style: { textTransform: "uppercase" } }}
+                  />
+                  <small>
+                    {errorEmpleadoUp.calle && (
                       <span style={{color: 'red'}}>
-                        * {errorEmpleadoUp.estado}
+                        * {errorEmpleadoUp.calle}
                       </span>
                     )}
                   </small>
-                  </FormControl>
-                </div>
-              <Box sx={{ textAlign: "center", mt: 4 }}>
-                <Button variant="outlined" color="secondary" sx={{ mr: 2 }} onClick={handleCloseUpdateEmpleado}>
-                  Cancelar
-                </Button>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={updateEmpleado}
-                >
-                  Finalizar
-                </Button>
-              </Box>
-              </>
-            )}
-            </DialogContent>
-          
-          </Dialog>
-          <Dialog
-            open={isErrorDialogVisible}
-            onClose={closeErrorDialog}
-          >
-            <DialogTitle style={{textAlign:'center'}}>
-              <ErrorOutline style={{color:'red', fontSize: 100, opacity:'0.5' }}/><p/>
-              Error al registar empleado</DialogTitle>
-            <DialogContent>{errorEmpleado}</DialogContent>
-            <DialogActions>
-              <Button onClick={closeErrorDialog}>
-                cancelar
-              </Button>
-            </DialogActions>
-          </Dialog>
-
-          <Dialog
-            open={OpenBloquearEmpleado}
-            onClose={closebloquearDialog}
-          >
-            <DialogTitle style={{textAlign:'center'}}>
-              {selectedEmpleados.est === 'C' ? (
-                <div>
-                  <ErrorOutline style={{color:'green', fontSize: 100, opacity:'0.5' }}/><p/>
-                  ¿ACTIVAR EMPLEADO?
-                </div>
-                
-              ):(
-                <div>
-                  <ErrorOutline style={{color:'red', fontSize: 100, opacity:'0.5' }}/><p/>
-                  ¿DESACTIVAR EMPLEADO?
-                </div>
-              )}
-            </DialogTitle>
-            <DialogContent style={{textAlign:'center'}}>
-              <small>
-                NOMBRE: <strong>{selectedEmpleados.nombre_completo}</strong><br/>
-                PUESTO: <strong>{selectedEmpleados.puesto}</strong>
-              </small>
-              <div style={{margin:'20px'}}>
-                {selectedEmpleados.est === 'C' ? (
-                  <Button onClick={handleDesbloquearEmpleado} variant="outlined" style={{margin:'4px'}}>
-                    ACEPTAR
-                  </Button>
-                ):(
-                  <Button onClick={handleBloquearEmpleado} variant="outlined" style={{margin:'4px'}}>
-                    ACEPTAR
-                  </Button>
-                )}
-                
-                <Button onClick={closebloquearDialog} variant="outlined"color="gray" style={{margin:'4px'}}>
-                  CANCELAR
-                </Button>
+                </FormControl>
+                <FormControl fullWidth >
+                  <TextField
+                    fullWidth
+                    id="colonia"
+                    name="colonia"
+                    label="Colonia"
+                    value={selectedEmpleados.colonia || ''}
+                    onChange={inputChangeUpdateEmpleado}
+                    inputProps={{ style: { textTransform: "uppercase" } }}
+                  />
+                  <small>
+                    {errorEmpleadoUp.colonia && (
+                      <span style={{color: 'red'}}>
+                        * {errorEmpleadoUp.colonia}
+                      </span>
+                    )}
+                  </small>
+                </FormControl>
+                <FormControl fullWidth >
+                  <TextField
+                    id="delegacion"
+                    name="delegacion"
+                    label="Delegación o Municipio"
+                    value={selectedEmpleados.delegacion || ''}
+                    onChange={inputChangeUpdateEmpleado}
+                    variant="outlined"
+                    inputProps={{ style: { textTransform: "uppercase" } }}
+                  />
+                  <small>
+                    {errorEmpleadoUp.delegacion && (
+                      <span style={{color: 'red'}}>
+                        * {errorEmpleadoUp.delegacion}
+                      </span>
+                    )}
+                  </small>
+                </FormControl>
+                <FormControl fullWidth>
+                  <TextField
+                    id="estado"
+                    name="estado"
+                    label="Estado"
+                    value={selectedEmpleados.estado || ''}
+                    onChange={inputChangeUpdateEmpleado}
+                  />
+                  <small>
+                  {errorEmpleadoUp.estado && (
+                    <span style={{color: 'red'}}>
+                      * {errorEmpleadoUp.estado}
+                    </span>
+                  )}
+                </small>
+                </FormControl>
               </div>
-            </DialogContent>
-          </Dialog>
-      </div>
-    )
+            <Box sx={{ textAlign: "center", mt: 4 }}>
+              <Button variant="outlined" color="secondary" sx={{ mr: 2 }} onClick={handleCloseUpdateEmpleado}>
+                Cancelar
+              </Button>
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={updateEmpleado}
+              >
+                Finalizar
+              </Button>
+            </Box>
+            </>
+          )}
+          </DialogContent>
+        
+        </Dialog>
+        <Dialog
+          open={isErrorDialogVisible}
+          onClose={closeErrorDialog}
+        >
+          <DialogTitle style={{textAlign:'center'}}>
+            <ErrorOutline style={{color:'red', fontSize: 100, opacity:'0.5' }}/><p/>
+            Error al registar empleado</DialogTitle>
+          <DialogContent>{errorEmpleado}</DialogContent>
+          <DialogActions>
+            <Button onClick={closeErrorDialog}>
+              cancelar
+            </Button>
+          </DialogActions>
+        </Dialog>
+        <Dialog open={OpenBloquearEmpleado} onClose={closebloquearDialog}>
+          {selectedEmpleados && (
+            <DialogTitle style={{textAlign:'center'}}>
+            {selectedEmpleados.est === 'C' ? (
+              <div>
+                <ErrorOutline style={{color:'green', fontSize: 100, opacity:'0.5' }}/><p/>
+                ¿ACTIVAR EMPLEADO?
+              </div>
+            ):(
+              <div>
+                <ErrorOutline style={{color:'red', fontSize: 100, opacity:'0.5' }}/><p/>
+                ¿DESACTIVAR EMPLEADO?
+              </div>
+            )}
+          </DialogTitle>)}
+          <DialogContent style={{textAlign:'center'}}>
+            <small>
+              NOMBRE: <strong>{selectedEmpleados.nombre_completo}</strong><br/>
+              PUESTO: <strong>{selectedEmpleados.puesto}</strong>
+            </small>
+            <div style={{margin:'20px'}}>
+              <Button onClick={closebloquearDialog} variant="outlined" style={{margin:'4px'}}>
+                CANCELAR
+              </Button>
+              {selectedEmpleados.est === 'C' ? (
+                <Button onClick={handleDesbloquearEmpleado} variant="contained" color="error" style={{margin:'4px'}}>
+                  ACEPTAR
+                </Button>
+              ):(
+                <Button onClick={handleBloquearEmpleado} variant="contained" color="error" style={{margin:'4px'}}>
+                  ACEPTAR
+                </Button>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+    </div>
+  )
 }
 
 export default VisitasReporte;

@@ -478,7 +478,7 @@ function Catalogo() {
                           align="center"
                           color="primary"
                         >
-                          Unidad: {unidad}
+                           Unidad: {unidad === "Pieza" ? detalleProducto?.um || "Pieza" : unidad}
                         </Typography>
 
                         <Box display="flex" justifyContent="center" mb={2}>

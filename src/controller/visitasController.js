@@ -2,9 +2,20 @@
 const pool = require('../config/database');
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
+const fs = require('fs/promises');
 const { parse, format, isValid } = require('date-fns');
 const { Console } = require('console');
+const nodemailer = require('nodemailer');
+const { el, ar, id } = require('date-fns/locale');
+
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: "j72525264@gmail.com",
+    pass: "cnaa haoa izwh lerm",
+  },
+});
+
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -435,7 +446,7 @@ const getVisitasVehiculoValidado = async (req, res) => {
 
 const createVisita = async (req, res) => {
     console.log('Cuerpo de la solicitud:', req.body);
-    const { reg_entrada, hora_entrada, id_vit, motivo, area_per, personal, acompanantes, access, id_veh, motivo_acc } = req.body;
+    const { id_catv, reg_entrada, hora_entrada, id_vit, motivo, area_per, personal, acompanantes, access, id_veh, motivo_acc } = req.body;
 
     const cleanString = (str) => (str ? str.trim().replace(/\s+/g, ' ') : '');
 
@@ -443,30 +454,13 @@ const createVisita = async (req, res) => {
     const cleanedPersonal = cleanString(personal);
     const cleanedMotivoAcc = cleanString(motivo_acc);
 
-    const SQL_CHECK_VISIT = `
-        SELECT 1 
-        FROM visitas 
-        WHERE id_vit = ? 
-        AND DATE(reg_entrada) = DATE(?)
-    `;
-    const SQL_INSERT_VISIT = `
-        INSERT INTO visitas (id_vit, reg_entrada, hora_entrada, motivo, area_per, personal)
-        VALUES (?, ?, ?, ?, ?, ?)
-    `;
-    const SQL_INSERT_ACOMPANANTES = `
-        INSERT INTO acomp (nombre_acomp, apellidos_acomp, no_ine_acomp, id_vit, id_visit, clave_visit) 
-        VALUES ?
-    `;
-    const SQL_INSERT_ACCESO_VEHICULO = `
-        INSERT INTO vehiculo_per (id_visit, id_vit, id_veh, motivo_acc) 
-        VALUES (?, ?, ?, ?)
-    `;
-    const SQL_UPDATE_CLAVE_VISITA = `
-        UPDATE visitas SET clave_visit = ? WHERE id_vit = ?
-    `;
-    const SQL_UPDATE_CLAVE_ACCESO = `
-        UPDATE visitas SET acc_veh = ? WHERE id_vit = ?
-    `;
+    const SQL_CHECK_VISIT = `SELECT 1 FROM visitas WHERE id_vit = ? AND DATE(reg_entrada) = DATE(?)`;
+
+    const SQL_INSERT_VISIT = `INSERT INTO visitas (id_vit, reg_entrada, hora_entrada, motivo, area_per, personal) VALUES (?, ?, ?, ?, ?, ?)`;
+    const SQL_INSERT_ACOMPANANTES = `INSERT INTO acomp (nombre_acomp, apellidos_acomp, no_ine_acomp, id_vit, id_visit, clave_visit) VALUES ?`;
+    const SQL_INSERT_ACCESO_VEHICULO = `INSERT INTO vehiculo_per (id_visit, id_vit, id_veh, motivo_acc) VALUES (?, ?, ?, ?)`;
+    const SQL_UPDATE_CLAVE_VISITA = `UPDATE visitas SET clave_visit = ? WHERE id_vit = ?`;
+    const SQL_UPDATE_CLAVE_ACCESO = `UPDATE visitas SET acc_veh = ? WHERE id_vit = ?`;
 
     try {
         const [checkResult] = await pool.query(SQL_CHECK_VISIT, [id_vit, reg_entrada]);
@@ -505,8 +499,10 @@ const createVisita = async (req, res) => {
             });
         }
 
-        if (['TR', 'PR'].includes(prefix)) {
-            await pool.query(SQL_UPDATE_CLAVE_ACCESO, ['S', id_vit]);
+        if (id_catv === 12){
+            if (['TR', 'PR'].includes(prefix)) {
+                await pool.query(SQL_UPDATE_CLAVE_ACCESO, ['S', id_vit]);
+            }
         }
 
         return res.json({
@@ -572,16 +568,16 @@ const createVisitaPaqueteria = async (req, res) => {
       transportistaId = existingTransportista[0].id_transp;
       await pool.query(
         `UPDATE transportista 
-         SET empresa = ?, no_licencia = ?, no_ine = ?, registro = ?, est = ?
+         SET id_catv = ?, empresa = ?, no_licencia = ?, no_ine = ?, registro = ?, est = ?
          WHERE id_transp = ?`,
-        [cleanedEmpresa, cleanedLicencia, cleanedNoine, fechaRegistro, est, transportistaId]
+        [id_catv, cleanedEmpresa, cleanedLicencia, cleanedNoine, fechaRegistro, est, transportistaId]
       );
     } else {
       // Insertar nuevo transportista
       const [insertVisitante] = await pool.query(
-        `INSERT INTO transportista (id_catv, nombre, apellidos, empresa, no_licencia, no_ine, registro, est)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [id_catv, cleanedNombre, cleanedApellidos, cleanedEmpresa, cleanedLicencia, cleanedNoine, registro, est]
+        `INSERT INTO transportista (id_catv, nombre, apellidos, empresa, foto, no_licencia, no_ine, registro, est)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [id_catv, cleanedNombre, cleanedApellidos, cleanedEmpresa, null, cleanedLicencia, cleanedNoine, registro, est]
       );
       transportistaId = insertVisitante.insertId;
     }
@@ -598,8 +594,7 @@ const createVisitaPaqueteria = async (req, res) => {
       await pool.query(`UPDATE transportista SET clave = ? WHERE id_transp = ?`, [clavePersonalizada, transportistaId]);
     }
 
-    // Vehículo
-    // Buscar si existe el transportista
+    // Vehículo - Buscar si existe el transportista
     const [existingPlaca] = await pool.query(
       `SELECT id_veh FROM vehiculos WHERE placa = ?`,
       [cleanedPlaca]
@@ -614,7 +609,6 @@ const createVisitaPaqueteria = async (req, res) => {
         [cleanedEmpresa, cleanedMarca, cleanedPlaca, est, clavePersonalizada, acc_dir, placaId]
       );
     } else {
-      // Insertar nuevo transportista
       await pool.query(
         `INSERT INTO vehiculos (empresa, marca, placa, registro, est, clave_con, acc_dir)
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -678,11 +672,22 @@ const updatePaqueteria = async (req, res) => {
   console.log('Cuerpo de la solicitud:', req.body);
   const { clave_visit} = req.params;
   const { motivo, area_per } = req.body;
+  const SQL_CHECK_VISIT = `SELECT area_per FROM visitas WHERE clave_visit = ?`;
   const SQL_UPDATE_INFORMACION = `UPDATE visitas SET area_per = ?, motivo = ? WHERE clave_visit = ?`;
+  const SQL_UPDATE_INFORMACION2 = `UPDATE visitas SET area_per2 = ?, motivo2 = ? WHERE clave_visit = ?`;
 
   try {
-    await pool.query(SQL_UPDATE_INFORMACION, [area_per, motivo, clave_visit]);
 
+    // verificar si ya se registro area_per
+    const [[{ area_per: checkResult } = {}]] = await pool.query(SQL_CHECK_VISIT, [clave_visit]);
+    console.log('Resultado de la verificación:', checkResult);
+
+    if (checkResult === '12') {
+      await pool.query(SQL_UPDATE_INFORMACION, [area_per, motivo, clave_visit]);
+    } else {
+        await pool.query(SQL_UPDATE_INFORMACION2, [area_per, motivo, clave_visit]);
+    }
+    
     return res.json({
       success: true,
       message: 'Cortina asignada correctamente.'
@@ -821,32 +826,25 @@ const validacionVehiculo = async (req, res) => {
     const img3 = req.files?.img3?.[0]?.filename || null;
     const img4 = req.files?.img4?.[0]?.filename || null;
 
-    const SQL_INSERT_IMG_VEHICULO = `
-      INSERT INTO vehiculos_fotos 
-      (id_veh, id_visit, img1, img2, img3, img4, comentario, id_usu)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `;
-
-    const SQL_UPDATE_VALIDACION_VEHICULO = `
-      UPDATE visitas SET validado = 'S' WHERE id_visit = ?
-    `;
+    // const SQ_VALIDACION_VEHICULO = `SELECT id_veh FROM vehiculos_fotos WHERE id_veh = ?`;
+    const SQL_INSERT_IMG_VEHICULO = `INSERT INTO vehiculos_fotos (id_veh, id_visit, img1, img2, img3, img4, comentario, id_usu) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+    const SQL_UPDATE_VALIDACION_VEHICULO = `UPDATE visitas SET validado = 'S' WHERE id_visit = ?`;
 
     try {
-
-        const [resultImgVehiculo] = await pool.query(SQL_INSERT_IMG_VEHICULO, [
-            id_veh,
-            id_visit,
-            img1,
-            img2,
-            img3,
-            img4,
-            comentario,
-            id_usu,
-        ]);
+        // const [existingVehiculo] = await pool.query(SQ_VALIDACION_VEHICULO, [id_veh]);
+        // if (existingVehiculo.length > 0) {  
+            
+        //     await pool.query(
+        //         `UPDATE vehiculos_fotos SET img1 = ?, img2 = ?, img3 = ?, img4 = ?, comentario = ?, id_usu = ?`,
+        //         [id_veh, id_visit, img1, img2, img3, img4, comentario, id_usu]
+        //     );
+        // }
+        const [resultImgVehiculo] = await pool.query(SQL_INSERT_IMG_VEHICULO, [id_veh, id_visit, img1, img2, img3, img4, comentario, id_usu]);
 
         await pool.query(SQL_UPDATE_VALIDACION_VEHICULO, [id_visit]);
 
-        res.status(201).json({
+        return res.json({
+            success: true,
             message: 'Imágenes guardadas y validación actualizada correctamente.',
             data: {
                 imgVehiculoId: resultImgVehiculo.insertId,
@@ -879,7 +877,6 @@ const validacionProveedor = async (req, res) => {
     `;
 
     try {
-
       const [resultConductor] = await pool.query(SQL_INSERT_CONDUCTOR, [
         nombre_acomp, 
         apellidos_acomp, 
@@ -928,7 +925,7 @@ const pasarValidar = async (req, res) => {
         }
     } catch (error) {
         console.error('Error al actualizar la visita:', error);
-        res.status(500).json({ 
+        res.status(500).json({
             message: 'Error al actualizar la visita', 
             error: error.message 
         });
@@ -962,20 +959,14 @@ const pasarLlegada = async (req, res) => {
     }
 };
 
-  const darAccesoVisitante = async (req, res) => { 
-    console.log('Endpoint alcanzado');
+  const darAccesoVisitante = async (req, res) => {
     console.log('q', req.body);
 
     try {
         const { id_visit } = req.params; 
-        console.log('id_visit:', id_visit);
-
         const { est, id_usu_ac } = req.body;
         const entrada_h = new Date();
-        console.log('entrada_h:', entrada_h, 'est:', est, 'id_usu_ac:', id_usu_ac);
-
         const [visitData] = await pool.query('SELECT id_vit FROM visitas WHERE id_visit = ?', [id_visit]);
-
         if (visitData.length === 0) {
             return res.status(404).json({ 
                 message: `No se encontró el visitante con id_visit: ${id_visit}` 
@@ -992,6 +983,7 @@ const pasarLlegada = async (req, res) => {
 
             if (result.affectedRows === 0) {
                 return res.status(404).json({ 
+                    success: false,
                     message: `No se pudo actualizar, id_visit: ${id_visit} no encontrado` 
                 });
             }
@@ -1000,15 +992,15 @@ const pasarLlegada = async (req, res) => {
                 'UPDATE visitas SET ? WHERE id_visit = ?',
                 [{ entrada_h, est, id_usu_ac }, id_visit]
             );
-
             if (result.affectedRows === 0) {
                 return res.status(404).json({ 
+                    success: false,
                     message: `No se pudo actualizar, id_visit: ${id_visit} no encontrado` 
                 });
             }
         }
-
         res.status(200).json({ 
+            success: true,
             message: 'Datos de visita actualizados correctamente' 
         });
     } catch (error) {
@@ -1086,10 +1078,10 @@ const getVisitasAct = async (req, res) => {
             visitas.validado,
             vehiculos.id_veh,
             vehiculos.placa,
+            vehiculos.marca,
+            vehiculos.empresa,
             vehiculos.acc_dir,
             acomp.id_com,
-            acomp.nombre_acomp,
-            acomp.apellidos_acomp,
             vehiculo_per.id_vehpr,
             vehiculo_per.acc,
             categorias_visitas.id_catv,
@@ -1139,15 +1131,16 @@ const getVisitasAct = async (req, res) => {
             visitas.validado,
             vehiculos.id_veh,
             vehiculos.placa,
+            vehiculos.marca,
             vehiculos.acc_dir,
             acomp.id_com,
             acomp.nombre_acomp,
             acomp.apellidos_acomp,
             categorias_visitas.id_catv,
             categorias_visitas.tipo,
-            cortinas.id_cor,
-            cortinas.area,
-            cortinas.cortina,
+            CASE WHEN transportista.id_catv = 12 THEN areas.id_area ELSE cortinas.id_cor END AS id_cor,
+            CASE WHEN transportista.id_catv = 12 THEN areas.area ELSE cortinas.area END AS area,
+            CASE WHEN transportista.id_catv = 12 THEN areas.area ELSE cortinas.cortina END AS cortina,
             cortinas2.id_cor AS id_cor2,
             cortinas2.area AS area2,
             cortinas2.cortina AS cortina2,
@@ -1163,6 +1156,7 @@ const getVisitasAct = async (req, res) => {
         LEFT JOIN categorias_visitas ON transportista.id_catv = categorias_visitas.id_catv
         LEFT JOIN cortinas ON visitas.area_per = cortinas.id_cor
         LEFT JOIN cortinas AS cortinas2 ON visitas.area_per2 = cortinas2.id_cor 
+        LEFT JOIN areas ON visitas.area_per = areas.id_area
         LEFT JOIN paqueterias ON transportista.empresa  = paqueterias.id_paq
         LEFT JOIN vehiculos_fotos ON visitas.id_visit = vehiculos_fotos.id_visit
         WHERE visitas.est = 'A'
@@ -1211,19 +1205,62 @@ const getVisitasAct = async (req, res) => {
         GROUP BY visitas.id_visit
     `;
 
+    const SQL_QUERY_VEHICULOS = `
+        SELECT 
+            visitas_vehiculos.id_veh_act,
+            visitas_vehiculos.id_vit_deja,
+            visitas_vehiculos.id_vit_recoge,
+            visitas_vehiculos.reg_entrada, 
+            visitas_vehiculos.reg_salida,
+            visitas_vehiculos.hora_entrada,
+            visitas_vehiculos.area_per,
+            visitas_vehiculos.area_per2,
+            visitas_vehiculos.est,
+            visitas_vehiculos.personal,
+            visitas_vehiculos.motivo,
+            visitas_vehiculos.motivo2,
+            visitas_vehiculos.clave_visit,
+            visitas_vehiculos.entrada_h,
+            vehiculos.id_veh,
+            vehiculos.placa,
+            vehiculos.marca,
+            vehiculos.empresa,
+            vehiculos.acc_dir,
+            cortinas.id_cor,
+            cortinas.area,
+            cortinas.cortina,
+            cortinas2.id_cor AS id_cor2,
+            cortinas2.area AS area2,
+            cortinas2.cortina AS cortina2,
+            vf.id_fotoveh,
+            vf.img1,
+            transportista.id_transp,
+            CONCAT(transportista.nombre, ' ', transportista.apellidos) AS nombre_completo
+        FROM visitas_vehiculos
+        JOIN vehiculos ON visitas_vehiculos.id_vit_deja = vehiculos.clave_con
+        LEFT JOIN cortinas ON visitas_vehiculos.area_per = cortinas.id_cor
+        LEFT JOIN cortinas AS cortinas2 ON visitas_vehiculos.area_per2 = cortinas2.id_cor 
+        LEFT JOIN transportista ON visitas_vehiculos.id_vit_deja = transportista.clave
+        LEFT JOIN ( SELECT vf1.* FROM vehiculos_fotos vf1 
+            INNER JOIN ( SELECT id_veh, MAX(id_fotoveh) AS ultimo_foto  FROM vehiculos_fotos GROUP BY id_veh ) vf2 ON 
+            vf1.id_veh = vf2.id_veh AND vf1.id_fotoveh = vf2.ultimo_foto ) vf  ON vehiculos.id_veh = vf.id_veh
+        WHERE visitas_vehiculos.est = 'A'
+        GROUP BY visitas_vehiculos.id_veh_act`
+        ;
+
     try {
         const [resultVisitantes] = await pool.query(SQL_QUERY_VISITANTES);
         const [resultTransportistas] = await pool.query(SQL_QUERY_TRANSPORTISTA);
         const [resultProveedores] = await pool.query(SQL_QUERY_CONTENEDORES);
-
-        // Combinar resultados
-        //const visitasActivas = [...resultVisitantes, ...resultTransportistas];
+        const [resultVehiculos] = await pool.query(SQL_QUERY_VEHICULOS);
 
         res.json({
             visitantes: resultVisitantes,
             transportistas: resultTransportistas,
             contenedores: resultProveedores,
+            vehiculos: resultVehiculos,
         });
+        
     } catch (error) {
         console.error('Error al obtener las visitas activas:', error);
         res.status(500).json({
@@ -1235,12 +1272,23 @@ const getVisitasAct = async (req, res) => {
 
 const darSalidaVisitante = async (req, res) => {
     console.log('q', req.body);
+    const { id_visit } = req.params; 
+    const {  est, id_usu_out, tiempo_visita } = req.body;
+    const [[{ id_vit } = {}]] = await pool.query('SELECT id_vit FROM visitas WHERE id_visit = ?', [id_visit]);
+
     try {
-        const { id_visit } = req.params; 
-        console.log('id_visit:', id_visit);
-        const {  est, id_usu_out, tiempo_visita } = req.body;
         const reg_salida = new Date();
-        console.log('salid:', reg_salida,'est:', est, 'id_usu_out:', id_usu_out, 'tiempo_visita:', tiempo_visita);
+        let tabla = null;
+        
+        if (id_vit.startsWith('VT') || id_vit.startsWith('PR') || id_vit.startsWith('CL')) {
+            tabla = 'visitantes';
+        } else if (id_vit.startsWith('TR') || id_vit.startsWith('PQ') || id_vit.startsWith('VPR') || id_vit.startsWith('CR')) {
+            tabla = 'transportista';
+        } else {
+            return res.status(400).json({ error: 'Prefijo de clave no válido' });
+        }
+
+        await pool.query(`UPDATE ${tabla} SET foto = ? WHERE clave = ?`, [null, id_vit]);
 
         const result = await pool.query(
             'UPDATE visitas SET ? WHERE id_visit = ?',
@@ -1249,7 +1297,64 @@ const darSalidaVisitante = async (req, res) => {
 
         if (result.affectedRows === 0) {
             return res.status(404).json({ 
-                message: `No se pudo actualizar, id_visit: ${id_visit} no encontrado` 
+                message: `No se pudo actualizar, id_visit: ${id_visit} no encontrado`,
+                message2: `Foto actualizada en ${tabla} con clave: ${id_vit}` 
+            });
+        }
+
+        res.status(200).json({ 
+            message: 'Datos de visita actualizados correctamente' 
+        });
+    } catch (error) {
+        console.error('Error al actualizar la visita:', error);
+        res.status(500).json({ 
+            message: 'Error al actualizar la visita', 
+            error: error.message 
+        });
+    }
+};
+
+const darSalidaOper = async (req, res) => {
+    console.log('q', req.body);
+
+    const { id_visit } = req.params; 
+    const { est, id_usu_out, tiempo_visita } = req.body;
+    const reg_salida = new Date();
+    const estV = 'A';
+    const [[{ id_vit } = {}]] = await pool.query('SELECT id_vit FROM visitas WHERE id_visit = ?', [id_visit]);
+
+    try {
+        let tabla = null;
+        const [rows] = await pool.query('SELECT * FROM visitas WHERE id_visit = ?', [id_visit]);
+
+        if (id_vit.startsWith('VT') || id_vit.startsWith('PR') || id_vit.startsWith('CL')) {
+            tabla = 'visitantes';
+        } else if (id_vit.startsWith('TR') || id_vit.startsWith('PQ') || id_vit.startsWith('VPR') || id_vit.startsWith('CR')) {
+            tabla = 'transportista';
+
+            if (rows.length > 0) {
+            const v = rows[0]; // Primer resultado
+
+            await pool.query(`INSERT INTO visitas_vehiculos (id_vit_deja, reg_entrada, motivo, area_per, personal, entrada_h, est, id_usu_ac, clave_visit, hora_entrada, area_per2, motivo2) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [v.id_vit,  v.reg_entrada, v.motivo, v.area_per, v.personal, v.entrada_h, estV, v.id_usu_ac, v.clave_visit, v.hora_entrada, v.area_per2, v.motivo2]
+            );
+        }
+
+        } else {
+            return res.status(400).json({ error: 'Prefijo de clave no válido' });
+        }
+
+        await pool.query(`UPDATE ${tabla} SET foto = ? WHERE clave = ?`, [null, id_vit]);
+
+        const result = await pool.query(
+            'UPDATE visitas SET ? WHERE id_visit = ?',
+            [{ reg_salida, est, id_usu_out, tiempo_visita }, id_visit]
+        );
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ 
+                message: `No se pudo actualizar, id_visit: ${id_visit} no encontrado`,
+                message2: `Foto actualizada en ${tabla} con clave: ${id_vit}` 
             });
         }
 
@@ -1740,11 +1845,7 @@ const createVisitante = async (req, res) => {
         return res.status(400).json({ message: 'Faltan campos obligatorios.' });
     }
 
-    const SQL_CHECK_DUPLICATE = `
-    SELECT COUNT(*) as count 
-    FROM visitantes 
-    WHERE nombre = ? AND apellidos = ? AND est = 'A'
-    `;
+    const SQL_CHECK_DUPLICATE = `SELECT COUNT(*) as count FROM visitantes WHERE nombre = ? AND apellidos = ? AND est = 'A'`;
 
     const SQL_INSERT_VISITA = `
     INSERT INTO visitantes (id_catv, nombre, apellidos, empresa, telefono, foto, no_licencia, no_ine, puesto, no_empleado, registro, est)
@@ -1805,6 +1906,268 @@ const createVisitante = async (req, res) => {
         console.error('Error al registrar visitante:', error);
         res.status(500).json({ message: 'Error al registrar', error: error.message });
     }
+};
+
+const createVisitaEntrevista = async (req, res) => {
+  console.log('Cuerpo de la solicitud:', req.body);
+  const { id_catv, nombre, apellidos, telefono, no_ine, acompanantesPaq  } = req.body;
+
+  const registro = new Date();
+  const fechaRegistro = new Date(registro);
+  const anio = registro.getFullYear();
+  const mes = (registro.getMonth() + 1).toString().padStart(2, '0');
+  const dia = fechaRegistro.getDate().toString().padStart(2, '0');
+  const fechaFormato = `${anio}-${mes}-${dia}`;
+  const est = 'A';
+  const motivo = 'ENTREVISTA DE TRABAJO';
+  const area_per = 8;
+  const personal = 'RH';
+  const llegada = 'S';
+
+  const cleanString = (str) => (typeof str === 'string' ? str.trim().replace(/\s+/g, ' ') : '');
+  const cleanedNombre = cleanString(nombre);
+  const cleanedApellidos = cleanString(apellidos);
+  const cleanedTel = cleanString(telefono);
+  const cleanedNoine = cleanString(no_ine);
+  const cleanedMotivo = cleanString(motivo);
+
+  const generarClave = (dia, id_persona) => {
+    const prefijo =  'VT';
+    return `${prefijo}${dia}${id_persona}`;
+  };
+
+  try {
+    let visitanteId;
+    let clavePersonalizada;
+
+    // Buscar si existe el visitante
+    const [existingVisitante] = await pool.query(
+      `SELECT id_vit FROM visitantes WHERE nombre = ? AND apellidos = ?`,
+      [cleanedNombre, cleanedApellidos]
+    );
+
+    if (existingVisitante.length > 0) {
+      // Ya existe: actualizar información
+      visitanteId = existingVisitante[0].id_vit;
+      await pool.query(
+        `UPDATE visitantes SET telefono = ?, no_ine = ?, registro = ?, est = ? WHERE id_vit = ?`,
+        [cleanedTel, cleanedNoine, fechaRegistro, est, visitanteId]
+      );
+    } else {
+      // Insertar nuevo visitante
+      const [insertVisitante] = await pool.query(
+        `INSERT INTO visitantes (id_catv, nombre, apellidos, telefono, no_ine, registro, est) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [id_catv, cleanedNombre, cleanedApellidos, cleanedTel, cleanedNoine, registro, est]
+      );
+      visitanteId = insertVisitante.insertId;
+    }
+
+    // Clave personalizada (si ya tiene, no la regeneramos)
+    const [resultClave] = await pool.query(
+      `SELECT clave FROM visitantes WHERE id_vit = ?`,
+      [visitanteId]
+    );
+
+    clavePersonalizada = resultClave[0].clave;
+    if (!clavePersonalizada) {
+      clavePersonalizada = generarClave(dia, visitanteId);
+      await pool.query(`UPDATE visitantes SET clave = ? WHERE id_vit = ?`, [clavePersonalizada, visitanteId]);
+    }
+
+    // Visita
+    const prefix = clavePersonalizada.substring(0, 3);
+    const random = Math.floor(1000 + Math.random() * 900).toString();
+    const claveVisita = `${prefix}${random}${visitanteId}`;
+    const [insertVisita] = await pool.query(
+      `INSERT INTO visitas (id_vit, reg_entrada, motivo, area_per, personal, clave_visit, llegada, hora_llegada)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [clavePersonalizada, fechaFormato, cleanedMotivo, area_per, personal, claveVisita, llegada, registro]
+    );
+    const visitaId = insertVisita.insertId;
+
+    // Acompañantes
+    if (acompanantesPaq && acompanantesPaq.length > 0) {
+      const values = acompanantesPaq.map(acomp => [
+        acomp.nombre_acomp, acomp.apellidos_acomp, acomp.no_ine_acomp, clavePersonalizada, visitaId, claveVisita
+      ]);
+      await pool.query(
+        `INSERT INTO acomp (nombre_acomp, apellidos_acomp, no_ine_acomp, id_vit, id_visit, clave_visit)
+         VALUES ?`,
+        [values]
+      );
+    }
+
+    return res.json({
+      success: true,
+      message: existingVisitante.length > 0
+        ? 'Visitante actualizado y visita registrada correctamente.'
+        : 'Visitante y visita registrados correctamente.',
+      data: {
+        clavePersonalizada,
+        claveVisita,
+        visitanteId,
+        visitaId
+      }
+    });
+  } catch (error) {
+    console.error('Error en la operación:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Error del servidor al registrar la visita.',
+    });
+  }
+};
+
+const createVisitaOper = async (req, res) => {
+  console.log('Cuerpo de la solicitud:', req.body);
+  const { id_catv, nombre, apellidos, no_ine, no_licencia, clave_visit, id_usu_out, tiempo_visita, empresa} = req.body;
+  const foto = req.file ? req.file.filename : null;
+  const registro = new Date();
+  const fechaRegistro = new Date(registro);
+  const anio = registro.getFullYear();
+  const mes = (registro.getMonth() + 1).toString().padStart(2, '0');
+  const dia = fechaRegistro.getDate().toString().padStart(2, '0');
+  const fechaFormato = `${anio}-${mes}-${dia}`;
+  const est = 'C';
+
+  const cleanString = (str) => (typeof str === 'string' ? str.trim().replace(/\s+/g, ' ') : '');
+  const cleanedNombre = cleanString(nombre);
+  const cleanedApellidos = cleanString(apellidos);
+  const cleanedNoine = cleanString(no_ine);
+  const cleanedLicencia = cleanString(no_licencia);
+
+  const generarClave = (id_catv, dia, id_persona) => {
+    const prefijo =  'PQ';
+    return `${prefijo}${dia}${id_persona}`;
+  };
+
+  try {
+    let transportistaId;
+    let clavePersonalizada;
+
+    // Buscar si existe el transportista
+    const [existingTransportista] = await pool.query(
+      `SELECT id_transp FROM transportista WHERE nombre = ? AND apellidos = ?`,
+      [cleanedNombre, cleanedApellidos]
+    );
+
+    if (existingTransportista.length > 0) {
+      // Ya existe: actualizar información
+      transportistaId = existingTransportista[0].id_transp;
+      await pool.query(
+        `UPDATE transportista 
+         SET empresa = ?, foto = ?, no_licencia = ?, no_ine = ?, registro = ?, est = ?
+         WHERE id_transp = ?`,
+        [empresa, foto, cleanedLicencia, cleanedNoine, fechaRegistro, est, transportistaId]
+      );
+    } else {
+      // Insertar nuevo transportista
+      const [insertVisitante] = await pool.query(
+        `INSERT INTO transportista (id_catv, nombre, apellidos, empresa, foto, no_licencia, no_ine, registro, est)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [id_catv, cleanedNombre, cleanedApellidos, empresa, foto, cleanedLicencia, cleanedNoine, registro, 'A']
+      );
+      transportistaId = insertVisitante.insertId;
+    }
+
+    // Clave personalizada (si ya tiene, no la regeneramos)
+    const [resultClave] = await pool.query(`SELECT clave FROM transportista WHERE id_transp = ?`, [transportistaId]);
+
+    clavePersonalizada = resultClave[0].clave;
+    if (!clavePersonalizada) {
+      clavePersonalizada = generarClave(id_catv, dia, transportistaId);
+      await pool.query(`UPDATE transportista SET clave = ? WHERE id_transp = ?`, [clavePersonalizada, transportistaId]);
+    }
+
+    // Visita
+    const prefix = clavePersonalizada.substring(0, 3);
+    const random = Math.floor(1000 + Math.random() * 900).toString();
+    const [insertVisita] = await pool.query(
+      `UPDATE visitas_vehiculos SET est = ?, reg_salida = ?, id_usu_out = ?, tiempo_visita = ?, id_vit_recoge = ? WHERE clave_visit = ?`,
+      [est, registro, id_usu_out, tiempo_visita, clavePersonalizada, clave_visit]
+    );
+    const visitaId = insertVisita.insertId;
+
+    return res.json({
+      success: true,
+      message: existingTransportista.length > 0
+        ? 'Visitante actualizado y visita registrada correctamente.'
+        : 'Visitante y visita registrados correctamente.',
+      data: {
+        clavePersonalizada,
+        transportistaId,
+        visitaId
+      }
+    });
+  } catch (error) {
+    console.error('Error en la operación:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Error del servidor al registrar la visita.',
+    });
+  }
+};
+
+const sendVisitEmail = async (req, res) => {
+  const { nombre, apellidos } = req.body;
+
+  try {
+    const htmlPath = path.join(__dirname, 'templates', 'correo_visita_entrevista.html');
+    let html = await fs.readFile(htmlPath, 'utf8');
+    html = html.replace(/{{nombre}}/g, nombre || '')
+           .replace(/{{apellidos}}/g, apellidos || '');
+
+    await transporter.sendMail({
+      from: `"SanCed – Gestor de Accesos" <j72525264@gmail.com>`,
+    //   to: 'rh.cedis@santul.net',
+      to: 'dalya.martinez@santul.net',
+      subject: "Nueva visita para entrevista",
+      html,
+      attachments: [
+        {
+          filename: "logo_sanced.png",
+          path: path.join(__dirname, "templates", "logob.png"),
+          cid: "logo_sanced"
+        }
+      ]
+    });
+
+    res.json({ message: "Correo de visita enviado" });
+  } catch (err) {
+    console.error("Error al enviar correo:", err);
+    res.status(500).json({ message: "Error al enviar el correo", error: err.message });
+  }
+};
+
+const sendEmailEviden = async (req, res) => {
+  const { nombre, apellidos } = req.body;
+
+  try {
+    const htmlPath = path.join(__dirname, 'templates', 'correo_visita_evidencias.html');
+    let html = await fs.readFile(htmlPath, 'utf8');
+    html = html.replace(/{{nombre}}/g, nombre || '')
+           .replace(/{{apellidos}}/g, apellidos || '');
+
+    await transporter.sendMail({
+      from: `"SanCed – Gestor de Accesos" <j72525264@gmail.com>`,
+    //   to: 'rh.cedis@santul.net',
+      to: 'dalya.martinez@santul.net',
+      subject: "Nueva visita para entrega de evidencias",
+      html,
+      attachments: [
+        {
+          filename: "logo_sanced.png",
+          path: path.join(__dirname, "templates", "logob.png"),
+          cid: "logo_sanced"
+        }
+      ]
+    });
+
+    res.json({ message: "Correo de visita enviado" });
+  } catch (err) {
+    console.error("Error al enviar correo:", err);
+    res.status(500).json({ message: "Error al enviar el correo", error: err.message });
+  }
 };
 
 const updateVisitante = async (req, res) => {
@@ -2086,86 +2449,82 @@ const getAreasTransp = async (req, res) => {
 }
 
 const createEmpleado = async (req, res) => {
+    console.log('Cuerpo de la solicitud:', req.body);
+    const { id_catv, nombre, apellidos, no_empleado, no_ine, telefono, puesto, tel_emergencia, nom_emergencia, parentesco_contacto, calle, colonia, delegacion, estado } = req.body;
+    const foto = req.file ? req.file.filename : null;
+    const registro = new Date();
+    const est = 'A';
+    const dia = String(registro.getDate()).padStart(2, '0');
+
+    const cleanString = (str) => str.trim().replace(/\s+/g, ' ');
+
+    const area_trabajo = id_catv === 8 ? 'CEDIS SANTUL' : 'CORPORATIVO SANTUL';
+    const empleadoNombre = cleanString(nombre);
+    const empleadoApellidos = cleanString(apellidos);
+    const empleadoNoEmpleado = cleanString(no_empleado);
+    const empleadoNoIne = cleanString(no_ine);
+    const empleadoTelefono = cleanString(telefono); 
+    const empleadoPuesto = cleanString(puesto);
+    const empleadoTelEmergencia = cleanString(tel_emergencia);
+    const empleadoNomEmergencia = cleanString(nom_emergencia);
+    const empleadoParentesco = cleanString(parentesco_contacto);
+    const empleadoCalle = cleanString(calle);
+    const empleadoColonia = cleanString(colonia);
+    const empleadoDelegacion = cleanString(delegacion);
+    const empleadoEstado = cleanString(estado);
+    let empleadoId = null;
+    let clavePersonalizada = null;
+    let idPersona = null;
+    let idDireccion = null;
+
+    const SQL_CHECK_EXISTENCE = `SELECT id_emp FROM empleados WHERE nombre = ? AND apellidos = ? AND est = 'A'`;
+
+    const SQL_INSERT_EMPLEADO = `INSERT INTO empleados (id_catv, nombre, apellidos, foto, no_empleado, no_ine, telefono, puesto, registro, est, tel_emergencia, nom_emergencia, parentesco_contacto, area_trabajo)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+
+    const SQL_UPDATE_EMPLEADO = `UPDATE empleados SET id_catv = ?, nombre = ?, apellidos = ?, no_empleado = ?, no_ine = ?, telefono = ?, puesto = ?, tel_emergencia = ?, nom_emergencia = ?, parentesco_contacto = ?, registro = ?, area_trabajo = ? WHERE id_emp = ?`;
+
+    const SQL_UPDATE_CLAVE = `UPDATE empleados SET clave = ? WHERE id_emp = ?`;
+
+    const SQL_INSERT_DIRECCION = `INSERT INTO direcciones_empleados (calle, colonia, delegacion, estado) VALUES(?, ?, ?, ?)`;
+
+    const SQL_UPDATE_ID_DIRECCION = `UPDATE direcciones_empleados SET id_emp = ? WHERE id_dir = ?`;
+
     try {
-        const { id_catv, nombre, apellidos, no_empleado, no_ine, telefono, puesto, tel_emergencia, nom_emergencia, parentesco_contacto, calle, colonia, delegacion, estado } = req.body;
-
-        const foto = req.file ? req.file.filename : null;
-        const registro = new Date();
-        const est = 'A';
-        const dia = String(registro.getDate()).padStart(2, '0');
-
-        const cleanString = (str) => str.trim().replace(/\s+/g, ' ');
-
-        const empleadoNombre = cleanString(nombre);
-        const empleadoApellidos = cleanString(apellidos);
-        const empleadoNoEmpleado = cleanString(no_empleado);
-        const empleadoNoIne = cleanString(no_ine);
-        const empleadoTelefono = cleanString(telefono); 
-        const empleadoPuesto = cleanString(puesto);
-        const empleadoTelEmergencia = cleanString(tel_emergencia);
-        const empleadoNomEmergencia = cleanString(nom_emergencia);
-        const empleadoParentesco = cleanString(parentesco_contacto);
-        const empleadoCalle = cleanString(calle);
-        const empleadoColonia = cleanString(colonia);
-        const empleadoDelegacion = cleanString(delegacion);
-        const empleadoEstado = cleanString(estado);
-       
-
-        const SQL_CHECK_EXISTENCE = `
-            SELECT COUNT(*) AS count 
-            FROM empleados 
-            WHERE nombre = ? AND apellidos = ? AND est = 'A'
-        `;
-        const SQL_INSERT_EMPLEADO = `
-            INSERT INTO empleados (id_catv, nombre, apellidos, foto, no_empleado, no_ine, telefono, puesto, registro, est, tel_emergencia, nom_emergencia, parentesco_contacto)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? ,?)
-        `;
-        const SQL_UPDATE_CLAVE = `
-            UPDATE empleados 
-            SET clave = ? 
-            WHERE id_emp = ?
-        `;
-
-        const SQL_INSERT_DIRECCION = `
-            INSERT INTO direcciones_empleados (calle, colonia, delegacion, estado)
-            VALUES(?, ?, ?, ?)
-        `;
-
-        const SQL_UPDATE_ID_DIRECCION = `
-            UPDATE direcciones_empleados
-            SET id_emp = ? 
-            WHERE id_dir = ?
-        `;
-
-        // Verificar si el empleado ya existe
         const [checkResult] = await pool.query(SQL_CHECK_EXISTENCE, [empleadoNombre, empleadoApellidos]);
-        if (checkResult[0].count > 0) {
-            return res.status(400).json({ message: 'Este empleado ya está registrado.' });
+        if (checkResult.length > 0) {
+            empleadoId = checkResult[0].id_emp;
+            await pool.query(SQL_UPDATE_EMPLEADO, [id_catv, empleadoNombre, empleadoApellidos, empleadoNoEmpleado, empleadoNoIne, empleadoTelefono, empleadoPuesto, id_catv === 8 ? empleadoTelEmergencia : null, id_catv === 8 ? empleadoNomEmergencia : null, id_catv === 8 ? empleadoParentesco : null, registro, area_trabajo, empleadoId]);
+            // const clavePersonalizada = `EC${new Date().getDate().toString().padStart(2, '0')}${id_emp}`;
+            // await pool.query(SQL_UPDATE_CLAVE, [clavePersonalizada, empleadoId]);
+        }else {
+            // Insertar empleado
+            const [insertResult] = await pool.query(SQL_INSERT_EMPLEADO, [
+                id_catv, empleadoNombre, empleadoApellidos, foto, empleadoNoEmpleado,
+                empleadoNoIne, empleadoTelefono, empleadoPuesto, registro, est, id_catv === 8 ? empleadoTelEmergencia : null, id_catv === 8 ? empleadoNomEmergencia : null, id_catv === 8 ? empleadoParentesco : null, area_trabajo
+            ]);
+
+            idPersona = insertResult.insertId;
+            clavePersonalizada = `${id_catv === 8 ? 'EC' : 'ECR'}${empleadoNoEmpleado}`;
+
+
+            // Actualizar clave del empleado
+            await pool.query(SQL_UPDATE_CLAVE, [clavePersonalizada, idPersona]);
+
+            if(id_catv === 8) {
+                // Insert ar dirección y obtener el id_dir
+                const [insertDirResult] = await pool.query(SQL_INSERT_DIRECCION, [empleadoCalle, empleadoColonia, empleadoDelegacion, empleadoEstado]);
+                idDireccion = insertDirResult.insertId;
+
+                // Actualizar dirección con el id_emp del empleado
+                await pool.query(SQL_UPDATE_ID_DIRECCION, [idPersona, idDireccion]);
+            }
         }
-
-        // Insertar empleado
-        const [insertResult] = await pool.query(SQL_INSERT_EMPLEADO, [
-            id_catv, empleadoNombre, empleadoApellidos, foto, empleadoNoEmpleado,
-            empleadoNoIne, empleadoTelefono, empleadoPuesto, registro, est, empleadoTelEmergencia, empleadoNomEmergencia, empleadoParentesco
-        ]);
-
-        const idPersona = insertResult.insertId;
-        const clavePersonalizada = `EC${dia}${idPersona}`;
-
-        // Actualizar clave del empleado
-        await pool.query(SQL_UPDATE_CLAVE, [clavePersonalizada, idPersona]);
-
-        // Insertar dirección y obtener el id_dir
-        const [insertDirResult] = await pool.query(SQL_INSERT_DIRECCION, [empleadoCalle, empleadoColonia, empleadoDelegacion, empleadoEstado]);
-        const idDireccion = insertDirResult.insertId;
-
-        // Actualizar dirección con el id_emp del empleado
-        await pool.query(SQL_UPDATE_ID_DIRECCION, [idPersona, idDireccion]);
 
         res.json({
             message: 'Empleado y dirección registrados exitosamente',
             clave: clavePersonalizada,
-            empleadoId: idPersona,
+            empleadoId: idPersona || empleadoId,
             direccionId: idDireccion
         });
     } catch (error) {
@@ -2311,7 +2670,6 @@ const getEmpleados = async (req, res) => {
     empleados.puesto,
     empleados.tel_emergencia,
     empleados.nom_emergencia,
-
     empleados.parentesco_contacto,
     direcciones_empleados.calle,
     direcciones_empleados.colonia,
@@ -2333,15 +2691,14 @@ const getEmpleados = async (req, res) => {
         res.status(500).json({message: 'Error al obtener empleados.'})
     }
 }
-
 const createEmpleadoExcel = async (req, res) => {
     const empleados = req.body;
 
     const SQL_INSERT_EMPLEADO = `
-        INSERT INTO empleados (id_catv, nombre, apellidos, no_empleado, no_ine, telefono, puesto,  tel_emergencia, nom_emergencia, parentesco_contacto, registro, est)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
-    const SQL_UPDATE_CLAVE = `UPDATE empleados SET clave = ? WHERE id_emp = ?`;
+        INSERT INTO empleados (nombre, apellidos, no_empleado, no_ine, telefono, puesto,  tel_emergencia, nom_emergencia, parentesco_contacto, registro, est, area_trabajo)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+
+    const SQL_UPDATE_CLAVE = `UPDATE empleados SET id_catv= ?, clave = ? WHERE id_emp = ?`;
 
     const SQL_INSERT_DIRECCION = `
         INSERT INTO direcciones_empleados (calle, colonia, delegacion, estado)
@@ -2360,7 +2717,7 @@ const createEmpleadoExcel = async (req, res) => {
 
     try {
         for (const item of empleados) {
-            const id_catv = 8;
+            // const id_catv = 8;
             const nombre = cleanText(item.nombre);
             const apellidos = cleanText(item.apellidos);
             const no_empleado = cleanText(item.no_empleado);
@@ -2375,17 +2732,19 @@ const createEmpleadoExcel = async (req, res) => {
             const colonia = cleanText(item.colonia);
             const delegacion = cleanText(item.delegacion);
             const estado = cleanText(item.estado);
+            const area_trabajo = cleanText(item.area_trabajo);
 
             const registro = new Date();
             const est = 'A';
 
-            const [result] = await pool.query(SQL_INSERT_EMPLEADO, [
-                id_catv, nombre, apellidos, no_empleado, no_ine, telefono, puesto,  tel_emergencia, nom_emergencia, parentesco_contacto, registro, est
-            ]);
+            const [result] = await pool.query(SQL_INSERT_EMPLEADO, [nombre, apellidos, no_empleado, no_ine, telefono, puesto, 
+                tel_emergencia, nom_emergencia, parentesco_contacto, registro, est, area_trabajo]);
+
             const id_persona = result.insertId;
 
             const clavePersonalizada = `EC${new Date().getDate().toString().padStart(2, '0')}${id_persona}`;
-            await pool.query(SQL_UPDATE_CLAVE, [clavePersonalizada, id_persona]);
+            const id_catv = area_trabajo === 'CEDIS SANTUL' ? 8 : 1;
+            await pool.query(SQL_UPDATE_CLAVE, [id_catv, clavePersonalizada, id_persona]);
 
             const [dirResult] = await pool.query(SQL_INSERT_DIRECCION, [calle, colonia, delegacion, estado]);
             const id_direccion = dirResult.insertId;
@@ -2399,6 +2758,90 @@ const createEmpleadoExcel = async (req, res) => {
         res.status(500).json({ message: "Error al guardar los datos", error: error.message });
     }
 };
+// const createEmpleadoExcel = async (req, res) => {
+//     const empleados = req.body;
+
+//     const SQL_INSERT_EMPLEADO = `INSERT INTO empleados (id_catv, nombre, apellidos, no_empleado, no_ine, telefono, puesto, tel_emergencia, nom_emergencia, parentesco_contacto, registro, est, area_trabajo)
+//         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    
+//     const SQL_UPDATE_EMPLEADO = `UPDATE empleados SET id_catv = ?, nombre = ?, apellidos = ?, no_empleado = ?, no_ine = ?, telefono = ?, puesto = ?, tel_emergencia = ?, nom_emergencia = ?, parentesco_contacto = ?, registro = ?, area_trabajo = ? WHERE id_emp = ?)`;
+
+//     const SQL_EXISTING_EMPLEADO = `SELECT id_emp FROM empleados WHERE nombre = ? AND apellidos = ?`;
+
+//     const SQL_UPDATE_CLAVE = `UPDATE empleados SET clave = ? WHERE id_emp = ?`;
+
+//     const SQL_INSERT_DIRECCION = `INSERT INTO direcciones_empleados (calle, colonia, delegacion, estado) VALUES(?, ?, ?, ?)`;
+
+//     const SQL_UPDATE_ID_DIRECCION = `UPDATE direcciones_empleados SET id_emp = ? WHERE id_dir = ? `;
+
+//     const cleanText = (text) => {
+//         if (typeof text === 'string') {
+//             return text.trim().replace(/\s+/g, ' ').toUpperCase();
+//         }
+//         return text != null ? String(text).trim().replace(/\s+/g, ' ').toUpperCase() : null;
+//     };
+
+//     try {
+//         for (const item of empleados) {
+//             const id_catv = item.id_catv;
+//             const area_trabajo = (item.id_catv = 8) ? 'CEDIS SANTUL' : 'CORPORATIVO SANTUL';
+//             const nombre = cleanText(item.nombre);
+//             const apellidos = cleanText(item.apellidos);
+//             const no_empleado = cleanText(item.no_empleado);
+//             const no_ine = cleanText(item.no_ine);
+//             const telefono = cleanText(item.telefono);
+//             const puesto = cleanText(item.puesto);
+//             const tel_emergencia = cleanText(item.tel_emergencia);
+//             const nom_emergencia = cleanText(item.nom_emergencia);
+//             const parentesco_contacto = cleanText(item.parentesco_contacto);
+//             const calle = cleanText(item.calle);
+//             const colonia = cleanText(item.colonia);
+//             const delegacion = cleanText(item.delegacion);
+//             const estado = cleanText(item.estado);
+//             const registro = new Date();
+//             const est = 'A';
+
+//             let empleadoId;
+
+//             if (id_catv === 8) {
+//                 const [existingEmpleado] = await pool.query(SQL_EXISTING_EMPLEADO,[nombre, apellidos]);
+
+//                 if (existingEmpleado.length > 0) {
+//                     empleadoId = existingEmpleado[0].id_emp;
+//                     await pool.query(SQL_UPDATE_EMPLEADO, [
+//                         nombre, apellidos, no_empleado, no_ine, telefono, puesto, tel_emergencia, nom_emergencia, parentesco_contacto, registro, area_trabajo, empleadoId
+//                     ]);
+//                     // const clavePersonalizada = `EC${new Date().getDate().toString().padStart(2, '0')}${id_emp}`;
+//                     // await pool.query(SQL_UPDATE_CLAVE, [clavePersonalizada, id_emp]);
+//                 } else {
+//                     const [result] = await pool.query(SQL_INSERT_EMPLEADO, [id_catv, nombre, apellidos, no_empleado, no_ine, telefono, puesto, tel_emergencia, nom_emergencia, parentesco_contacto, registro, est, area_trabajo]);
+//                     const id_persona = result.insertId;
+
+//                     const clavePersonalizada = `EC${new Date().getDate().toString().padStart(2, '0')}${id_persona}`;
+//                     await pool.query(SQL_UPDATE_CLAVE, [clavePersonalizada, id_persona]);
+
+//                     const [dirResult] = await pool.query(SQL_INSERT_DIRECCION, [calle, colonia, delegacion, estado]);
+//                     const id_direccion = dirResult.insertId;
+
+//                     await pool.query(SQL_UPDATE_ID_DIRECCION, [id_persona, id_direccion]);
+//                 }
+//             }else {
+//                 const [result] = await pool.query(SQL_INSERT_EMPLEADO, [id_catv, nombre, apellidos, no_empleado, no_ine, telefono, puesto, tel_emergencia, nom_emergencia, parentesco_contacto, registro, est, area_trabajo]);
+//                 // const [result] = await pool.query(SQL_INSERT_EMPLEADO, [id_catv, nombre, apellidos, no_empleado, no_ine, telefono, puesto, registro, est, area_trabajo]);
+//                 const id_persona = result.insertId;
+
+//                 const clavePersonalizada = `ECR${new Date().getDate().toString().padStart(2, '0')}${id_persona}`;
+//                 await pool.query(SQL_UPDATE_CLAVE, [clavePersonalizada, id_persona]);
+//             }
+            
+//         }
+
+//         res.json({ message: "Datos guardados exitosamente" });
+//     } catch (error) {
+//         console.error("Error al guardar los datos:", error);
+//         res.status(500).json({ message: "Error al guardar los datos", error: error.message });
+//     }
+// };
 
 //#endregion
 
@@ -3304,7 +3747,7 @@ const getCategoriasMT = async (req, res) => {
 
 //lista de tipos de invitados
 const getCategorias = async (req, res) => {
-    const SQL_QUERY = `SELECT * FROM categorias_visitas WHERE id_catv != 4 AND id_catv != 5 AND id_catv != 6 AND id_catv != 8 AND id_catv != 7 AND id_catv != 11 AND id_catv != 12 `;
+    const SQL_QUERY = `SELECT * FROM categorias_visitas WHERE id_catv != 1 AND id_catv != 4 AND id_catv != 5 AND id_catv != 6 AND id_catv != 8 AND id_catv != 7 AND id_catv != 11 AND id_catv != 12 `;
     try {
         const [catv] = await pool.query(SQL_QUERY);
         res.json(catv);
@@ -3497,4 +3940,4 @@ module.exports = { createVisita, pasarValidar, pasarLlegada, darAccesoVisitante,
     getAllPermisos, permisosAutos, createMulta, multas, getMultaDetails, getMultaDetail, visitantesAll, getCategoriasMT, getAllVehiculos, createVehiculosExcel, updateInfoVisitantes,
     updateClave, getConceptosMultas, getProveedores, createVisitaProveedor, actividadVigilancia, getActividadVigilancia, updateInfoVisitantesVehiculo,
     validacionVehiculo, validacionProveedor, pagarMulta, createEmpleado, updateEmpleado, desactivarEmpleado, getAreas, getAreasTransp, getEmpleados,createEmpleadoExcel, createVehiculo,
-    getPaqueterias, getCortinas, createVisitaPaqueteria, cancelarVisita, getVisitasHoy, updatePaqueteria, upload, uploadImgVehiculo,uploadImgPagos, }
+    getPaqueterias, getCortinas, createVisitaPaqueteria, cancelarVisita, getVisitasHoy, updatePaqueteria,createVisitaOper, darSalidaOper, createVisitaEntrevista, sendVisitEmail, sendEmailEviden, upload, uploadImgVehiculo,uploadImgPagos, }

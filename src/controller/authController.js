@@ -44,7 +44,7 @@ const login = async (req, res) => {
     const ultimaModificacion = moment(user.ultima_modificacion_password);
     const diasDesdeUltimoCambio = moment().diff(ultimaModificacion, 'days');
 
-   if (diasDesdeUltimoCambio >= 30 || user.forzar_cambio_password === 1) {
+   if (diasDesdeUltimoCambio >= 90 || user.forzar_cambio_password === 1) {
   const token = jwt.sign({ email: user.email }, 'your_jwt_secret', { expiresIn: '15m' });
 
   return res.status(403).json({

@@ -115,7 +115,7 @@ router.get("/referencias", getReferenciasClientes);
 router.post("/obtenerPedidos", async (req, res) => {
   try {
     const response = await axios.post(
-      "http://santul.verpedidos.com:9011/SantulTest/SANCED"
+      "http://santul.verpedidos.com:9011/Santul/SANCED"
     );
     res.json(response.data);
   } catch (err) {

@@ -213,11 +213,6 @@ const updateProduct = async (req, res) => {
   console.log("usuario", id_usuario)
   const {
     codigo_pro,
-    clave,
-    inventario,
-    inv_m,
-    inv_i,
-    inv_p,
     des,
     code_pz,
     code_pq,
@@ -282,10 +277,6 @@ const updateProduct = async (req, res) => {
 
     // Comparar y registrar cambios campo por campo
     compararYRegistrarCambio('codigo_pro', existingProduct.codigo_pro, codigo_pro);
-    compararYRegistrarCambio('inventario', existingProduct.inventario, inventario);
-    compararYRegistrarCambio('inv_m', existingProduct.inv_m, inv_m);
-    compararYRegistrarCambio('inv_i', existingProduct.inv_i, inv_i);
-    compararYRegistrarCambio('inv_p', existingProduct.inv_p, inv_p);
     compararYRegistrarCambio('des', existingProduct.des, des);
     compararYRegistrarCambio('code_pz', existingProduct.code_pz, code_pz);
     compararYRegistrarCambio('code_pq', existingProduct.code_pq, code_pq);
@@ -537,10 +528,6 @@ const getDetalleCatalogo = async (req, res) => {
         codigo_pro,
         um,
         clave,
-        inventario,
-        inv_m,
-        inv_i,
-        inv_p,
         des,
         code_pz,
         code_pq,

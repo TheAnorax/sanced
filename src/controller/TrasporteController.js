@@ -2,6 +2,8 @@ const pool = require("../config/database");
 const moment = require("moment");
 const multer = require("multer");
 const xlsx = require("xlsx");
+const axios = require("axios");
+const mysql = require("mysql2/promise");
 
 const getObservacionesPorClientes = async (req, res) => {
   const { clientes } = req.body; // Recibe un array con los números de clientes
@@ -194,7 +196,7 @@ const obtenerRutasDePaqueteria = async (req, res) => {
              OBSERVACIONES, TOTAL, PARTIDAS, PIEZAS, TARIMAS, TRANSPORTE, 
              PAQUETERIA, GUIA, FECHA_DE_ENTREGA_CLIENTE, DIAS_DE_ENTREGA,
              TIPO, DIRECCION, TELEFONO, TOTAL_FACTURA_LT, ENTREGA_SATISFACTORIA_O_NO_SATISFACTORIA,
-             created_at, MOTIVO, NUMERO_DE_FACTURA_LT, FECHA_DE_ENTREGA_CLIENTE, tipo_original
+             created_at, MOTIVO, NUMERO_DE_FACTURA_LT, FECHA_DE_ENTREGA_CLIENTE, tipo_original,totalIva
       FROM paqueteria
       WHERE 1 = 1
     `;
@@ -259,7 +261,7 @@ const obtenerRutasParaPDF = async (req, res) => {
              OBSERVACIONES, TOTAL, PARTIDAS, PIEZAS, TARIMAS, TRANSPORTE, 
              PAQUETERIA, GUIA, FECHA_DE_ENTREGA_CLIENTE, DIAS_DE_ENTREGA,
              TIPO, DIRECCION, TELEFONO, TOTAL_FACTURA_LT, ENTREGA_SATISFACTORIA_O_NO_SATISFACTORIA,
-             created_at, MOTIVO, NUMERO_DE_FACTURA_LT, FECHA_DE_ENTREGA_CLIENTE, tipo_original
+             created_at, MOTIVO, NUMERO_DE_FACTURA_LT, FECHA_DE_ENTREGA_CLIENTE, tipo_original,totalIva
       FROM paqueteria
       WHERE 1 = 1
     `;
@@ -473,74 +475,81 @@ const actualizarGuia = async (req, res) => {
   }
 };
 
+
+
 const getPedidosEmbarque = async (req, res) => {
   try {
     const { pedido, tipo } = req.params;
 
     if (!pedido || !tipo) {
-      return res
-        .status(400)
-        .json({ message: "Faltan parámetros: pedido o tipo" });
+      return res.status(400).json({ message: "Faltan parámetros: pedido o tipo" });
     }
 
     console.log("📥 Buscando pedido:", pedido, "tipo:", tipo);
 
+    // 🚫 Bloqueo: si ya existe en pedido_embarque => no permitir generar packing
+    const [existeEmbarque] = await pool.query(
+      `SELECT 1 FROM pedido_embarque WHERE pedido = ? AND tipo = ? LIMIT 1;`,
+      [pedido, tipo]
+    );
+    if (existeEmbarque.length > 0) {
+      return res.status(409).json({
+        code: "YA_EN_EMBARQUE",
+        message: "El pedido ya fue movido a EMBARQUES. No se puede generar el packing nuevamente.",
+        bloqueoPacking: true,
+      });
+    }
+
+    // ✅ Si NO está en embarque, traer solo de pedido_finalizado
     const queryFinalizado = `
-      SELECT pe.pedido, pe.codigo_ped, p.des, pe.cant_surti, pe.um, pe._pz,  
-             pe._inner, pe._master, pe.cant_surti, pe.caja, pe.estado, 
-             pe.cajas, pe.tipo_caja, pe.motivo  
+      SELECT 
+        pe.pedido, 
+        pe.codigo_ped, 
+        p.des, 
+        pe.cant_surti, 
+        pe.um, 
+        pe._pz,  
+        pe._inner, 
+        pe._master, 
+        pe.caja, 
+        pe.estado, 
+        pe.cajas, 
+        pe.tipo_caja, 
+        pe.motivo  
       FROM pedido_finalizado pe
       LEFT JOIN productos p ON pe.codigo_ped = p.codigo_pro
       WHERE pe.pedido = ? AND pe.tipo = ?
       ORDER BY pe.codigo_ped ASC;
     `;
 
-    let [rows] = await pool.query(queryFinalizado, [pedido, tipo]);
+    const [rows] = await pool.query(queryFinalizado, [pedido, tipo]);
 
     if (rows.length === 0) {
-      console.log(
-        "⚠️ No encontrado en pedido_finalizado, buscando en pedido_embarque..."
-      );
-      const queryEmbarque = `
-        SELECT em.pedido, em.codigo_ped, p.des, em.cant_surti, em.um, em._pz,  
-               em._inner, em._master, em.cant_surti, em.caja, em.estado, 
-               em.cajas, em.tipo_caja, em.motivo
-        FROM pedido_embarque em
-        LEFT JOIN productos p ON em.codigo_ped = p.codigo_pro
-        WHERE em.pedido = ? AND em.tipo = ?
-        ORDER BY em.codigo_ped ASC;
-      `;
-      [rows] = await pool.query(queryEmbarque, [pedido, tipo]);
+      return res.status(404).json({ message: "No se encontraron registros en pedido_finalizado." });
     }
 
-    if (rows.length === 0) {
-      console.log("❌ No se encontraron registros en ninguna tabla.");
-      return res.status(404).json({ message: "No se encontraron registros." });
-    }
-
-    // ✅ Contar líneas totales, líneas con motivo y calcular líneas PDF
+    // 📊 Conteos para PDF
     const totalLineasDB = rows.length;
-    const totalMotivo = rows.filter(
-      (r) => r.motivo && r.motivo.trim() !== ""
-    ).length;
+    const totalMotivo = rows.filter(r => r.motivo && r.motivo.trim() !== "").length;
     const totalLineasPDF = totalLineasDB - totalMotivo;
 
-    console.log(
-      `✅ BD: ${totalLineasDB} | Motivo: ${totalMotivo} | PDF: ${totalLineasPDF}`
-    );
+    console.log(`✅ BD: ${totalLineasDB} | Motivo: ${totalMotivo} | PDF: ${totalLineasPDF}`);
 
-    // 🔑 Respuesta con conteo y datos
-    res.json({
+    return res.json({
       totalLineas: totalLineasDB,
       totalMotivo,
       totalLineasPDF,
       datos: rows,
+      bloqueoPacking: false,
     });
   } catch (error) {
     console.error("Error al obtener pedidos de embarque:", error);
-    res.status(500).json({ message: "Error al obtener pedidos de embarque" });
+    return res.status(500).json({ message: "Error al obtener pedidos de embarque" });
   }
 };
+
+
+
 
 const getTransportistas = async (req, res) => {
   try {
@@ -2185,6 +2194,51 @@ const getReferenciasClientes = async (req, res) => {
       .json({ message: "Error al obtener referencias de clientes" });
   }
 };
+
+//actualizacion de total con iva
+
+async function actualizarTotalIvaMasivoDesdeAPI() {
+  try {
+    console.log("⏳ Conectando a la API para obtener pedidos...");
+
+    const response = await axios.post(
+      "http://66.232.105.87:3007/api/Trasporte/obtenerPedidos"
+    );
+    const pedidos = response.data;
+
+    console.log(`📦 Se recibieron ${pedidos.length} pedidos desde la API`);
+
+    for (const pedido of pedidos) {
+      const noOrden = parseInt(pedido.NoOrden);
+      const tipoOriginal = pedido.TpoOriginal;
+      const totalIva = parseFloat(pedido.TotalConIva || 0);
+
+      const [result] = await pool.execute(
+        `UPDATE paqueteria 
+         SET totalIva = ? 
+         WHERE \`NO ORDEN\` = ? AND tipo_original = ?`,
+        [totalIva, noOrden, tipoOriginal]
+      );
+
+      if (result.affectedRows > 0) {
+        // console.log(
+        //   `✅ totalIva actualizado: ${noOrden}-${tipoOriginal} = $${totalIva}`
+        // );
+      }
+    }
+
+    console.log("✅ Proceso de facturas completado.");
+  } catch (error) {
+    console.error("❌ Error al actualizar pedidos:", error.message);
+  }
+}
+
+actualizarTotalIvaMasivoDesdeAPI();
+
+// 🔁 Ejecutar cada 5 segundos
+setInterval(() => {
+  actualizarTotalIvaMasivoDesdeAPI();
+}, 1800000); // 5000 milisegundos = 5 segundos
 
 module.exports = {
   getReferenciasClientes,

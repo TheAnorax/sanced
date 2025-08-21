@@ -349,7 +349,9 @@ function Compras() {
       setTipo("Importaciones");
     } else if (user?.role === "Nac2") {
       setTipo("Importaciones");
-    }
+    }else if (user?.role === "INV") {
+      setTipo("Nacionales");
+    } 
   }, [user]);
 
   const fetchCompras2 = async () => {
@@ -956,6 +958,8 @@ function Compras() {
           {user?.role === "Imp"
             ? "Importaciones"
             : user?.role === "Nac"
+            ? "Nacionales"
+             : user?.role === "INV"
             ? "Nacionales"
             : user?.role === "Ins"
             ? "Insumos"

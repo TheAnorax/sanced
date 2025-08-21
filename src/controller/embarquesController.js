@@ -190,22 +190,64 @@ const resetUsuarioEmbarque = async (req, res) => {
   try {
     const { pedidoId } = req.params;
 
-    await pool.query(
-      "UPDATE pedido_embarque SET id_usuario_paqueteria = NULL WHERE pedido = ?",
+    // 1) Validar existencia y acumulados > 0
+    const [acumRows] = await pool.query(
+      `
+      SELECT
+        COALESCE(SUM(v_pz), 0)     AS v_pz,
+        COALESCE(SUM(v_pq), 0)     AS v_pq,
+        COALESCE(SUM(v_inner), 0)  AS v_inner,
+        COALESCE(SUM(v_master), 0) AS v_master,
+        COUNT(*)                   AS lineas
+      FROM pedido_embarque
+      WHERE pedido = ?;
+      `,
       [pedidoId]
     );
 
-    res.status(200).json({
+    if (acumRows.length === 0 || acumRows[0].lineas === 0) {
+      return res.status(404).json({
+        code: "PEDIDO_NO_ENCONTRADO",
+        message: `No existe el pedido ${pedidoId} en pedido_embarque.`,
+      });
+    }
+
+    const { v_pz, v_pq, v_inner, v_master } = acumRows[0];
+    const hayCantidades = (v_pz > 0) || (v_pq > 0) || (v_inner > 0) || (v_master > 0);
+
+    if (hayCantidades) {
+      // 409 Conflict: ya hay cantidades registradas
+      return res.status(409).json({
+        code: "CANTIDADES_REGISTRADAS",
+        message:
+          `No se puede liberar el pedido ${pedidoId} porque ya tiene cantidades registradas en embarque.`,
+        detalle: { v_pz, v_pq, v_inner, v_master }
+      });
+    }
+
+    // 2) Si NO hay cantidades, permitir liberar (poner NULL)
+    const [upd] = await pool.query(
+      `
+      UPDATE pedido_embarque
+      SET id_usuario_paqueteria = NULL
+      WHERE pedido = ?;
+      `,
+      [pedidoId]
+    );
+
+    return res.status(200).json({
       message: `Usuario de paquetería removido correctamente para el pedido ${pedidoId}`,
+      filas_afectadas: upd.affectedRows
     });
   } catch (error) {
     console.error("Error al resetear usuario:", error);
-    res.status(500).json({
-      message: "Error al remover usuario de paquetería",
+    return res.status(500).json({
+      message: "Error al remover usuario TERMINA EL PEDIDOOOOOOO, sorry, no sorry",
       error: error.message,
     });
   }
 };
+
 
 
 module.exports = { getEmbarques, updateUsuarioEmbarques ,  getProgresoValidacionEmbarque,  getProductividadEmbarcadores, resetUsuarioEmbarque };

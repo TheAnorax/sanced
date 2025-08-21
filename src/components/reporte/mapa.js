@@ -13,7 +13,9 @@ import {
   Divider,
   Tabs,
   Tab,
-   Tooltip,
+     Switch, Tooltip, Stack ,
+  FormControlLabel ,
+  Checkbox
 } from "@mui/material";
 
 const API_URL = 'http://66.232.105.87:3007/api/kpi/getHistorico2025';
@@ -27,6 +29,23 @@ export default function MapaMexico() {
   const [topProductosPorEstado, setTopProductosPorEstado] = useState({});
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+
+const [usarIVA, setUsarIVA] = useState(false);
+const IVA = 0.16; // porcentaje de IVA (16%)
+
+const applyIVA = (valor) => {
+  const n = Number(valor || 0);
+  return usarIVA ? n * (1 + IVA) : n;
+};
+
+const fmtMoney = (n) =>
+  `$${Number(n || 0).toLocaleString("es-MX", { maximumFractionDigits: 0 })}`;
+
+const fmtNumber = (n) => Number(n || 0).toLocaleString("es-MX");
+
+const fmtPercent = (n, digits = 1) =>
+  `${Number(n || 0).toFixed(digits)}%`;
+
 
   useEffect(() => {
     const fetchData = async () => {
@@ -192,59 +211,100 @@ export default function MapaMexico() {
     const mesIndex = parseInt(fecha.split("-")[1], 10) - 1;
     return meses[mesIndex];
   };
-const nombreEstado = nombresEstados[estadoSeleccionado] || estadoSeleccionado;
+const nombreEstado = nombresEstados[estadoSeleccionado || 'total_general'] || (estadoSeleccionado || 'Total General');
+
+
+
+const getHistoricoEstado = (estadoId) => {
+  const nodo = data?.[estadoId];
+  if (!nodo) return null;
+  // Si trae por_mes, úsalo; si no, asume que el nodo YA es un mapa de meses
+  return nodo.por_mes ?? nodo;
+};
 
 
   const renderInfoEstado = () => {
-  if (!estadoSeleccionado || !data || !data[estadoSeleccionado]) return null;
+  const elegido = estadoSeleccionado || 'total_general';
+  const historico = getHistoricoEstado(elegido);
 
-  const historico = data[estadoSeleccionado];
+  if (!historico) return null;
+
+  
 
   return (
-    <Box>
+  <Box>
+    <TableContainer
+      component={Paper}
+      elevation={3}
+      sx={{
+        borderRadius: 2,
+        overflow: 'hidden',
+        boxShadow: '0px 2px 8px rgba(0,0,0,0.1)',
+      }}
+    >
+      <Table size="small" stickyHeader>
+        <TableHead>
+          <TableRow sx={{ backgroundColor: '#F6F7F9' }}>
+            <TableCell sx={{ fontWeight: 'bold' }}>Mes</TableCell>
+            <TableCell sx={{ fontWeight: 'bold' }}>
+              {usarIVA ? 'Factura (LT) c/IVA' : 'Factura (LT)'}
+            </TableCell>
+            <TableCell sx={{ fontWeight: 'bold' }}>
+              {usarIVA ? 'Flete c/IVA' : 'Flete'}
+            </TableCell>
+            <TableCell sx={{ fontWeight: 'bold' }} align="center">% Flete</TableCell>
+            <TableCell sx={{ fontWeight: 'bold' }} align="right">Cajas</TableCell>
+            <TableCell sx={{ fontWeight: 'bold' }} align="right">Tarimas</TableCell>
+            <TableCell sx={{ fontWeight: 'bold' }} align="center">Prom. Días Entrega</TableCell>
+            <TableCell sx={{ fontWeight: 'bold' }} align="right">Clientes</TableCell>
+          </TableRow>
+        </TableHead>
 
-      <TableContainer
-        component={Paper}
-        elevation={3}
-        sx={{
-          borderRadius: 2,
-          overflow: 'hidden',
-          boxShadow: '0px 2px 8px rgba(0,0,0,0.1)',
-        }}
-      >
-        <Table size="small" stickyHeader>
-          <TableHead>
-            <TableRow sx={{ backgroundColor: '#D9534F' }}>
-              <TableCell sx={{ color: '#000', fontWeight: 'bold' }}>Mes</TableCell>
-              <TableCell sx={{ color: '#000', fontWeight: 'bold' }}>Factura (LT)</TableCell>
-              <TableCell sx={{ color: '#000', fontWeight: 'bold' }}>Flete</TableCell>
-              <TableCell sx={{ color: '#000', fontWeight: 'bold' }}>%</TableCell>
-              <TableCell sx={{ color: '#000', fontWeight: 'bold' }}>Prom. Días Entrega</TableCell>
-              <TableCell sx={{ color: '#000', fontWeight: 'bold' }}>Clientes</TableCell>
-            </TableRow>
-          </TableHead>
+        <TableBody>
+          {Object.entries(historico)
+            .filter(([mes]) => {
+              const [anio, mesNum] = mes.split('-').map(Number);
+              return anio > 2025 || (anio === 2025 && mesNum >= 6); // Junio 2025+
+            })
+            .sort(([a], [b]) => (a > b ? 1 : -1))
+            .map(([mes, v], index) => {
+              const facturaBase = Number(v.total_factura_lt || 0);
+              const fleteBase = Number(v.total_flete || 0);
 
-          <TableBody>
-            {Object.entries(historico).map(([mes, valores], index) => (
-              <TableRow
-                key={mes}
-                sx={{
-                  backgroundColor: index % 2 === 0 ? '#fff' : '#f9f9f9',
-                }}
-              >
-                <TableCell>{getMesNombre(mes)}</TableCell>
-                <TableCell>{valores.total_factura_lt.toLocaleString("es-MX")}</TableCell>
-                <TableCell>{valores.total_flete.toLocaleString("es-MX")} </TableCell>                
-                <TableCell>{valores.porcentaje_flete}%</TableCell>
-                <TableCell>{valores.promedio_dias_entrega}</TableCell>
-                <TableCell>{valores.total_clientes}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-    </Box>
-  );
+              const factura = applyIVA(facturaBase);
+              const flete = applyIVA(fleteBase);
+
+              // porcentaje (recalculado sobre los montos mostrados)
+              const pctFlete = factura > 0 ? (flete / factura) * 100 : 0;
+
+              return (
+                <TableRow
+                  key={mes}
+                  hover
+                  sx={{
+                    backgroundColor: index % 2 === 0 ? '#fff' : '#fafafa',
+                    transition: 'background 0.2s',
+                  }}
+                >
+                  <TableCell>{getMesNombre(mes)}</TableCell>
+                  <TableCell>{fmtMoney(factura)}</TableCell>
+                  <TableCell>{fmtMoney(flete)}</TableCell>
+                  <TableCell align="center">{fmtPercent(pctFlete, 1)}</TableCell>
+                  <TableCell align="right">{fmtNumber(v.cajas_total ?? v.cajas)}</TableCell>
+                  <TableCell align="right">{fmtNumber(v.tarimas_total ?? v.tarimas)}</TableCell>
+                  <TableCell align="center">
+                    {Number(v.promedio_dias_entrega || 0).toFixed(1)}
+                  </TableCell>
+                  <TableCell align="right">{fmtNumber(v.total_clientes)}</TableCell>
+                </TableRow>
+              );
+            })}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  </Box>
+);
+
 };
 
 
@@ -270,12 +330,80 @@ const nombreEstado = nombresEstados[estadoSeleccionado] || estadoSeleccionado;
       </Tabs>
         {tabIndex === 0 && (
         <Box>
-          <Typography variant="h6" fontWeight="bold" gutterBottom>
-            <center><h1> 📦 Indicadores de entrega: {nombreEstado} </h1></center>
-            
-          </Typography>
-          <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
-            <Box flex={1} minWidth={300}>
+    <Box
+  sx={{
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    mb: 2,
+    p: 2,
+    borderRadius: 2,
+    bgcolor: 'background.paper',
+    boxShadow: 1,
+    position: 'sticky',
+    top: 0,
+    zIndex: 10,
+  }}
+>
+  <Typography variant="h4" fontWeight="bold">
+    📦 Indicadores de entrega:{' '}
+    <Box component="span" sx={{ color: 'primary.main' }}>
+      {nombreEstado}
+    </Box>
+  </Typography>
+
+  <Stack direction="row" spacing={2} alignItems="center">
+    <Tooltip title={`Mostrar montos con IVA (${(IVA * 100).toFixed(0)}%)`}>
+      <FormControlLabel
+        control={
+          <Switch
+            checked={usarIVA}
+            onChange={(e) => setUsarIVA(e.target.checked)}
+            color="primary"
+          />
+        }
+        label="Montos con IVA"
+      />
+    </Tooltip>
+
+    <FormControlLabel
+      control={
+        <Checkbox
+          checked={estadoSeleccionado === 'total_general'}
+          onChange={(e) =>
+            setEstadoSeleccionado(e.target.checked ? 'total_general' : null)
+          }
+          color="primary"
+        />
+      }
+      label="Total General"
+    />
+  </Stack>
+</Box>
+
+
+  <Box
+      sx={{
+        display: 'flex',
+        gap: 3,
+        flexWrap: 'wrap',
+        alignItems: 'flex-start',
+      }}
+    >
+             <Box
+        flex={1}
+        minWidth={500}
+        sx={{
+          p: 2,
+          bgcolor: 'background.paper',
+          borderRadius: 2,
+          boxShadow: 2,
+          transition: 'transform 0.3s',
+          '&:hover': {
+            transform: 'scale(1.01)',
+          },
+        }}
+      >
               <svg className="map"    width="794px" height="498px" viewBox="0 0 794 498" version="1.1" xmlns="http://www.w3.org/2000/svg" >
                 <defs>
                     <path id="path-1" d="M391.24,310.07 L388.83,306.6 L394.33,295.9 L400.66,292.82 L402.26,290.64 L409.53,295.83 L411.26,300.31 L411.26,300.31 L411.28,302.5 L413.24,304.64 L408.96,306.61 L405.69,310.66 L401.41,311.76 L397.5,309.33 L393.29,308.95 L391.24,310.07 Z"></path>
@@ -539,9 +667,23 @@ const nombreEstado = nombresEstados[estadoSeleccionado] || estadoSeleccionado;
                 </g>
               </svg>
             </Box>   
-            <Box flex={1} minWidth={300}>
-              {renderInfoEstado()}
-            </Box>  
+             <Box
+        flex={1}
+        minWidth={350}
+        sx={{
+          p: 2,
+          bgcolor: 'background.paper',
+          borderRadius: 2,
+          boxShadow: 2,
+          overflowX: 'auto',
+          transition: 'transform 0.3s',
+          '&:hover': {
+            transform: 'scale(1.01)',
+          },
+        }}
+      >
+        {renderInfoEstado()}
+      </Box>  
           </Box>
         </Box>
       )}

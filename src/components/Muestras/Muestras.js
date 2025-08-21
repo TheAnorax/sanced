@@ -1017,6 +1017,7 @@ function Muestras() {
     "Laura Carbajal": "Compras",
     "Ariel Ramírez": "Compras",
     "Daniela Mondragón": "Compras",
+    "Joel Duran": "Compras",
     "Katia Daniela Martinez Mo": "Departamental",
     "Miriam Zayanni Meneses Te": "Departamental",
     "Montserrat Roa Nava": "Departamental",

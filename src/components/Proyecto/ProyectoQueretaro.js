@@ -233,7 +233,7 @@ function ProyectoQueretaro() {
       .catch((err) => {
         console.error("❌ Error al obtener productos comprados:", err);
         setProductosComprados([]);
-      });
+      }); 
 
     const promDatosCategoria = axios
       .get(

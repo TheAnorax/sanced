@@ -1836,26 +1836,50 @@ function Tracking() {
 
   const totalPagesExp = "___total_pages___";
 
-  function addPageNumber(doc) {
+  function addPageNumber(
+    doc,
+    pedido,
+    numeroFactura,
+    tipo_original,
+    numeroCliente
+  ) {
     const pageCount = doc.internal.getNumberOfPages();
     const pageWidth = doc.internal.pageSize.getWidth();
 
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i);
-      doc.setFontSize(9);
-      doc.setTextColor(0, 0, 0);
-      doc.setFont("helvetica", "bold");
+
+      const pageHeight = doc.internal.pageSize.height;
 
       if (i === 1) {
-        // Página 1: debajo del logo
-        const posX = 190;
-        const posY = 50;
-        doc.text(`PÁGINA ${i} de ${pageCount}`, posX, posY, { align: "right" });
+        // Página 1 → solo número de página arriba derecha
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        doc.setTextColor(0, 0, 0);
+        doc.text(`PÁGINA ${i} de ${pageCount}`, pageWidth - 10, 55, {
+          align: "right",
+        });
+      } else {
+        // Páginas 2+ → encabezado completo (orden, factura, página)
+        const headerY = 10;
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(60, 60, 60);
+
+        doc.text(`PEDIDO: ${pedido}-${tipo_original}`, 10, headerY + 4);
+        doc.text(`FACTURA: ${numeroFactura}`, 10, headerY + 8);
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        doc.setTextColor(0, 0, 0);
+        doc.text(`PÁGINA ${i} de ${pageCount}`, pageWidth - 10, headerY, {
+          align: "right",
+        });
       }
 
-      for (let i = 1; i <= pageCount; i++) {
-        doc.setPage(i);
-        const pageHeight = doc.internal.pageSize.height;
+      // Pie de página (si usas barraFooter)
+      if (typeof barraFooter !== "undefined") {
         doc.addImage(barraFooter, "JPEG", 10, pageHeight - 15, 190, 8);
       }
     }
@@ -1895,9 +1919,18 @@ function Tracking() {
       const responseEmbarque = await fetch(
         `http://66.232.105.87:3007/api/Trasporte/embarque/${pedido}/${tipo}`
       );
-      const data = await responseEmbarque.json();
-      if (!data || !Array.isArray(data) || data.length === 0)
+      const result = await responseEmbarque.json();
+
+      // Validar que tenga datos
+      if (!result || !result.datos || result.datos.length === 0) {
         return alert("No hay productos");
+      }
+
+      // Extraer datos y conteos
+      const data = result.datos; // Productos reales para imprimir
+      const totalLineasDB = result.totalLineas || 0;
+      const totalMotivo = result.totalMotivo || 0;
+      const totalLineasPDF = result.totalLineasPDF || data.length;
 
       const doc = new jsPDF();
       const marginLeft = 10;
@@ -1965,6 +1998,25 @@ function Tracking() {
         pedidoEncontrado?.Direccion || route["DIRECCION"] || "No disponible"
       );
 
+      // 🔍 Consultar OC mediante la API surtidoOC SOLO para clientes específicos
+      let numeroOC = "";
+      if (
+        nombreCliente === "IMPULSORA INDUSTRIAL MONTERREY" ||
+        nombreCliente === "IMPULSORA INDUSTRIAL GUADALAJARA"
+      ) {
+        try {
+          const ocResponse = await axios.post(
+            "http://66.232.105.79:9100/surtidoOC",
+            {
+              orden: pedido,
+            }
+          );
+          numeroOC = ocResponse.data?.oc || "";
+        } catch (err) {
+          console.warn("⚠️ No se pudo obtener el OC desde surtidoOC:", err);
+        }
+      }
+
       const numero = route["NUM. CLIENTE"] || "No disponible";
       const telefono = route["TELEFONO"] || "Sin número";
       const rawTotal = route["TOTAL"];
@@ -2004,7 +2056,25 @@ function Tracking() {
       currentY += 4;
       doc.text(`No Orden: ${pedido}-${tipo_original}`, marginLeft, currentY);
       currentY += 4;
-      doc.text(`FACTURA No.: ${numeroFactura}`, marginLeft, currentY);
+      doc.text(
+        `FACTURA No.: ${numeroFactura}  OC: ${numeroOC}`,
+        marginLeft,
+        currentY
+      );
+      currentY += 4;
+
+      const textoLineas = `Líneas BD: ${totalLineasDB} | Líneas PDF: ${totalLineasPDF} | Motivo: ${totalMotivo}`;
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "bold");
+
+      // Si hay diferencia, marcar en rojo
+      if (totalLineasDB !== totalLineasPDF + totalMotivo) {
+        doc.setTextColor(255, 0, 0); // Rojo si hay diferencia
+      } else {
+        doc.setTextColor(0, 0, 0); // Negro si coincide
+      }
+
+      doc.text(textoLineas, marginLeft, currentY);
       currentY += 4;
 
       const infoY = currentY;
@@ -2222,9 +2292,23 @@ function Tracking() {
             textColor: [255, 255, 255],
             fontSize: 5.5,
           },
+          didDrawCell: function (data) {
+            if (
+              data.row.index === 0 &&
+              data.section === "body" &&
+              data.cursor.y < 30 && // Está en una nueva página
+              !yaContinua
+            ) {
+              const text = `Continuación de la Caja ${numeroCajaSecuencial}`;
+              doc.setFontSize(8);
+              doc.text(text, 105, data.cursor.y - 6, { align: "center" });
+              yaContinua = true;
+            }
+          },
         });
 
         currentY = doc.lastAutoTable.finalY + 4;
+        numeroCajaSecuencial++;
       }
 
       if (productosSinCajaAtados.length > 0) {
@@ -2330,11 +2414,112 @@ function Tracking() {
           (item._pq || 0) === 0
       );
 
+      const productosSinCajaValidos = productosSinCaja.filter(
+        (item) => !productosNoEnviados.includes(item)
+      );
+
+      if (productosNoEnviados.length > 0) {
+        currentY = verificarEspacio(doc, currentY, 2);
+        doc.autoTable({
+          startY: currentY,
+          head: [["Productos no enviados"]],
+          body: [],
+          theme: "grid",
+          styles: { halign: "center", fontSize: 9 },
+          margin: { left: 10 },
+          tableWidth: 190,
+          headStyles: {
+            fillColor: [255, 255, 255],
+            textColor: [0, 0, 0],
+            fontStyle: "bold",
+          },
+        });
+        currentY = doc.lastAutoTable.finalY;
+
+        let yaContinua = false;
+
+        doc.autoTable({
+          startY: currentY,
+          head: [
+            [
+              "SKU",
+              "DESCRIPCIÓN",
+              "CANTIDAD",
+              "UM",
+              "PZ",
+              "INNER",
+              "MASTER",
+              "TARIMAS",
+              "ATADOS",
+              "VALIDAR",
+            ],
+          ],
+          body: productosNoEnviados.map((item) => [
+            item.codigo_ped || "",
+            item.des || "",
+            item.cant_surti || "",
+            item.um || "",
+            item._pz || 0,
+            item._inner || 0,
+            item._master || 0,
+            item.tarimas || 0,
+            item.atados || 0,
+            "",
+          ]),
+          theme: "grid",
+          margin: { left: 10 },
+          tableWidth: 190,
+          styles: {
+            fontSize: 5.5,
+            halign: "center",
+            cellPadding: 2,
+            lineColor: [200, 200, 200],
+            lineWidth: 0.1,
+          },
+          columnStyles: {
+            0: { cellWidth: 15 },
+            1: { cellWidth: 80 },
+            2: { cellWidth: 15 },
+            3: { cellWidth: 10 },
+            4: { cellWidth: 10 },
+            5: { cellWidth: 12 },
+            6: { cellWidth: 12 },
+            7: { cellWidth: 12 },
+            8: { cellWidth: 12 },
+            9: { cellWidth: 12 },
+          },
+          headStyles: {
+            fillColor: [20, 20, 20],
+            textColor: [255, 255, 255],
+            fontSize: 5.5,
+          },
+          didDrawCell: function (data) {
+            if (
+              data.row.index === 0 &&
+              data.section === "body" &&
+              data.cursor.y < 30 &&
+              !yaContinua
+            ) {
+              const text = "Continuación de productos no enviados";
+              doc.setFontSize(8);
+              doc.text(text, 105, data.cursor.y - 6, { align: "center" });
+              yaContinua = true;
+            }
+          },
+        });
+
+        currentY = doc.lastAutoTable.finalY + 4;
+      }
+
       currentY = doc.lastAutoTable.finalY + 5;
       currentY = verificarEspacio(doc, currentY, 1);
       const pageWidth = doc.internal.pageSize.getWidth();
       const tableWidth = 90;
       const leftMargin = (pageWidth - tableWidth) / 2;
+
+      const totalConIva = pedidoEncontrado?.TotalConIva
+        ? parseFloat(pedidoEncontrado.TotalConIva)
+        : totalImporte;
 
       doc.autoTable({
         startY: currentY,
@@ -2364,7 +2549,7 @@ function Tracking() {
               styles: { halign: "center", fontSize: 5 },
             },
             {
-              content: "TOTAL A PAGAR\n(SIN IVA)",
+              content: "TOTAL A PAGAR\n(con IVA)",
               styles: { halign: "center", fontSize: 5 },
             },
             {
@@ -2373,16 +2558,11 @@ function Tracking() {
             },
           ],
         ],
+
         body: [
           [
-            `$${totalImporte.toLocaleString("en-US", {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}`,
-            `$${totalImporte.toLocaleString("en-US", {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}`,
+            `$${totalImporte.toFixed(2)}`,
+            `$${totalConIva.toFixed(2)}`,
             "100.00 %",
           ],
         ],
@@ -2458,7 +2638,7 @@ function Tracking() {
 
       currentY = doc.lastAutoTable.finalY + 0;
 
-      const letras = NumerosALetras(totalImporte);
+      const letras = NumerosALetras(totalConIva);
       const fechaActual = new Date();
       const fechaHoy = fechaActual.toLocaleDateString("es-MX");
       const fechaVence = new Date(
@@ -2467,7 +2647,7 @@ function Tracking() {
 
       const textoPagare =
         `En cualquier lugar de este documento donde se estampe la firma por este pagaré debo(emos) y pagaré(mos) ` +
-        `incondicionalmente a la vista y a la orden de SANTUL HERRAMIENTAS S.A. DE C.V., la cantidad de: $${totalImporte.toFixed(
+        `incondicionalmente a la vista y a la orden de SANTUL HERRAMIENTAS S.A. DE C.V., la cantidad de: $${totalConIva.toFixed(
           2
         )} ` +
         `(${letras} M.N.) En el total a pagar en Cuautitlán, Estado de México, o en la que SANTUL HERRAMIENTAS S.A. DE C.V., juzgue necesario. ` +
@@ -2587,7 +2767,11 @@ function Tracking() {
       // Título
       doc.setFont("helvetica", "bold");
       doc.setFontSize(9);
-      doc.text("Observaciones:", obsBoxX + 3, obsBoxY + 7);
+      doc.text("Observaciones: ", obsBoxX + 3, obsBoxY + 7);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.text(`OC: ${numeroOC}`, obsBoxX + 5, obsBoxY + 15); // Mostrar el OC limpio
 
       // Líneas punteadas dentro del recuadro, bien alineadas
       doc.setFont("helvetica", "normal");
@@ -2619,10 +2803,11 @@ function Tracking() {
 
       currentY = leyendaY + 4; // Si necesitas continuar después
 
-      addPageNumber(doc);
+      addPageNumber(doc, pedido, numeroFactura, tipo_original);
 
       if (modo === "descargar") {
-        doc.save(`PackingList_de_${pedido}-${tipo}.pdf`);
+        doc.save(`PackingList de ${pedido}-${tipo_original}.pdf`);
+        alert(`PDF generado con éxito para el pedido ${pedido}-${tipo_original}`);
       }
 
       return await doc.output("blob");
@@ -3989,9 +4174,9 @@ function Tracking() {
                 <option value="4">Abril</option>
                 <option value="5">Mayo</option>
                 <option value="6">Junio</option>
-                {/*  <option value="7">Julio</option>
+                <option value="7">Julio</option>
                 <option value="8">Agosto</option>
-                <option value="9">Septiembre</option>
+                {/*   <option value="9">Septiembre</option>
                 <option value="10">Octubre</option>
                 <option value="11">Noviembre</option>
                 <option value="12">Diciembre</option> */}
@@ -4499,8 +4684,8 @@ function Tracking() {
                 <option value="4">Abril</option>
                 <option value="5">Mayo</option>
                 <option value="6">Junio</option>
-                {/*  <option value="7">Julio</option>
-                <option value="8">Agosto</option>
+                <option value="7">Julio</option>
+                {/*   <option value="8">Agosto</option>
                 <option value="9">Septiembre</option>
                 <option value="10">Octubre</option>
                 <option value="11">Noviembre</option>

@@ -259,11 +259,11 @@ export const mainListItems = (user) => {
       text: "Ubicaciones",
     },
     {
-      role: ["Admin", "Master", "Imp", "Nac", "Ins", "Plan", "Recibo", "Nac2"],
+      role: ["Admin", "Master", "Imp", "Nac", "Ins", "Plan", "Recibo", "Nac2", "INV"],
       path: "/dashboard/compras",
       icon: <LocalGroceryStoreIcon />,
       text: "Compras",
-    },
+    }, 
     {
       role: [
         "Admin",
@@ -416,6 +416,12 @@ export const mainListItems = (user) => {
       path: "/dashboard/RepoProb",
       icon: <ManageSearchIcon />,
       text: "Reportar Problema",
+    },
+        {
+      role: ["Admin"],
+      path: "/dashboard/Mercado-Libre",
+      icon: <ManageSearchIcon />,
+      text: "Mercado Libre",
     },
   ];
 

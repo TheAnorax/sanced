@@ -45,6 +45,7 @@ import RepoProb from './components/Repo_Prob/Repo_Prob';
 import OlvideContraseña from './Acces/OlvideContraseña';
 import ResetPassword from './Acces/ResetPassword';
 import Departamental from "./components/departamental/departamental"
+import Mercado from "./components/Libre/Mercado_Libre"
 
 
 function App() {
@@ -94,6 +95,7 @@ function App() {
             <Route path="COBERTURA" element={<ProtectedRoute><COBERTURA /></ProtectedRoute>} />
             <Route path="RepoProb" element={<ProtectedRoute><RepoProb /></ProtectedRoute>} />
             <Route path="departamental" element={<ProtectedRoute><Departamental /></ProtectedRoute>} />
+             <Route path="Mercado-libre" element={<ProtectedRoute><Mercado /></ProtectedRoute>} />
           </Route>
         </Routes>
       </Router>

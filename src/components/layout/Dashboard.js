@@ -174,6 +174,8 @@ const getTitle = (pathname) => {
       return "Cobertura";
     case "/dashboard/RepoProb":
       return "RepoProb";
+    case "/dashboard/Mercado-Libre":
+      return "Mercado-Libre";
     default:
       return "Dashboard";
   }

@@ -1,13 +1,14 @@
 const express = require('express');
 const router = express.Router();
-const { createVisita, darAccesoVisitante, getVisitas, getVisitasAct, getVisitantes, getVisitanteId, getTransportistas, createTransportista, 
-    getCategorias, createVisitante, upload, updateVisitante, createTransportistaExcel, darSalidaVisitante, getVisitasReporte, getAllPermisos, 
-    permisosAutos, createMulta, multas, visitantesAll, getCategoriasMT, getAllVehiculos, createVehiculosExcel, updateInfoVisitantes, updateClave, 
-    getConceptosMultas, getProveedores, createVisitaProveedor,actividadVigilancia,getActividadVigilancia, updateInfoVisitantesVehiculo,
-    validacionVehiculo, uploadImgVehiculo, pagarMulta, getMultaDetails, getMultaDetail, pasarValidar, createEmpleado,  getAreas, getEmpleados, 
-    createEmpleadoExcel, uploadImgPagos, validacionProveedor, createVehiculo, getAreasTransp, desactivarEmpleado, updateEmpleado, pasarLlegada, 
-    getCategoriasPP, getPaqueterias, getCortinas, createVisitaPaqueteria, getVisitasVehiculoValidado, registrarAcompañantes, cancelarVisita, getVisitasHoy,
-    updatePaqueteria,
+const { createVisita, darAccesoVisitante, getVisitas, getVisitasAct, getVisitantes, getVisitanteId, getTransportistas, createTransportista, getCategorias, createVisitante, upload, 
+    updateVisitante, createTransportistaExcel, darSalidaVisitante, getVisitasReporte, getAllPermisos, permisosAutos, createMulta, multas, visitantesAll, getCategoriasMT, getAllVehiculos, 
+    createVehiculosExcel, updateInfoVisitantes, updateClave, getConceptosMultas, getProveedores, createVisitaProveedor,actividadVigilancia,getActividadVigilancia, updateInfoVisitantesVehiculo,
+    validacionVehiculo, uploadImgVehiculo, pagarMulta, getMultaDetails, getMultaDetail, pasarValidar, createEmpleado,  getAreas, getEmpleados, createEmpleadoExcel, uploadImgPagos, validacionProveedor, 
+    createVehiculo, getAreasTransp, desactivarEmpleado, updateEmpleado, pasarLlegada, getCategoriasPP, getPaqueterias, getCortinas, createVisitaPaqueteria, getVisitasVehiculoValidado, registrarAcompañantes, 
+    cancelarVisita, getVisitasHoy, updatePaqueteria, createVisitaEntrevista, sendVisitEmail,
+    createVisitaOper,
+    darSalidaOper,
+    sendEmailEviden,
 } = require('../controller/visitasController');
 const { obtenerHorarios } = require('../controller/alertasController');
 
@@ -32,6 +33,7 @@ router.post('/create/acomp', registrarAcompañantes);
 router.put('/llegada/:id_visit', pasarLlegada);
 router.put('/validar/:id_visit', pasarValidar);
 router.put('/up/salida/:id_visit', darSalidaVisitante);
+router.put('/up/salida/oper/:id_visit', darSalidaOper);
 router.get('/agenda/activas', getVisitasAct);
 router.get('/agenda/hoy/valid', getVisitasVehiculoValidado);
 router.put('/cancelar/visita/:id_visit', cancelarVisita);
@@ -73,6 +75,9 @@ router.get('/list/empleados', getEmpleados);
 router.post('/import/empleados', createEmpleadoExcel);
 router.get('/paqueterias', getPaqueterias);
 router.post('/create/visita/pq', createVisitaPaqueteria);
+router.post('/create/visita/et', createVisitaEntrevista);
+router.post('/send/visita/et', sendVisitEmail);
 router.put('/update/visita/pq/:clave_visit', updatePaqueteria);
-
+router.post('/create/visita/oper',upload.single('foto'), createVisitaOper);
+router.post('/send/visita/eviden', sendEmailEviden);
 module.exports = router;

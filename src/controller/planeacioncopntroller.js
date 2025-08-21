@@ -1,5 +1,6 @@
 const pool = require('../config/database');
 
+const axios = require("axios");
 // controllers/salesController.js
 
 const getSales = async (req, res) => {
@@ -261,7 +262,9 @@ const getFactura = async (req, res) => {
         \`NOMBRE DEL CLIENTE\` AS nombre,
         \`FECHA_DE_ENTREGA_CLIENTE\` AS fecha_entrega,
         \`DIRECCION\` AS direccion,
-        \`NO_FACTURA\` AS numero_factura
+        \`NO_FACTURA\` AS numero_factura,
+        \`routeName\` AS ruta,
+        \`PAQUETERIA\` AS transporte
       FROM paqueteria
       WHERE \`NO_FACTURA\` = ?
     `;
@@ -277,6 +280,8 @@ const getFactura = async (req, res) => {
     }
 
     // ✅ Función para formatear fecha como dd-mm-yyyy
+    const clean = (v) =>
+      typeof v === 'string' ? v.replace(/\s+/g, ' ').trim() : v;
     const formatearFecha = (fecha) => {
       const date = new Date(fecha);
       const dia = String(date.getDate()).padStart(2, '0');
@@ -295,7 +300,9 @@ const getFactura = async (req, res) => {
       fecha_entrega: row.fecha_entrega
         ? formatearFecha(row.fecha_entrega)
         : null,
-      numero_factura: row.numero_factura
+      numero_factura: row.numero_factura,
+        ruta: row.ruta ? clean(row.ruta) : null,
+        transporte: row.transporte ? clean(row.transporte) : null,
     }));
 
     return res.status(200).json({
@@ -358,13 +365,49 @@ const getArriveOC = async (req, res) => {
 };
 
 
+
+function normalize(v) {
+  return (v ?? "").toString().trim(); // si necesitas mayúsculas/case exacto, ajústalo aquí
+}
+
+async function fetchWithRetry(url, maxRetries = 2, baseDelayMs = 300) {
+  let attempt = 0;
+  while (true) {
+    try {
+      const res = await axios.get(url, { timeout: 10000 }); // 10s
+      return res.data;
+    } catch (err) {
+      attempt++;
+      const status = err.response?.status;
+      const retriable = !status || (status >= 500 && status < 600) || status === 429;
+      if (attempt > maxRetries || !retriable) {
+        throw err;
+      }
+      const delay = baseDelayMs * Math.pow(2, attempt - 1); // 300, 600, 1200ms...
+      await new Promise(r => setTimeout(r, delay));
+    }
+  }
+}
+
+async function processInBatches(items, batchSize, worker) {
+  const results = [];
+  for (let i = 0; i < items.length; i += batchSize) {
+    const slice = items.slice(i, i + batchSize);
+    const out = await Promise.all(slice.map(worker));
+    results.push(...out);
+  }
+  return results;
+}
+
 const postQueretaro = async (req, res) => {
   try {
     const query = `
       SELECT 
         nombre,
-        Num_cliente,
+        Num_cliente AS 'Num_cliente',
+        \`FISCAL_RELACIONADO_(CAMPO 2)\` AS Num_cliente_fiscal,
         nombre_encargado,
+        num_ventas as 'id_vendedor',
         num_telf,
         correro,
         lat,
@@ -392,10 +435,49 @@ const postQueretaro = async (req, res) => {
       });
     }
 
+    const datosConPortafolio = await Promise.all(
+      rows.map(async (item) => {
+        try {
+          const giro = (item.giro || "").trim();
+          const portafolio = (item.portafolio || "").trim();
+          const segmento = (item.segmento || "").trim();
+
+          // si falta alguno, no pegues al API
+          if (!giro || !portafolio || !segmento) {
+            return { ...item, portafolio_detalle: [] };
+          }
+
+          const url = `http://66.232.105.87:3007/api/Queretaro/category/${encodeURIComponent(giro)}/${encodeURIComponent(portafolio)}/${encodeURIComponent(segmento)}`;
+          // console.log(`🔍 Consultando: ${url}`);
+
+          const { data } = await axios.get(url, { timeout: 10000 });
+
+          // 👇 aquí el fix
+          const payload = Array.isArray(data) ? data 
+                        : (Array.isArray(data?.data) ? data.data : []);
+
+          if (!Array.isArray(payload)) {
+            console.warn(`⚠️ Respuesta inesperada del API para ${giro}/${portafolio}/${segmento}:`, typeof data);
+          }
+
+          return {
+            ...item,
+            portafolio_detalle: Array.isArray(payload) ? payload : [],
+          };
+        } catch (err) {
+          console.error(`❌ Error consultando portafolio para cliente ${item.Num_cliente}:`, err.message);
+          return {
+            ...item,
+            portafolio_detalle: [],
+          };
+        }
+      })
+    );
+
     return res.status(200).json({
       success: true,
-      total_resultados: rows.length,
-      datos: rows,
+      total_resultados: datosConPortafolio.length,
+      datos: datosConPortafolio,
     });
   } catch (error) {
     console.error("❌ Error en postQueretaro:", error);
@@ -406,6 +488,7 @@ const postQueretaro = async (req, res) => {
     });
   }
 };
+
 
 
 

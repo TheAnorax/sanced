@@ -127,130 +127,127 @@ function InventarioAdmin() {
     almacen: "",
   });
 
-///////DEPARTAMANTAL//////
+  ///////DEPARTAMANTAL//////
   const [openCreateModal, setOpenCreateModal] = useState(false);
-const [newPickData, setNewPickData] = useState({
-  ubi: "",
-  code_prod: "",
-  cant_stock: "",
-  cant_stock_mov: "",
-  pasillo: "",
-  lote: "",
-  almacen_entrada: "",
-  almacen_salida: "",
-  codigo_salida: "",
-});
-
-const [editModalOpen7066, setEditModalOpen7066] = useState(false);
-const [editData, setEditData] = useState({
-  id: null,
-  ubi: "",
-  code_prod: "",
-  cant_stock: "",
-  pasillo: "",
-  codigo_salida: "",
-});
-
-
-const handleOpenEditModal7066 = (row) => {
-  setEditData({
-    id: row.id_ubicacion,
-    ubi: row.ubi || "",
-    code_prod: row.code_prod || "",
-    cant_stock: row.cant_stock || "",
-    pasillo: row.pasillo || "",
-    codigo_salida: row.codigo_salida || "",
+  const [newPickData, setNewPickData] = useState({
+    ubi: "",
+    code_prod: "",
+    cant_stock: "",
+    cant_stock_mov: "",
+    pasillo: "",
+    lote: "",
+    almacen_entrada: "",
+    almacen_salida: "",
+    codigo_salida: "",
   });
-  setEditModalOpen7066(true);
-};
 
-const handleEditChange7066 = (e) => {
-  const { name, value } = e.target;
-  setEditData((prev) => ({ ...prev, [name]: value }));
-};
+  const [editModalOpen7066, setEditModalOpen7066] = useState(false);
+  const [editData, setEditData] = useState({
+    id: null,
+    ubi: "",
+    code_prod: "",
+    cant_stock: "",
+    pasillo: "",
+    codigo_salida: "",
+  });
 
-const handleEditPick7066 = async () => {
-  try {
-    const response = await axios.put(
-      `http://66.232.105.87:3007/api/departamental/update/${editData.id}`,
-      {
-        ubi: editData.ubi,
-        code_prod: editData.code_prod,
-        cant_stock: editData.cant_stock,
-        pasillo: editData.pasillo,
-        codigo_salida: editData.codigo_salida,
+  const handleOpenEditModal7066 = (row) => {
+    setEditData({
+      id: row.id_ubicacion,
+      ubi: row.ubi || "",
+      code_prod: row.code_prod || "",
+      cant_stock: row.cant_stock || "",
+      pasillo: row.pasillo || "",
+      codigo_salida: row.codigo_salida || "",
+    });
+    setEditModalOpen7066(true);
+  };
+
+  const handleEditChange7066 = (e) => {
+    const { name, value } = e.target;
+    setEditData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleEditPick7066 = async () => {
+    try {
+      const response = await axios.put(
+        `http://66.232.105.87:3007/api/departamental/update/${editData.id}`,
+        {
+          ubi: editData.ubi,
+          code_prod: editData.code_prod,
+          cant_stock: editData.cant_stock,
+          pasillo: editData.pasillo,
+          codigo_salida: editData.codigo_salida,
+        }
+      );
+
+      if (response.data && !response.data.error) {
+        setEditModalOpen7066(false);
+        Swal.fire("✅ Éxito", "Ubicación actualizada correctamente", "success");
+        fetchDevData();
+      } else {
+        Swal.fire("❌ Error", response.data.message, "error");
       }
-    );
-
-    if (response.data && !response.data.error) {
-      setEditModalOpen7066(false);
-      Swal.fire("✅ Éxito", "Ubicación actualizada correctamente", "success");
-      fetchDevData();
-    } else {
-      Swal.fire("❌ Error", response.data.message, "error");
+    } catch (err) {
+      console.error("Error al actualizar ubicación:", err);
+      Swal.fire("❌ Error", "Hubo un problema en la solicitud", "error");
     }
-  } catch (err) {
-    console.error("Error al actualizar ubicación:", err);
-    Swal.fire("❌ Error", "Hubo un problema en la solicitud", "error");
-  }
-};
+  };
 
-const handleDeletePick7066 = async (id_ubicacion) => {
-  const confirm = await Swal.fire({
-    title: "¿Eliminar ubicación?",
-    text: "Esta acción no se puede deshacer.",
-    icon: "warning",
-    showCancelButton: true,
-    confirmButtonText: "Sí, eliminar",
-    cancelButtonText: "Cancelar",
-  });
+  const handleDeletePick7066 = async (id_ubicacion) => {
+    const confirm = await Swal.fire({
+      title: "¿Eliminar ubicación?",
+      text: "Esta acción no se puede deshacer.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Sí, eliminar",
+      cancelButtonText: "Cancelar",
+    });
 
-  if (!confirm.isConfirmed) return;
+    if (!confirm.isConfirmed) return;
 
-  try {
-    const response = await axios.delete(
-      `http://66.232.105.87:3007/api/departamental/delete/${id_ubicacion}`
-    );
+    try {
+      const response = await axios.delete(
+        `http://66.232.105.87:3007/api/departamental/delete/${id_ubicacion}`
+      );
 
-    if (response.data && !response.data.error) {
-      Swal.fire("Eliminado", "La ubicación fue eliminada.", "success");
-      fetchDevData();
-    } else {
-      Swal.fire("Error", response.data.message, "error");
+      if (response.data && !response.data.error) {
+        Swal.fire("Eliminado", "La ubicación fue eliminada.", "success");
+        fetchDevData();
+      } else {
+        Swal.fire("Error", response.data.message, "error");
+      }
+    } catch (err) {
+      console.error("Error al eliminar ubicación:", err);
+      Swal.fire("Error", "No se pudo eliminar", "error");
     }
-  } catch (err) {
-    console.error("Error al eliminar ubicación:", err);
-    Swal.fire("Error", "No se pudo eliminar", "error");
-  }
-};
+  };
 
+  const handleInputChangeCreate = (e) => {
+    const { name, value } = e.target;
+    setNewPickData((prev) => ({ ...prev, [name]: value }));
+  };
 
-const handleInputChangeCreate = (e) => {
-  const { name, value } = e.target;
-  setNewPickData((prev) => ({ ...prev, [name]: value }));
-};
+  const handleCreateUbicacionDepartamental = async () => {
+    try {
+      const response = await axios.post(
+        "http://66.232.105.87:3007/api/departamental/create",
+        newPickData
+      );
 
-const handleCreateUbicacionDepartamental = async () => {
-  try {
-    const response = await axios.post(
-      "http://66.232.105.87:3007/api/departamental/create",
-      newPickData
-    );
-
-    if (response.data && !response.data.error) {
-      Swal.fire("✅ Éxito", "Ubicación creada correctamente", "success");
-      setOpenCreateModal(false);
-      fetchDevData(); // Recargar tabla
-    } else {
-      Swal.fire("❌ Error", response.data.message, "error");
+      if (response.data && !response.data.error) {
+        Swal.fire("✅ Éxito", "Ubicación creada correctamente", "success");
+        setOpenCreateModal(false);
+        fetchDevData(); // Recargar tabla
+      } else {
+        Swal.fire("❌ Error", response.data.message, "error");
+      }
+    } catch (err) {
+      console.error("Error al crear ubicación:", err);
+      Swal.fire("❌ Error", "Hubo un problema en la solicitud", "error");
     }
-  } catch (err) {
-    console.error("Error al crear ubicación:", err);
-    Swal.fire("❌ Error", "Hubo un problema en la solicitud", "error");
-  }
-};
-///////////////////////////////
-
+  };
+  ///////////////////////////////
 
   const exportUbi7050ToExcel = async () => {
     try {
@@ -474,8 +471,6 @@ const handleCreateUbicacionDepartamental = async () => {
     fetchAllInsumos();
   }, []);
 
-
-
   const handleChange = (event) => {
     setUbiNuv(event.target.value);
   };
@@ -525,7 +520,7 @@ const handleCreateUbicacionDepartamental = async () => {
     setUpdateData(row);
     setOpenUpdateModal(true);
   };
-  
+
   const handleDeletePick = async (id_ubi) => {
     try {
       const confirm = await MySwal.fire({
@@ -617,7 +612,7 @@ const handleCreateUbicacionDepartamental = async () => {
         lote: updateData.lote || null,
         almacen: updateData.almacen || null,
         estado: updateData.estado || null,
-        caducidad: updateData.caducidad || null, 
+        caducidad: updateData.caducidad || null,
         user_id: user.id_usu,
       };
 
@@ -702,25 +697,24 @@ const handleCreateUbicacionDepartamental = async () => {
   };
 
   const exportDepartamentalToExcel = () => {
-  if (!pickDep || pickDep.length === 0) {
-    Swal.fire("Atención", "No hay datos para exportar.", "info");
-    return;
-  }
+    if (!pickDep || pickDep.length === 0) {
+      Swal.fire("Atención", "No hay datos para exportar.", "info");
+      return;
+    }
 
-  const data = pickDep.map((item) => ({
-    "Ubicación": item.ubi,
-    "Código Producto": item.code_prod,
-    "Descripción": item.des || "",
-    "Cantidad Stock": item.cant_stock || 0,
-  }));
+    const data = pickDep.map((item) => ({
+      Ubicación: item.ubi,
+      "Código Producto": item.code_prod,
+      Descripción: item.des || "",
+      "Cantidad Stock": item.cant_stock || 0,
+    }));
 
-  const worksheet = XLSX.utils.json_to_sheet(data);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, "Departamental");
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Departamental");
 
-  XLSX.writeFile(workbook, "Departamental_7066.xlsx");
-};
-
+    XLSX.writeFile(workbook, "Departamental_7066.xlsx");
+  };
 
   const fetchPickingData = async () => {
     try {
@@ -1096,6 +1090,7 @@ const handleCreateUbicacionDepartamental = async () => {
       setLoading(false);
     }
   };
+
   const exportToExcel = () => {
     // Usar filteredData para exportar solo los datos visibles
     const dataToExport = filteredData.map((dato) => ({
@@ -1115,16 +1110,18 @@ const handleCreateUbicacionDepartamental = async () => {
     XLSX.writeFile(workbook, "Filtered_Picking.xlsx");
   };
 
-
   ////////SinUbicacion
-useEffect(() => {
+  useEffect(() => {
     fetchSinUbicacionData();
   }, []);
 
- const fetchSinUbicacionData = async () => {
+  const fetchSinUbicacionData = async () => {
     try {
-      const response = await fetch("http://66.232.105.87:3007/api/inventarios/inventarios/sinubicacion");
-      if (!response.ok) throw new Error("Error al obtener productos sin ubicación");
+      const response = await fetch(
+        "http://66.232.105.87:3007/api/inventarios/inventarios/sinubicacion"
+      );
+      if (!response.ok)
+        throw new Error("Error al obtener productos sin ubicación");
       const data = await response.json();
 
       const formatted = data.map((item, idx) => ({
@@ -1138,13 +1135,13 @@ useEffect(() => {
     }
   };
 
-    const exportSinUbicacionToExcel = () => {
+  const exportSinUbicacionToExcel = () => {
     if (!sinUbicacionData.length) return;
 
     const dataToExport = sinUbicacionData.map((item) => ({
       "Código Producto": item.codigo_pro,
-      "Descripción": item.des,
-      "Ubicación": item.ubi || "Sin ubicación",
+      Descripción: item.des,
+      Ubicación: item.ubi || "Sin ubicación",
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(dataToExport);
@@ -1153,7 +1150,7 @@ useEffect(() => {
     XLSX.writeFile(workbook, "Productos_Sin_Ubicacion.xlsx");
   };
 
-const sinUbiColumns = [
+  const sinUbiColumns = [
     {
       field: "imagen",
       headerName: "Imagen",
@@ -1180,24 +1177,23 @@ const sinUbiColumns = [
     },
   ];
 
-  
   const columns = [
     {
-    field: "imagen",
-    headerName: "Imagen",
-    width: 100,
-    renderCell: (params) => (
-      <img
-        src={`../assets/image/img_pz/${params.row.code_prod}.jpg`}
-        alt="Producto"
-        style={{ width: 50, height: 50, objectFit: "cover" }}
-        onError={(e) => {
-          e.target.onerror = null;
-          e.target.src = "../assets/image/img_pz/noimage.png"; // Imagen por defecto si no se encuentra
-        }}
-      />
-    ),
-  },
+      field: "imagen",
+      headerName: "Imagen",
+      width: 100,
+      renderCell: (params) => (
+        <img
+          src={`../assets/image/img_pz/${params.row.code_prod}.jpg`}
+          alt="Producto"
+          style={{ width: 50, height: 50, objectFit: "cover" }}
+          onError={(e) => {
+            e.target.onerror = null;
+            e.target.src = "../assets/image/img_pz/noimage.png"; // Imagen por defecto si no se encuentra
+          }}
+        />
+      ),
+    },
     { field: "des", headerName: "Descripción", width: 300 },
     { field: "ubi", headerName: "Ubicación", width: 200 },
     {
@@ -1218,14 +1214,14 @@ const sinUbiColumns = [
     },
     { field: "ingreso", headerName: "Ingreso", width: 160 },
     {
-        field: "caducidad",
-        headerName: "Caducidad",
-        width: 100,
-        renderCell: (params) =>
-          params.value
-            ? new Date(params.value).toLocaleDateString("es-ES")
-            : "Sin fecha",
-      },
+      field: "caducidad",
+      headerName: "Caducidad",
+      width: 100,
+      renderCell: (params) =>
+        params.value
+          ? new Date(params.value).toLocaleDateString("es-ES")
+          : "Sin fecha",
+    },
 
     {
       field: "movimiento",
@@ -1304,31 +1300,50 @@ const sinUbiColumns = [
       width: 180,
       flex: 1,
     },
-   {
-  field: "acciones",
-  headerName: "Acciones",
-  width: 160,
-  renderCell: (params) => {
-    return (["Admin", "INV", "Dep"].includes(user?.role) && (
-      <Box display="flex" gap={1}>
-        <IconButton onClick={() => handleOpenEditModal7066(params.row)}>
-          <EditIcon color="primary" />
-        </IconButton>
-        <IconButton onClick={() => handleDeletePick7066(params.row.id_ubicacion)}>
-          <DeleteIcon color="error" />
-        </IconButton>
-      </Box>
-    )) || null; // Si no tiene permiso, no se renderiza nada
-  }
-}
-
-
-
+    {
+      field: "acciones",
+      headerName: "Acciones",
+      width: 160,
+      renderCell: (params) => {
+        return (
+          (["Admin", "INV", "Dep"].includes(user?.role) && (
+            <Box display="flex" gap={1}>
+              <IconButton onClick={() => handleOpenEditModal7066(params.row)}>
+                <EditIcon color="primary" />
+              </IconButton>
+              <IconButton
+                onClick={() => handleDeletePick7066(params.row.id_ubicacion)}
+              >
+                <DeleteIcon color="error" />
+              </IconButton>
+            </Box>
+          )) ||
+          null
+        ); // Si no tiene permiso, no se renderiza nada
+      },
+    },
   ];
 
   const handleSectionChange = (event, newValue) => {
     setSection(newValue);
   };
+
+  const [searchUbi, setSearchUbi] = useState("");
+  const [searchCode, setSearchCode] = useState("");
+
+  const filteredDepartamental = pickDep.filter(
+    (item) =>
+      (searchUbi === "" ||
+        (item.ubi || "")
+          .toString()
+          .toLowerCase()
+          .includes(searchUbi.toLowerCase())) &&
+      (searchCode === "" ||
+        (item.code_prod || "")
+          .toString()
+          .toLowerCase()
+          .includes(searchCode.toLowerCase()))
+  );
 
   // Renderizado de las secciones
   const renderSection = () => {
@@ -1345,8 +1360,6 @@ const sinUbiColumns = [
         return Almacenamiento();
     }
   };
-
- 
 
   const Picking = (titulo) => (
     <div style={{ padding: "20px" }}>
@@ -1613,35 +1626,47 @@ const sinUbiColumns = [
       <Box sx={{ height: "100%", width: "auto", padding: 2 }}>
         {/* Botón para abrir el modal */}
         <center>
-        <Typography variant="h6">Inventario 7050</Typography></center>
-      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, alignItems: "center", justifyContent: "center", mb: 2 }}>
-  {["Admin", "INV"].includes(user?.role) && (
+          <Typography variant="h6">Inventario 7050</Typography>
+        </center>
+        <Box
+          sx={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 2,
+            alignItems: "center",
+            justifyContent: "center",
+            mb: 2,
+          }}
+        >
+          {["Admin", "INV"].includes(user?.role) && (
+            <Button
+              variant="contained"
+              onClick={handleOpenModalInsertUbi}
+              sx={{ backgroundColor: "green", color: "white" }}
+            >
+              Insertar Nueva Ubicación
+            </Button>
+          )}
+          <Button
+            onClick={exportUbi7050ToExcel}
+            variant="contained"
+            sx={{ backgroundColor: "green", color: "white" }}
+          >
+            Exportar 7050 a Excel
+          </Button>
 
-  <Button
-    variant="contained"
-    onClick={handleOpenModalInsertUbi}
-    sx={{ backgroundColor: "green", color: "white" }}
-  >
-    Insertar Nueva Ubicación
-  </Button>
-)}
-  <Button
-    onClick={exportUbi7050ToExcel}
-    variant="contained"
-    sx={{ backgroundColor: "green", color: "white" }}
-  >
-    Exportar 7050 a Excel
-  </Button>
+          <Button variant="contained" color="error" onClick={fetchImpares}>
+            Mostrar Impares
+          </Button>
 
-  <Button variant="contained" color="error" onClick={fetchImpares}>
-    Mostrar Impares
-  </Button>
-
-  <Button variant="contained" sx={{ backgroundColor: "#d46a6a", color: "white" }} onClick={fetchPares}>
-    Mostrar Pares
-  </Button>
-</Box>
-
+          <Button
+            variant="contained"
+            sx={{ backgroundColor: "#d46a6a", color: "white" }}
+            onClick={fetchPares}
+          >
+            Mostrar Pares
+          </Button>
+        </Box>
 
         {/*  <Button onClick={handleOpenDetailsModal}>Mostrar Detalles</Button> */}
 
@@ -1701,21 +1726,19 @@ const sinUbiColumns = [
               fullWidth
               margin="normal"
             />
-           <TextField
-  label="Caducidad"
-  type="date"
-  value={updateData.caducidad || ""}
-  onChange={(e) =>
-    setUpdateData({ ...updateData, caducidad: e.target.value })
-  }
-  fullWidth
-  margin="normal"
-  InputLabelProps={{
-    shrink: true, // Mantiene el label siempre arriba
-  }}
-/>
-
- 
+            <TextField
+              label="Caducidad"
+              type="date"
+              value={updateData.caducidad || ""}
+              onChange={(e) =>
+                setUpdateData({ ...updateData, caducidad: e.target.value })
+              }
+              fullWidth
+              margin="normal"
+              InputLabelProps={{
+                shrink: true, // Mantiene el label siempre arriba
+              }}
+            />
 
             {/* RadioGroup para seleccionar el Estado */}
 
@@ -1839,8 +1862,6 @@ const sinUbiColumns = [
 
         {error && <Alert severity="error">{error}</Alert>}
 
-       
-
         <Box display="flex" gap={2} mb={2}>
           <TextField
             label="Descripción"
@@ -1943,9 +1964,7 @@ const sinUbiColumns = [
               </Button>
             </DialogActions>
           </Dialog>
-        </div>   
-
-      
+        </div>
 
         <Snackbar
           open={alertOpen}
@@ -1969,26 +1988,42 @@ const sinUbiColumns = [
       <Typography variant="h6" align="center" sx={{ mb: 2 }}>
         Departamental 7066
       </Typography>
-         {["Admin", "INV", "Dep"].includes(user?.role) && (
-  <Box display="flex" gap={2} mb={2}>
-    <Button
-      variant="contained"
-      color="primary"
-      onClick={() => setOpenCreateModal(true)}
-    >
-      Crear Nueva Ubicación
-    </Button>
+      {["Admin", "INV", "Dep"].includes(user?.role) && (
+        <Box display="flex" gap={2} mb={2}>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => setOpenCreateModal(true)}
+          >
+            Crear Nueva Ubicación
+          </Button>
 
-    <Button
-      variant="contained"
-      color="success"
-      onClick={exportDepartamentalToExcel}
-    >
-      Exportar a Excel
-    </Button>
-  </Box>
-)}
+          <Button
+            variant="contained"
+            color="success"
+            onClick={exportDepartamentalToExcel}
+          >
+            Exportar a Excel
+          </Button>
+        </Box>
+      )}
 
+      <Box display="flex" gap={2} mb={2}>
+        <TextField
+          label="Buscar por Ubicación"
+          variant="outlined"
+          size="small"
+          value={searchUbi}
+          onChange={(e) => setSearchUbi(e.target.value)}
+        />
+        <TextField
+          label="Buscar por Código"
+          variant="outlined"
+          size="small"
+          value={searchCode}
+          onChange={(e) => setSearchCode(e.target.value)}
+        />
+      </Box>
 
       <Paper elevation={3} sx={{ p: 2 }}>
         <Box
@@ -1999,7 +2034,7 @@ const sinUbiColumns = [
           }}
         >
           <DataGrid
-            rows={pickDep}
+            rows={filteredDepartamental}
             columns={inventoryColumnsStatic}
             pageSize={5}
             rowsPerPageOptions={[5, 10, 20]}
@@ -2028,57 +2063,76 @@ const sinUbiColumns = [
             }}
           />
 
-          
-<Dialog open={openCreateModal} onClose={() => setOpenCreateModal(false)}>
-  <DialogTitle>Crear Nueva Ubicación Departamental</DialogTitle>
-  <DialogContent>
-    {[
-      "ubi", "code_prod", "cant_stock", 
-      "pasillo", "codigo_salida"
-    ].map((field) => (
-      <TextField
-        key={field}
-        name={field}
-        label={field.replaceAll("_", " ").toUpperCase()}
-        value={newPickData[field]}
-        onChange={handleInputChangeCreate}
-        fullWidth
-        margin="dense"
-      />
-    ))}
-  </DialogContent>
-  <DialogActions>
-    <Button onClick={() => setOpenCreateModal(false)}>Cancelar</Button>
-    <Button onClick={handleCreateUbicacionDepartamental} color="primary">
-      Guardar
-    </Button>
-  </DialogActions>
-</Dialog>
+          <Dialog
+            open={openCreateModal}
+            onClose={() => setOpenCreateModal(false)}
+          >
+            <DialogTitle>Crear Nueva Ubicación Departamental</DialogTitle>
+            <DialogContent>
+              {[
+                "ubi",
+                "code_prod",
+                "cant_stock",
+                "pasillo",
+                "codigo_salida",
+              ].map((field) => (
+                <TextField
+                  key={field}
+                  name={field}
+                  label={field.replaceAll("_", " ").toUpperCase()}
+                  value={newPickData[field]}
+                  onChange={handleInputChangeCreate}
+                  fullWidth
+                  margin="dense"
+                />
+              ))}
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setOpenCreateModal(false)}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleCreateUbicacionDepartamental}
+                color="primary"
+              >
+                Guardar
+              </Button>
+            </DialogActions>
+          </Dialog>
 
-
-<Dialog open={editModalOpen7066} onClose={() => setEditModalOpen7066(false)}>
-  <DialogTitle>Editar Ubicación</DialogTitle>
-  <DialogContent>
-    {["ubi", "code_prod", "cant_stock", "pasillo", "codigo_salida"].map((field) => (
-      <TextField
-        key={field}
-        name={field}
-        label={field.replaceAll("_", " ").toUpperCase()}
-        value={editData[field]}
-        onChange={handleEditChange7066}
-        fullWidth
-        margin="dense"
-      />
-    ))}
-  </DialogContent>
-  <DialogActions>
-    <Button onClick={() => setEditModalOpen7066(false)}>Cancelar</Button>
-    <Button onClick={handleEditPick7066} color="primary">
-      Guardar Cambios
-    </Button>
-  </DialogActions>
-</Dialog>
-
+          <Dialog
+            open={editModalOpen7066}
+            onClose={() => setEditModalOpen7066(false)}
+          >
+            <DialogTitle>Editar Ubicación</DialogTitle>
+            <DialogContent>
+              {[
+                "ubi",
+                "code_prod",
+                "cant_stock",
+                "pasillo",
+                "codigo_salida",
+              ].map((field) => (
+                <TextField
+                  key={field}
+                  name={field}
+                  label={field.replaceAll("_", " ").toUpperCase()}
+                  value={editData[field]}
+                  onChange={handleEditChange7066}
+                  fullWidth
+                  margin="dense"
+                />
+              ))}
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setEditModalOpen7066(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleEditPick7066} color="primary">
+                Guardar Cambios
+              </Button>
+            </DialogActions>
+          </Dialog>
         </Box>
       </Paper>
     </Box>
@@ -2089,7 +2143,7 @@ const sinUbiColumns = [
       <Typography variant="h6" align="center" sx={{ mb: 2 }}>
         Sin Ubicación
       </Typography>
-       <Box display="flex" justifyContent="flex-end" mb={2}>
+      <Box display="flex" justifyContent="flex-end" mb={2}>
         <Button
           variant="contained"
           color="primary"
@@ -2099,7 +2153,7 @@ const sinUbiColumns = [
         </Button>
       </Box>
       <Paper>
-        <Box sx={{ height: 600, width: '100%' }}>
+        <Box sx={{ height: 600, width: "100%" }}>
           <DataGrid
             rows={sinUbicacionData}
             columns={sinUbiColumns}
@@ -2113,8 +2167,6 @@ const sinUbiColumns = [
     </Box>
   );
 
-  
-
   return (
     <div style={{ flexGrow: 1, display: "flex", flexDirection: "column" }}>
       {/* Menú de pestañas */}
@@ -2126,9 +2178,9 @@ const sinUbiColumns = [
         <Tab label="Almacenamiento" icon={<Dashboard />} />
         <Tab label="Departamental" icon={<Dashboard />} />
         <Tab label="Picking" icon={<Dashboard />} />
-      {['Admin', 'INV'].includes(user?.role) && (
-  <Tab label="Codigos Sin Ubicacion" icon={<Dashboard />} />
-)}
+        {["Admin", "INV"].includes(user?.role) && (
+          <Tab label="Codigos Sin Ubicacion" icon={<Dashboard />} />
+        )}
       </Tabs>
 
       {/* Contenido según la sección seleccionada */}

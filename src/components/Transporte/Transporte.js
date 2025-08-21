@@ -690,13 +690,13 @@ function Transporte() {
       );
 
       // 2. Consultar pedidos nuevos
-      const response = await axios.post(
+      const response = await axios.post(  
         "http://66.232.105.87:3007/api/Trasporte/obtenerPedidos"
       );
       const datos = response.data;
 
       // 3. Calcular últimos 3 días hábiles
-      const diasValidos = getLastBusinessDays(3); // esto debe devolver fechas tipo "2025-07-01"
+      const diasValidos = getLastBusinessDays(4); // esto debe devolver fechas tipo "2025-07-01"
 
       // 4. Filtrar y mapear
       let datosMapeados = datos
@@ -2951,6 +2951,11 @@ function Transporte() {
       const tableWidth = 90;
       const leftMargin = (pageWidth - tableWidth) / 2;
 
+          const totalConIva = pedidoEncontrado?.TotalConIva
+        ? parseFloat(pedidoEncontrado.TotalConIva)
+        : totalImporte;
+
+
       doc.autoTable({
         startY: currentY,
         head: [
@@ -2979,7 +2984,7 @@ function Transporte() {
               styles: { halign: "center", fontSize: 5 },
             },
             {
-              content: "TOTAL A PAGAR\n(SIN IVA)",
+              content: "TOTAL A PAGAR\n(con IVA)",
               styles: { halign: "center", fontSize: 5 },
             },
             {
@@ -2988,19 +2993,13 @@ function Transporte() {
             },
           ],
         ],
+
+
         body: [
           [
-            [
-              `$${totalImporte.toLocaleString("en-US", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}`,
-              `$${totalImporte.toLocaleString("en-US", {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}`,
-              "100.00 %",
-            ],
+            `$${totalImporte.toFixed(2)}`,
+            `$${totalConIva.toFixed(2)}`,
+            "100.00 %",
           ],
         ],
         theme: "grid",

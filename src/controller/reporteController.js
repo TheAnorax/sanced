@@ -1,14 +1,14 @@
 const pool = require("../config/database");
 const moment = require("moment");
 
-// Función para convertir minutos a formato "HH:mm" 
+// Función para convertir minutos a formato "HH:mm"
 const convertirMinutosAHoras = (minutos) => {
   const horas = Math.floor(minutos / 60);
   const minutosRestantes = minutos % 60;
   return `${horas}h ${minutosRestantes}m`;
 };
 
-// Controlador para obtener KPIs de pedidos surtidos por dia 
+// Controlador para obtener KPIs de pedidos surtidos por dia
 const getPrduSurtido = async (req, res) => {
   try {
     const selectedDate = req.query.date || moment().format("YYYY-MM-DD");
@@ -193,7 +193,7 @@ const getPrduSurtido = async (req, res) => {
 
       let tiempoTrabajoMinutos = 0;
       if (turnoData.primer_inicio && turnoData.ultimo_fin) {
-        tiempoTrabajoMinutos = moment(turnoData.ultimo_fin).diff( 
+        tiempoTrabajoMinutos = moment(turnoData.ultimo_fin).diff(
           moment(turnoData.primer_inicio),
           "minutes"
         );
@@ -254,16 +254,12 @@ const getPrduSurtido = async (req, res) => {
       },
     });
   } catch (error) {
-    res
-      .status(500)
-      .json({
-        message: "Error al obtener los KPIs del surtido",
-        error: error.message,
-      });
+    res.status(500).json({
+      message: "Error al obtener los KPIs del surtido",
+      error: error.message,
+    });
   }
 };
-
-
 
 const getPrduPaqueteria = async (req, res) => {
   try {
@@ -322,12 +318,14 @@ const getPrduPaqueteria = async (req, res) => {
     );
 
     // 2. Obtener total facturado por relación de pedidos
-    const pedidosList = rows.flatMap(row => (row.pedidos_ids || '').split(',')).filter(p => p);
+    const pedidosList = rows
+      .flatMap((row) => (row.pedidos_ids || "").split(","))
+      .filter((p) => p);
 
     let total_facturado = "0.00";
 
     if (pedidosList.length > 0) {
-      const placeholders = pedidosList.map(() => '?').join(',');
+      const placeholders = pedidosList.map(() => "?").join(",");
       const [totalFacturadoRows] = await pool.query(
         `
         SELECT FORMAT(SUM(IFNULL(TOTAL, 0)), 2) AS total_facturado
@@ -349,21 +347,31 @@ const getPrduPaqueteria = async (req, res) => {
 
     const totalPartidas = rows.reduce((sum, row) => sum + row.partidas, 0);
     const totalPedidos = rows.reduce((sum, row) => sum + row.pedidos, 0);
-    const totalPiezas = rows.reduce((sum, row) => sum + parseInt(row.cantidad_piezas || 0), 0);
+    const totalPiezas = rows.reduce(
+      (sum, row) => sum + parseInt(row.cantidad_piezas || 0),
+      0
+    );
 
     const primerInicioEmbarque = rows.reduce(
-      (min, row) => row.primer_inicio_embarque < min ? row.primer_inicio_embarque : min,
+      (min, row) =>
+        row.primer_inicio_embarque < min ? row.primer_inicio_embarque : min,
       rows[0].primer_inicio_embarque
     );
     const ultimoFinEmbarque = rows.reduce(
-      (max, row) => row.ultimo_fin_embarque > max ? row.ultimo_fin_embarque : max,
+      (max, row) =>
+        row.ultimo_fin_embarque > max ? row.ultimo_fin_embarque : max,
       rows[0].ultimo_fin_embarque
     );
 
-    const tiempoTotalTrabajo = new Date(new Date(ultimoFinEmbarque) - new Date(primerInicioEmbarque));
+    const tiempoTotalTrabajo = new Date(
+      new Date(ultimoFinEmbarque) - new Date(primerInicioEmbarque)
+    );
     const horas = String(tiempoTotalTrabajo.getUTCHours()).padStart(2, "0");
     const minutos = String(tiempoTotalTrabajo.getUTCMinutes()).padStart(2, "0");
-    const segundos = String(tiempoTotalTrabajo.getUTCSeconds()).padStart(2, "0");
+    const segundos = String(tiempoTotalTrabajo.getUTCSeconds()).padStart(
+      2,
+      "0"
+    );
 
     res.json({
       total_partidas: totalPartidas,
@@ -373,11 +381,13 @@ const getPrduPaqueteria = async (req, res) => {
       ultimo_fin_embarque: ultimoFinEmbarque,
       tiempo_total_trabajo: `${horas}:${minutos}:${segundos}`,
       total_facturado: total_facturado,
-      fecha_consultada: selectedDate
+      fecha_consultada: selectedDate,
     });
-
   } catch (error) {
-    console.error("Error al obtener la productividad de empaquetadores:", error);
+    console.error(
+      "Error al obtener la productividad de empaquetadores:",
+      error
+    );
     res.status(500).json({
       message: "Error al obtener la productividad de empaquetadores",
       error: error.message,
@@ -385,12 +395,12 @@ const getPrduPaqueteria = async (req, res) => {
   }
 };
 
-
-
 const getPrduEmbarque = async (req, res) => {
   try {
     const selectedDate = req.query.date || moment().format("YYYY-MM-DD");
-    const previousDate = moment(selectedDate).subtract(1, "day").format("YYYY-MM-DD");
+    const previousDate = moment(selectedDate)
+      .subtract(1, "day")
+      .format("YYYY-MM-DD");
 
     // 1. Obtener productividad por turno desde pedido_embarque y pedido_finalizado
     const [resumenPorTurno] = await pool.query(
@@ -480,30 +490,32 @@ const getPrduEmbarque = async (req, res) => {
 
     // 3. Combinar por turno
     const resumenFinal = resumenPorTurno.map((turnoData) => {
-      const match = facturadoPorTurno.find(f => f.turno === turnoData.turno);
+      const match = facturadoPorTurno.find((f) => f.turno === turnoData.turno);
       return {
         ...turnoData,
         total_facturado: match?.total_facturado || "0.00",
-        total_pedidos: match?.total_pedidos || 0
+        total_pedidos: match?.total_pedidos || 0,
       };
     });
 
     // 4. Calcular total general
-    const total_facturado_general = facturadoPorTurno.reduce(
-      (sum, t) => sum + parseFloat((t.total_facturado || "0").replace(/,/g, "")),
-      0
-    ).toLocaleString("es-MX", {
-      style: "currency",
-      currency: "MXN"
-    });
+    const total_facturado_general = facturadoPorTurno
+      .reduce(
+        (sum, t) =>
+          sum + parseFloat((t.total_facturado || "0").replace(/,/g, "")),
+        0
+      )
+      .toLocaleString("es-MX", {
+        style: "currency",
+        currency: "MXN",
+      });
 
     // 5. Responder
     res.json({
       resumen_por_turno: resumenFinal,
       total_facturado_general,
-      fecha_consultada: selectedDate
+      fecha_consultada: selectedDate,
     });
-
   } catch (error) {
     console.error("❌ Error al obtener la productividad de embarque:", error);
     res.status(500).json({
@@ -512,11 +524,6 @@ const getPrduEmbarque = async (req, res) => {
     });
   }
 };
-
-
-
-
-
 
 const getPrduRecibo = async (req, res) => {
   try {
@@ -730,9 +737,12 @@ const getPrduSurtidoPorRango = async (req, res) => {
     `;
 
     const [rows] = await pool.query(query, [
-      fechaInicio, fechaFin,
-      fechaInicio, fechaFin,
-      fechaInicio, fechaFin
+      fechaInicio,
+      fechaFin,
+      fechaInicio,
+      fechaFin,
+      fechaInicio,
+      fechaFin,
     ]);
 
     const resultadosPorDia = {};
@@ -771,7 +781,8 @@ const getPrduSurtidoPorRango = async (req, res) => {
           const inicio = moment(p.inicio_surtido);
           const fin = moment(p.fin_surtido);
 
-          if (!primer_inicio || inicio.isBefore(primer_inicio)) primer_inicio = inicio;
+          if (!primer_inicio || inicio.isBefore(primer_inicio))
+            primer_inicio = inicio;
           if (!ultimo_fin || fin.isAfter(ultimo_fin)) ultimo_fin = fin;
 
           const usuario = p.usuario_nombre || "Desconocido";
@@ -793,15 +804,23 @@ const getPrduSurtidoPorRango = async (req, res) => {
           userStats.total_piezas += p.cant_surti;
           userStats.tiempo_productivo_minutos += fin.diff(inicio, "minutes");
 
-          if (!userStats.primer_inicio || inicio.isBefore(userStats.primer_inicio)) userStats.primer_inicio = inicio;
-          if (!userStats.ultimo_fin || fin.isAfter(userStats.ultimo_fin)) userStats.ultimo_fin = fin;
+          if (
+            !userStats.primer_inicio ||
+            inicio.isBefore(userStats.primer_inicio)
+          )
+            userStats.primer_inicio = inicio;
+          if (!userStats.ultimo_fin || fin.isAfter(userStats.ultimo_fin))
+            userStats.ultimo_fin = fin;
         });
 
         const usuariosFormateados = {};
         Object.entries(usuarios).forEach(([nombre, datos]) => {
-          const tiempo_trabajo = datos.ultimo_fin && datos.primer_inicio
-            ? convertirMinutosAHoras(datos.ultimo_fin.diff(datos.primer_inicio, "minutes"))
-            : "00:00:00";
+          const tiempo_trabajo =
+            datos.ultimo_fin && datos.primer_inicio
+              ? convertirMinutosAHoras(
+                  datos.ultimo_fin.diff(datos.primer_inicio, "minutes")
+                )
+              : "00:00:00";
 
           usuariosFormateados[nombre] = {
             role: datos.role,
@@ -809,13 +828,18 @@ const getPrduSurtidoPorRango = async (req, res) => {
             total_partidas: datos.total_partidas,
             total_piezas: datos.total_piezas,
             tiempo_trabajo,
-            tiempo_productivo: convertirMinutosAHoras(datos.tiempo_productivo_minutos),
+            tiempo_productivo: convertirMinutosAHoras(
+              datos.tiempo_productivo_minutos
+            ),
           };
         });
 
         const total_pedidos = pedidos.length;
         const total_piezas = pedidos.reduce((acc, p) => acc + p.cant_surti, 0);
-        const tiempo_total = primer_inicio && ultimo_fin ? convertirMinutosAHoras(ultimo_fin.diff(primer_inicio, "minutes")) : "00:00:00";
+        const tiempo_total =
+          primer_inicio && ultimo_fin
+            ? convertirMinutosAHoras(ultimo_fin.diff(primer_inicio, "minutes"))
+            : "00:00:00";
 
         resumenPorDia[fecha][turno] = {
           kpis: {
@@ -832,7 +856,7 @@ const getPrduSurtidoPorRango = async (req, res) => {
     res.json({
       fecha_inicio: fechaInicio,
       fecha_fin: fechaFin,
-      resumen: resumenPorDia
+      resumen: resumenPorDia,
     });
   } catch (error) {
     console.error("❌ Error al obtener los KPIs del surtido por rango:", error);
@@ -978,7 +1002,8 @@ const getPrduPaqueteriaPorrango = async (req, res) => {
 
     // 🔹 Procesar duración de trabajo por día
     const resumenDiarioFinal = Object.values(resumenDiario).map((d) => {
-      const diff = new Date(d.ultimo_fin_embarque) - new Date(d.primer_inicio_embarque);
+      const diff =
+        new Date(d.ultimo_fin_embarque) - new Date(d.primer_inicio_embarque);
       const tiempo = new Date(diff);
       const horas = String(tiempo.getUTCHours()).padStart(2, "0");
       const minutos = String(tiempo.getUTCMinutes()).padStart(2, "0");
@@ -989,8 +1014,14 @@ const getPrduPaqueteriaPorrango = async (req, res) => {
       };
     });
 
-    const totalPartidas = resumenDiarioFinal.reduce((acc, d) => acc + d.total_partidas, 0);
-    const totalPiezas = resumenDiarioFinal.reduce((acc, d) => acc + d.total_piezas, 0);
+    const totalPartidas = resumenDiarioFinal.reduce(
+      (acc, d) => acc + d.total_partidas,
+      0
+    );
+    const totalPiezas = resumenDiarioFinal.reduce(
+      (acc, d) => acc + d.total_piezas,
+      0
+    );
 
     const primerInicio = resumenDiarioFinal[0].primer_inicio_embarque;
     const ultimoFin = resumenDiarioFinal.reduce(
@@ -1014,7 +1045,10 @@ const getPrduPaqueteriaPorrango = async (req, res) => {
       usuarios: Object.values(usuariosMap),
     });
   } catch (error) {
-    console.error("❌ Error al obtener la productividad de empaquetadores:", error);
+    console.error(
+      "❌ Error al obtener la productividad de empaquetadores:",
+      error
+    );
     res.status(500).json({
       message: "Error al obtener la productividad de empaquetadores",
       error: error.message,
@@ -1022,13 +1056,10 @@ const getPrduPaqueteriaPorrango = async (req, res) => {
   }
 };
 
-
-
-
 // reporte mapa
 const getTop102024 = async (req, res) => {
-    try {
-      const [top10] = await pool.query(`
+  try {
+    const [top10] = await pool.query(`
         SELECT 
           codigo_ped,
           SUM(cantidad) AS total_vendido
@@ -1040,50 +1071,51 @@ const getTop102024 = async (req, res) => {
           total_vendido DESC
         LIMIT 10;
       `);
-  
-      if (top10.length === 0) {
-        return res.status(404).json({ message: "No hay datos disponibles para el día de hoy." });
-      }
-  
-      // Obtener solo los códigos
-      const codigos = top10.map((item) => item.codigo_ped);
-  
-      // Crear placeholders dinámicamente (?, ?, ?, ...)
-      const placeholders = codigos.map(() => "?").join(",");
-  
-      // Consulta de descripciones desde productos
-      const [productos] = await pool.query(
-        `SELECT codigo_pro, des FROM productos WHERE codigo_pro IN (${placeholders})`,
-        codigos
-      );
-  
-      // Indexar productos por codigo_pro para buscar rápido
-      const productosMap = {};
-      productos.forEach(prod => {
-        productosMap[prod.codigo_pro] = prod.des;
-      });
-  
-      // Unir la info
-      const resultado = top10.map(item => ({
-        codigo_ped: item.codigo_ped,
-        total_vendido: Number(item.total_vendido).toLocaleString("es-MX"),
-        descripcion: productosMap[item.codigo_ped] || "Sin descripción"
-      }));
-  
-      res.status(200).json(resultado);
-    } catch (error) {
-      console.error("Error al obtener el top de productos vendidos:", error);
-      res.status(500).json({
-        message: "Error al obtener el top de productos vendidos",
-        error: error.message,
-      });
-    }
-  };
 
-  
+    if (top10.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "No hay datos disponibles para el día de hoy." });
+    }
+
+    // Obtener solo los códigos
+    const codigos = top10.map((item) => item.codigo_ped);
+
+    // Crear placeholders dinámicamente (?, ?, ?, ...)
+    const placeholders = codigos.map(() => "?").join(",");
+
+    // Consulta de descripciones desde productos
+    const [productos] = await pool.query(
+      `SELECT codigo_pro, des FROM productos WHERE codigo_pro IN (${placeholders})`,
+      codigos
+    );
+
+    // Indexar productos por codigo_pro para buscar rápido
+    const productosMap = {};
+    productos.forEach((prod) => {
+      productosMap[prod.codigo_pro] = prod.des;
+    });
+
+    // Unir la info
+    const resultado = top10.map((item) => ({
+      codigo_ped: item.codigo_ped,
+      total_vendido: Number(item.total_vendido).toLocaleString("es-MX"),
+      descripcion: productosMap[item.codigo_ped] || "Sin descripción",
+    }));
+
+    res.status(200).json(resultado);
+  } catch (error) {
+    console.error("Error al obtener el top de productos vendidos:", error);
+    res.status(500).json({
+      message: "Error al obtener el top de productos vendidos",
+      error: error.message,
+    });
+  }
+};
+
 const getTop102025 = async (req, res) => {
-    try {
-      const [top10] = await pool.query(`
+  try {
+    const [top10] = await pool.query(`
         SELECT 
           codigo_ped,
           SUM(cantidad) AS total_vendido
@@ -1095,76 +1127,78 @@ const getTop102025 = async (req, res) => {
           total_vendido DESC
         LIMIT 10;
       `);
-  
-      if (top10.length === 0) {
-        return res.status(404).json({ message: "No hay datos disponibles para el día de hoy." });
-      }
-  
-      // Obtener solo los códigos
-      const codigos = top10.map((item) => item.codigo_ped);
-  
-      // Crear placeholders dinámicamente (?, ?, ?, ...)
-      const placeholders = codigos.map(() => "?").join(",");
-  
-      // Consulta de descripciones desde productos
-      const [productos] = await pool.query(
-        `SELECT codigo_pro, des FROM productos WHERE codigo_pro IN (${placeholders})`,
-        codigos
-      );
-  
-      // Indexar productos por codigo_pro para buscar rápido
-      const productosMap = {};
-      productos.forEach(prod => {
-        productosMap[prod.codigo_pro] = prod.des;
-      });
-  
-      // Unir la info
-      const resultado = top10.map(item => ({
-        codigo_ped: item.codigo_ped,
-        total_vendido: Number(item.total_vendido).toLocaleString("es-MX"),
-        descripcion: productosMap[item.codigo_ped] || "Sin descripción"
-      }));
-  
-      res.status(200).json(resultado);
-    } catch (error) {
-      console.error("Error al obtener el top de productos vendidos:", error);
-      res.status(500).json({
-        message: "Error al obtener el top de productos vendidos",
-        error: error.message,
-      });
-    }
-  };
 
-  const getTopProductosPorEstado = async (req, res) => {
-    try {
-      const [ordenes] = await pool.query(`
+    if (top10.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "No hay datos disponibles para el día de hoy." });
+    }
+
+    // Obtener solo los códigos
+    const codigos = top10.map((item) => item.codigo_ped);
+
+    // Crear placeholders dinámicamente (?, ?, ?, ...)
+    const placeholders = codigos.map(() => "?").join(",");
+
+    // Consulta de descripciones desde productos
+    const [productos] = await pool.query(
+      `SELECT codigo_pro, des FROM productos WHERE codigo_pro IN (${placeholders})`,
+      codigos
+    );
+
+    // Indexar productos por codigo_pro para buscar rápido
+    const productosMap = {};
+    productos.forEach((prod) => {
+      productosMap[prod.codigo_pro] = prod.des;
+    });
+
+    // Unir la info
+    const resultado = top10.map((item) => ({
+      codigo_ped: item.codigo_ped,
+      total_vendido: Number(item.total_vendido).toLocaleString("es-MX"),
+      descripcion: productosMap[item.codigo_ped] || "Sin descripción",
+    }));
+
+    res.status(200).json(resultado);
+  } catch (error) {
+    console.error("Error al obtener el top de productos vendidos:", error);
+    res.status(500).json({
+      message: "Error al obtener el top de productos vendidos",
+      error: error.message,
+    });
+  }
+};
+
+const getTopProductosPorEstado = async (req, res) => {
+  try {
+    const [ordenes] = await pool.query(`
         SELECT NO_DE_ORDEN, ESTADO
         FROM historico_2024
         WHERE NO_DE_ORDEN IS NOT NULL AND ESTADO IS NOT NULL
       `);
-  
-      if (ordenes.length === 0) {
-        return res.status(404).json({ message: "No hay órdenes disponibles." });
-      }
-  
-      const estadoPedidosMap = {};
-      for (const row of ordenes) {
-        const estado = row.ESTADO;
-        const pedido = row.NO_DE_ORDEN;
-        if (!estadoPedidosMap[estado]) estadoPedidosMap[estado] = new Set();
-        estadoPedidosMap[estado].add(pedido);
-      }
-  
-      const resultado = {};
-      const codigosGlobalSet = new Set();
-  
-      for (const estado in estadoPedidosMap) {
-        const pedidos = Array.from(estadoPedidosMap[estado]);
-        if (pedidos.length === 0) continue;
-  
-        const placeholders = pedidos.map(() => "?").join(",");
-        const [productos] = await pool.query(
-          `
+
+    if (ordenes.length === 0) {
+      return res.status(404).json({ message: "No hay órdenes disponibles." });
+    }
+
+    const estadoPedidosMap = {};
+    for (const row of ordenes) {
+      const estado = row.ESTADO;
+      const pedido = row.NO_DE_ORDEN;
+      if (!estadoPedidosMap[estado]) estadoPedidosMap[estado] = new Set();
+      estadoPedidosMap[estado].add(pedido);
+    }
+
+    const resultado = {};
+    const codigosGlobalSet = new Set();
+
+    for (const estado in estadoPedidosMap) {
+      const pedidos = Array.from(estadoPedidosMap[estado]);
+      if (pedidos.length === 0) continue;
+
+      const placeholders = pedidos.map(() => "?").join(",");
+      const [productos] = await pool.query(
+        `
           SELECT 
             codigo_ped,
             SUM(cantidad) AS total_vendido
@@ -1174,75 +1208,292 @@ const getTop102025 = async (req, res) => {
           ORDER BY total_vendido DESC
           LIMIT 10;
           `,
-          pedidos
-        );
-  
-        // Guardamos códigos para luego buscar descripciones
-        productos.forEach(p => codigosGlobalSet.add(p.codigo_ped));
-  
-        resultado[estado] = productos.map(p => ({
-          codigo_ped: p.codigo_ped,
-          total_vendido: Number(p.total_vendido).toLocaleString("es-MX")
-        }));
-      }
-  
-      // Buscar descripciones en lote
-      const codigos = Array.from(codigosGlobalSet);
-      let descripcionMap = {};
-      if (codigos.length > 0) {
-        const placeholders = codigos.map(() => "?").join(",");
-        const [descripciones] = await pool.query(
-          `SELECT codigo_pro, des FROM productos WHERE codigo_pro IN (${placeholders})`,
-          codigos
-        );
-  
-        descripcionMap = Object.fromEntries(descripciones.map(d => [d.codigo_pro, d.des]));
-      }
-  
-      // Agregar descripciones al resultado
-      for (const estado in resultado) {
-        resultado[estado] = resultado[estado].map(item => ({
-          ...item,
-          descripcion: descripcionMap[item.codigo_ped] || "Sin descripción"
-        }));
-      }
-  
-      res.status(200).json(resultado);
-    } catch (error) {
-      console.error("Error al obtener top productos por estado:", error);
-      res.status(500).json({
-        message: "Error al procesar la información",
-        error: error.message,
-      });
+        pedidos
+      );
+
+      // Guardamos códigos para luego buscar descripciones
+      productos.forEach((p) => codigosGlobalSet.add(p.codigo_ped));
+
+      resultado[estado] = productos.map((p) => ({
+        codigo_ped: p.codigo_ped,
+        total_vendido: Number(p.total_vendido).toLocaleString("es-MX"),
+      }));
     }
-  };
-  
+
+    // Buscar descripciones en lote
+    const codigos = Array.from(codigosGlobalSet);
+    let descripcionMap = {};
+    if (codigos.length > 0) {
+      const placeholders = codigos.map(() => "?").join(",");
+      const [descripciones] = await pool.query(
+        `SELECT codigo_pro, des FROM productos WHERE codigo_pro IN (${placeholders})`,
+        codigos
+      );
+
+      descripcionMap = Object.fromEntries(
+        descripciones.map((d) => [d.codigo_pro, d.des])
+      );
+    }
+
+    // Agregar descripciones al resultado
+    for (const estado in resultado) {
+      resultado[estado] = resultado[estado].map((item) => ({
+        ...item,
+        descripcion: descripcionMap[item.codigo_ped] || "Sin descripción",
+      }));
+    }
+
+    res.status(200).json(resultado);
+  } catch (error) {
+    console.error("Error al obtener top productos por estado:", error);
+    res.status(500).json({
+      message: "Error al procesar la información",
+      error: error.message,
+    });
+  }
+};
+
+//por si estoy mal xd
+// const getHistorico2025 = async (req, res) => {
+//   try {
+//     const [rows] = await pool.query(`
+//       SELECT
+//         TRIM(ESTADO) AS ESTADO,
+//         FECHA,
+//         CAST(TOTAL_FACTURA_LT AS UNSIGNED) AS TOTAL_FACTURA_LT,
+//         CAST(SUMA_FLETE AS UNSIGNED) AS SUMA_FLETE,
+//         DIAS_DE_ENTREGA,
+//         \`NUM. CLIENTE\` AS NUM_CLIENTE
+//       FROM paqueteria
+//       WHERE ESTADO IS NOT NULL AND ESTADO != ''
+//     `);
+
+//     if (rows.length === 0) {
+//       return res.status(404).json({ message: "No hay datos disponibles." });
+//     }
+
+//     const resultado = {};
+//     const totalGeneral = {};
+
+//     rows.forEach((row) => {
+//       const estado = row.ESTADO;
+//       const fecha = new Date(row.FECHA);
+//       const mes = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, "0")}`;
+
+//       if (!resultado[estado]) resultado[estado] = {};
+//       if (!resultado[estado][mes]) {
+//         resultado[estado][mes] = {
+//           total_factura_lt: 0,
+//           total_flete: 0,
+//           total_dias_entrega: 0,
+//           total_registros: 0,
+//           clientes: new Set(),
+//         };
+//       }
+
+//       const grupo = resultado[estado][mes];
+//       grupo.total_factura_lt += row.TOTAL_FACTURA_LT || 0;
+//       grupo.total_flete += row.SUMA_FLETE || 0;
+//       grupo.total_dias_entrega += row.DIAS_DE_ENTREGA || 0;
+//       grupo.total_registros += 1;
+//       if (row.NUM_CLIENTE) grupo.clientes.add(row.NUM_CLIENTE);
+
+//       if (!totalGeneral[mes]) {
+//         totalGeneral[mes] = {
+//           total_factura_lt: 0,
+//           total_flete: 0,
+//           total_dias_entrega: 0,
+//           total_registros: 0,
+//           clientes: new Set(),
+//         };
+//       }
+
+//       const total = totalGeneral[mes];
+//       total.total_factura_lt += row.TOTAL_FACTURA_LT || 0;
+//       total.total_flete += row.SUMA_FLETE || 0;
+//       total.total_dias_entrega += row.DIAS_DE_ENTREGA || 0;
+//       total.total_registros += 1;
+//       if (row.NUM_CLIENTE) total.clientes.add(row.NUM_CLIENTE);
+//     });
+
+//     for (const estado in resultado) {
+//       for (const mes in resultado[estado]) {
+//         const grupo = resultado[estado][mes];
+//         grupo.promedio_dias_entrega = parseFloat(
+//           (grupo.total_dias_entrega / grupo.total_registros).toFixed(1)
+//         );
+//         grupo.total_clientes = grupo.clientes.size;
+//         grupo.porcentaje_flete = parseFloat(
+//           ((grupo.total_flete / grupo.total_factura_lt) * 100).toFixed(1)
+//         );
+//         grupo.total_factura_lt = `$${grupo.total_factura_lt.toLocaleString()}`;
+//         grupo.total_flete = `$${grupo.total_flete.toLocaleString()}`;
+
+//         delete grupo.clientes;
+//         delete grupo.total_dias_entrega;
+//         delete grupo.total_registros;
+//       }
+//     }
+
+//     const resumenGeneral = {};
+//     for (const mes in totalGeneral) {
+//       const grupo = totalGeneral[mes];
+//       resumenGeneral[mes] = {
+//         total_factura_lt: `$${grupo.total_factura_lt.toLocaleString()}`,
+//         total_flete: `$${grupo.total_flete.toLocaleString()}`,
+//         promedio_dias_entrega: parseFloat(
+//           (grupo.total_dias_entrega / grupo.total_registros).toFixed(1)
+//         ),
+//         total_clientes: grupo.clientes.size,
+//         porcentaje_flete: parseFloat(
+//           ((grupo.total_flete / grupo.total_factura_lt) * 100).toFixed(1)
+//         )
+//       };
+//     }
+
+//     resultado["total_general"] = resumenGeneral;
+
+//     res.status(200).json(resultado);
+//   } catch (error) {
+//     console.error("Error en getHistorico2025:", error);
+//     res.status(500).json({ message: "Error en el servidor", error: error.message });
+//   }
+// };
+
+// controlador: getHistorico2025
+// - Devuelve agregados por estado/mes, totales por mes (todos los estados) y un total global (todos los estados + meses)
+// - Importes NUMÉRICOS (sin $) para facilitar el formateo en el frontend
 
 const getHistorico2025 = async (req, res) => {
   try {
+    // 1) Datos base por ESTADO/FECHA desde paqueteria
     const [rows] = await pool.query(`
       SELECT
         TRIM(ESTADO) AS ESTADO,
         FECHA,
-        CAST(TOTAL_FACTURA_LT AS UNSIGNED) AS TOTAL_FACTURA_LT,
-        CAST(SUMA_FLETE AS UNSIGNED) AS SUMA_FLETE,
-        DIAS_DE_ENTREGA,
-        \`NUM. CLIENTE\` AS NUM_CLIENTE
+        CAST(IFNULL(TOTAL,0) AS UNSIGNED) AS TOTAL_FACTURA_LT,
+        CAST(IFNULL(SUMA_FLETE,0)       AS UNSIGNED) AS SUMA_FLETE,
+        CAST(IFNULL(DIAS_DE_ENTREGA,0)  AS UNSIGNED) AS DIAS_DE_ENTREGA,
+        \`NUM. CLIENTE\` AS NUM_CLIENTE,
+        \`NO ORDEN\`     AS NO_ORDEN
       FROM paqueteria
-      WHERE ESTADO IS NOT NULL AND ESTADO != ''
+      WHERE ESTADO IS NOT NULL AND ESTADO <> ''
     `);
 
-    if (rows.length === 0) {
+    if (!rows || rows.length === 0) {
       return res.status(404).json({ message: "No hay datos disponibles." });
     }
 
-    const resultado = {};
-    const totalGeneral = {};
+    // Estructuras
+    const resultado = {};     // { [estado]: { [mes]: { ... } } }
+    const totalGeneral = {};  // { [mes]: { sumas globales del mes } }
 
-    rows.forEach((row) => {
+    // Para total GLOBAL (todos los meses)
+    const globalAgg = {
+      total_factura_lt: 0,
+      total_flete: 0,
+      total_dias_entrega: 0,
+      total_registros: 0,
+      clientes: new Set(),   // clientes únicos globales
+      tarimas_total: 0,
+      cajas_total: 0,
+    };
+
+    // 2) Agregado base (ventas, flete, días, clientes) por estado/mes y por mes (global)
+    for (const row of rows) {
       const estado = row.ESTADO;
       const fecha = new Date(row.FECHA);
+      if (isNaN(fecha.getTime())) continue;
+
       const mes = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, "0")}`;
+
+      // Bucket estado/mes
+      if (!resultado[estado]) resultado[estado] = {};
+      if (!resultado[estado][mes]) {
+        resultado[estado][mes] = {
+          total_factura_lt: 0,
+          total_flete: 0,
+          total_dias_entrega: 0,
+          total_registros: 0,
+          clientes: new Set(),
+          tarimas: 0,
+          cajas: 0,
+        };
+      }
+
+      const g = resultado[estado][mes];
+      g.total_factura_lt += row.TOTAL_FACTURA_LT || 0;
+      g.total_flete += row.SUMA_FLETE || 0;
+      g.total_dias_entrega += row.DIAS_DE_ENTREGA || 0;
+      g.total_registros += 1;
+      if (row.NUM_CLIENTE) g.clientes.add(row.NUM_CLIENTE);
+
+      // Bucket global por mes
+      if (!totalGeneral[mes]) {
+        totalGeneral[mes] = {
+          total_factura_lt: 0,
+          total_flete: 0,
+          total_dias_entrega: 0,
+          total_registros: 0,
+          clientes: new Set(),  // clientes únicos por mes
+          tarimas_total: 0,
+          cajas_total: 0,
+        };
+      }
+
+      const tg = totalGeneral[mes];
+      tg.total_factura_lt += row.TOTAL_FACTURA_LT || 0;
+      tg.total_flete += row.SUMA_FLETE || 0;
+      tg.total_dias_entrega += row.DIAS_DE_ENTREGA || 0;
+      tg.total_registros += 1;
+      if (row.NUM_CLIENTE) tg.clientes.add(row.NUM_CLIENTE);
+
+      // Acumular GLOBAL (todos los meses)
+      globalAgg.total_factura_lt += row.TOTAL_FACTURA_LT || 0;
+      globalAgg.total_flete += row.SUMA_FLETE || 0;
+      globalAgg.total_dias_entrega += row.DIAS_DE_ENTREGA || 0;
+      globalAgg.total_registros += 1;
+      if (row.NUM_CLIENTE) globalAgg.clientes.add(row.NUM_CLIENTE);
+    }
+
+    // 3) TARIMAS y CAJAS por estado/mes (desde pedido_finalizado)
+    const [logisticaRows] = await pool.query(`
+      SELECT
+  p.ESTADO,
+  u.MES,
+  SUM(CASE WHEN u.tipo_norm = 'TARIMA' THEN 1 ELSE 0 END) AS TARIMAS,
+  SUM(CASE WHEN u.tipo_norm = 'CAJA'   THEN 1 ELSE 0 END) AS CAJAS
+FROM (
+  /* Una fila por pedido-mes-tipo (TARIMA o CAJA) */
+  SELECT
+    f.pedido,
+    DATE_FORMAT(f.fin_embarque, '%Y-%m') AS MES,
+    CASE
+      WHEN UPPER(f.tipo_caja) LIKE 'TARIMA%' THEN 'TARIMA'
+      WHEN UPPER(f.tipo_caja) LIKE 'CAJA%'   THEN 'CAJA'
+      ELSE NULL
+    END AS tipo_norm
+  FROM pedido_finalizado f
+  WHERE f.fin_embarque IS NOT NULL
+  GROUP BY f.pedido, MES, tipo_norm
+) u
+JOIN (
+  SELECT \`NO ORDEN\` AS pedido, MAX(ESTADO) AS ESTADO
+  FROM paqueteria
+  WHERE ESTADO IS NOT NULL AND ESTADO <> ''
+  GROUP BY \`NO ORDEN\`
+) p ON p.pedido = u.pedido
+WHERE u.tipo_norm IS NOT NULL
+GROUP BY p.ESTADO, u.MES;
+
+    `);
+
+    // 4) Mezclar tarimas/cajas al resultado por estado/mes y a totales por mes y global
+    for (const r of logisticaRows) {
+      const estado = r.ESTADO;
+      const mes = r.MES;
+      const tarimas = Number(r.TARIMAS) || 0;
+      const cajas   = Number(r.CAJAS) || 0;
 
       if (!resultado[estado]) resultado[estado] = {};
       if (!resultado[estado][mes]) {
@@ -1252,15 +1503,12 @@ const getHistorico2025 = async (req, res) => {
           total_dias_entrega: 0,
           total_registros: 0,
           clientes: new Set(),
+          tarimas: 0,
+          cajas: 0,
         };
       }
-
-      const grupo = resultado[estado][mes];
-      grupo.total_factura_lt += row.TOTAL_FACTURA_LT || 0;
-      grupo.total_flete += row.SUMA_FLETE || 0;
-      grupo.total_dias_entrega += row.DIAS_DE_ENTREGA || 0;
-      grupo.total_registros += 1;
-      if (row.NUM_CLIENTE) grupo.clientes.add(row.NUM_CLIENTE);
+      resultado[estado][mes].tarimas += tarimas;
+      resultado[estado][mes].cajas   += cajas;
 
       if (!totalGeneral[mes]) {
         totalGeneral[mes] = {
@@ -1269,61 +1517,90 @@ const getHistorico2025 = async (req, res) => {
           total_dias_entrega: 0,
           total_registros: 0,
           clientes: new Set(),
+          tarimas_total: 0,
+          cajas_total: 0,
         };
       }
+      totalGeneral[mes].tarimas_total += tarimas;
+      totalGeneral[mes].cajas_total   += cajas;
 
-      const total = totalGeneral[mes];
-      total.total_factura_lt += row.TOTAL_FACTURA_LT || 0;
-      total.total_flete += row.SUMA_FLETE || 0;
-      total.total_dias_entrega += row.DIAS_DE_ENTREGA || 0;
-      total.total_registros += 1;
-      if (row.NUM_CLIENTE) total.clientes.add(row.NUM_CLIENTE);
-    });
+      // Global (todos los meses)
+      globalAgg.tarimas_total += tarimas;
+      globalAgg.cajas_total   += cajas;
+    }
 
+    // 5) Formateo final por estado/mes (cálculos derivados)
     for (const estado in resultado) {
       for (const mes in resultado[estado]) {
-        const grupo = resultado[estado][mes];
-        grupo.promedio_dias_entrega = parseFloat(
-          (grupo.total_dias_entrega / grupo.total_registros).toFixed(1)
-        );
-        grupo.total_clientes = grupo.clientes.size;
-        grupo.porcentaje_flete = parseFloat(
-          ((grupo.total_flete / grupo.total_factura_lt) * 100).toFixed(1)
-        );
-        grupo.total_factura_lt = `$${grupo.total_factura_lt.toLocaleString()}`;
-        grupo.total_flete = `$${grupo.total_flete.toLocaleString()}`;
+        const g = resultado[estado][mes];
 
-        delete grupo.clientes;
-        delete grupo.total_dias_entrega;
-        delete grupo.total_registros;
+        // Si vino de base, clientes es Set; si vino solo de logística, también está (vacío)
+        g.promedio_dias_entrega = Number(
+          ((g.total_dias_entrega || 0) / (g.total_registros || 1)).toFixed(1)
+        );
+        g.total_clientes = (g.clientes && g.clientes.size) ? g.clientes.size : 0;
+        g.porcentaje_flete = Number(
+          (((g.total_flete || 0) / (g.total_factura_lt || 1)) * 100).toFixed(1)
+        );
+
+        // Quitar campos internos
+        delete g.clientes;
+        delete g.total_dias_entrega;
+        delete g.total_registros;
       }
     }
 
-    const resumenGeneral = {};
+    // 6) Resumen general por mes
+    const resumenPorMes = {};
     for (const mes in totalGeneral) {
-      const grupo = totalGeneral[mes];
-      resumenGeneral[mes] = {
-        total_factura_lt: `$${grupo.total_factura_lt.toLocaleString()}`,
-        total_flete: `$${grupo.total_flete.toLocaleString()}`,
-        promedio_dias_entrega: parseFloat(
-          (grupo.total_dias_entrega / grupo.total_registros).toFixed(1)
+      const m = totalGeneral[mes];
+      resumenPorMes[mes] = {
+        total_factura_lt: m.total_factura_lt,
+        total_flete: m.total_flete,
+        promedio_dias_entrega: Number(
+          ((m.total_dias_entrega || 0) / (m.total_registros || 1)).toFixed(1)
         ),
-        total_clientes: grupo.clientes.size,
-        porcentaje_flete: parseFloat(
-          ((grupo.total_flete / grupo.total_factura_lt) * 100).toFixed(1)
-        )
+        total_clientes: m.clientes.size,
+        porcentaje_flete: Number(
+          (((m.total_flete || 0) / (m.total_factura_lt || 1)) * 100).toFixed(1)
+        ),
+        tarimas: m.tarimas_total || 0,
+        cajas: m.cajas_total || 0,
       };
     }
 
-    resultado["total_general"] = resumenGeneral;
+    // 7) Total global (todos los meses y estados)
+    const totalGlobal = {
+      total_factura_lt: globalAgg.total_factura_lt,
+      total_flete: globalAgg.total_flete,
+      promedio_dias_entrega: Number(
+        ((globalAgg.total_dias_entrega || 0) / (globalAgg.total_registros || 1)).toFixed(1)
+      ),
+      total_clientes: globalAgg.clientes.size,
+      porcentaje_flete: Number(
+        (((globalAgg.total_flete || 0) / (globalAgg.total_factura_lt || 1)) * 100).toFixed(1)
+      ),
+      tarimas_total: globalAgg.tarimas_total || 0,
+      cajas_total: globalAgg.cajas_total || 0,
+    };
 
-    res.status(200).json(resultado);
+    // 8) Respuesta final
+    const payload = {
+      ...resultado,                     // por estado/mes
+      total_general: {
+        por_mes: resumenPorMes,         // totales por mes (todos los estados)
+        global: totalGlobal,            // gran total (todos los estados + meses)
+      },
+    };
+
+    res.status(200).json(payload);
   } catch (error) {
     console.error("Error en getHistorico2025:", error);
     res.status(500).json({ message: "Error en el servidor", error: error.message });
   }
 };
-  
+
+
 
 module.exports = {
   getPrduSurtido,
@@ -1336,5 +1613,5 @@ module.exports = {
   getTopProductosPorEstado,
   getPrduSurtidoPorRango,
   getPrduPaqueteriaPorrango,
-  getHistorico2025
+  getHistorico2025,
 };

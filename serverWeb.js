@@ -35,6 +35,7 @@ const COBERTURA = require('./src/routes/coberturaRoutes')
 const planeacion = require('./src/routes/pleneacionRoutes')
 const repo_prob = require('./src/routes/repo_prob_routes')
 const Departamental = require('./src/routes/departamentalRoutes')
+const Mercado = require('./src/routes/MercadoRoutes')
 
 const {inicializarAlertas} = require('./src/controller/alertasController')
 
@@ -98,6 +99,7 @@ app.use('/api/rh',rh)
 app.use('/api/Queretaro',Queretaro)
 app.use('/api/visitas', visi)
 app.use('/api/fotos', express.static('C:/acc-ced/'));
+app.use('/api/veh', express.static('C:/vehiculos/'));
 app.use('/api/Trasporte',Trasporte)
 app.use('/api/kpi', KPi)
 app.use('/api/Ventas', Tracking)
@@ -105,6 +107,7 @@ app.use('/api/cobertura', COBERTURA)
 app.use('/api/planeacion', planeacion)
 app.use('/api/repo_prob', repo_prob)
 app.use('/api/departamental', Departamental)
+app.use('/api/mercado-libre', Mercado)
 
 inicializarAlertas(io);
 

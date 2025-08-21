@@ -785,7 +785,6 @@ const correosPorNombre = {
   "Axel Squivias Sanchez": "axel.squivias@santul.net",
   "Marleni Moreno": "marleni.moreno@santul.net",
   "Nadia Cano": "nadia.cano@santul.net",
-  "Rocio Mancilla": "rocio.mancilla@santul.net ",
   "Abraham arenas": "abraham.arenas@santul.net",
   "Laura Carbajal": "laura.carbajal@santul.net",
   "Ariel Ramírez": "ariel.ramirez@santul.net",
@@ -806,6 +805,7 @@ const correosPorNombre = {
   "Eduardo Sandler": "eduardo.sandler@santul.net",
   "Mauricio Sandler": "mauricio.sandler@santul.net",
   "Jonathan Alcantara": "jonathan.alcantara@santul.net",
+  "Joel Duran": "joel.duran@santul.net",
 };
 
 const obtenerUbicacionesPorCodigo = async (req, res) => {

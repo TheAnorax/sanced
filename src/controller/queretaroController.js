@@ -70,19 +70,35 @@ const getProyectoQueretaro = async (req, res) => {
   }
 };
 
+
+
 // Obtener datos filtrados por categoría, portafolio y segmento
 const getCategoryData = async (req, res) => {
   let { giro, portafolio, segmento } = req.params;
 
   try {
-    const tableName = mapGiroToTable(giro);
-    const segmentColumn = segmento.trim().toUpperCase(); // 🔥 limpieza robusta
+    // 🔥 Normalizar textos
+    const normalizedGiro = normalizeText(giro);
+    const normalizedPortafolio = normalizeText(portafolio);
+
+    // 🔹 Validación especial para Tornillería (en giro o portafolio)
+    if (normalizedGiro === "tornilleria" || normalizedPortafolio === "tornilleria") {
+      // console.log("🔧 Tornillería detectada (en giro o portafolio). Usando tabla 'mecanica'.");
+      giro = "mecanica";
+    }
+
+    const tableName = mapGiroToTable(giro); // Determinar tabla según giro
+    // console.log(`🔍 Giro recibido: "${giro}" → Tabla mapeada: "${tableName}"`);
+
+    const segmentColumn = segmento.trim().toUpperCase();
 
     if (!["ORO", "PLATA", "BRONCE"].includes(segmentColumn)) {
+      console.warn(`⚠️ Segmento inválido recibido: "${segmentColumn}"`);
       return res.status(400).json({ message: "Segmento no válido" });
     }
 
-    // Solo productos que tienen "Aplica" en la columna correspondiente
+    // 🔹 1. Buscar coincidencia exacta (giro + portafolio)
+   //  console.log(`📌 Buscando en tabla: ${tableName} | Portafolio: "${portafolio}" | Segmento: "${segmentColumn}"`);
     const query = `
       SELECT Codigo, Descripcion, Categoria, ${segmentColumn} AS SegmentoPrecio
       FROM savawms.${tableName}
@@ -91,25 +107,48 @@ const getCategoryData = async (req, res) => {
     `;
     const [categoryRows] = await pool.query(query, [portafolio]);
 
-    if (categoryRows.length === 0) {
+    // 🔸 2. Si no hay coincidencia en portafolio, mostrar toda la tabla filtrada por segmento
+    let finalRows = categoryRows;
+    if (finalRows.length === 0) {
+     //  console.warn(`⚠️ No hubo coincidencia en la categoría "${portafolio}" dentro de "${tableName}". Mostrando toda la tabla filtrada solo por segmento...`);
+
+      const queryAll = `
+        SELECT Codigo, Descripcion, Categoria, ${segmentColumn} AS SegmentoPrecio
+        FROM savawms.${tableName}
+        WHERE TRIM(UPPER(${segmentColumn})) = 'APLICA'
+      `;
+      const [allRows] = await pool.query(queryAll);
+      finalRows = allRows;
+
+      if (finalRows.length > 0) {
+        // console.log(`✅ Se cargaron ${finalRows.length} registros de la tabla "${tableName}" filtrados por segmento "${segmentColumn}"`);
+      }
+    }
+
+    // Si aun así no hay datos, devolver vacío
+    if (finalRows.length === 0) {
+      // console.warn(`⚠️ No se encontraron datos en la tabla "${tableName}" ni siquiera filtrando solo por segmento.`);
       return res.json({ data: [] });
     }
 
-    const codigos = categoryRows.map((row) => row.Codigo);
+    // 🔹 3. Obtener precios
+    const codigos = finalRows.map((row) => row.Codigo).filter((c) => typeof c === "string" || typeof c === "number");
+    if (codigos.length === 0) {
+     //  console.warn("⚠️ No hay códigos válidos para consultar precios.");
+    }
 
     const queryPrices = `
       SELECT Codigo, \`Inner\`, \`Master\`, \`TP\`, ${segmentColumn} AS Precio, Precio_T
       FROM savawms.precios
-      WHERE Codigo IN (?)
+      ${codigos.length > 0 ? `WHERE Codigo IN (${codigos.map(() => "?").join(",")})` : ""}
     `;
-    const [priceRows] = await pool.query(queryPrices, [codigos]);
+    const [priceRows] = codigos.length > 0 ? await pool.query(queryPrices, codigos) : [[]];
 
-    const normalizeCode = (code) => code.toString().trim();
+    const normalizeCode = (code) => code?.toString().trim();
 
-    const combinedData = categoryRows.map((categoryItem) => {
+    const combinedData = finalRows.map((categoryItem) => {
       const priceItem = priceRows.find(
-        (price) =>
-          normalizeCode(price.Codigo) === normalizeCode(categoryItem.Codigo)
+        (price) => normalizeCode(price.Codigo) === normalizeCode(categoryItem.Codigo)
       );
 
       return {
@@ -118,52 +157,71 @@ const getCategoryData = async (req, res) => {
         Master: priceItem ? priceItem.Master : "N/A",
         TP: priceItem ? priceItem.TP : "N/A",
         Precio: priceItem ? priceItem.Precio : "N/A",
-        Precio_T:
-          priceItem && priceItem.Precio_T !== "#N/D" ? priceItem.Precio_T : "0",
+        Precio_T: priceItem && priceItem.Precio_T !== "#N/D" ? priceItem.Precio_T : "0",
       };
     });
 
+   // console.log(`✅ Total de productos combinados con precios: ${combinedData.length}`);
     res.json({ data: combinedData });
+
   } catch (error) {
-    console.error("Error al obtener los datos de la tabla:", error.message);
-    res
-      .status(500)
-      .json({
-        message: `Error al obtener los datos de ${giro}`,
-        error: error.message,
-      });
+    console.error("❌ Error al obtener los datos de la tabla:", error.message);
+    res.status(500).json({
+      message: `Error al obtener los datos de ${giro}`,
+      error: error.message,
+    });
   }
 };
 
-// Mapeo de giros a tablas específicas
+const normalizeText = (text) => {
+  return text
+    .normalize("NFD") // Descompone caracteres con acento
+    .replace(/[\u0300-\u036f]/g, "") // Elimina los acentos
+    .toLowerCase()
+    .trim();
+};
+
 const mapGiroToTable = (giro) => {
-  switch (giro.toLowerCase()) {
+  const normalized = normalizeText(giro); // 🔥 Aquí limpiamos el texto
+
+  switch (normalized) {
     case "ferreteria":
       return "ferreteria";
-    case "papelería":
-      return "Papelería";
+    case "papeleria":
+      return "papeleria";
     case "mecanica":
       return "mecanica";
-    case "herrería":
-      return "Herreria";
-    case "cerrajería":
-      return "Cerrajería";
+    case "herreria":
+      return "herreria";
+    case "cerrajeria":
+      return "cerrajeria";
     case "vidrio y aluminio":
+    case "vidrioyaluminio":
+    case "vidrieria":       // ✅ Nuevo alias
+    case "vidriería":       // ✅ Con acento también normalizado
       return "vidrio_y_aluminio";
-    case "plomería":
-      return "Plomería";
-    case "construcción":
-      return "Construcción";
+    case "plomeria":
+      return "plomeria";
+    case "construccion":
+      return "construccion";
     case "pintura":
-      return "Pintura";
-    case "eléctricoiluminación":
-      return "EléctricoIluminación";
-    case "construcción ligera":
-      return "ConstrucciónLigera";
+      return "pintura";
+    case "electricoiluminacion":
+      return "electricoiluminacion";
+    case "construccion ligera":
+    case "construccionligera":
+      return "construccionligera";
     default:
-      return "ferreteria"; // Tabla por defecto
+      // console.warn(`⚠️ Giro "${giro}" no encontrado. Usando tabla "ferreteria".`);
+      return "ferreteria";
   }
 };
+
+//fin del mapeo 
+
+
+
+
 
 // Backend: Controlador para filtrar por zona y ruta
 const getFilteredProyectoQueretaro = async (req, res) => {

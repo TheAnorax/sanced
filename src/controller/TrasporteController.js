@@ -365,14 +365,6 @@ const actualizarGuia = async (req, res) => {
     entregaSatisfactoria,
     motivo,
     totalFacturaLT,
-    prorateoFacturaLT,
-    prorateoFacturaPaqueteria,
-    gastosExtras,
-    sumaFlete,
-    porcentajeEnvio,
-    porcentajePaqueteria,
-    sumaGastosExtras,
-    porcentajeGlobal,
     diferencia,
     noFactura,
     fechaFactura,
@@ -384,105 +376,90 @@ const actualizarGuia = async (req, res) => {
 
   const id = req.params.id || null;
 
-  if (!id || guia === undefined || guia.trim() === "") {
-    return res.status(400).json({
-      message: "❌ Faltan datos: ID o GUIA no son válidos.",
-    });
+  if (!id || !guia || guia.trim() === "") {
+    return res
+      .status(400)
+      .json({ message: "❌ Faltan datos: ID o GUIA no son válidos." });
   }
 
-  try {
-    // Verificar si existe el registro con ese ID
-    const [existe] = await pool.query("SELECT * FROM paqueteria WHERE id = ?", [
-      id,
-    ]);
+  // Normaliza fechas si vienen como dd/mm/yyyy (opcional)
+  const toMySQLDate = (s) => {
+    if (!s) return null; // queda NULL -> conserva
+    const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(s));
+    return m ? `${m[3]}-${m[2]}-${m[1]}` : s; // si no cumple, se manda tal cual
+  };
 
+  try {
+    const [existe] = await pool.query(
+      "SELECT id FROM paqueteria WHERE id = ?",
+      [id]
+    );
     if (existe.length === 0) {
-      return res.status(404).json({
-        message: "❌ No se encontró el pedido con ese ID.",
-      });
+      return res
+        .status(404)
+        .json({ message: "❌ No se encontró el pedido con ese ID." });
     }
 
-    // Actualizar campos
     const query = `
-      UPDATE paqueteria SET 
-        GUIA = ?, 
-        PAQUETERIA = ?, 
-        TRANSPORTE = ?, 
-        FECHA_DE_ENTREGA_CLIENTE = ?, 
-        DIAS_DE_ENTREGA = ?, 
-        ENTREGA_SATISFACTORIA_O_NO_SATISFACTORIA = ?, 
-        MOTIVO = ?, 
-        TOTAL_FACTURA_LT = ?, 
-        PRORRATEO_FACTURA_LT = ?, 
-        PRORRATEO_FACTURA_PAQUETERIA = ?, 
-        GASTOS_EXTRAS = ?, 
-        SUMA_FLETE = ?, 
-        PORCENTAJE_ENVIO = ?, 
-        PORCENTAJE_PAQUETERIA = ?, 
-        SUMA_GASTOS_EXTRAS = ?, 
-        PORCENTAJE_GLOBAL = ?, 
-        DIFERENCIA = ?, 
-        NO_FACTURA = ?, 
-        FECHA_DE_FACTURA = ?, 
-        TARIMAS = ?, 
-        NUMERO_DE_FACTURA_LT = ?, 
-        OBSERVACIONES = ?, 
-        TIPO = ?
+      UPDATE paqueteria SET
+        GUIA                                   = COALESCE(NULLIF(?, ''), GUIA),
+        PAQUETERIA                             = COALESCE(NULLIF(?, ''), PAQUETERIA),
+        TRANSPORTE                             = COALESCE(NULLIF(?, ''), TRANSPORTE),
+        FECHA_DE_ENTREGA_CLIENTE               = COALESCE(NULLIF(?, ''), FECHA_DE_ENTREGA_CLIENTE),
+        DIAS_DE_ENTREGA                        = COALESCE(NULLIF(?, ''), DIAS_DE_ENTREGA),
+        ENTREGA_SATISFACTORIA_O_NO_SATISFACTORIA = COALESCE(NULLIF(?, ''), ENTREGA_SATISFACTORIA_O_NO_SATISFACTORIA),
+        MOTIVO                                 = COALESCE(NULLIF(?, ''), MOTIVO),
+        TOTAL_FACTURA_LT                       = COALESCE(NULLIF(?, ''), TOTAL_FACTURA_LT),
+        DIFERENCIA                             = COALESCE(NULLIF(?, ''), DIFERENCIA),
+        NO_FACTURA                             = COALESCE(NULLIF(?, ''), NO_FACTURA),
+        FECHA_DE_FACTURA                       = COALESCE(NULLIF(?, ''), FECHA_DE_FACTURA),
+        TARIMAS                                = COALESCE(NULLIF(?, ''), TARIMAS),
+        NUMERO_DE_FACTURA_LT                   = COALESCE(NULLIF(?, ''), NUMERO_DE_FACTURA_LT),
+        OBSERVACIONES                          = COALESCE(NULLIF(?, ''), OBSERVACIONES),
+        TIPO                                   = COALESCE(NULLIF(?, ''), TIPO)
       WHERE id = ?;
     `;
 
     const valores = [
-      guia,
-      paqueteria,
-      transporte,
-      fechaEntregaCliente,
-      diasEntrega,
-      entregaSatisfactoria,
-      motivo,
-      totalFacturaLT,
-      prorateoFacturaLT,
-      prorateoFacturaPaqueteria,
-      gastosExtras,
-      sumaFlete,
-      porcentajeEnvio,
-      porcentajePaqueteria,
-      sumaGastosExtras,
-      porcentajeGlobal,
-      diferencia,
-      noFactura,
-      fechaFactura,
-      tarimas,
-      numeroFacturaLT,
-      observaciones,
-      tipo,
+      guia ?? null,
+      paqueteria ?? null,
+      transporte ?? null,
+      toMySQLDate(fechaEntregaCliente) ?? null,
+      diasEntrega ?? null,
+      entregaSatisfactoria ?? null,
+      motivo ?? null,
+      totalFacturaLT ?? null,
+      diferencia ?? null,
+      noFactura ?? null,
+      toMySQLDate(fechaFactura) ?? null,
+      tarimas ?? null,
+      numeroFacturaLT ?? null,
+      observaciones ?? null,
+      tipo ?? null,
       id,
     ];
 
     const [resultado] = await pool.query(query, valores);
-
-    if (resultado.affectedRows > 0) {
-      return res.status(200).json({
-        message: "✅ Actualización realizada correctamente.",
-      });
-    } else {
-      return res.status(304).json({
-        message: "⚠ No se modificaron campos (ya estaban iguales).",
-      });
-    }
+    return res.status(resultado.affectedRows > 0 ? 200 : 304).json({
+      message:
+        resultado.affectedRows > 0
+          ? "✅ Actualización realizada correctamente."
+          : "⚠ No se modificaron campos (ya estaban iguales).",
+    });
   } catch (error) {
-    console.error("❌ Error al actualizar:", error.message);
+    console.error("❌ Error al actualizar:", error);
     return res.status(500).json({ message: "❌ Error al actualizar." });
   }
 };
-
-
 
 const getPedidosEmbarque = async (req, res) => {
   try {
     const { pedido, tipo } = req.params;
 
     if (!pedido || !tipo) {
-      return res.status(400).json({ message: "Faltan parámetros: pedido o tipo" });
+      return res
+        .status(400)
+        .json({ message: "Faltan parámetros: pedido o tipo" });
     }
 
     console.log("📥 Buscando pedido:", pedido, "tipo:", tipo);
@@ -495,7 +472,8 @@ const getPedidosEmbarque = async (req, res) => {
     if (existeEmbarque.length > 0) {
       return res.status(409).json({
         code: "YA_EN_EMBARQUE",
-        message: "El pedido ya fue movido a EMBARQUES. No se puede generar el packing nuevamente.",
+        message:
+          "El pedido ya fue movido a EMBARQUES. No se puede generar el packing nuevamente.",
         bloqueoPacking: true,
       });
     }
@@ -525,15 +503,21 @@ const getPedidosEmbarque = async (req, res) => {
     const [rows] = await pool.query(queryFinalizado, [pedido, tipo]);
 
     if (rows.length === 0) {
-      return res.status(404).json({ message: "No se encontraron registros en pedido_finalizado." });
+      return res
+        .status(404)
+        .json({ message: "No se encontraron registros en pedido_finalizado." });
     }
 
     // 📊 Conteos para PDF
     const totalLineasDB = rows.length;
-    const totalMotivo = rows.filter(r => r.motivo && r.motivo.trim() !== "").length;
+    const totalMotivo = rows.filter(
+      (r) => r.motivo && r.motivo.trim() !== ""
+    ).length;
     const totalLineasPDF = totalLineasDB - totalMotivo;
 
-    console.log(`✅ BD: ${totalLineasDB} | Motivo: ${totalMotivo} | PDF: ${totalLineasPDF}`);
+    console.log(
+      `✅ BD: ${totalLineasDB} | Motivo: ${totalMotivo} | PDF: ${totalLineasPDF}`
+    );
 
     return res.json({
       totalLineas: totalLineasDB,
@@ -544,12 +528,11 @@ const getPedidosEmbarque = async (req, res) => {
     });
   } catch (error) {
     console.error("Error al obtener pedidos de embarque:", error);
-    return res.status(500).json({ message: "Error al obtener pedidos de embarque" });
+    return res
+      .status(500)
+      .json({ message: "Error al obtener pedidos de embarque" });
   }
 };
-
-
-
 
 const getTransportistas = async (req, res) => {
   try {
@@ -1132,22 +1115,17 @@ const getFusionInfo = async (req, res) => {
 
 const actualizarFacturasDesdeExcel = async (req, res) => {
   try {
-    // Validar si se subió un archivo
     if (!req.file) {
       return res
         .status(400)
         .json({ message: "❌ No se ha subido ningún archivo." });
     }
 
-    // Leer el archivo Excel
     const workbook = xlsx.read(req.file.buffer, { type: "buffer" });
-    const sheetName = workbook.SheetNames[0]; // Tomamos la primera hoja
+    const sheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
-
-    // Convertir la hoja de Excel a JSON
     const data = xlsx.utils.sheet_to_json(sheet, { defval: "" });
 
-    // Validar si el archivo tiene datos
     if (data.length === 0) {
       return res
         .status(400)
@@ -1155,46 +1133,82 @@ const actualizarFacturasDesdeExcel = async (req, res) => {
     }
 
     let actualizaciones = 0;
+    let saltadas = 0;
 
-    // Recorrer cada fila del archivo Excel
     for (const row of data) {
-      const noOrden = row["Número orden"];
-      const noFactura = row["Número documento"];
-      let fechaFactura = row["Fecha factura"];
+      // Lee posibles nombres de columnas del Excel (ajusta si tus encabezados difieren)
+      const noOrden =
+        row["Número orden"] ??
+        row["Numero orden"] ??
+        row["NO ORDEN"] ??
+        row["No Orden"] ??
+        row["No. orden"];
+      const tipoOrden =
+        row["Tipo de orden"] ??
+        row["Tp ord"] ??
+        row["TIPO DE ORDEN"] ??
+        row["Tipo Orden"];
+      const noFactura =
+        row["Número documento"] ??
+        row["Numero documento"] ??
+        row["NO FACTURA"] ??
+        row["No Factura"] ??
+        row["Factura"];
+      let fechaFactura =
+        row["Fecha factura"] ??
+        row["FECHA DE FACTURA"] ??
+        row["Fecha de factura"];
 
-      // Validar que los datos esenciales existan
-      if (!noOrden || !noFactura || !fechaFactura) {
-        // console.warn(
-        //   `⚠ Saltando fila con datos faltantes: ${JSON.stringify(row)}`
-        // );
+      // Validación de datos mínimos
+      if (!noOrden || !tipoOrden || !noFactura || !fechaFactura) {
+        saltadas++;
         continue;
       }
 
-      // Intentar convertir la fecha en caso de que sea un número serial de Excel
+      // Normaliza fecha (número serial de Excel, Date, o string dd/mm/yyyy)
       if (typeof fechaFactura === "number") {
-        fechaFactura = new Date((fechaFactura - 25569) * 86400 * 1000)
+        fechaFactura = new Date(
+          Math.round((fechaFactura - 25569) * 86400 * 1000)
+        )
           .toISOString()
-          .split("T")[0]; // Convertir a formato YYYY-MM-DD
+          .split("T")[0];
+      } else if (fechaFactura instanceof Date) {
+        fechaFactura = fechaFactura.toISOString().split("T")[0];
+      } else if (typeof fechaFactura === "string") {
+        const m = fechaFactura.match(
+          /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/
+        );
+        if (m) {
+          const [_, d, mo, y] = m;
+          const yyyy = y.length === 2 ? `20${y}` : y;
+          const dd = d.padStart(2, "0");
+          const mm = mo.padStart(2, "0");
+          fechaFactura = `${yyyy}-${mm}-${dd}`;
+        }
       }
 
-      // Actualizar la base de datos
+      // 🔹 Actualiza mediante NO ORDEN + TIPO DE ORDEN
       const query = `
-        UPDATE paqueteria 
-        SET NO_FACTURA = ?, FECHA_DE_FACTURA = ? 
-        WHERE \`NO ORDEN\` = ?
+        UPDATE paqueteria
+        SET NO_FACTURA = ?, FECHA_DE_FACTURA = ?
+        WHERE \`NO ORDEN\` = ? AND tipo_original = ?
       `;
 
       const [result] = await pool.query(query, [
         noFactura,
         fechaFactura,
         noOrden,
+        tipoOrden,
       ]);
 
-      // Contar actualizaciones exitosas
-      if (result.affectedRows > 0) {
-        actualizaciones++;
-      }
+      if (result.affectedRows > 0) actualizaciones++;
     }
+
+    return res.json({
+      message: "✅ Proceso completado",
+      filas_actualizadas: actualizaciones,
+      filas_saltadas_por_datos_incompletos: saltadas,
+    });
   } catch (error) {
     console.error("❌ Error al actualizar facturas:", error);
     return res
@@ -1450,21 +1464,20 @@ const obtenerRutasConPedidos = async (req, res) => {
         p.nombre_cliente, 
         p.municipio, 
         p.estado, 
-        IFNULL(p.total, 0) AS total, 
-        IFNULL(p.partidas, 0) AS partidas, 
-        IFNULL(p.piezas, 0) AS piezas, 
-        IFNULL(NULLIF(p.fecha_emision, '0000-00-00'), CURRENT_DATE()) AS fecha_emision,
-        IFNULL(p.observaciones, 'Sin observaciones') AS observaciones,
-        IFNULL(p.tipo, '') AS tipo
+        COALESCE(p.total, 0) AS total, 
+        COALESCE(p.partidas, 0) AS partidas, 
+        COALESCE(p.piezas, 0) AS piezas, 
+        COALESCE(NULLIF(p.fecha_emision, '0000-00-00'), CURRENT_DATE()) AS fecha_emision,
+        COALESCE(p.observaciones, 'Sin observaciones') AS observaciones,
+        COALESCE(p.tipo, '') AS tipo
       FROM rutas r
-      LEFT JOIN pedidos p ON r.id = p.ruta_id
-      WHERE p.no_orden IS NOT NULL 
-        AND NOT EXISTS (
-          SELECT 1
-          FROM paqueteria paq
-          WHERE TRIM(paq.\`NO ORDEN\`) = p.no_orden
-            AND TRIM(paq.\`TIPO_ORIGINAL\`) = p.tipo
-        )
+      LEFT JOIN pedidos p 
+        ON r.id = p.ruta_id
+      LEFT JOIN paqueteria paq 
+        ON paq.\`NO ORDEN\` = p.no_orden
+       AND paq.\`TIPO_ORIGINAL\` = p.tipo
+      WHERE p.no_orden IS NOT NULL
+        AND paq.\`NO ORDEN\` IS NULL
       ORDER BY r.fecha_creacion DESC, p.fecha_emision DESC;
     `;
 
@@ -1755,7 +1768,7 @@ const getPedidosDia = async (req, res) => {
         timeZone: "America/Mexico_City",
       }).format(date);
     const selectedDate = fecha || getFormattedDate();
-
+ 
     // 1. Pedidos principales
     const [rows] = await pool.query(
       `
@@ -2197,48 +2210,303 @@ const getReferenciasClientes = async (req, res) => {
 
 //actualizacion de total con iva
 
+const parseNum = (v) =>
+  parseFloat(String(v ?? "0").replace(/[^0-9.-]+/g, "")) || 0;
+
 async function actualizarTotalIvaMasivoDesdeAPI() {
+  let conn;
   try {
     console.log("⏳ Conectando a la API para obtener pedidos...");
-
-    const response = await axios.post(
+    const { data: pedidos = [] } = await axios.post(
       "http://66.232.105.87:3007/api/Trasporte/obtenerPedidos"
     );
-    const pedidos = response.data;
 
     console.log(`📦 Se recibieron ${pedidos.length} pedidos desde la API`);
 
-    for (const pedido of pedidos) {
-      const noOrden = parseInt(pedido.NoOrden);
-      const tipoOriginal = pedido.TpoOriginal;
-      const totalIva = parseFloat(pedido.TotalConIva || 0);
+    // Trabajamos en transacción para consistencia
+    conn = await pool.getConnection();
+    await conn.beginTransaction();
 
-      const [result] = await pool.execute(
-        `UPDATE paqueteria 
-         SET totalIva = ? 
+    let actualizados = 0;
+
+    for (const pedido of pedidos) {
+      const noOrden = parseInt(pedido.NoOrden); // ej. "33155"
+      const tipoOriginal = String(pedido.TpoOriginal || ""); // ej. "VW"
+
+      // Subtotal (sin IVA) y Total con IVA desde la API
+      const total = parseNum(pedido.Total); // ej. 1170.31
+      const totalIva = parseNum(pedido.TotalConIva); // ej. 1357.56
+      const NO_FACTURA = parseNum(pedido.NoFactura);
+
+      if (!noOrden || !tipoOriginal) continue; // datos clave faltantes
+
+      const [result] = await conn.execute(
+        `UPDATE paqueteria
+           SET total_api = ?, totalIva = ?, NO_FACTURA = ? , FECHA_DE_FACTURA = CURDATE()
          WHERE \`NO ORDEN\` = ? AND tipo_original = ?`,
-        [totalIva, noOrden, tipoOriginal]
+        [total, totalIva, NO_FACTURA, noOrden, tipoOriginal]
       );
 
       if (result.affectedRows > 0) {
-        // console.log(
-        //   `✅ totalIva actualizado: ${noOrden}-${tipoOriginal} = $${totalIva}`
-        // );
+        actualizados++;
       }
     }
 
-    console.log("✅ Proceso de facturas completado.");
+    await conn.commit();
+    console.log(`✅ Proceso completado. Filas actualizadas: ${actualizados}`);
   } catch (error) {
+    if (conn) await conn.rollback();
     console.error("❌ Error al actualizar pedidos:", error.message);
+  } finally {
+    if (conn) conn.release();
   }
 }
 
 actualizarTotalIvaMasivoDesdeAPI();
 
-// 🔁 Ejecutar cada 5 segundos
 setInterval(() => {
   actualizarTotalIvaMasivoDesdeAPI();
-}, 1800000); // 5000 milisegundos = 5 segundos
+}, 600000); // 5000 milisegundos = 5 segundos
+
+// funcion del modal
+
+// ===== Helpers =====
+function monthRange(year, month) {
+  const y = parseInt(year, 10);
+  const m = parseInt(month, 10);
+  if (!y || !m || m < 1 || m > 12) return null;
+
+  const start = `${y}-${String(m).padStart(2, "0")}-01`;
+  const nextMonth = m === 12 ? 1 : m + 1;
+  const nextYear = m === 12 ? y + 1 : y;
+  const end = `${nextYear}-${String(nextMonth).padStart(2, "0")}-01`;
+  return { start, end };
+}
+
+function parseTotal(v) {
+  if (v === null || v === undefined || v === "") return null;
+  const n = Number(String(v).replace(/[^0-9.\-]/g, ""));
+  return Number.isFinite(n) ? n : null;
+}
+
+function isYYYYMMDD(s) {
+  return typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s);
+}
+
+// ===== GET (lee mes) =====
+async function getPaqueteriaByMonth(req, res) {
+  try {
+    const { year, month, incompletos } = req.query;
+    const range = monthRange(year, month);
+    if (!range) {
+      return res
+        .status(400)
+        .json({
+          ok: false,
+          msg: "Parámetros inválidos. Usa ?year=YYYY&month=1..12",
+        });
+    }
+
+    const params = [range.start, range.end];
+
+    let sql = `
+      SELECT
+        \`NO ORDEN\`                AS no_orden,
+        tipo_original,
+          TRANSPORTE,
+          GUIA,
+          DATE_FORMAT(FECHA_DE_ENTREGA_CLIENTE, '%Y-%m-%d') AS fecha_de_entrega_cliente, -- 👈 alias + formato ISO
+          TOTAL_FACTURA_LT,
+          PRORRATEO_FACTURA_LT,
+          SUMA_FLETE,
+          TOTAL,
+          TIPO,
+          NUMERO_DE_FACTURA_LT,
+          PORCENTAJE_PAQUETERIA,
+          created_at
+      FROM paqueteria
+      WHERE created_at >= ? AND created_at < ?
+    `;
+
+    if (String(incompletos).toLowerCase() === "true") {
+      sql += `
+        AND (
+          GUIA IS NULL OR GUIA = '' OR
+          TOTAL_FACTURA_LT IS NULL OR TOTAL_FACTURA_LT = 0 OR
+          FECHA_DE_ENTREGA_CLIENTE IS NULL OR
+          FECHA_DE_ENTREGA_CLIENTE = '0000-00-00' OR
+          FECHA_DE_ENTREGA_CLIENTE = '0000-00-00 00:00:00'
+        )
+      `;
+    }
+
+    sql += ` ORDER BY created_at DESC`;
+
+    const [rows] = await pool.query(sql, params);
+    return res.json({ ok: true, rows, from: range.start, to: range.end });
+  } catch (err) {
+    console.error("getPaqueteriaByMonth error:", err);
+    return res.status(500).json({ ok: false, msg: "Error en servidor" });
+  }
+}
+
+async function updatePaqueteriaUno(req, res) {
+  try {
+    const {
+      no_orden,
+      tipo_original,
+      numero_de_factura_lt,
+      guia,
+      fecha_de_entrega_cliente,
+      total_factura_lt,
+      prorrateo_factura_lt,
+      suma_flete,
+      por_paq,
+    } = req.body || {};
+
+    if (!no_orden || !tipo_original) {
+      return res
+        .status(400)
+        .json({ ok: false, msg: "Faltan 'no_orden' y/o 'tipo_original'." });
+    }
+
+    const campos = [];
+    const valores = [];
+
+    if (guia !== undefined) {
+      campos.push("GUIA = ?");
+      valores.push(guia === "" ? null : String(guia).trim());
+    }
+
+    if (fecha_de_entrega_cliente !== undefined) {
+      if (
+        fecha_de_entrega_cliente === "" ||
+        fecha_de_entrega_cliente === null
+      ) {
+        campos.push("FECHA_DE_ENTREGA_CLIENTE = NULL");
+      } else {
+        if (!isYYYYMMDD(fecha_de_entrega_cliente)) {
+          return res
+            .status(400)
+            .json({ ok: false, msg: "Fecha inválida. Usa 'YYYY-MM-DD'." });
+        }
+        campos.push("FECHA_DE_ENTREGA_CLIENTE = ?");
+        valores.push(fecha_de_entrega_cliente);
+      }
+    }
+
+    if (total_factura_lt !== undefined) {
+      campos.push("TOTAL_FACTURA_LT = ?");
+      valores.push(parseTotal(total_factura_lt));
+    }
+
+    if (prorrateo_factura_lt !== undefined) {
+      campos.push("PRORRATEO_FACTURA_LT = ?");
+      valores.push(parseTotal(prorrateo_factura_lt));
+    }
+
+    if (suma_flete !== undefined) {
+      campos.push("SUMA_FLETE = ?");
+      valores.push(parseTotal(suma_flete));
+    }
+
+    if (numero_de_factura_lt !== undefined) {
+      campos.push("NUMERO_DE_FACTURA_LT = ?");
+      valores.push(parseTotal(numero_de_factura_lt));
+    }
+
+    if (por_paq !== undefined) {
+      campos.push("PORCENTAJE_PAQUETERIA = ?");
+      valores.push(parseTotal(por_paq));
+    }
+
+    if (campos.length === 0) {
+      return res
+        .status(400)
+        .json({ ok: false, msg: "No hay campos para actualizar." });
+    }
+
+    const sql = `
+      UPDATE paqueteria
+      SET ${campos.join(", ")}
+      WHERE \`NO ORDEN\` = ? AND tipo_original = ?;
+    `;
+    valores.push(no_orden, tipo_original);
+
+    const [result] = await pool.query(sql, valores);
+    return res.json({ ok: true, affectedRows: result.affectedRows });
+  } catch (err) {
+    console.error("updatePaqueteriaUno error:", err);
+    return res.status(500).json({ ok: false, msg: "Error en servidor." });
+  }
+}
+
+// ===== PUT batch =====
+async function updatePaqueteriaBatch(req, res) {
+  const { rows } = req.body || {};
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return res
+      .status(400)
+      .json({
+        ok: false,
+        msg: "El body debe incluir 'rows' (array con al menos 1 elemento).",
+      });
+  }
+
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    const sqlBase = `
+      UPDATE paqueteria
+      SET GUIA = ?, FECHA_DE_ENTREGA_CLIENTE = ?, TOTAL_FACTURA_LT = ?, PRORRATEO_FACTURA_LT = ?, SUMA_FLETE = ?
+      WHERE \`NO ORDEN\` = ? AND tipo_original = ?;
+    `; // ← SIN coma antes de WHERE
+
+    let updated = 0;
+    for (const r of rows) {
+      const no_orden = r.no_orden;
+      const tipo_original = r.tipo_original;
+      if (!no_orden || !tipo_original) continue;
+
+      const guia = r.guia === "" ? null : r.guia ?? null;
+
+      let fecha = r.fecha_de_entrega_cliente ?? null;
+      if (fecha === "" || fecha === "0000-00-00") fecha = null;
+      if (fecha && !isYYYYMMDD(fecha)) {
+        throw new Error(
+          `Fecha inválida para no_orden=${no_orden}, tipo=${tipo_original}`
+        );
+      }
+
+      const totalLt = parseTotal(r.total_factura_lt);
+      const prorr = parseTotal(r.prorrateo_factura_lt);
+      const sumaF = parseTotal(r.suma_flete);
+
+      const [resUp] = await conn.query(sqlBase, [
+        guia,
+        fecha,
+        totalLt,
+        prorr,
+        sumaF,
+        no_orden,
+        tipo_original,
+      ]);
+      updated += resUp.affectedRows;
+    }
+
+    await conn.commit();
+    return res.json({ ok: true, updated });
+  } catch (err) {
+    await conn.rollback();
+    console.error("updatePaqueteriaBatch error:", err);
+    return res
+      .status(500)
+      .json({ ok: false, msg: "Error en servidor (batch)." });
+  } finally {
+    conn.release();
+  }
+}
 
 module.exports = {
   getReferenciasClientes,
@@ -2274,4 +2542,7 @@ module.exports = {
   obtenerRutasParaPDF,
   actualizarGuiaCompleta,
   datosPedidos,
+  updatePaqueteriaUno,
+  updatePaqueteriaBatch,
+  getPaqueteriaByMonth,
 };

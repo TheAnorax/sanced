@@ -53,6 +53,10 @@ import Pagination from "@mui/material/Pagination";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import DoNotDisturbIcon from "@mui/icons-material/DoNotDisturb";
 
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import DoneAllIcon from "@mui/icons-material/DoneAll";
+import ClearAllIcon from "@mui/icons-material/ClearAll";
+
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import DownloadIcon from "@mui/icons-material/Download";
@@ -416,14 +420,17 @@ function Muestras() {
   const solicitudesAutorizadasFiltradas = solicitudesAutorizadas;
 
   const enviarAAutorizar = async () => {
-    if (enviandoSolicitud) return; // ⛔ evita doble clic
-    setEnviandoSolicitud(true); // 🔒 bloquea el botón
+    if (enviandoSolicitud) return;
+    setEnviandoSolicitud(true);
 
     if (solicitudes.length === 0) {
-      setAlerta(true);
-      setAlertaMessage("No hay solicitudes para enviar a autorizar.");
-      setEnviandoSolicitud(false); // 🔓 desbloquea si hay error
-      return;
+      setEnviandoSolicitud(false);
+      return Swal.fire({
+        icon: "warning",
+        title: "No hay solicitudes",
+        text: "Agrega productos antes de enviar a autorizar.",
+        confirmButtonText: "Entendido",
+      });
     }
 
     const lastSolicitudIndex = solicitudes.length - 1;
@@ -431,19 +438,18 @@ function Muestras() {
 
     if (!lastSolicitud.carrito || lastSolicitud.carrito.length === 0) {
       setEnviandoSolicitud(false);
-      await Swal.fire({
+      return Swal.fire({
         icon: "warning",
-        title: "Sin Productos para las Muestras",
-        text: "Debes agregar al menos un producto antes de enviar la solicitud.",
-        confirmButtonText: "Entendido",
+        title: "Carrito vacío",
+        text: "Debes agregar al menos un producto antes de enviar.",
+        confirmButtonText: "Ok",
       });
-      return;
     }
 
-    if (!lastSolicitud.enviadoParaAutorizar) {
-      lastSolicitud.enviadoParaAutorizar = true;
+    try {
+      if (!lastSolicitud.enviadoParaAutorizar) {
+        lastSolicitud.enviadoParaAutorizar = true;
 
-      try {
         await axios.post(
           "http://66.232.105.87:3007/api/muestras/solicitudes",
           lastSolicitud
@@ -456,14 +462,21 @@ function Muestras() {
         });
 
         setCurrentTab(1);
-      } catch (error) {
-        console.error("❌ Error al enviar a autorizar:", error);
-        setAlerta(true);
-        setAlertaMessage("Error al enviar solicitud.");
+
+        // ✅ Mensaje de confirmación
+        await Swal.fire({
+          icon: "success",
+          title: "Solicitud enviada",
+          text: "Tu solicitud fue enviada correctamente para autorización.",
+          confirmButtonText: "Aceptar",
+        });
       }
+    } catch (error) {
+      console.error("❌ Error al enviar a autorizar:", error);
+      Swal.fire("Error", "No se pudo enviar la solicitud.", "error");
     }
 
-    setEnviandoSolicitud(false); // 🔓 desbloquea al final
+    setEnviandoSolicitud(false);
   };
 
   const guardarSolicitudes = async (arr) => {
@@ -1028,7 +1041,7 @@ function Muestras() {
     "Mariana Lucero Ramirez Me": "Recursos Humanos",
     "Michel Escobar Jimenez": "E-COMMERCE",
     "Sergio Regalado Alvarez": "TALLER POP",
-    "Enrrique Saavedra": "Cedis",
+    "Juan Pablo": "Cedis",
     "Elias Sandler": "Direccion",
     "Eduardo Sandler": "Direccion",
     "Mauricio Sandler": "Direccion",
@@ -1232,6 +1245,10 @@ function Muestras() {
       const filas = autorizadasFiltradas.flatMap((sol) =>
         sol.carrito.map((prod) => ({
           Fecha: moment(sol.created_at).format("DD/MM/YYYY"),
+          "Fecha de Devolucion":
+            sol.fecha && moment(sol.fecha).isValid()
+              ? moment(sol.fecha).format("DD/MM/YYYY")
+              : "",
           Código: prod.codigo,
           Descripción: prod.descripcion,
           "Cantidad solicitada": prod.cantidad,
@@ -1243,7 +1260,7 @@ function Muestras() {
           Uso: sol.motivo || sol.uso || "",
           Solicitó: sol.nombre,
           Autorizó: sol.autorizado_por || "",
-          "Movimiento JDE": "58826", // fijo, o sol.movimiento_jde si lo tienes
+          "Movimiento JDE": sol.IT, // fijo, o sol.movimiento_jde si lo tienes
           "Fecha de entrega": sol.fin_embarcado_at
             ? moment(sol.fin_embarcado_at).format("DD/MM/YYYY")
             : "",
@@ -1276,7 +1293,7 @@ function Muestras() {
 
       const ws = XLSX.utils.json_to_sheet(filas, { header: headers });
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Surtido");
+      XLSX.utils.book_append_sheet(wb, ws, "Muestras Autorizadas");
 
       const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
       saveAs(
@@ -1329,6 +1346,49 @@ function Muestras() {
       Swal.fire("Error", "No se pudo marcar como sin material.", "error");
     }
     setMarcandoSinMaterial(false);
+  };
+
+  //poner cantidad surtida
+
+  // Copiar la cantidad solicitada de UNA fila a cantidad_surtida
+  const rellenarFilaConSolicitada = (index) => {
+    setSolicitudSeleccionada((prev) => {
+      if (!prev) return prev;
+      const copia = {
+        ...prev,
+        carrito: prev.carrito.map((it, i) =>
+          i === index
+            ? { ...it, cantidad_surtida: parseInt(it.cantidad, 10) || 0 }
+            : it
+        ),
+      };
+      return copia;
+    });
+  };
+
+  // Copiar la cantidad solicitada de TODAS las filas a cantidad_surtida
+  const rellenarTodoConSolicitada = () => {
+    setSolicitudSeleccionada((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        carrito: prev.carrito.map((it) => ({
+          ...it,
+          cantidad_surtida: parseInt(it.cantidad, 10) || 0,
+        })),
+      };
+    });
+  };
+
+  // Limpiar todas las cantidades surtidas (deja vacío el input)
+  const limpiarTodoSurtido = () => {
+    setSolicitudSeleccionada((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        carrito: prev.carrito.map((it) => ({ ...it, cantidad_surtida: "" })),
+      };
+    });
   };
 
   return (
@@ -2384,6 +2444,26 @@ function Muestras() {
               />
             </Box>
 
+            {/* Botones globales NUEVOS */}
+            <Box display="flex" gap={1} mb={2}>
+              <Button
+                variant="contained"
+                color="success"
+                startIcon={<DoneAllIcon />}
+                onClick={rellenarTodoConSolicitada}
+              >
+                Llenar todo (solicitada → surtida)
+              </Button>
+              <Button
+                variant="outlined"
+                color="warning"
+                startIcon={<ClearAllIcon />}
+                onClick={limpiarTodoSurtido}
+              >
+                Limpiar todo
+              </Button>
+            </Box>
+
             <TableContainer component={Paper}>
               <Table>
                 <TableHead>
@@ -2397,78 +2477,95 @@ function Muestras() {
                     <TableCell>Cantidad Surtida</TableCell>
                   </TableRow>
                 </TableHead>
+
                 <TableBody>
-                  {solicitudSeleccionada?.carrito.map((item, index) => (
-                    <TableRow key={index}>
-                      <TableCell>
-                        <img
-                          src={`/assets/image/img_pz/${item.codigo}.jpg`}
-                          alt="producto"
-                          width={50}
-                        />
-                      </TableCell>
-                      <TableCell>{item.codigo}</TableCell>
+                  {solicitudSeleccionada?.carrito.map((item, index) => {
+                    const solicitada = parseInt(item.cantidad, 10) || 0;
+                    const surtida =
+                      parseInt(item.cantidad_surtida ?? "", 10) || 0;
+                    const disabledCopy =
+                      surtida === solicitada && solicitada > 0;
 
-                      <TableCell>
-                        {ubicacionesPorCodigo[item.codigo] &&
-                        ubicacionesPorCodigo[item.codigo].length > 0 ? (
-                          <Tooltip
-                            title={
-                              <ul style={{ margin: 0, padding: 0 }}>
-                                {ubicacionesPorCodigo[item.codigo].map(
-                                  (ubi, i) => (
-                                    <li
-                                      key={i}
-                                      style={{ listStyleType: "none" }}
-                                    >
-                                      {ubi}
-                                    </li>
-                                  )
-                                )}
-                              </ul>
-                            }
-                            arrow
-                            placement="top-start"
-                          >
-                            <div
-                              style={{
-                                whiteSpace: "nowrap",
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                maxWidth: 120,
-                              }}
+                    return (
+                      <TableRow key={index}>
+                        <TableCell>
+                          <img
+                            src={`/assets/image/img_pz/${item.codigo}.jpg`}
+                            alt="producto"
+                            width={50}
+                          />
+                        </TableCell>
+
+                        <TableCell>{item.codigo}</TableCell>
+
+                        <TableCell>
+                          {ubicacionesPorCodigo[item.codigo] &&
+                          ubicacionesPorCodigo[item.codigo].length > 0 ? (
+                            <Tooltip
+                              title={
+                                <ul style={{ margin: 0, padding: 0 }}>
+                                  {ubicacionesPorCodigo[item.codigo].map(
+                                    (ubi, i) => (
+                                      <li
+                                        key={i}
+                                        style={{ listStyleType: "none" }}
+                                      >
+                                        {ubi}
+                                      </li>
+                                    )
+                                  )}
+                                </ul>
+                              }
+                              arrow
+                              placement="top-start"
                             >
-                              {ubicacionesPorCodigo[item.codigo]
-                                .slice(0, 2)
-                                .join(", ")}
-                              {ubicacionesPorCodigo[item.codigo].length > 2 &&
-                                " ..."}
-                            </div>
-                          </Tooltip>
-                        ) : (
-                          <Typography variant="body2">
-                            No hay ubicaciones registradas
-                          </Typography>
-                        )}
-                      </TableCell>
+                              <div
+                                style={{
+                                  whiteSpace: "nowrap",
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  maxWidth: 120,
+                                }}
+                              >
+                                {ubicacionesPorCodigo[item.codigo]
+                                  .slice(0, 2)
+                                  .join(", ")}
+                                {ubicacionesPorCodigo[item.codigo].length > 2 &&
+                                  " ..."}
+                              </div>
+                            </Tooltip>
+                          ) : (
+                            <Typography variant="body2">
+                              No hay ubicaciones registradas
+                            </Typography>
+                          )}
+                        </TableCell>
 
-                      <TableCell>{item.descripcion}</TableCell>
-                      <TableCell>{item.cantidad}</TableCell>
-                      <TableCell>{item.ubi || item.ubicacion}</TableCell>
-                      <TableCell>
-                        <TextField
-                          type="number"
-                          size="small"
-                          value={item.cantidad_surtida || ""}
-                          onChange={(e) =>
-                            handleSurtidoChange(index, e.target.value)
-                          }
-                          inputProps={{ min: 0, max: item.cantidad }}
-                          style={{ width: "80px" }}
-                        />
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                        <TableCell>{item.descripcion}</TableCell>
+                        <TableCell>{item.cantidad}</TableCell>
+                        <TableCell>{item.ubi || item.ubicacion}</TableCell>
+
+                        <TableCell>
+                          <TextField
+                            type="number"
+                            size="small"
+                            value={item.cantidad_surtida ?? ""}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value, 10) || 0;
+                              // Evita sobresurtido desde el UI
+                              const seguro = Math.min(
+                                Math.max(0, val),
+                                solicitada
+                              );
+                              handleSurtidoChange(index, seguro);
+                            }}
+                            inputProps={{ min: 0, max: solicitada }}
+                            style={{ width: "80px" }}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </TableContainer>

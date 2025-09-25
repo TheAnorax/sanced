@@ -119,7 +119,7 @@ const getVoluProducts = async (req, res) => {
   if (!codigo_pro) {
     return res.status(400).json({ message: "El código del producto es requerido" });
   }
- 
+
   try {
     const [rows] = await pool.query(
       `SELECT 
@@ -179,24 +179,24 @@ const createProduct = async (req, res) => {
   const img_pq = req.files?.img_pq ? req.files.img_pq[0].filename : null;
   const img_inner = req.files?.img_inner ? req.files.img_inner[0].filename : null;
   const img_master = req.files?.img_master ? req.files.img_master[0].filename : null;
- const campos = {
-  codigo_pro, des, code_pz, code_pq, code_master, code_inner, code_palet,
-  _pz, _pq, _inner, _master, _palet,
-  img_pz, img_pq, img_inner, img_master,
-};
+  const campos = {
+    codigo_pro, des, code_pz, code_pq, code_master, code_inner, code_palet,
+    _pz, _pq, _inner, _master, _palet,
+    img_pz, img_pq, img_inner, img_master,
+  };
 
-const insertValues = Object.entries(campos)
-  .filter(([_, v]) => v !== undefined && v !== null)
-  .map(([campo, valor_nuevo]) => [
-    req.body.id_usu || null, // debes enviar este en req.body
-    codigo_pro,
-    'productos',
-    campo,
-    null, // valor_anterior es null en creación
-    valor_nuevo
-  ]);
+  const insertValues = Object.entries(campos)
+    .filter(([_, v]) => v !== undefined && v !== null)
+    .map(([campo, valor_nuevo]) => [
+      req.body.id_usu || null, // debes enviar este en req.body
+      codigo_pro,
+      'productos',
+      campo,
+      null, // valor_anterior es null en creación
+      valor_nuevo
+    ]);
 
-await pool.query('INSERT INTO modificaciones (id_usuario, codigo, tabla, campo, valor_anterior, valor_nuevo) VALUES ?', [insertValues]);
+  await pool.query('INSERT INTO modificaciones (id_usuario, codigo, tabla, campo, valor_anterior, valor_nuevo) VALUES ?', [insertValues]);
 
 
   try {
@@ -373,7 +373,7 @@ const deleteProduct = async (req, res) => {
 //     if (result.affectedRows === 0) {
 //       return res.status(500).json({ message: "No se pudo actualizar la volumetría" });
 
-      
+
 //     }
 
 //     res.json({ message: "Volumetría actualizada correctamente" });
@@ -386,7 +386,7 @@ const deleteProduct = async (req, res) => {
 
 const updateVolumetria = async (req, res) => {
   const { codigo } = req.params; // Código del producto desde la URL
-  const { cajas_cama, pieza_caja, cajas_tarima, camas_tarima, pieza_tarima } = req.body; 
+  const { cajas_cama, pieza_caja, cajas_tarima, camas_tarima, pieza_tarima } = req.body;
 
   if (!codigo) {
     return res.status(400).json({ message: "El código del producto es obligatorio" });
@@ -523,42 +523,51 @@ const getDetalleCatalogo = async (req, res) => {
 
   try {
     const [rows] = await pool.query(`
-      SELECT 
-        id_prod,
-        codigo_pro,
-        um,
-        clave,
-        des,
-        code_pz,
-        code_pq,
-        code_master,
-        code_inner,
-        code_palet,
-        _pz,
-        _pq,
-        _inner, 
-        _master,
-        _palet, 
-        largo_pz,
-        largo_inner,
-        largo_master, 
-        ancho_pz,
-        ancho_inner,
-        ancho_master, 
-        alto_pz,
-        alto_inner,
-        alto_master,
-        peso_pz,
-        peso_inner,
-        peso_master,
-        garantia,
-        img_pz, 
-        img_pq, 
-        img_inner, 
-        img_master
-      FROM productos 
-      WHERE codigo_pro = ?
-    `, [codigo_pro]);
+  SELECT 
+    id_prod,
+    codigo_pro,
+    um,
+    clave,
+    des,
+    code_pz,
+    code_pq,
+    code_master,
+    code_inner,
+    code_palet,
+    _pz,
+    _pq,
+    _inner, 
+    _master,
+    _palet, 
+    largo_pz,
+    largo_inner,
+    largo_master, 
+    ancho_pz,
+    ancho_inner,
+    ancho_master, 
+    alto_pz,
+    alto_inner,
+    alto_master,
+    peso_pz,
+    peso_inner,
+    peso_master,
+    garantia,
+    img_pz, 
+    img_pq, 
+    img_inner, 
+    img_master,
+
+    -- NUEVO: archivos por TAB + timestamps
+    flyer_file,
+    flyer_file_updated_at,
+    ficha_tecnica_file,
+    ficha_tecnica_file_updated_at,
+    ficha_comercial_file,
+    ficha_comercial_file_updated_at
+  FROM productos 
+  WHERE codigo_pro = ?
+`, [codigo_pro]);
+
 
     if (rows.length === 0) {
       return res.status(404).json({ message: 'Producto no encontrado' });
@@ -587,44 +596,44 @@ const updateDetalleCatalogo = async (req, res) => {
   }
 
   try {
-  const [[productoActual]] = await pool.query(
-    `SELECT * FROM productos WHERE codigo_pro = ?`, [codigo_pro]
-  );
+    const [[productoActual]] = await pool.query(
+      `SELECT * FROM productos WHERE codigo_pro = ?`, [codigo_pro]
+    );
 
-  if (!productoActual) {
-    return res.status(404).json({ message: "Producto no encontrado" });
-  }
-
-  const cambios = [];
-
-  const compararCambio = (campo, nuevoValor) => {
-    const actual = productoActual[campo] ?? null;
-    const nuevo = nuevoValor ?? null;
-    if (String(actual) !== String(nuevo)) {
-      cambios.push([id_usuario, codigo_pro, 'productos', campo, actual, nuevo]);
+    if (!productoActual) {
+      return res.status(404).json({ message: "Producto no encontrado" });
     }
-  };
 
-  compararCambio('_pz', _pz);
-  compararCambio('_inner', _inner);
-  compararCambio('_master', _master);
-  compararCambio('largo_pz', largo_pz);
-  compararCambio('ancho_pz', ancho_pz);
-  compararCambio('alto_pz', alto_pz);
-  compararCambio('peso_pz', peso_pz);
-  compararCambio('largo_inner', largo_inner);
-  compararCambio('ancho_inner', ancho_inner);
-  compararCambio('alto_inner', alto_inner);
-  compararCambio('peso_inner', peso_inner);
-  compararCambio('largo_master', largo_master);
-  compararCambio('ancho_master', ancho_master);
-  compararCambio('alto_master', alto_master);
-  compararCambio('peso_master', peso_master);
-  compararCambio('code_pz', code_pz);
-  compararCambio('code_inner', code_inner);
-  compararCambio('code_master', code_master);
+    const cambios = [];
 
-  await pool.query(`
+    const compararCambio = (campo, nuevoValor) => {
+      const actual = productoActual[campo] ?? null;
+      const nuevo = nuevoValor ?? null;
+      if (String(actual) !== String(nuevo)) {
+        cambios.push([id_usuario, codigo_pro, 'productos', campo, actual, nuevo]);
+      }
+    };
+
+    compararCambio('_pz', _pz);
+    compararCambio('_inner', _inner);
+    compararCambio('_master', _master);
+    compararCambio('largo_pz', largo_pz);
+    compararCambio('ancho_pz', ancho_pz);
+    compararCambio('alto_pz', alto_pz);
+    compararCambio('peso_pz', peso_pz);
+    compararCambio('largo_inner', largo_inner);
+    compararCambio('ancho_inner', ancho_inner);
+    compararCambio('alto_inner', alto_inner);
+    compararCambio('peso_inner', peso_inner);
+    compararCambio('largo_master', largo_master);
+    compararCambio('ancho_master', ancho_master);
+    compararCambio('alto_master', alto_master);
+    compararCambio('peso_master', peso_master);
+    compararCambio('code_pz', code_pz);
+    compararCambio('code_inner', code_inner);
+    compararCambio('code_master', code_master);
+
+    await pool.query(`
     UPDATE productos SET
       _pz = ?, _inner = ?, _master = ?,
       largo_pz = ?, ancho_pz = ?, alto_pz = ?, peso_pz = ?,
@@ -633,27 +642,27 @@ const updateDetalleCatalogo = async (req, res) => {
       code_pz = ?, code_inner = ?, code_master = ?
     WHERE codigo_pro = ?
   `, [
-    _pz || 0, _inner || 0, _master || 0,
-    largo_pz || 0, ancho_pz || 0, alto_pz || 0, peso_pz || 0,
-    largo_inner || 0, ancho_inner || 0, alto_inner || 0, peso_inner || 0,
-    largo_master || 0, ancho_master || 0, alto_master || 0, peso_master || 0,
-    code_pz || 0, code_inner || 0, code_master || 0,
-    codigo_pro
-  ]);
+      _pz || 0, _inner || 0, _master || 0,
+      largo_pz || 0, ancho_pz || 0, alto_pz || 0, peso_pz || 0,
+      largo_inner || 0, ancho_inner || 0, alto_inner || 0, peso_inner || 0,
+      largo_master || 0, ancho_master || 0, alto_master || 0, peso_master || 0,
+      code_pz || 0, code_inner || 0, code_master || 0,
+      codigo_pro
+    ]);
 
-  if (cambios.length > 0) {
-    await pool.query(`
+    if (cambios.length > 0) {
+      await pool.query(`
       INSERT INTO modificaciones 
         (id_usuario, codigo, tabla, campo, valor_anterior, valor_nuevo)
       VALUES ?
     `, [cambios]);
-  }
+    }
 
-  res.json({ message: "Producto actualizado correctamente", cambios: cambios.length });
-} catch (error) {
-  console.error("Error al actualizar producto:", error);
-  res.status(500).json({ message: "Error en la actualización", error: error.message });
-}
+    res.json({ message: "Producto actualizado correctamente", cambios: cambios.length });
+  } catch (error) {
+    console.error("Error al actualizar producto:", error);
+    res.status(500).json({ message: "Error en la actualización", error: error.message });
+  }
 
 };
 
@@ -673,7 +682,7 @@ const updateDetalleCatalogoImg = async (req, res) => {
   for (const campo in files) {
     const file = files[campo][0]; // ej. files["img_inner"]
     const fileName = file.filename; // ya es `${codigo_pro}.jpg`
-    
+
     if (campo === "img_pz") camposActualizados.img_pz = fileName;
     if (campo === "img_inner") camposActualizados.img_inner = fileName;
     if (campo === "img_master") camposActualizados.img_master = fileName;
@@ -692,7 +701,7 @@ const updateDetalleCatalogoImg = async (req, res) => {
       await pool.query(query, [...valores, codigo_pro]);
     }
 
-    
+
 
     res.json({ message: "Imágenes subidas y referencias actualizadas correctamente" });
   } catch (err) {
@@ -702,4 +711,157 @@ const updateDetalleCatalogoImg = async (req, res) => {
 };
 
 
-module.exports = { getAllProducts, createProduct, updateProduct, deleteProduct, getAllProductsUbi, getVoluProducts, updateVolumetria, upload , getStockTotal, getCatalogProducts, getDetalleCatalogo, updateDetalleCatalogo, updateDetalleCatalogoImg };
+// funcion para subir imagenes 
+const DOCS_BASE = process.env.DOCS_BASE || "C:/Users/rodrigo/Documents/react/archivos/productos";
+
+// ... arriba mantén DOCS_BASE como lo tienes ...
+
+const storageDocs = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const { codigo_pro, tipo } = req.params;
+    const permitidos = ["flyer", "ficha_tecnica", "ficha_comercial"];
+    if (!codigo_pro) return cb(new Error("Falta codigo_pro"));
+    if (!permitidos.includes(tipo)) return cb(new Error("Tipo inválido"));
+
+    const folderPath = path.join(DOCS_BASE, String(codigo_pro), tipo);
+    fs.mkdirSync(folderPath, { recursive: true });
+    cb(null, folderPath);
+  },
+  filename: (req, file, cb) => {
+    // 👇 si el archivo viene sin extensión, derivarla del mimetype
+    let ext = path.extname(file.originalname).toLowerCase();
+    if (!ext) {
+      if (file.mimetype === "application/pdf") ext = ".pdf";
+      else if (file.mimetype.startsWith("image/")) ext = ".jpg";
+      else ext = ".bin";
+    }
+    cb(null, `${req.params.codigo_pro}${ext}`);
+  }
+});
+
+
+const uploadDocs = multer({ storage: storageDocs, limits: { fileSize: 50 * 1024 * 1024 } });
+
+
+
+const uploadDocumentoProducto = async (req, res) => {
+  try {
+    const { codigo_pro, tipo } = req.params;
+
+    // 1) Leer id de usuario desde el form (o desde auth si lo tienes)
+    let id_usuario = req.body.id_usuario;
+    if (id_usuario !== undefined && id_usuario !== null && id_usuario !== '') {
+      id_usuario = parseInt(id_usuario, 10);
+      if (Number.isNaN(id_usuario)) id_usuario = null;
+    } else {
+      id_usuario = null;
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ ok: false, message: "No llegó archivo." });
+    }
+
+    // 2) Columnas a actualizar por tipo
+    const mapCols = {
+      flyer: {
+        fileCol: "flyer_file",
+        tsCol: "flyer_file_updated_at",
+        userCol: "flyer_file_user_id",
+      },
+      ficha_tecnica: {
+        fileCol: "ficha_tecnica_file",
+        tsCol: "ficha_tecnica_file_updated_at",
+        userCol: "ficha_tecnica_file_user_id",
+      },
+      ficha_comercial: {
+        fileCol: "ficha_comercial_file",
+        tsCol: "ficha_comercial_file_updated_at",
+        userCol: "ficha_comercial_file_user_id",
+      },
+    };
+
+    const cfg = mapCols[tipo];
+    if (!cfg) return res.status(400).json({ ok: false, message: "Tipo inválido." });
+
+    const filename = req.file.filename; // p.ej. 3212.pdf
+
+    // 3) UPDATE: archivo, timestamp y usuario
+    const [result] = await pool.query(
+      `UPDATE productos 
+         SET ${cfg.fileCol} = ?, 
+             ${cfg.tsCol}  = NOW(),
+             ${cfg.userCol} = ?
+       WHERE codigo_pro = ?`,
+      [filename, id_usuario, codigo_pro]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ ok: false, message: "Producto no encontrado" });
+    }
+
+    const publicPath = `/uploads/productos/${codigo_pro}/${tipo}/${filename}`;
+    return res.json({
+      ok: true,
+      message: "Archivo subido",
+      tipo,
+      filename,
+      url: publicPath,
+      codigo_pro,
+      user_id: id_usuario,
+    });
+  } catch (err) {
+    console.error("subirArchivoTab:", err);
+    return res.status(500).json({ ok: false, message: "Error al subir archivo" });
+  }
+};
+
+
+
+
+const getDocumentoProducto = async (req, res) => {
+  try {
+    const { codigo_pro, tipo } = req.params;
+
+    const mapCols = {
+      flyer: { fileCol: "flyer_file" },
+      ficha_tecnica: { fileCol: "ficha_tecnica_file" },
+      ficha_comercial: { fileCol: "ficha_comercial_file" },
+    };
+
+    if (!mapCols[tipo]) {
+      return res.status(400).json({ ok: false, message: "Tipo inválido" });
+    }
+
+    // 1) Sacamos el nombre de archivo desde DB
+    const [rows] = await pool.query(
+      `SELECT ${mapCols[tipo].fileCol} AS filename FROM productos WHERE codigo_pro = ?`,
+      [codigo_pro]
+    );
+
+    if (!rows.length || !rows[0].filename) {
+      return res.status(404).json({ ok: false, message: "Archivo no registrado" });
+    }
+
+    const filename = rows[0].filename; // p.ej. 1000.pdf
+    // 2) Construimos la ruta absoluta
+    const abs = path.resolve(path.join(DOCS_BASE, String(codigo_pro), tipo, filename));
+
+    if (!fs.existsSync(abs)) {
+      return res.status(404).json({ ok: false, message: "Archivo no encontrado en disco" });
+    }
+
+    // 3) Enviar el archivo
+    return res.sendFile(abs);
+  } catch (err) {
+    console.error("getDocumentoProducto:", err);
+    return res.status(500).json({ ok: false, message: "Error al servir archivo" });
+  }
+};
+
+
+
+module.exports = {
+  getAllProducts, createProduct, updateProduct, deleteProduct,
+  getAllProductsUbi, getVoluProducts, updateVolumetria, upload, getStockTotal, getCatalogProducts, getDetalleCatalogo, updateDetalleCatalogo, updateDetalleCatalogoImg,
+  uploadDocs, uploadDocumentoProducto, getDocumentoProducto
+};

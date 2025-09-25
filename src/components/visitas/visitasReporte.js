@@ -138,12 +138,12 @@ function VisitasReporte (){
     if (filterVisitas === "PERSONAL CORPORATIVO") {
       return visit.tipo === "PERSONAL CORPORATIVO";
     }
-    if (filterVisitas === "PAQUETERIA") {
-      return visit.tipo === "PAQUETERIA";
+    if (filterVisitas === "PAQUETERIA / TRANSPORTE") {
+      return visit.tipo === "PAQUETERIA / TRANSPORTE";
     }
   
     if (filterVisitas === "otros") {
-      return ["PERSONAL CORPORATIVO", "CANDIDATO (ENTREVISTA)", "INVITADO (EVENTOS)", "TRANSPORTISTA", "PROVEEDOR", "CLIENTE", "CLIENTE RECOGE", "DIRECCION GENERAL", "ENTREGA DE EVIDENCIAS", "PAQUETERIA"].includes(visit.tipo);
+      return ["PERSONAL CORPORATIVO", "CANDIDATO (ENTREVISTA)", "INVITADO (EVENTOS)", "TRANSPORTISTA", "PROVEEDOR", "CLIENTE", "CLIENTE RECOGE", "DIRECCION GENERAL", "ENTREGA DE EVIDENCIAS", "PAQUETERIA / TRANSPORTE"].includes(visit.tipo);
     }
   
     return true;
@@ -1541,11 +1541,11 @@ const tomarFotoEmpleado = () => {
       <Paper elevation={3} sx={{ p: 3, overflow: "auto" }}>
         <>
         <Tabs value={tabIndex} onChange={handleTabChange} variant="scrollable" scrollButtons allowScrollButtonsMobile>
-        {(user?.role === "CONTROL" || user?.role === "Admin" || user?.role === "RH") &&(<Tab label="visitantes"/>)}
-        {(user?.role === "CONTROL" || user?.role === "Admin" || user?.role === "RH") &&(<Tab label="Visitantes multados"/>)}
-        {(user?.role === "Admin" || user?.role === "RH") && (<Tab label="reporte visitas"/>)}
-        {(user?.role === 'Admin' || user?.role === "RH") &&(<Tab label="Permisos autos"/>)}
-        {(user?.role === 'Admin'  || user?.role === "RH")&&(<Tab label="EMPLEADOS"/>)}
+        {(user?.role === "CONTROL" || user?.role === "Admin" || user?.role === 'Master' || user?.role === "RH") &&(<Tab label="visitantes"/>)}
+        {(user?.role === "CONTROL" || user?.role === "Admin" || user?.role === 'Master' || user?.role === "RH") &&(<Tab label="Visitantes multados"/>)}
+        {(user?.role === "Admin" || user?.role === 'Master' || user?.role === "RH") && (<Tab label="reporte visitas"/>)}
+        {(user?.role === 'Admin' || user?.role === 'Master' || user?.role === "RH") &&(<Tab label="Permisos autos"/>)}
+        {(user?.role === 'Admin' || user?.role === 'Master'  || user?.role === "RH")&&(<Tab label="EMPLEADOS"/>)}
       </Tabs>
         {tabIndex === 0  &&
           <div>
@@ -1575,7 +1575,7 @@ const tomarFotoEmpleado = () => {
                   <MenuItem onClick={() => setFilterVisitas("CANDIDATO (ENTREVISTA)")}>ENTREVISTA</MenuItem>
                   <MenuItem onClick={() => setFilterVisitas("INVITADO (EVENTOS)")}>INVITADO</MenuItem>
                   <MenuItem onClick={() => setFilterVisitas("PROVEEDOR")}>PROVEEDORES</MenuItem>
-                  <MenuItem onClick={() => setFilterVisitas("PAQUETERIA")}>PAQUETERIAS</MenuItem>
+                  <MenuItem onClick={() => setFilterVisitas("PAQUETERIA / TRANSPORTE")}>PAQUETERIAS</MenuItem>
               </Menu>
             </div>
           ): (
@@ -1587,7 +1587,7 @@ const tomarFotoEmpleado = () => {
               <Button onClick={() => setFilterVisitas("CANDIDATO (ENTREVISTA)")}>ENTREVISTA</Button>
               <Button onClick={() => setFilterVisitas("INVITADO (EVENTOS)")}>INVITADO</Button>
               <Button onClick={() => setFilterVisitas("TRANSPORTISTA")}>TRANSPORTISTAS</Button>
-              <Button onClick={() => setFilterVisitas("PAQUETERIA")}>PAQUETERIAS</Button>
+              <Button onClick={() => setFilterVisitas("PAQUETERIA / TRANSPORTE")}>PAQUETERIAS</Button>
             </ButtonGroup>
           </div>
           )}
@@ -1639,7 +1639,7 @@ const tomarFotoEmpleado = () => {
                         ): visit.id_catv === 1 ? (
                           <span>COLABORADOR SANTUL</span>
                         ): visit.id_catv === 7 ?(
-                          <span>{visit.paqueteria}</span>
+                          <span>{visit.empresa}</span>
                         ): visit.id_catv === 10 ?(
                           <span>DIRECCION GENERAL</span>
                         ):(

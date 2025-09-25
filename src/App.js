@@ -44,8 +44,9 @@ import COBERTURA from './components/COBERTURA/COBERTURA';
 import RepoProb from './components/Repo_Prob/Repo_Prob';
 import OlvideContraseña from './Acces/OlvideContraseña';
 import ResetPassword from './Acces/ResetPassword';
-import Departamental from "./components/departamental/departamental"
-import Mercado from "./components/Libre/Mercado_Libre"
+import Departamental from "./components/departamental/departamental";
+import Mercado from "./components/Libre/Mercado_Libre";
+import Traspasos from "./components/traspaso/traspaso";
 
 
 function App() {
@@ -79,7 +80,7 @@ function App() {
             <Route path="insumos" element={<ProtectedRoute><Insumos /></ProtectedRoute>}/>
             <Route path="embarcando" element={<ProtectedRoute><Embarcando  /></ProtectedRoute>} />
             <Route path="inventario" element={<ProtectedRoute><Inventario  /></ProtectedRoute>} />
-            <Route path="muestras" element={<ProtectedRoute><Muestras  /></ProtectedRoute>} />
+            <Route path="Muestras" element={<ProtectedRoute><Muestras  /></ProtectedRoute>} />
             <Route path="Historial" element={<ProtectedRoute><Historial  /></ProtectedRoute>} />
             <Route path="devs" element={<ProtectedRoute><Devs  /></ProtectedRoute>} />
             <Route path="RH" element={<ProtectedRoute><RH  /></ProtectedRoute>} />
@@ -95,7 +96,10 @@ function App() {
             <Route path="COBERTURA" element={<ProtectedRoute><COBERTURA /></ProtectedRoute>} />
             <Route path="RepoProb" element={<ProtectedRoute><RepoProb /></ProtectedRoute>} />
             <Route path="departamental" element={<ProtectedRoute><Departamental /></ProtectedRoute>} />
-             <Route path="Mercado-libre" element={<ProtectedRoute><Mercado /></ProtectedRoute>} />
+            <Route path="Mercado-libre" element={<ProtectedRoute><Mercado /></ProtectedRoute>} />
+            <Route path="Traspasos" element={<ProtectedRoute><Traspasos /></ProtectedRoute>} />
+
+
           </Route>
         </Routes>
       </Router>

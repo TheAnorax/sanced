@@ -13,10 +13,26 @@ import {
   Divider,
   Tabs,
   Tab,
+  TableSortLabel,
+  Toolbar,
+  TextField,
+  InputAdornment,
+  LinearProgress,
+  Chip,
+  Select,
+  MenuItem,
+  Button,
      Switch, Tooltip, Stack ,
   FormControlLabel ,
-  Checkbox
-} from "@mui/material";
+  Checkbox,
+   Grid,
+  } from "@mui/material";
+  import { ToggleButton, ToggleButtonGroup } from "@mui/material";
+
+import SearchIcon from "@mui/icons-material/Search";
+import DownloadIcon from "@mui/icons-material/Download";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 
 const API_URL = 'http://66.232.105.87:3007/api/kpi/getHistorico2025';
 
@@ -29,9 +45,234 @@ export default function MapaMexico() {
   const [topProductosPorEstado, setTopProductosPorEstado] = useState({});
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [fletesClientes, setFletesClientes] = useState([]);
+const [fletesMeta, setFletesMeta] = useState(null);
+const [showPeriodo, setShowPeriodo] = useState(true);
+const [showVista, setShowVista] = useState(false);
+const [availableMonths, setAvailableMonths] = useState([]);     // ['2025-06', '2025-07', ...]
+const [selectedMonth, setSelectedMonth]   = useState(null);     // 'YYYY-MM'
+const [monthsPayload, setMonthsPayload]   = useState(null); 
+const [dense, setDense] = useState(true); // tamaño de fila en la tabla
+const [estadoFiltro, setEstadoFiltro] = useState(""); // vacío = todos
+const estadosDisponibles = Array.from(new Set(fletesClientes.map(c => c.estado))).sort();
+
+
+
+const pad2 = (n) => String(n).padStart(2, "0");
+const ymLabel = (ym) => {
+  const [y, m] = ym.split("-").map(Number);
+  const MES = ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"];
+  return `${MES[m-1]} ${y}`;
+};
+const nextYm = (ym) => {
+  const [y, m] = ym.split("-").map(Number);
+  const d = new Date(y, m, 1); // primer día del mes siguiente
+  return `${d.getFullYear()}-${pad2(d.getMonth()+1)}`
+};
+const enumerateMonths = (from, toExcl) => {
+  if (!from || !toExcl) return [];
+  const s = new Date(from.slice(0,7) + "-01");
+  const e = new Date(toExcl.slice(0,7) + "-01");
+  const arr = [];
+  for (let d = new Date(s); d < e; d.setMonth(d.getMonth()+1)) {
+    arr.push(`${d.getFullYear()}-${pad2(d.getMonth()+1)}`);
+  }
+  return arr;
+};
+  const currency = (n) =>
+  (Number(n) || 0).toLocaleString("es-MX", { style: "currency", currency: "MXN", minimumFractionDigits: 2 });
+
+const percentToNum = (p) =>
+  typeof p === "string" ? Number(String(p).replace("%", "")) || 0 : Number(p || 0);
+
+const percentFmt = (n) => `${(Number(n) || 0).toFixed(2)}%`;
+
+
+
+// 1) Mini stat compacto (ponlo arriba del componente o en un helpers file)
+const StatMini = ({ label, value }) => (
+  <Box
+    sx={{
+      display: "inline-flex",
+      flexDirection: "column",
+      gap: 0.25,
+      px: 1,            // 👈 padding reducido
+      py: 0.5,
+      borderRadius: 1,
+      bgcolor: "grey.50",
+      border: "1px solid",
+      borderColor: "divider",
+      minWidth: 150,    // 👈 puedes bajar a 130/120 si quieres aún más compacto
+    }}
+  >
+    <Typography variant="caption" color="text.secondary" noWrap>{label}</Typography>
+    <Typography variant="body2" fontWeight={700} noWrap>{value}</Typography>
+  </Box>
+);
+
+
+const percentColor = (p) => {
+  const v = Number(p) || 0;
+  if (v >= 9 ) return "error";
+  if (v >= 5) return "warning";
+  return "success";
+};
+
+function exportCSV(rows) {
+  const headers = ["num_cliente","nombre_cliente","total_factura","total_flete","porcentaje_flete","total_guias"];
+  const csv = [
+    headers.join(","),
+    ...rows.map(r => [
+      `"${r.num_cliente}"`,
+      `"${(r.nombre_cliente || "").replace(/"/g, '""')}"`,
+      Number(r.total_factura || 0).toFixed(2),
+      Number(r.total_flete || 0).toFixed(2),
+      percentToNum(r.porcentaje_flete).toFixed(2),
+      Number(r.total_guias ?? 0)
+    ].join(","))
+  ].join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "fletes_por_cliente.csv"; a.click();
+  URL.revokeObjectURL(url);
+}
+
+
+const [q, setQ] = useState("");
+const [topN, setTopN] = useState(50);
+const [orderBy, setOrderBy] = useState("total_flete");
+const [order, setOrder] = useState("desc");
+
+const handleSort = (col) => {
+  if (orderBy === col) setOrder((o) => (o === "asc" ? "desc" : "asc"));
+  else { setOrderBy(col); setOrder("desc"); }
+};
+
+const fletesFiltrados = React.useMemo(() => {
+  const query = q.trim().toLowerCase();
+  let rows = fletesClientes;
+
+  // Filtro por búsqueda
+  if (query) {
+    rows = rows.filter(r =>
+      String(r.num_cliente || "").toLowerCase().includes(query) ||
+      String(r.nombre_cliente || "").toLowerCase().includes(query)
+    );
+  }
+
+  // Filtro por estado
+  if (estadoFiltro) {
+    rows = rows.filter(r => r.estado === estadoFiltro);
+  }
+
+  // Orden y topN igual que antes...
+  rows = [...rows].sort((a, b) => {
+    const av = a[orderBy];
+    const bv = b[orderBy];
+    if (orderBy === "nombre_cliente") {
+      return order === "asc"
+        ? String(av || "").localeCompare(String(bv || ""))
+        : String(bv || "").localeCompare(String(av || ""));
+    }
+    const na = Number(orderBy === "porcentaje_flete" ? percentToNum(av) : av) || 0;
+    const nb = Number(orderBy === "porcentaje_flete" ? percentToNum(bv) : bv) || 0;
+    return order === "asc" ? na - nb : nb - na;
+  });
+
+  return rows.slice(0, topN);
+}, [fletesClientes, q, topN, orderBy, order, estadoFiltro]);
+
+
+const totalesVista = React.useMemo(() => {
+  const tfact = fletesFiltrados.reduce((acc, r) => acc + Number(r.total_factura || 0), 0);
+  const tflet = fletesFiltrados.reduce((acc, r) => acc + Number(r.total_flete || 0), 0);
+  const pct   = tfact > 0 ? (tflet / tfact) * 100 : 0;
+  const tgui  = fletesFiltrados.reduce((acc, r) => acc + Number(r.total_guias || 0), 0);
+  return { tfact, tflet, pct, tgui };
+}, [fletesFiltrados]);
+
+useEffect(() => {
+  (async () => {
+    // Intentamos obtener versión “agrupada por mes”. Si tu backend
+    // no la soporta, regresará el formato antiguo (sin months[]).
+    const resp = await fetch("http://66.232.105.87:3007/api/kpi/getFletesClientes");
+    const json = await resp.json();
+
+    // Si viene months[], usamos esa estructura
+    if (Array.isArray(json.months) && json.months.length) {
+      setMonthsPayload(json);                         // guardamos payload
+      const months = json.months.map(m => m.ym);
+      setAvailableMonths(months);
+      const last = months[months.length - 1];         // último mes disponible
+      setSelectedMonth(last);
+
+      // seteamos tabla/meta con el último mes
+      const mo = json.months.find(m => m.ym === last) || {};
+      setFletesClientes(mo.data || []);
+      setFletesMeta({
+        from: `${last}-01`,
+        to: `${nextYm(last)}-01`,
+        total_factura_global: mo.total_factura_global ?? 0,
+        total_flete_global:   mo.total_flete_global   ?? 0,
+        porcentaje_flete_global: mo.porcentaje_flete_global ?? 0,
+        total_guias_global:   mo.total_guias_global   ?? 0,
+      });
+      return;
+    }
+
+    // 🟨 Fallback: formato antiguo (meta + data del rango)
+    setFletesClientes(json.data || []);
+    setFletesMeta(json.meta || null);
+
+    // Deducimos meses del rango y precargamos el último con refetch
+    const months = enumerateMonths(json.meta?.from, json.meta?.to);
+    setAvailableMonths(months);
+    const last = months[months.length - 1] || null;
+    setSelectedMonth(last);
+
+    if (last) {
+      const [yy, mm] = last.split("-").map(Number);
+      const r2 = await fetch(`http://66.232.105.87:3007/api/kpi/getFletesClientes?year=${yy}&month=${mm}`);
+      const j2 = await r2.json();
+      setFletesClientes(j2.data || []);
+      setFletesMeta(j2.meta || null);
+    }
+  })();
+}, []);
+
+
+useEffect(() => {
+  if (!selectedMonth) return;
+
+  // Si tenemos months[] en memoria, filtramos local
+  if (monthsPayload?.months?.length) {
+    const mo = monthsPayload.months.find(m => m.ym === selectedMonth);
+    setFletesClientes(mo?.data || []);
+    setFletesMeta({
+      from: `${selectedMonth}-01`,
+      to: `${nextYm(selectedMonth)}-01`,
+      total_factura_global: mo?.total_factura_global ?? 0,
+      total_flete_global:   mo?.total_flete_global   ?? 0,
+      porcentaje_flete_global: mo?.porcentaje_flete_global ?? 0,
+      total_guias_global:   mo?.total_guias_global   ?? 0,
+    });
+    return;
+  }
+
+  // 🟨 Fallback: pedimos al backend ese mes específico
+  (async () => {
+    const [yy, mm] = selectedMonth.split("-").map(Number);
+    const r = await fetch(`http://66.232.105.87:3007/api/kpi/getFletesClientes?year=${yy}&month=${mm}`);
+    const j = await r.json();
+    setFletesClientes(j.data || []);
+    setFletesMeta(j.meta || null);
+  })();
+}, [selectedMonth]); 
+
 
 const [usarIVA, setUsarIVA] = useState(false);
-const IVA = 0.16; // porcentaje de IVA (16%)
+const IVA = 0.16; // porcentaje de IVA (16%) 
 
 const applyIVA = (valor) => {
   const n = Number(valor || 0);
@@ -237,10 +478,12 @@ const getHistoricoEstado = (estadoId) => {
       component={Paper}
       elevation={3}
       sx={{
-        borderRadius: 2,
-        overflow: 'hidden',
-        boxShadow: '0px 2px 8px rgba(0,0,0,0.1)',
-      }}
+    borderRadius: 2,
+    overflowX: 'auto',   // 👈 habilita scroll horizontal
+    overflowY: 'hidden',
+    boxShadow: '0px 2px 8px rgba(0,0,0,0.1)',
+    maxWidth: '100%',    // 👈 que no se pase del ancho
+  }}
     >
       <Table size="small" stickyHeader>
         <TableHead>
@@ -327,6 +570,7 @@ const getHistoricoEstado = (estadoId) => {
         <Tab label="Histórico de Ventas 2025" />
         <Tab label="Histórico de Ventas 2024" />
         <Tab label="Top 10 Productos Más Vendidos" />
+        <Tab label="Fletes por Cliente" />
       </Tabs>
         {tabIndex === 0 && (
         <Box>
@@ -404,7 +648,7 @@ const getHistoricoEstado = (estadoId) => {
           },
         }}
       >
-              <svg className="map"    width="794px" height="498px" viewBox="0 0 794 498" version="1.1" xmlns="http://www.w3.org/2000/svg" >
+        <svg className="map"    width="794px" height="498px" viewBox="0 0 794 498" version="1.1" xmlns="http://www.w3.org/2000/svg" >
                 <defs>
                     <path id="path-1" d="M391.24,310.07 L388.83,306.6 L394.33,295.9 L400.66,292.82 L402.26,290.64 L409.53,295.83 L411.26,300.31 L411.26,300.31 L411.28,302.5 L413.24,304.64 L408.96,306.61 L405.69,310.66 L401.41,311.76 L397.5,309.33 L393.29,308.95 L391.24,310.07 Z"></path>
                     <path d="M107.2,138.13 L106.55,138.13 L106.55,138.13 L103.67,139.97 L103.57,138.46 L107.27,134.55 L106.51,136.8 L107.2,138.13 L107.2,138.13 Z M79.85,126.14 L81.28,132.89 L80.64,135.88 L79.48,136.02 L78.22,134.29 L76.26,134.56 L79.07,130.75 L78.63,128.46 L79.85,126.14 L79.85,126.14 Z M137.99,117.58 L141.5,120.03 L140.96,120.5 L137.99,117.58 L137.99,117.58 Z M146.45,116.08 L146.52,117.74 L145.36,117.78 L145.01,116.22 L146.45,116.08 L146.45,116.08 Z M3.59,103.01 L3.09,105.37 L4.4,106.57 L4.63,109.47 L3.22,111.78 L1.07,104.2 L3.59,103.01 L3.59,103.01 Z M121.37,92.72 L125.44,95.33 L126.5,97.54 L126.03,99.57 L131.11,100.52 L130.94,104.85 L132.75,106.93 L132.41,108.83 L124.21,100.62 L122.84,100.36 L120.55,96.8 L121.37,92.72 L121.37,92.72 Z M89.9,7.14 L87.24,7.27 L84.3,13.58 L85.7,15.57 L84.59,23.17 L90.28,27.01 L90.28,27.01 L90.73,32.75 L88.87,36.62 L87.99,46.17 L89.97,49.64 L89.43,50.95 L92.27,52.79 L92.78,61.53 L94.5,65.57 L93.58,74.34 L96.93,80.78 L100.06,83.33 L100.48,86.09 L101.74,87.13 L103.25,86.4 L105.06,87.18 L119.36,100.4 L118.95,102.62 L121.82,106.81 L121.36,109.85 L122.17,111.54 L124.49,109.85 L125.92,111.06 L126.43,114.1 L128.84,113.03 L129.92,113.65 L132.71,122.52 L135.29,123.98 L137.73,123.39 L139.1,124.32 L138.51,128.65 L140.48,131.45 L141.13,140.23 L141.13,140.23 L139.62,138.26 L139.62,138.26 L107.93,138.15 L107.76,135.81 L108.62,137.02 L109.41,135.63 L107.8,135.22 L107.45,133.5 L108.97,130.51 L107.16,129.6 L109.09,123.53 L106.26,120.71 L106.19,118.68 L103.55,118.16 L99.8,111.87 L95.59,109.51 L94.4,105.74 L92.69,105.62 L91.64,103.29 L86.48,98.19 L80.51,96.28 L78.96,93.77 L73.8,90.64 L72.61,90.89 L67.84,87 L67.77,82.98 L65.06,80.77 L65.16,71.81 L61.64,68.02 L61.01,65.86 L61.28,67.2 L59.79,66.85 L60.06,68.29 L59,66.24 L58.94,57.36 L53.54,51.96 L51.74,51.69 L52.48,46.41 L51.1,43.7 L47.16,38.36 L43.06,34.93 L43.99,31.68 L41.64,29.2 L43.67,30 L44.92,26.46 L38.19,21.21 L37.26,15.36 L34.2,13.34 L32.06,7.44 L32.1,6.1 L92.29,0.56 L90.04,3.58 L89.9,7.14 L89.9,7.14 Z" id="path-2"></path>
@@ -665,7 +909,7 @@ const getHistoricoEstado = (estadoId) => {
                     </g>
                     </Tooltip>
                 </g>
-              </svg>
+         </svg>
             </Box>   
              <Box
         flex={1}
@@ -947,6 +1191,375 @@ const getHistoricoEstado = (estadoId) => {
           </Box>
         </Box>
       )}
+  {tabIndex === 3 && (
+  <Box>
+    <Typography variant="h6" fontWeight="bold" gutterBottom>
+      🚛 Fletes por Cliente
+    </Typography>
+
+    {/* =====================  FILTROS  ===================== */}
+    <Paper
+      elevation={0}
+      sx={{
+        border: "1px solid",
+        borderColor: "divider",
+        borderRadius: 2,
+        p: 2,
+        mb: 2,
+        position: "sticky",
+        top: 64, // ajusta según tu appbar
+        zIndex: 5,
+        bgcolor: "background.paper",
+      }}
+    >
+      <Grid container spacing={2} alignItems="center">
+        {/* Izquierda: búsqueda + Top */}
+        <Grid item xs={12} md={4}>
+          <Stack direction="row" spacing={2} alignItems="center">
+            <TextField
+              size="small"
+              fullWidth
+              placeholder="Buscar cliente o # cliente…"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon fontSize="small" />
+                  </InputAdornment>
+                ),
+              }}
+            />
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <Typography variant="body2" color="text.secondary">
+                Top
+              </Typography>
+              <Select
+                size="small"
+                value={topN}
+                onChange={(e) => setTopN(Number(e.target.value))}
+                sx={{ minWidth: 88 }}
+              >
+                {[10, 20, 50, 100, 500, 4000].map((n) => (
+                  <MenuItem key={n} value={n}>
+                    {n}
+                  </MenuItem>
+                ))}
+              </Select>
+            </Box>
+          </Stack>
+        </Grid>
+
+        {/* Centro: selector de Mes (exclusivo) */}
+        <Grid item xs={12} md={5}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+              overflowX: "auto",
+              pb: 0.5,
+            }}
+          >
+            <Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>
+              Mes
+            </Typography>
+            <ToggleButtonGroup
+              size="small"
+              exclusive
+              value={selectedMonth}
+              onChange={(_, val) => val && setSelectedMonth(val)}
+            >
+              {availableMonths.map((ym) => (
+                <ToggleButton key={ym} value={ym} disableRipple>
+                  {ymLabel(ym)}
+                </ToggleButton>
+              ))}
+            </ToggleButtonGroup>
+            {!availableMonths.length && (
+              <Chip size="small" label="Sin meses disponibles" />
+            )}
+          </Box>
+        </Grid>
+
+        {/* Derecha: acciones */}
+        <Grid item xs={12} md={3}>
+          <Stack
+            direction="row"
+            spacing={1}
+            alignItems="center"
+            justifyContent="flex-end"
+          >
+            <FormControlLabel
+              sx={{ mr: 1 }}
+              control={
+                <Switch
+                  size="small"
+                  checked={dense}
+                  onChange={(e) => setDense(e.target.checked)}
+                />
+              }
+              label="Denso"
+            />
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<DownloadIcon />}
+              onClick={() => exportCSV(fletesFiltrados)}
+              disabled={fletesFiltrados.length === 0}
+            >
+              Exportar CSV
+            </Button>
+          </Stack>
+        </Grid>
+      </Grid>
+    </Paper>
+
+    <Grid item xs={12} md={3}>
+  <Stack direction="row" spacing={1} alignItems="center">
+    <Typography variant="body2" color="text.secondary">
+      Estado
+    </Typography>
+    <Select
+      size="small"
+      value={estadoFiltro}
+      onChange={(e) => setEstadoFiltro(e.target.value)}
+      displayEmpty
+      sx={{ minWidth: 120 }}
+    >
+      <MenuItem value="">Todos</MenuItem>
+      {estadosDisponibles.map((e) => (
+        <MenuItem key={e} value={e}>
+          {e}
+        </MenuItem>
+      ))}
+    </Select>
+  </Stack>
+</Grid>
+
+
+    {/* =====================  KPIs  ===================== */}
+    <Box sx={{ mb: 2 }}>
+      <Stack
+        direction="row"
+        alignItems="center"
+        justifyContent="flex-end"
+        spacing={2}
+        sx={{ mb: 1 }}
+      >
+        <FormControlLabel
+          control={
+            <Switch
+              checked={showPeriodo}
+              onChange={(e) => setShowPeriodo(e.target.checked)}
+            />
+          }
+          label="Totales del período"
+        />
+        <FormControlLabel
+          control={
+            <Switch
+              checked={showVista}
+              onChange={(e) => setShowVista(e.target.checked)}
+            />
+          }
+          label="Totales de la vista"
+        />
+      </Stack>
+
+      <Grid container spacing={1.5}>
+        {showPeriodo && (
+          <Grid item xs={12}>
+            <Paper variant="outlined" sx={{ p: 1.25, borderRadius: 2 }}>
+              <Stack
+                direction="row"
+                spacing={1}
+                useFlexGap
+                alignItems="center"
+                sx={{ overflowX: "auto", whiteSpace: "nowrap" }}
+              >
+                <CalendarMonthIcon color="primary" fontSize="small" />
+                <Typography variant="subtitle2" fontWeight={700}>
+                  Totales del período
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {(fletesMeta?.from ?? "") + " → " + (fletesMeta?.to ?? "")}
+                </Typography>
+
+                <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
+
+                <StatMini
+                  label="Total Factura"
+                  value={(fletesMeta?.total_factura_global ?? 0).toLocaleString(
+                    "es-MX",
+                    { style: "currency", currency: "MXN" }
+                  )}
+                />
+                <StatMini
+                  label="Total Flete"
+                  value={(fletesMeta?.total_flete_global ?? 0).toLocaleString(
+                    "es-MX",
+                    { style: "currency", currency: "MXN" }
+                  )}
+                />
+                <StatMini
+                  label="% Flete"
+                  value={
+                    <Chip
+                      size="small"
+                      variant="outlined"
+                      color={percentColor(
+                        fletesMeta?.porcentaje_flete_global
+                      )}
+                      label={`${(
+                        fletesMeta?.porcentaje_flete_global ?? 0
+                      ).toFixed(2)}%`}
+                      sx={{ fontWeight: 700, minWidth: 64 }}
+                    />
+                  }
+                />
+                <StatMini
+                  label="Guías"
+                  value={(fletesMeta?.total_guias_global ?? 0).toLocaleString(
+                    "es-MX"
+                  )}
+                />
+              </Stack>
+            </Paper>
+          </Grid>
+        )}
+
+        {showVista && (
+          <Grid item xs={12}>
+            <Paper variant="outlined" sx={{ p: 1.25, borderRadius: 2 }}>
+              <Stack
+                direction="row"
+                spacing={1}
+                useFlexGap
+                alignItems="center"
+                sx={{ overflowX: "auto", whiteSpace: "nowrap" }}
+              >
+                <VisibilityIcon color="primary" fontSize="small" />
+                <Typography variant="subtitle2" fontWeight={700}>
+                  Totales (vista actual)
+                </Typography>
+                <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
+                <StatMini label="Total Factura" value={currency(totalesVista.tfact)} />
+                <StatMini label="Total Flete" value={currency(totalesVista.tflet)} />
+                <StatMini
+                  label="% Flete"
+                  value={
+                    <Chip
+                      size="small"
+                      variant="outlined"
+                      color={percentColor(totalesVista.pct)}
+                      label={percentFmt(totalesVista.pct)}
+                      sx={{ fontWeight: 700, minWidth: 64 }}
+                    />
+                  }
+                />
+                <StatMini
+                  label="Guías"
+                  value={Number(totalesVista.tgui || 0).toLocaleString("es-MX")}
+                />
+              </Stack>
+            </Paper>
+          </Grid>
+        )}
+      </Grid>
+    </Box>
+
+    {/* =====================  TABLA  ===================== */}
+    <Paper elevation={0} sx={{ border: "1px solid", borderColor: "divider", borderRadius: 2 }}>
+      <TableContainer sx={{ maxHeight: 520 }}>
+        <Table size={dense ? "small" : "medium"} stickyHeader>
+          <TableHead>
+            <TableRow sx={{ "& th": { backgroundColor: "#f7f7f7" } }}>
+              {[
+                { id: "num_cliente", label: "# Cliente", align: "left" },
+                { id: "nombre_cliente", label: "Nombre Cliente", align: "left" },
+                { id: "total_factura", label: "Total Factura", align: "right" },
+                { id: "total_flete", label: "Total Flete", align: "right" },
+                { id: "porcentaje_flete", label: "% Flete", align: "center" },
+                { id: "total_guias", label: "Total Guías", align: "center" },
+              ].map((col) => (
+                <TableCell key={col.id} align={col.align}>
+                  <TableSortLabel
+                    active={orderBy === col.id}
+                    direction={orderBy === col.id ? order : "asc"}
+                    onClick={() => handleSort(col.id)}
+                  >
+                    <strong>{col.label}</strong>
+                  </TableSortLabel>
+                </TableCell>
+              ))}
+            </TableRow>
+          </TableHead>
+
+          <TableBody>
+            {!fletesClientes.length && (
+              <TableRow>
+                <TableCell colSpan={6} sx={{ p: 0 }}>
+                  <LinearProgress />
+                </TableCell>
+              </TableRow>
+            )}
+
+            {fletesFiltrados.length === 0 && fletesClientes.length > 0 && (
+              <TableRow>
+                <TableCell colSpan={6} align="center" sx={{ py: 6, color: "text.secondary" }}>
+                  No hay datos para mostrar.
+                </TableCell>
+              </TableRow>
+            )}
+
+            {fletesFiltrados.map((c, i) => {
+              const pctNum = percentToNum(c.porcentaje_flete);
+              return (
+                <TableRow
+                  key={`${c.num_cliente}-${i}`}
+                  hover
+                  sx={{ "&:nth-of-type(odd)": { backgroundColor: "rgba(0,0,0,0.02)" } }}
+                >
+                  <TableCell>{c.num_cliente}</TableCell>
+                  <TableCell sx={{ maxWidth: 360, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {(c.nombre_cliente || "").trim()}
+                  </TableCell>
+                  <TableCell align="right">{currency(c.total_factura)}</TableCell>
+                  <TableCell align="right">{currency(c.total_flete)}</TableCell>
+                  <TableCell align="center" sx={{ minWidth: 160 }}>
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <Chip
+                        size="small"
+                        color={percentColor(pctNum)}
+                        variant="outlined"
+                        label={percentFmt(pctNum)}
+                        sx={{ fontWeight: 600, minWidth: 72 }}
+                      />
+                      <Box sx={{ flex: 1 }}>
+                        <LinearProgress
+                          variant="determinate"
+                          value={Math.min(Math.max(pctNum, 0), 100)}
+                          sx={{ height: 6, borderRadius: 4, [`& .MuiLinearProgress-bar`]: { borderRadius: 4 } }}
+                        />
+                      </Box>
+                    </Stack>
+                  </TableCell>
+                  <TableCell align="center">
+                    <Chip size="small" label={c.total_guias ?? 0} sx={{ fontWeight: 600 }} />
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Paper>
+  </Box>
+)}
+
+
+
     </Box>
   );
 }

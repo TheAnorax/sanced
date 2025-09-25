@@ -52,7 +52,7 @@ function Paqueteria() {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarSeverity, setSnackbarSeverity] = useState('success');
-  const [pedidoLiberarManual, setPedidoLiberarManual] = useState('');
+  const [pedidoLiberarManual, setPedidoLiberarManual] = useState(''); 
 
 
   useEffect(() => {
@@ -166,9 +166,14 @@ function Paqueteria() {
 
 
   const columns = [
-    { field: 'pedido', headerName: 'Pedido', width: 150 },
-    { field: 'tipo', headerName: 'Tipo', width: 150 },
-    { field: 'partidas', headerName: 'Partidas', width: 150 },
+    { field: 'pedido', headerName: 'Pedido', width: 90 },
+    { field: 'tipo', headerName: 'Tipo', width: 50 },
+    { field: 'partidas', headerName: 'Partidas', width: 80 },
+    { field: 'monto', headerName: 'Monto', width: 100,  renderCell: (params) => (params.value ? params.value : <span style={{ color: '#999', fontStyle: 'italic' }}>Sin asignar</span> ) },    
+    { field: 'ruta', headerName: 'Ruta-Paqueteria', width: 200,  renderCell: (params) => (params.value ? params.value : <span style={{ color: '#999', fontStyle: 'italic' }}>Sin asignar</span> ) },    
+    { field: 'cliente', headerName: 'Cliente', width: 250,  renderCell: (params) => (params.value ? params.value : <span style={{ color: '#999', fontStyle: 'italic' }}>Sin asignar</span> ) },  
+    { field: 'factura', headerName: 'Factura', width: 200,  renderCell: (params) => (params.value ? params.value : <span style={{ color: '#999', fontStyle: 'italic' }}>Sin Factura</span> ) },    
+   { field: 'registro_embarque', headerName: 'Registro', width: 200 }, 
     {
       field: 'usuario',
       headerName: 'Usuario de Paquetería',

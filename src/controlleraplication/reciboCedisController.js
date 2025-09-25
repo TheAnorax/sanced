@@ -5,6 +5,7 @@ const fs = require('fs');
     const reciboListas = async (req,res) => {
         try {
             const bodyL = req.body;
+            
             const listarecibo = new ReciboCedisModel(bodyL);
             const guardar = await listarecibo.reciboLista();
             res.json(guardar);

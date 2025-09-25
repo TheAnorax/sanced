@@ -3,29 +3,58 @@ const pool = require('../config/database');
 const getPaqueteria = async (req, res) => {
   try {
     const [rows] = await pool.query(`
-      SELECT
+      
+
+
+
+
+
+SELECT
         p.id_pedi,
         p.tipo,
         p.pedido,
         p.id_usuario_paqueteria,
+        p.registro_embarque,
+        pq.TOTAL AS monto,
+        pq.routeName AS ruta,
+        pq.\`NOMBRE DEL CLIENTE\` AS cliente,
+        pq.\`NO_FACTURA\` AS factura,
         (
           SELECT COUNT(DISTINCT p2.codigo_ped)
-          FROM pedido_embarque p2
+          FROM pedido_embarque p2 
           WHERE p2.pedido = p.pedido AND p2.tipo = p.tipo
         ) AS partidas
       FROM pedido_embarque p
+      LEFT JOIN paqueteria pq ON p.pedido = pq.\`NO ORDEN\`
       WHERE p.estado = 'E'
         AND p.id_usuario_paqueteria IS NULL
-      GROUP BY p.pedido, p.tipo;
+      GROUP BY p.pedido, p.tipo      
+      ORDER BY  p.registro_embarque DESC;
     `);
 
-    const simplifiedPedidos = rows.map((pedido) => ({
-      id_pedi: pedido.id_pedi,
-      tipo: pedido.tipo,
-      pedido: pedido.pedido,
-      partidas: pedido.partidas,
-      id_usuario_paqueteria: pedido.id_usuario_paqueteria,
-    }));
+    const simplifiedPedidos = rows.map((pedido) => {
+      // Formatear la fecha y hora
+      let fechaHora = null;
+      if (pedido.registro_embarque) {
+        const d = new Date(pedido.registro_embarque);
+        const fecha = d.toISOString().split("T")[0]; // YYYY-MM-DD
+        const hora = d.toTimeString().split(" ")[0]; // HH:MM:SS
+        fechaHora = `${fecha} ${hora}`;
+      }
+
+      return {
+        id_pedi: pedido.id_pedi,
+        tipo: pedido.tipo,
+        pedido: pedido.pedido,
+        partidas: pedido.partidas,  
+        monto: pedido.monto,
+        ruta: pedido.ruta,
+        cliente: pedido.cliente,
+        registro_embarque: fechaHora, // 👈 ya formateado
+        id_usuario_paqueteria: pedido.id_usuario_paqueteria,
+        factura: pedido.factura,
+      };
+    });
 
     res.json(simplifiedPedidos);
   } catch (error) {
@@ -33,6 +62,7 @@ const getPaqueteria = async (req, res) => {
     res.status(500).json({ message: 'Error al obtener los pedidos', error: error.message });
   }
 };
+
 
 
 

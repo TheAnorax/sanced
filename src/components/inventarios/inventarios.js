@@ -1356,6 +1356,8 @@ function InventarioAdmin() {
         return Picking("Picking");
       case 3:
         return SnUbi("Sin Ubicacion");
+      case 4:
+        return Mod("Modificaciones");
       default:
         return Almacenamiento();
     }
@@ -2167,6 +2169,110 @@ function InventarioAdmin() {
     </Box>
   );
 
+  const Mod = () => (
+    <Box sx={{ p: 2 }}>
+      <Typography variant="h6" align="center" sx={{ mb: 2 }}>
+        Historial de Modificaciones
+      </Typography>
+
+      {/* Nuevo buscador exclusivo */}
+      <TextField
+        label="Buscar por Código o Descripción"
+        variant="outlined"
+        size="small"
+        value={searchMod}
+        onChange={(e) => setSearchMod(e.target.value)}
+        sx={{ mb: 2 }}
+      />
+
+      <Paper>
+        <Box sx={{ height: 600, width: "100%" }}>
+          <DataGrid
+            rows={filteredMods.map((m, idx) => ({ id: idx + 1, ...m }))}
+            columns={[
+              { field: "usuario", headerName: "Usuario", width: 200 },
+              { field: "codigo", headerName: "Código", width: 150 },
+              {
+                field: "descripcion_producto",
+                headerName: "Descripción",
+                width: 300,
+              },
+              {
+                field: "campo",
+                headerName: "Campo Modificado",
+                width: 200,
+                renderCell: (params) =>
+                  fieldLabels[params.value] || params.value,
+              },
+              {
+                field: "valor_anterior",
+                headerName: "Valor Anterior",
+                width: 200,
+              },
+              { field: "valor_nuevo", headerName: "Valor Nuevo", width: 200 },
+              { field: "fecha_modificacion", headerName: "Fecha", width: 200 },
+            ]}
+            pageSize={10}
+            rowsPerPageOptions={[10, 20, 50]}
+          />
+        </Box>
+      </Paper>
+    </Box>
+  );
+
+  const [modificaciones, setModificaciones] = useState([]);
+  const [searchCodigo, setSearchCodigo] = useState("");
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const res = await fetch(
+          "http://66.232.105.87:3007/api/inventarios/modificaciones"
+        );
+        const data = await res.json();
+        setModificaciones(data);
+        setFilteredData(data); // inicializar también
+      } catch (err) {
+        console.error("Error al cargar modificaciones:", err);
+      }
+    };
+    fetchData();
+  }, []);
+
+  useEffect(() => {
+    if (searchCodigo.trim() === "") {
+      setFilteredData(modificaciones);
+    } else {
+      const filtered = modificaciones.filter((m) =>
+        m.codigo?.toString().toLowerCase().includes(searchCodigo.toLowerCase())
+      );
+      setFilteredData(filtered);
+    }
+  }, [searchCodigo, modificaciones]);
+
+  const [searchMod, setSearchMod] = useState("");
+
+  const filteredMods = modificaciones.filter(
+    (m) =>
+      m.codigo?.toString().toLowerCase().includes(searchMod.toLowerCase()) ||
+      m.descripcion_producto?.toLowerCase().includes(searchMod.toLowerCase())
+  );
+
+  const fieldLabels = {
+    codigo_pro: "Código Producto",
+    des: "Descripción",
+    code_pz: "Código Pieza",
+    code_pq: "Código Paquete",
+    code_master: "Código Master",
+    code_inner: "Código Inner",
+    code_palet: "Código Palet",
+    _pz: "Cantidad Piezas",
+    _pq: "Cantidad Paquetes",
+    _inner: "Cantidad Inner",
+    _master: "Cantidad Master",
+    _palet: "Mactidad Palet"
+  };
+
   return (
     <div style={{ flexGrow: 1, display: "flex", flexDirection: "column" }}>
       {/* Menú de pestañas */}
@@ -2180,6 +2286,9 @@ function InventarioAdmin() {
         <Tab label="Picking" icon={<Dashboard />} />
         {["Admin", "INV"].includes(user?.role) && (
           <Tab label="Codigos Sin Ubicacion" icon={<Dashboard />} />
+        )}
+        {["Admin", "INV"].includes(user?.role) && (
+          <Tab label="Modificaciones" icon={<Dashboard />} />
         )}
       </Tabs>
 

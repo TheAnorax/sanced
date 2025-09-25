@@ -3280,7 +3280,7 @@ function Visitantes() {
       const idVisit = selectedVisitaSalida.id_visit;
       const placa = selectedVisitaSalida.placa;
       
-      const response = await axios.put(`${api}/up/salida/${idVisit}`, { est: 'C', id_usu_out: idUsuario, tiempo_visita: tiempo }, {
+      const response = await axios.put(`${api}/up/salida/${idVisit}`, { est: 'C', id_usu_out: idUsuario, tiempo_visita: tiempo, placa: placa }, {
         headers: { 'Content-Type': 'application/json', }, }
       );
       window.location.reload();
@@ -3741,7 +3741,7 @@ function Visitantes() {
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} flexDirection={isSmallScreen ? "column" : "row"} >
         <>
           <Box mb={2}>
-            {(user?.role === 'POLIB' || user?.role === 'Admin') && (
+            {(user?.role === 'POLIB' || user?.role === 'Admin' || user?.role === 'Master') && (
               <>
                 <TextField
                   label="Buscar visita"
@@ -3795,7 +3795,7 @@ function Visitantes() {
                 />
               </>
             )}
-            {(user?.role === 'POLIA' || user?.role === 'Admin')  && (
+            {(user?.role === 'POLIA' || user?.role === 'Admin' || user?.role === 'Master')  && (
               <TextField
                 label="Buscar placa"
                 value={searchQueryPlaca}
@@ -3825,24 +3825,24 @@ function Visitantes() {
           </Box>
         </>
         <Box display="flex" gap={isMobile ? 1 : 2} sx={{flexDirection: isMobile ? "column" : "row"}}>
-          {(user?.role === 'RH' || user?.role === 'Admin') && ( 
+          {(user?.role === 'RH' || user?.role === 'Admin' || user?.role === 'Master') && ( 
             <Button variant="contained" color="primary" startIcon={<PersonAddAlt />} onClick={handleClickOpenCreateIn} size={isMobile ? "small" : "medium"} >
               Nuevo visitante
             </Button>
           )}
-          {(user?.role === 'CONTROL' || user?.role === 'Admin' || user?.role === 'Tran') && (
+          {(user?.role === 'CONTROL' || user?.role === 'Admin' || user?.role === 'Tran' || user?.role === 'Master') && (
             <Button variant="contained" startIcon={<LocalShipping />} onClick={handleClickOpenCreateTransp} size={isMobile ? "small" : "medium"} > 
               Nuevo transportista
             </Button>
           )}
-          {(user?.role === 'RH' || user?.role === 'CONTROL' || user?.role === 'Tran' || user?.role === 'Nac' || user?.role === 'TRAFICO' || user?.role === 'Imp' || user?.role === 'Admin') && (
+          {(user?.role === 'RH' || user?.role === 'Master' || user?.role === 'CONTROL' || user?.role === 'Tran' || user?.role === 'Nac' || user?.role === 'TRAFICO' || user?.role === 'Imp' || user?.role === 'Admin') && (
             <>
               <Button variant="contained" startIcon={<Schedule />} onClick={handleClickOpenCreateVisita} size={isMobile ? "small" : "medium"} >
                 Programar visita
               </Button>
             </>
           )}
-          {(user?.role === 'POLIB' || user?.role === 'Admin') && (
+          {(user?.role === 'POLIB' || user?.role === 'Admin' || user?.role === 'Master') && (
             <>
               <Button variant="contained" color="primary" startIcon={<Person />} onClick={handleClickOpenEntrevista} size={isMobile ? "small" : "medium"} >
                 ENTREVISTA DE TRABAJO
@@ -3855,7 +3855,7 @@ function Visitantes() {
         </Box>
       </Box>
       {/**CARD DE EMPLEADOS */}
-      {(user?.role === 'Admin' || user?.role === 'POLIB') && (
+      {(user?.role === 'Admin' || user?.role === 'POLIB' || user?.role === 'Master') && (
         <Box mb={2}>
           <Grid container spacing={3}>
             {filteredEmpleados.map((empleado, index) => (
@@ -4123,7 +4123,7 @@ function Visitantes() {
         </Grid>
       </Box>
       {/**CARD VALIDAR LA FOTO DEL VISITANTE */}
-      {(user?.role === 'POLIB' || user?.role === 'Admin') && (
+      {(user?.role === 'POLIB' || user?.role === 'Admin' || user?.role === 'Master') && (
         <Box mb={2} sx={{marginTop:'30px'}}>
           <Grid container spacing={2}>
             {visitas.filter((vit) => vit.llegada === 'S' && vit.entrada_h === null).map((vit, index) => (
@@ -4229,7 +4229,7 @@ function Visitantes() {
         </Box>
       )}
       {/**CARD ENTRADA DE PAQUETERIAS (REG POLI) */}
-      {(user?.role === 'POLIP' || user?.role === 'Admin') && (
+      {(user?.role === 'POLIP' || user?.role === 'Admin' || user?.role === 'Master') && (
         <Box mb={2} sx={{marginTop:'30px'}}>
           <Grid container spacing={2}>
             {visitas.filter((vit) =>  vit.id_catv !== 12 && ( vit.placa === '' || vit.img1 === '' ||  vit.validado === '' || vit.validado === '' || vit.validado === null) && (vit.entrada_h !== null)).map((vit, index) => (
@@ -6005,7 +6005,7 @@ function Visitantes() {
                 )}
               </Grid>
             </Grid>)}
-            {(user?.role === 'POLIB' || user?.role === 'POLIA' || user?.role === 'Admin') && (
+            {(user?.role === 'POLIB' || user?.role === 'POLIA' || user?.role === 'Admin' || user?.role === 'Master') && (
               <Box>
                 <TableContainer component={Paper} sx={{ maxHeight: 440 }}>
                   <Table>

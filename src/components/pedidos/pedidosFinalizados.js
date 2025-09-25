@@ -724,7 +724,13 @@ function Finalizados() {
 
   const totalPagesExp = "___total_pages___";
 
-  function addPageNumber(doc, pedido, numeroFactura, tipo_original, numeroCliente) {
+  function addPageNumber(
+    doc,
+    pedido,
+    numeroFactura,
+    tipo_original,
+    numeroCliente
+  ) {
     const pageCount = doc.internal.getNumberOfPages();
     const pageWidth = doc.internal.pageSize.getWidth();
 
@@ -802,8 +808,6 @@ function Finalizados() {
     return tipoMasUsado === "ATA" ? "ATADO" : tipoMasUsado;
   };
 
-
-
   const generatePDF = async (pedido, tipo_original) => {
     try {
       let numero = "";
@@ -811,9 +815,11 @@ function Finalizados() {
       let nombreCliente = "";
       let direccion = "";
       let telefono = "";
-      let rawTotal = 0;
-      let pedidoEncontrado = ""; 
+      let rawTotal = 0; // Subtotal SIN IVA
+      let totalConIva = 0; // Total CON IVA
+      let pedidoEncontrado = "";
 
+      // Cargar BD (ruta-unica)
       const responseRoutes = await fetch(
         "http://66.232.105.87:3007/api/Trasporte/ruta-unica"
       );
@@ -824,7 +830,6 @@ function Finalizados() {
 
       if (!route) {
         try {
-          // 🔁 SIEMPRE consultar datos externos por si falta algo
           const direccionAPI = await axios.post(
             "http://66.232.105.87:3007/api/Trasporte/obtenerPedidos"
           );
@@ -834,50 +839,78 @@ function Finalizados() {
             (p) => String(p.NoOrden) === String(pedido)
           );
 
-
-          // Rellenar todos los campos usando route o pedidoEncontrado como respaldo
+          // Datos base
           nombreCliente =
             route?.["NOMBRE DEL CLIENTE"] ||
             pedidoEncontrado?.Nombre_Cliente ||
             "No disponible";
+
           direccion = cleanAddress(
             pedidoEncontrado?.Direccion ||
-            route?.["DIRECCION"] ||
-            "No disponible"
+              route?.["DIRECCION"] ||
+              "No disponible"
           );
+
           numeroFactura =
             pedidoEncontrado?.NoFactura ||
             route?.["NO_FACTURA"] ||
             "No disponible";
+
           numero =
             route?.["NUM. CLIENTE"] ||
             pedidoEncontrado?.NumConsigna ||
             "No disponible";
+
           telefono =
             route?.["TELEFONO"] ||
             pedidoEncontrado?.Telefono ||
             "No disponible";
 
-          rawTotal = parseFloat(
-            String(route?.["TOTAL"] || pedidoEncontrado?.Total || "0").replace(
-              /[^0-9.-]+/g,
-              ""
-            )
+          // Subtotal (sin IVA)
+          rawTotal =
+            parseFloat(
+              String(
+                route?.["TOTAL"] || pedidoEncontrado?.Total || "0"
+              ).replace(/[^0-9.-]+/g, "")
+            ) || 0;
+
+          // Fallback Total con IVA:
+          // 1) API externa (TotalConIva)
+          // 2) Tu BD (totalIva o TOTAL_FACTURA_LT) si existiera para esta orden
+          // 3) Subtotal como último recurso
+          const totalIvaAPI = pedidoEncontrado?.TotalConIva
+            ? parseFloat(
+                String(pedidoEncontrado.TotalConIva).replace(/[^0-9.-]+/g, "")
+              )
+            : 0;
+
+          // Por si existe en routesData otra fila de esa orden (normalmente no, pero queda el intento)
+          const routeFallback = routesData.find(
+            (r) => String(r["NO ORDEN"]) === String(pedido)
           );
+          const totalIvaDB = routeFallback
+            ? parseFloat(
+                String(
+                  routeFallback.totalIva ?? routeFallback.TOTAL_FACTURA_LT ?? 0
+                ).replace(/[^0-9.-]+/g, "")
+              ) || 0
+            : 0;
+
+          totalConIva = totalIvaAPI || totalIvaDB || rawTotal;
         } catch (error) {
           console.error("❌ Error al consultar pedido externo:", error);
           return alert("Error al obtener datos del pedido desde API externa.");
         }
       } else {
+        // Datos desde BD
         tipo_original = route["tipo_original"] || tipo_original;
         nombreCliente = route["NOMBRE DEL CLIENTE"] || nombreCliente;
 
-        // 🔸 Obtener la dirección desde la API externa usando NoOrden
+        // Intentar también API externa
         const direccionAPI = await axios.post(
           "http://66.232.105.87:3007/api/Trasporte/obtenerPedidos"
         );
         const pedidosExternos = direccionAPI.data;
-
         pedidoEncontrado = pedidosExternos.find(
           (p) => String(p.NoOrden) === String(pedido)
         );
@@ -887,48 +920,117 @@ function Finalizados() {
         );
         numeroFactura =
           pedidoEncontrado?.NoFactura || route["NO_FACTURA"] || "No disponible";
-
         numero = route["NUM. CLIENTE"] || numero;
         telefono = route["TELEFONO"] || telefono;
-        rawTotal = route["TOTAL"];
 
-        // Después del if/else de route:
-        rawTotal = parseFloat(String(rawTotal).replace(/[^0-9.-]+/g, "")) || 0;
+        // Subtotal (sin IVA)
+        rawTotal =
+          parseFloat(String(route["TOTAL"]).replace(/[^0-9.-]+/g, "")) || 0;
 
-        const totalConIva = pedidoEncontrado?.TotalConIva
-          ? parseFloat(pedidoEncontrado.TotalConIva)
-          : rawTotal;
+        // Fallback Total con IVA:
+        // 1) API externa (TotalConIva)
+        // 2) Tu BD (totalIva o TOTAL_FACTURA_LT)
+        // 3) Subtotal
+        const totalIvaAPI = pedidoEncontrado?.TotalConIva
+          ? parseFloat(
+              String(pedidoEncontrado.TotalConIva).replace(/[^0-9.-]+/g, "")
+            )
+          : 0;
 
-        // ✅ Mostrar SIEMPRE la confirmación
-        const { isConfirmed } = await Swal.fire({
-          title: `Pedido ${pedido}-${tipo_original}`,
+        const totalIvaDB =
+          parseFloat(
+            String(route?.totalIva ?? route?.TOTAL_FACTURA_LT ?? 0).replace(
+              /[^0-9.-]+/g,
+              ""
+            )
+          ) || 0;
 
-          text: `Subtotal: $${rawTotal.toFixed(2)} | Total con IVA: $${totalConIva.toFixed(2)}. ¿Está de acuerdo con este total?`,
-          icon: "question",
-          showCancelButton: true,
-          confirmButtonText: "Sí, continuar",
-          cancelButtonText: "No, modificar",
-        });
-
-        if (!isConfirmed) {
-          const { value: nuevoTotal } = await Swal.fire({
-            title: "Ingrese el nuevo total",
-            input: "number",
-            inputAttributes: { min: 0, step: "0.01" },
-            inputValue: rawTotal,
-            showCancelButton: true,
-            confirmButtonText: "Aceptar",
-            cancelButtonText: "Cancelar",
-          });
-
-          if (!nuevoTotal) {
-            return Swal.fire("Cancelado", "No se generó el PDF.", "info");
-          }
-
-          rawTotal = parseFloat(nuevoTotal);
-        }
+        totalConIva = totalIvaAPI || totalIvaDB || rawTotal;
       }
 
+      // === Confirmar totales y, si es necesario, permitir editarlos ===
+      const { isConfirmed: aceptaTotales } = await Swal.fire({
+        title: `Pedido ${pedido}-${tipo_original}`,
+        html: `
+          <div style="font-size:14px; line-height:1.7; text-align:left">
+            <h2><div><b>Subtotal (sin IVA):</b> $${(
+              Number(rawTotal) || 0
+            ).toFixed(2)}</div></h2>
+            <h2><div><b>Total factura (con IVA):</b> $${(
+              Number(totalConIva) || 0
+            ).toFixed(2)}</div></h2>
+          </div>
+          <h2><div style="margin-top:6px; color:#666; font-size:12px;">
+            ¿Está de acuerdo con estos totales?
+          </div></h2>
+    `,
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonText: "Sí, continuar",
+        cancelButtonText: "No, modificar",
+      });
+
+      if (!aceptaTotales) {
+        const { value: nuevos, isConfirmed } = await Swal.fire({
+          title: "Modificar totales",
+          html: `
+    <div style="text-align:left">
+      <label style="font-size:12px;">Subtotal (sin IVA)</label>
+      <input id="swal-subtotal" type="number" step="0.01" min="0"
+             inputmode="decimal"
+             value="${(Number(rawTotal) || 0).toFixed(2)}"
+             class="swal2-input" style="width:100%;margin:6px 0 10px;">
+      <label style="font-size:12px;">Total factura (con IVA)</label>
+      <input id="swal-total" type="number" step="0.01" min="0"
+             inputmode="decimal"
+             value="${(Number(totalConIva) || 0).toFixed(2)}"
+             class="swal2-input" style="width:100%;margin:6px 0 10px;">
+    </div>
+  `,
+          focusConfirm: false,
+          showCancelButton: true,
+          confirmButtonText: "Usar estos totales",
+          cancelButtonText: "Cancelar",
+          preConfirm: () => {
+            const s = parseFloat(
+              String(document.getElementById("swal-subtotal").value).replace(
+                ",",
+                "."
+              )
+            );
+            const t = parseFloat(
+              String(document.getElementById("swal-total").value).replace(
+                ",",
+                "."
+              )
+            );
+            if (!isFinite(s) || !isFinite(t)) {
+              Swal.showValidationMessage(
+                "Ambos totales son requeridos y deben ser números."
+              );
+              return false;
+            }
+            if (s < 0 || t < 0) {
+              Swal.showValidationMessage(
+                "Los totales no pueden ser negativos."
+              );
+              return false;
+            }
+            return { subtotal: s, total: t };
+          },
+        });
+
+        if (!isConfirmed || !nuevos) {
+          await Swal.fire("Cancelado", "No se generó el PDF.", "info");
+          return; // detener generación
+        }
+
+        // Actualizar con lo que el usuario escribió
+        rawTotal = nuevos.subtotal;
+        totalConIva = nuevos.total;
+      }
+
+      // === Fin confirmación/edición ===
       const responseEmbarque = await fetch(
         `http://66.232.105.87:3007/api/Trasporte/embarque/${pedido}/${tipo_original}`
       );
@@ -938,8 +1040,7 @@ function Finalizados() {
         return alert("No hay productos");
 
       console.log(`✅ Productos recibidos: ${result.totalLineas} líneas`);
-      const data = result.datos; // Esto mantiene el comportamiento original del PDF
-
+      const data = result.datos; // Mantiene el comportamiento original del PDF
 
       // 🔍 Consultar OC mediante la API surtidoOC SOLO para clientes específicos
       let numeroOC = "";
@@ -948,16 +1049,17 @@ function Finalizados() {
         nombreCliente === "IMPULSORA INDUSTRIAL GUADALAJARA"
       ) {
         try {
-          const ocResponse = await axios.post("http://66.232.105.79:9100/surtidoOC", {
-            orden: pedido
-          });
+          const ocResponse = await axios.post(
+            "http://66.232.105.79:9100/surtidoOC",
+            {
+              orden: pedido,
+            }
+          );
           numeroOC = ocResponse.data?.oc || "";
         } catch (err) {
           console.warn("⚠️ No se pudo obtener el OC desde surtidoOC:", err);
         }
       }
-
-
 
       const doc = new jsPDF();
       const marginLeft = 10;
@@ -1003,13 +1105,7 @@ function Finalizados() {
         nombreCliente,
         referenciasClientes
       );
-      let totalImporte = 0;
-      if (
-        rawTotal &&
-        !isNaN(parseFloat(String(rawTotal).replace(/[^0-9.-]+/g, "")))
-      ) {
-        totalImporte = parseFloat(String(rawTotal).replace(/[^0-9.-]+/g, ""));
-      }
+      let totalImporte = Number(rawTotal) || 0;
 
       doc.setFont("helvetica", "bold");
       doc.setFontSize(9.5);
@@ -1025,9 +1121,7 @@ function Finalizados() {
       currentY += 4;
 
       const direccionFormateada = `DIRECCIÓN: ${direccion}`;
-      doc.text(direccionFormateada, marginLeft, currentY, {
-        maxWidth: 180,
-      });
+      doc.text(direccionFormateada, marginLeft, currentY, { maxWidth: 180 });
 
       const lineCount = Math.ceil(doc.getTextWidth(direccionFormateada) / 180);
       currentY += 4 * lineCount;
@@ -1035,21 +1129,22 @@ function Finalizados() {
       currentY += 4;
       doc.text(`No Orden: ${pedido}-${tipo_original}`, marginLeft, currentY);
       currentY += 4;
-      doc.text(`FACTURA No.: ${numeroFactura}    OC: ${numeroOC}`, marginLeft, currentY);
+      doc.text(
+        `FACTURA No.: ${numeroFactura}    OC: ${numeroOC}`,
+        marginLeft,
+        currentY
+      );
       currentY += 4;
 
-
-      // 🔴 Aquí agregamos el conteo de líneas
+      // 🔴 Conteo de líneas
       const totalLineasDB = result.totalLineas;
       const totalMotivo = result.totalMotivo;
       const totalLineasPDF = result.totalLineasPDF;
 
-      // Mostrar debajo de FACTURA
       const textoLineas = `Líneas BD: ${totalLineasDB} | Líneas PDF: ${totalLineasPDF} | Motivo: ${totalMotivo}`;
       doc.setFontSize(9);
       doc.setFont("helvetica", "bold");
 
-      // Si hay diferencia, mostrar en rojo
       if (totalLineasDB !== totalLineasPDF + totalMotivo) {
         doc.setTextColor(255, 0, 0);
       } else {
@@ -1061,12 +1156,12 @@ function Finalizados() {
 
       const infoY = currentY;
       doc.setFillColor(255, 255, 0);
-      doc.rect(marginLeft, infoY, 190, 11, "F");
+      doc.rect(marginLeft, infoY, 190, 13, "F");
       doc.setFont("helvetica", "bold");
       doc.setFontSize(9.5);
       doc.setTextColor(0, 0, 0);
       doc.text("INFORMACIÓN IMPORTANTE", 105, infoY + 4, { align: "center" });
-      doc.setFontSize(5.3);
+      doc.setFontSize(6.3);
       doc.text(
         "En caso de detectar cualquier irregularidad (daños, faltantes,cajas mojadas o manipulaciones), Favor de comunicarse de inmediato al departamento de atención al cliente al número:(55) 58727290 EXT.: (8815, 8819) en un Horario de Lunes a Viernes de 8:30 am a 5:00 pm",
         105,
@@ -1082,8 +1177,7 @@ function Finalizados() {
         (p) => (p.um || "").toUpperCase() === "ATA"
       );
 
-      // ✔️ Primero agrupamos productos por caja original
-
+      // ✔️ Agrupar productos por caja original
       const cajasAgrupadasOriginal = {};
 
       for (const item of productosConCaja) {
@@ -1194,19 +1288,25 @@ function Finalizados() {
 
       // Productos que NO tienen caja y NO tienen motivo registrado
       const productosSinCajaNoRegistrada = productosSinCaja.filter(
-        (p) => (!p.caja || p.caja === null || p.caja === "") && (!p.motivo || p.motivo === null)
+        (p) =>
+          (!p.caja || p.caja === null || p.caja === "") &&
+          (!p.motivo || p.motivo === null)
       );
-
 
       let numeroCajaSecuencial = 1;
 
-      // ✅ Si hay productos sin caja, agrégalos a la última caja en lugar de mostrarlos aparte
-      if (productosSinCajaNoRegistrada.length > 0 && cajasOrdenadas.length > 0) {
+      // ✅ Si hay productos sin caja, agrégalos a la última caja
+      if (
+        productosSinCajaNoRegistrada.length > 0 &&
+        cajasOrdenadas.length > 0
+      ) {
         const indexUltimaCaja = cajasOrdenadas.length - 1;
-        cajasOrdenadas[indexUltimaCaja][1].push(...productosSinCajaNoRegistrada);
+        cajasOrdenadas[indexUltimaCaja][1].push(
+          ...productosSinCajaNoRegistrada
+        );
       }
 
-      // 🔁 Recorremos las cajas (incluyendo los productos sin caja fusionados en la última caja)
+      // 🔁 Recorremos las cajas
       for (const [key, productos] of cajasOrdenadas) {
         const [_, numeroCaja] = key.split("_");
         const tipoVisible = getTipoDominante(productos);
@@ -1308,7 +1408,7 @@ function Finalizados() {
         numeroCajaSecuencial++;
       }
 
-      // 🟢 Seguimos con la parte de "productos atados" sin tocar nada
+      // 🟢 Productos atados sin caja
       if (productosSinCajaAtados.length > 0) {
         currentY = verificarEspacio(doc, currentY, 2);
         doc.autoTable({
@@ -1402,23 +1502,14 @@ function Finalizados() {
         currentY = doc.lastAutoTable.finalY + 4;
       }
 
-
-
-
-
-      // Agrupar los productos sin caja en dos: con algo (INNER, MASTER, TARIMA, ATADOS) y completamente vacíos
-
+      // Resumen totales
       currentY = doc.lastAutoTable.finalY + 5;
       currentY = verificarEspacio(doc, currentY, 1);
       const pageWidth = doc.internal.pageSize.getWidth();
       const tableWidth = 90;
       const leftMargin = (pageWidth - tableWidth) / 2;
 
-
-      const totalConIva = pedidoEncontrado?.TotalConIva
-        ? parseFloat(pedidoEncontrado.TotalConIva)
-        : totalImporte;
-
+      const totalConIvaParaTexto = totalConIva; // ya viene de confirmación o edición
 
       doc.autoTable({
         startY: currentY,
@@ -1457,12 +1548,10 @@ function Finalizados() {
             },
           ],
         ],
-
-
         body: [
           [
             `$${totalImporte.toFixed(2)}`,
-            `$${totalConIva.toFixed(2)}`,
+            `$${totalConIvaParaTexto.toFixed(2)}`,
             "100.00 %",
           ],
         ],
@@ -1507,23 +1596,17 @@ function Finalizados() {
 
       currentY = doc.lastAutoTable.finalY + 0;
 
-      // === LEYENDA VERTICAL EN EL LADO IZQUIERDO ===
-      doc.saveGraphicsState(); // Guarda el estado gráfico actual
+      // === LEYENDA VERTICAL
+      doc.saveGraphicsState();
       doc.setFont("helvetica", "normal");
       doc.setFontSize(8);
-
-      // Coordenadas para colocar el texto vertical (ajusta según altura de tu hoja)
       doc.text(
         "Documento expedido sobre resolución miscelánea vigente",
-        5, // X inicial al borde izquierdo
-        doc.internal.pageSize.getHeight() / 2 + 30, // Y centrado vertical con ajuste
-        {
-          angle: 270, // Rota el texto vertical
-          align: "center",
-        }
+        5,
+        doc.internal.pageSize.getHeight() / 2 + 30,
+        { angle: 270, align: "center" }
       );
-
-      doc.restoreGraphicsState(); // Restaura el estado gráfico original
+      doc.restoreGraphicsState();
 
       const instrucciones = [
         "•Estimado cliente, nuestro transportista cuenta con ruta asignada por lo que agradeceríamos agilizar el tiempo de recepción de su mercancía, el material viaja consignado por lo que solo podrá entregarse en la dirección estipulada en este documento.",
@@ -1554,7 +1637,7 @@ function Finalizados() {
 
       currentY = doc.lastAutoTable.finalY + 0;
 
-      const letras = NumerosALetras(totalConIva);
+      const letras = NumerosALetras(totalConIvaParaTexto);
       const fechaActual = new Date();
       const fechaHoy = fechaActual.toLocaleDateString("es-MX");
       const fechaVence = new Date(
@@ -1563,7 +1646,7 @@ function Finalizados() {
 
       const textoPagare =
         `En cualquier lugar de este documento donde se estampe la firma por este pagaré debo(emos) y pagaré(mos) ` +
-        `incondicionalmente a la vista y a la orden de SANTUL HERRAMIENTAS S.A. DE C.V., la cantidad de: $${totalConIva.toFixed(
+        `incondicionalmente a la vista y a la orden de SANTUL HERRAMIENTAS S.A. DE C.V., la cantidad de: $${totalConIvaParaTexto.toFixed(
           2
         )} ` +
         `(${letras} M.N.) En el total a pagar en Cuautitlán, Estado de México, o en la que SANTUL HERRAMIENTAS S.A. DE C.V., juzgue necesario. ` +
@@ -1592,12 +1675,10 @@ function Finalizados() {
       currentY = doc.lastAutoTable.finalY + 0;
       currentY = verificarEspacio(doc, currentY, 5);
 
-      //informacion bancaria
-      // === Información Bancaria + Observaciones alineadas ===
+      // === Información bancaria + Observaciones
+      const tablaBancosY = currentY + 10;
 
-      const tablaBancosY = currentY + 10; // Ajusta el +3 si lo quieres más arriba o abajo
-
-      // Muestra la referencia bancaria arriba de la tabla
+      // Referencia bancaria arriba de la tabla
       doc.setFontSize(10);
       doc.text("Referencia bancaria:", 20, tablaBancosY - 5, {
         styles: { fontStyle: "bold" },
@@ -1606,7 +1687,7 @@ function Finalizados() {
       doc.text(`${referenciaCliente}`, 75, tablaBancosY - 5, {
         align: "right",
         styles: { fontStyle: "bold" },
-      }); // Ajusta la posición x para alinearlo a la derecha
+      });
       doc.setFont(undefined, "normal");
 
       // TABLA DE BANCOS
@@ -1634,63 +1715,52 @@ function Finalizados() {
         ],
         body: [
           ["BANAMEX", "6860432", "7006", "002180700668604325"],
-          [
-            { content: "BANORTE" },
-            { content: "0890771176" },
-            { content: "04" },
-            { content: "072180008907711766" },
-          ],
+          ["BANORTE", "0890771176", "04", "072180008907711766"],
           ["BANCOMER", "CIE 2476827", "1838"],
         ],
-        theme: "plain", // Sin bordes, puro alineado como quieres
+        theme: "plain",
         styles: { fontSize: 8, cellPadding: 1, halign: "center" },
         margin: { left: 10 },
-        tableWidth: 115, // ajusta a 115-120 según el ancho de tu hoja, eso te da espacio a la derecha para observaciones
+        tableWidth: 115,
         headStyles: { textColor: [0, 0, 0], fontStyle: "bold" },
         bodyStyles: { textColor: [0, 0, 0] },
       });
-      // CAJA OBSERVACIONES (alineada a la derecha)
-      // =============== CAJA DE OBSERVACIONES ===============
+
+      // Caja de observaciones
       const obsBoxX = 133;
       const obsBoxY = tablaBancosY;
       const obsBoxWidth = 65;
       const obsBoxHeight = 28;
 
-      // Dibuja el recuadro
       doc.setDrawColor(120, 120, 120);
       doc.setLineWidth(0.3);
       doc.rect(obsBoxX, obsBoxY, obsBoxWidth, obsBoxHeight);
 
-      // Título
       doc.setFont("helvetica", "bold");
       doc.setFontSize(9);
       doc.text("Observaciones: ", obsBoxX + 3, obsBoxY + 7);
 
-
       doc.setFont("helvetica", "normal");
       doc.setFontSize(8);
-      doc.text(`OC: ${numeroOC}`, obsBoxX + 5, obsBoxY + 15); // Mostrar el OC limpio
+      doc.text(`OC: ${numeroOC}`, obsBoxX + 5, obsBoxY + 15);
 
-      // Líneas punteadas dentro del recuadro, bien alineadas
       doc.setFont("helvetica", "normal");
       doc.setFontSize(8);
 
       const numLineas = 4;
-      const leftPadding = 5; // padding izquierdo dentro de la caja
+      const leftPadding = 5;
       const rightPadding = 5;
       const lineaAncho = obsBoxWidth - leftPadding - rightPadding;
       for (let i = 0; i < numLineas; i++) {
-        // Empieza un poco debajo del título y separadas
         const lineaY = obsBoxY + 11 + i * 5.3;
         doc.text(
-          "...".repeat(Math.floor(lineaAncho / 2.5)), // Ajusta el divisor para el largo de puntos
+          "...".repeat(Math.floor(lineaAncho / 2.5)),
           obsBoxX + leftPadding,
           lineaY
         );
       }
 
-      // Poner leyenda final justo abajo, centrado
-      const leyendaY = obsBoxY + obsBoxHeight + 7; // Ajusta el +7 para el espaciado
+      const leyendaY = obsBoxY + obsBoxHeight + 7;
       doc.setFont("helvetica", "normal");
       doc.setFontSize(7.5);
       doc.text(
@@ -1699,7 +1769,7 @@ function Finalizados() {
         leyendaY
       );
 
-      currentY = leyendaY + 4; // Si necesitas continuar después
+      currentY = leyendaY + 4;
 
       addPageNumber(doc, pedido, numeroFactura, tipo_original);
 
@@ -1710,8 +1780,6 @@ function Finalizados() {
       alert("Hubo un error al generar el PDF.");
     }
   };
-
-
 
   const [mes, setMes] = useState("");
   const [anio, setAnio] = useState(new Date().getFullYear().toString());
@@ -1757,6 +1825,53 @@ function Finalizados() {
       alert("Ocurrió un error al generar el archivo.");
     }
   };
+
+  const exportarPedidoAExcel = () => {
+  if (!selectedPedido || pedidoDetalles.length === 0) {
+    Swal.fire("Sin datos", "No hay detalles para exportar este pedido.", "info");
+    return;
+  }
+
+  // 🔹 Estructuramos los datos en formato Excel
+  const data = pedidoDetalles.map((detalle) => ({
+    Pedido: selectedPedido.pedido,
+    Tipo: selectedPedido.tipo,
+    Código: detalle.codigo_ped,
+    Descripción: detalle.descripcion,
+    Cantidad: detalle.cantidad,
+    Surtido: detalle.cant_surti,
+    "No Enviado": detalle.cant_no_env,
+    Motivo: detalle.motivo || "N/A",
+    Surtidor: detalle.usuario_surtido || "N/A",
+    Validador: detalle.usuario_paqueteria || "N/A",
+    "S. PZ": detalle._pz || 0,
+    "S. PQ": detalle._pq || 0,
+    "S. INNER": detalle._inner || 0,
+    "S. MASTER": detalle._master || 0,
+    "V. PZ": detalle.v_pz || 0,
+    "V. PQ": detalle.v_pq || 0,
+    "V. INNER": detalle.v_inner || 0,
+    "V. MASTER": detalle.v_master || 0,
+    InicioSurtido: detalle.inicio_surtido,
+    FinSurtido: detalle.fin_surtido,
+    InicioEmbarque: detalle.inicio_embarque,
+    FinEmbarque: detalle.fin_embarque,
+  }));
+
+  // 🔹 Crear hoja de Excel
+  const worksheet = XLSX.utils.json_to_sheet(data);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Pedido");
+
+  // 🔹 Exportar archivo
+  const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+  const blob = new Blob([excelBuffer], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+
+  saveAs(blob, `Pedido_${selectedPedido.pedido}_${selectedPedido.tipo}.xlsx`);
+};
+
 
   return (
     <Box p={3}>
@@ -1976,6 +2091,14 @@ function Finalizados() {
                 >
                   Generar PDF Surtido
                 </Button>
+                <Button
+  variant="outlined"
+  color="success"
+  onClick={exportarPedidoAExcel}
+>
+  Exportar Pedido a Excel
+</Button>
+
 
                 <Button
                   variant="contained"

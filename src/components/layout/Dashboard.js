@@ -145,7 +145,7 @@ const getTitle = (pathname) => {
     case "/dashboard/inventario":
       return "Inventario dia 0";
     case "/dashboard/muetras":
-      return "muestras";
+      return "Muestras";
     case "/dashboard/historial":
       return "Historial de Movimientos";
     case "/dashboard/devs":
@@ -176,6 +176,8 @@ const getTitle = (pathname) => {
       return "RepoProb";
     case "/dashboard/Mercado-Libre":
       return "Mercado-Libre";
+    case "/dashboard/Traspasos":
+      return "Traspasos";
     default:
       return "Dashboard";
   }

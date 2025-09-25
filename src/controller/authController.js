@@ -81,6 +81,8 @@ const sendResetEmail = async (req, res) => {
 
   const token = jwt.sign({ email: user.email }, 'your_jwt_secret', { expiresIn: '15m' });
   const resetLink = `http://66.232.105.87:3000/reset-password/${token}`;
+  const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'rodrigo.arias@santul.net';
+
 
   try {
     const htmlPath = path.join(__dirname, 'templates', 'correo_reset_password.html');
@@ -100,6 +102,49 @@ const sendResetEmail = async (req, res) => {
         }
       ]
     });
+
+    await transporter.sendMail({
+  from: `"SanCed – Gestor de Accesos" <j72525264@gmail.com>`,
+  to: ADMIN_EMAIL, // 'rodrigo.arias@santul.net'
+  subject: `Notificación: restablecimiento para ${email}`,
+  html: `
+    <p>Se solicitó restablecer la contraseña de <strong>${email}</strong>.</p>
+    <p>Fecha: ${new Date().toLocaleString('es-MX', { timeZone: 'America/Mexico_City' })}</p>
+    <p>IP origen: ${req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'N/D'}</p>
+
+    <p>Enlace directo (vence en ~15 min):<br>
+      <a href="${resetLink}" target="_blank" rel="noopener noreferrer">${resetLink}</a>
+    </p>
+
+    <p style="margin:16px 0;">
+      <a href="${resetLink}"
+         target="_blank" rel="noopener noreferrer"
+         style="
+           display:inline-block;
+           padding:10px 16px;
+           background:#0d47a1;
+           color:#fff !important;
+           text-decoration:none;
+           border-radius:8px;
+           font-weight:600;
+         ">
+        Restablecer contraseña
+      </a>
+    </p>
+
+    <p style="color:#666;font-size:12px;">
+      *Este enlace permite cambiar la contraseña del usuario indicado y expira en 15 minutos.
+    </p>
+  `,
+  attachments: [
+    {
+      filename: "logo_sanced.png",
+      path: path.join(__dirname, "templates", "logob.png"),
+      cid: "logo_sanced"
+    }
+  ]
+});
+
 
     res.json({ message: "Correo de restablecimiento enviado" });
   } catch (err) {

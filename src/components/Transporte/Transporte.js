@@ -20,6 +20,23 @@ import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 
 import { NumerosALetras } from "numero-a-letras";
 
+import Stack from "@mui/material/Stack";
+import Divider from "@mui/material/Divider";
+import ButtonGroup from "@mui/material/ButtonGroup";
+import Chip from "@mui/material/Chip";
+import InputAdornment from "@mui/material/InputAdornment";
+
+import SearchIcon from "@mui/icons-material/Search";
+import DeleteSweepIcon from "@mui/icons-material/DeleteSweep";
+import UploadFileIcon from "@mui/icons-material/UploadFile";
+import CloudDownloadIcon from "@mui/icons-material/CloudDownload";
+import CleaningServicesIcon from "@mui/icons-material/CleaningServices";
+import SyncIcon from "@mui/icons-material/Sync";
+import HistoryIcon from "@mui/icons-material/History";
+import LocalShippingIcon from "@mui/icons-material/LocalShipping";
+import RouteIcon from "@mui/icons-material/Route";
+import BadgeIcon from "@mui/icons-material/Badge";
+
 import axios from "axios";
 import {
   Typography,
@@ -181,6 +198,8 @@ function Transporte() {
 
   const [filtro, setFiltro] = useState("");
 
+  const [numeroFacturaGrupo, setNumeroFacturaGrupo] = useState("");
+
   //estos son de los status
   const isFetchingRef = useRef(false);
 
@@ -235,7 +254,7 @@ function Transporte() {
     if (isFetchingRef.current) return;
     isFetchingRef.current = true;
 
-    console.log(`🔍 Se ejecutará fetchStatuses para la pestaña: ${tabName}`);
+    // console.log(`🔍 Se ejecutará fetchStatuses para la pestaña: ${tabName}`);
     fetchFusions(filteredData)
       .then(() => fetchStatuses(filteredData, tabName))
       .catch((error) => console.error(error))
@@ -247,9 +266,9 @@ function Transporte() {
   const fetchStatuses = async (data, tabName) => {
     if (data.length === 0) return;
 
-    console.log(`📌 Buscando estado de pedidos en la pestaña: ${tabName}`);
+    // console.log(`📌 Buscando estado de pedidos en la pestaña: ${tabName}`);
     const orderNumbers = data.map((d) => d["NO ORDEN"]);
-    console.log("📌 Enviando estos números de orden:", orderNumbers);
+    // console.log("📌 Enviando estos números de orden:", orderNumbers);
 
     // 🔥 Prioridad de estados
     const statusPriority = {
@@ -266,7 +285,7 @@ function Transporte() {
         { orderNumbers }
       );
 
-      console.log(`✅ Respuesta recibida para ${tabName}:`, response.data);
+      // console.log(`✅ Respuesta recibida para ${tabName}:`, response.data);
 
       const statusMap = response.data;
 
@@ -354,7 +373,7 @@ function Transporte() {
 
   const fetchFusions = async (data) => {
     const orderNumbers = data.map((d) => d["NO ORDEN"]);
-    console.log("🔄 Consultando fusión para pedidos:", orderNumbers);
+    // console.log("🔄 Consultando fusión para pedidos:", orderNumbers);
 
     try {
       const response = await axios.post(
@@ -522,11 +541,11 @@ function Transporte() {
         if (sizeInKB < 4800) {
           localStorage.setItem("sentRoutesData", strSentRoutes);
         } else {
-          console.warn(
-            "⚠️ No se guardó 'sentRoutesData': excede los 5MB (~" +
-              sizeInKB.toFixed(2) +
-              "KB)"
-          );
+          // console.warn(
+          //   "⚠️ No se guardó 'sentRoutesData': excede los 5MB (~" +
+          //     sizeInKB.toFixed(2) +
+          //     "KB)"
+          // );
         }
 
         localStorage.setItem("transporteTimestamp", new Date().getTime());
@@ -690,7 +709,7 @@ function Transporte() {
       );
 
       // 2. Consultar pedidos nuevos
-      const response = await axios.post(  
+      const response = await axios.post(
         "http://66.232.105.87:3007/api/Trasporte/obtenerPedidos"
       );
       const datos = response.data;
@@ -945,7 +964,7 @@ function Transporte() {
   // 🔹 Esperar a que `setData()` actualice el estado antes de calcular totales
   useEffect(() => {
     if (data.length > 0) {
-      console.log("🟢 Ejecutando cálculo de totales con data:", data);
+      // console.log("🟢 Ejecutando cálculo de totales con data:", data);
       calcularTotales(data);
     }
   }, [data]);
@@ -963,13 +982,13 @@ function Transporte() {
       d1.getMonth() === d2.getMonth() &&
       d1.getFullYear() === d2.getFullYear();
 
-    console.log("📊 Iniciando cálculo de totales...");
+    // console.log("📊 Iniciando cálculo de totales...");
 
     data.forEach((row) => {
-      console.log("🔍 Registro:", row);
+      // console.log("🔍 Registro:", row);
 
       if (!row["Fecha Lista Surtido"]) {
-        console.warn("⚠️ Registro sin 'Fecha Lista Surtido':", row);
+        // console.warn("⚠️ Registro sin 'Fecha Lista Surtido':", row);
         return;
       }
 
@@ -984,18 +1003,18 @@ function Transporte() {
       }
 
       if (!fechaSurtidoObj || isNaN(fechaSurtidoObj.getTime())) {
-        console.warn("🚨 Fecha inválida en fila:", row["Fecha Lista Surtido"]);
+        // console.warn("🚨 Fecha inválida en fila:", row["Fecha Lista Surtido"]);
         return;
       }
 
-      console.log(`📅 Pedido con fecha: ${fechaSurtidoObj.toDateString()}`);
+      // console.log(`📅 Pedido con fecha: ${fechaSurtidoObj.toDateString()}`);
 
       if (isSameDay(fechaSurtidoObj, today)) {
         let orderTotal = row["Total"] || "0"; // Asegurar que no sea undefined
         orderTotal =
           parseFloat(orderTotal.toString().replace(/[$,]/g, "")) || 0;
 
-        console.log(`📝 Pedido ${row["NO ORDEN"]} → Total: ${orderTotal}`);
+        // console.log(`📝 Pedido ${row["NO ORDEN"]} → Total: ${orderTotal}`);
 
         if (row["Cliente"]) {
           if (!clientesProcesados.has(row["Cliente"])) {
@@ -1008,9 +1027,9 @@ function Transporte() {
       }
     });
 
-    console.log("✅ Total Clientes:", totalClientes);
-    console.log("✅ Total Pedidos:", totalPedidos);
-    console.log("✅ Total General:", totalGeneral);
+    // console.log("✅ Total Clientes:", totalClientes);
+    // console.log("✅ Total Pedidos:", totalPedidos);
+    // console.log("✅ Total General:", totalGeneral);
 
     setTotalClientes(totalClientes || 0);
     setTotalPedidos(totalPedidos || 0);
@@ -1072,9 +1091,7 @@ function Transporte() {
 
       // 🔥 Si el pedido ya está en la nueva ruta, no hacemos nada
       if (oldRoute === newRoute) {
-        console.log(
-          `⚠ Pedido ${item["NO ORDEN"]} ya está en la ruta ${newRoute}, no se hace nada.`
-        );
+        // console.log( `⚠ Pedido ${item["NO ORDEN"]} ya está en la ruta ${newRoute}, no se hace nada.`);
         return prev;
       }
 
@@ -1129,11 +1146,11 @@ function Transporte() {
       updatedGroupedData[newRoute].PARTIDAS += item.PARTIDAS;
       updatedGroupedData[newRoute].PIEZAS += item.PIEZAS;
 
-      console.log(
-        `✅ Pedido ${item["NO ORDEN"]} movido de ${
-          oldRoute || "Ninguna"
-        } a ${newRoute}`
-      );
+      // console.log(
+      //   `✅ Pedido ${item["NO ORDEN"]} movido de ${
+      //     oldRoute || "Ninguna"
+      //   } a ${newRoute}`
+      // );
 
       // ⚡ 5. Guardar cambios en `localStorage`
       localStorage.setItem(
@@ -1197,7 +1214,7 @@ function Transporte() {
       return newGroupedData;
     });
 
-    console.log("🚀 Se eliminaron pedidos duplicados en las rutas.");
+    // console.log("🚀 Se eliminaron pedidos duplicados en las rutas.");
   };
 
   useEffect(() => {
@@ -1355,9 +1372,10 @@ function Transporte() {
         JSON.stringify(updatedData)
       );
 
-      console.log(
-        `✅ Ruta renombrada de '${oldRouteName}' a '${newRouteName}' sin perder datos.`
-      );
+      // console.log(
+      //   `✅ Ruta renombrada de '${oldRouteName}' a '${newRouteName}' sin perder datos.`
+      // );
+
       return updatedData;
     });
 
@@ -1446,9 +1464,9 @@ function Transporte() {
 
   useEffect(() => {
     if (!Array.isArray(sentRoutesData) || sentRoutesData.length === 0) {
-      console.warn(
-        "⚠ No hay datos en sentRoutesData, las tablas estarán vacías"
-      );
+      // console.warn(
+      //   "⚠ No hay datos en sentRoutesData, las tablas estarán vacías"
+      // );
       return;
     }
 
@@ -1471,7 +1489,7 @@ function Transporte() {
   }, [sentRoutesData]);
 
   useEffect(() => {
-    console.log("🔄 Cambio de pestaña activa:", subTabIndex);
+    // console.log("🔄 Cambio de pestaña activa:", subTabIndex);
   }, [subTabIndex]);
 
   const fetchAdditionalData = async (noOrden) => {
@@ -1603,7 +1621,7 @@ function Transporte() {
             });
           });
         } else {
-          console.warn(`⚠ Ruta ${route} no tiene datos o filas definidas.`);
+          // console.warn(`⚠ Ruta ${route} no tiene datos o filas definidas.`);
         }
       });
 
@@ -1781,6 +1799,7 @@ function Transporte() {
           "Tran",
           "Rep",
           "Embar",
+          "AdminTran",
         ],
       },
       {
@@ -1797,6 +1816,7 @@ function Transporte() {
           "Rep",
           "Tran",
           "Rep",
+          "AdminTran",
         ],
       },
       {
@@ -1812,6 +1832,7 @@ function Transporte() {
           "Rep",
           "Tran",
           "Rep",
+          "AdminTran",
         ],
       },
       {
@@ -1827,6 +1848,7 @@ function Transporte() {
           "Rep",
           "Tran",
           "Rep",
+          "AdminTran",
         ],
       },
       {
@@ -1843,6 +1865,7 @@ function Transporte() {
           "Rep",
           "Tran",
           "Rep",
+          "AdminTran",
         ],
       },
       {
@@ -1858,6 +1881,7 @@ function Transporte() {
           "Rep",
           "Tran",
           "Rep",
+          "AdminTran",
         ],
       },
       {
@@ -1873,15 +1897,34 @@ function Transporte() {
           "Rep",
           "Tran",
           "Rep",
+          "AdminTran",
         ],
       },
       {
         name: "OBSERVACIONES",
-        role: ["Admin", "Master", "Trans", "PQ1", "Rep", "Tran", "Rep"],
+        role: [
+          "Admin",
+          "Master",
+          "Trans",
+          "PQ1",
+          "Rep",
+          "Tran",
+          "Rep",
+          "AdminTran",
+        ],
       },
       {
         name: "TOTAL",
-        role: ["Admin", "Master", "Trans", "Rep", "PQ1", "Tran", "Rep"],
+        role: [
+          "Admin",
+          "Master",
+          "Trans",
+          "Rep",
+          "PQ1",
+          "Tran",
+          "Rep",
+          "AdminTran",
+        ],
       },
       {
         name: "PARTIDAS",
@@ -1894,6 +1937,7 @@ function Transporte() {
           "Embar",
           "Tran",
           "Rep",
+          "AdminTran",
         ],
       },
       {
@@ -1907,15 +1951,16 @@ function Transporte() {
           "Embar",
           "Tran",
           "Rep",
+          "AdminTran",
         ],
       },
       {
         name: "ZONA",
-        role: ["Admin", "Master", "Rep", "Trans", "Tran", "Rep"],
+        role: ["Admin", "Master", "Rep", "Trans", "Tran", "Rep", "AdminTran"],
       },
       {
         name: "TIPO DE ZONA",
-        role: ["Admin", "Master", "Rep", "Trans", "Tran", "Rep"],
+        role: ["Admin", "Master", "Rep", "Trans", "Tran", "Rep", "AdminTran"],
       },
       {
         name: "NUMERO DE FACTURA",
@@ -1928,15 +1973,25 @@ function Transporte() {
           "Tran",
           "Rep",
           "Embar",
+          "AdminTran",
         ],
       },
       {
         name: "FECHA DE FACTURA",
-        role: ["Admin", "Master", "Trans", "Rep", "Control", "Tran", "Rep"],
+        role: [
+          "Admin",
+          "Master",
+          "Trans",
+          "Rep",
+          "Control",
+          "Tran",
+          "Rep",
+          "AdminTran",
+        ],
       },
       {
         name: "FECHA DE EMBARQUE",
-        role: ["Admin", "Master", "Rep", "Trans", "Tran", "Rep"],
+        role: ["Admin", "Master", "Rep", "Trans", "Tran", "Rep", "AdminTran"],
       },
       {
         name: "DIA EN QUE ESTA EN RUTA",
@@ -1949,6 +2004,7 @@ function Transporte() {
           "Embar",
           "Tran",
           "Rep",
+          "AdminTran",
         ],
       },
       {
@@ -1962,6 +2018,7 @@ function Transporte() {
           "Embar",
           "Tran",
           "Rep",
+          "AdminTran",
         ],
       },
       {
@@ -1975,11 +2032,21 @@ function Transporte() {
           "Paquet",
           "Tran",
           "Rep",
+          "AdminTran",
         ],
       },
       {
         name: "TARIMAS",
-        role: ["Admin", "Master", "Trans", "Rep", "Paquet", "Tran", "Rep"],
+        role: [
+          "Admin",
+          "Master",
+          "Trans",
+          "Rep",
+          "Paquet",
+          "Tran",
+          "Rep",
+          "AdminTran",
+        ],
       },
       {
         name: "TRANSPORTE",
@@ -1994,6 +2061,7 @@ function Transporte() {
           "Tran",
           "Rep",
           "Embar",
+          "AdminTran",
         ],
       },
       {
@@ -2009,6 +2077,7 @@ function Transporte() {
           "Tran",
           "Rep",
           "Embar",
+          "AdminTran",
         ],
       },
       {
@@ -2022,6 +2091,7 @@ function Transporte() {
           "Paquet",
           "Tran",
           "Rep",
+          "AdminTran",
         ],
       },
       {
@@ -2036,15 +2106,34 @@ function Transporte() {
           "Embar",
           "Tran",
           "Rep",
+          "AdminTran",
         ],
       },
       {
         name: "FECHA ESTIMADA DE ENTREGA",
-        role: ["Admin", "Master", "Trans", "PQ1", "Rep", "Tran", "Rep"],
+        role: [
+          "Admin",
+          "Master",
+          "Trans",
+          "PQ1",
+          "Rep",
+          "Tran",
+          "Rep",
+          "AdminTran",
+        ],
       },
       {
         name: "DIAS DE ENTREGA",
-        role: ["Admin", "Master", "Trans", "PQ1", "Rep", "Tran", "Rep"],
+        role: [
+          "Admin",
+          "Master",
+          "Trans",
+          "PQ1",
+          "Rep",
+          "Tran",
+          "Rep",
+          "AdminTran",
+        ],
       },
       {
         name: "ENTREGA SATISFACTORIA O NO SATISFACTORIA",
@@ -2058,52 +2147,65 @@ function Transporte() {
           "Tran",
           "Rep",
           "Embar",
+          "AdminTran",
         ],
       },
-      { name: "MOTIVO", role: ["Admin", "Master", "Trans", "Tran", "Rep"] },
+      {
+        name: "MOTIVO",
+        role: ["Admin", "Master", "Trans", "Tran", "Rep", "AdminTran"],
+      },
       {
         name: "NUMERO DE FACTURA LT",
-        role: ["Admin", "Master", "Trans", "Rep", "Tran", "Rep"],
+        role: ["Admin", "Master", "Trans", "Rep", "Tran", "Rep", "AdminTran"],
       },
       {
         name: "TOTAL FACTURA LT",
-        role: ["Admin", "Master", "Trans", "Paquet", "Rep", "Tran", "Rep"],
+        role: [
+          "Admin",
+          "Master",
+          "Trans",
+          "Paquet",
+          "Rep",
+          "Tran",
+          "Rep",
+          "AdminTran",
+        ],
       },
       {
         name: "PRORRATEO $ FACTURA LT",
-        role: ["Admin", "Master", "Trans", "Rep", "Tran", "Rep"],
+        role: ["Admin", "Master", "Trans", "Rep", "Tran", "Rep", "AdminTran"],
       },
       {
         name: "PRORRATEO $ FACTURA PAQUETERIA",
-        role: ["Admin", "Master", "Trans", "Rep", "Tran", "Rep"],
+        role: ["Admin", "Master", "Trans", "Rep", "Tran", "Rep", "AdminTran"],
       },
       {
         name: "GASTOS EXTRAS",
-        role: ["Admin", "Master", "Trans", "Rep", "Tran", "Rep"],
+        role: ["Admin", "Master", "Trans", "Rep", "Tran", "Rep", "AdminTran"],
       },
       {
         name: "SUMA FLETE",
-        role: ["Admin", "Master", "Trans", "Rep", "Tran", "Rep"],
+        role: ["Admin", "Master", "Trans", "Rep", "Tran", "Rep", "AdminTran"],
       },
       {
         name: "% ENVIO",
-        role: ["Admin", "Master", "Trans", "Rep", "Tran", "Rep"],
+        role: ["Admin", "Master", "Trans", "Rep", "Tran", "Rep", "AdminTran"],
       },
       {
         name: "% PAQUETERIA",
-        role: ["Admin", "Master", "Trans", "Rep", "Tran", "Rep"],
+        role: ["Admin", "Master", "Trans", "Rep", "Tran", "Rep", "AdminTran"],
       },
       {
         name: "SUMA GASTOS EXTRAS",
-        role: ["Admin", "Master", "Trans", "Rep", "Tran", "Rep"],
+        role: ["Admin", "Master", "Trans", "Rep", "Tran", "Rep", "AdminTran"],
       },
       {
         name: "% GLOBAL",
-        role: ["Admin", "Master", "Trans", "Rep", "Tran", "Rep"],
+        role: ["Admin", "Master", "Trans", "Rep", "Tran", "Rep", "AdminTran"],
       },
       {
         name: "DIFERENCIA",
-        role: ["Admin", "Master", "Trans", "Rep", "Tran", "Rep"],
+        role: ["Admin", "Master", "Trans", "Rep", "Tran", "Rep", "AdminTran"],
       },
       {
         name: "Acciones",
@@ -2118,6 +2220,7 @@ function Transporte() {
           "Rep",
           "Tran",
           "Rep",
+          "AdminTran",
         ],
       },
       {
@@ -2131,23 +2234,60 @@ function Transporte() {
           "Rep",
           "Tran",
           "Rep",
+          "AdminTran",
         ],
       },
       {
         name: "EMPRESA",
-        role: ["Admin", "Master", "Trans", "Control", "Rep", "Tran", "Rep"],
+        role: [
+          "Admin",
+          "Master",
+          "Trans",
+          "Control",
+          "Rep",
+          "Tran",
+          "Rep",
+          "AdminTran",
+        ],
       },
       {
         name: "CLAVE",
-        role: ["Admin", "Master", "Trans", "Control", "Rep", "Tran", "Rep"],
+        role: [
+          "Admin",
+          "Master",
+          "Trans",
+          "Control",
+          "Rep",
+          "Tran",
+          "Rep",
+          "AdminTran",
+        ],
       },
       {
         name: "ACCIONES",
-        role: ["Admin", "Master", "Trans", "Control", "Rep", "Tran", "Rep"],
+        role: [
+          "Admin",
+          "Master",
+          "Trans",
+          "Control",
+          "Rep",
+          "Tran",
+          "Rep",
+          "AdminTran",
+        ],
       },
       {
         name: "REG_ENTRADA",
-        role: ["Admin", "Master", "Trans", "Control", "Rep", "Tran", "Rep"],
+        role: [
+          "Admin",
+          "Master",
+          "Trans",
+          "Control",
+          "Rep",
+          "Tran",
+          "Rep",
+          "AdminTran",
+        ],
       },
     ];
 
@@ -2170,19 +2310,19 @@ function Transporte() {
     // 🔹 Obtener la fecha actual respetando la zona horaria del usuario (Formato YYYY-MM-DD)
     const today = new Date().toLocaleDateString("fr-CA"); // "YYYY-MM-DD"
 
-    console.log("📅 Fecha de referencia para el filtrado:", today);
+    // console.log("📅 Fecha de referencia para el filtrado:", today);
 
     // 🔹 Filtrar solo las rutas con tipo "Directa" y cuya fecha de creación (`created_at`) sea hoy
     const filteredData = sentRoutesData.filter((row) => {
       if (!row.created_at) {
-        console.warn("⚠ Registro sin `created_at` encontrado:", row);
+        // console.warn("⚠ Registro sin `created_at` encontrado:", row);
         return false;
       }
 
       // Convertir created_at a formato YYYY-MM-DD
       const rowDate = new Date(row.created_at).toLocaleDateString("fr-CA");
 
-      console.log(`🔍 Comparando: ${rowDate} === ${today}`);
+      // console.log(`🔍 Comparando: ${rowDate} === ${today}`);
 
       return row["TIPO"]?.toLowerCase?.() === "directa" && rowDate === today;
     });
@@ -2192,7 +2332,7 @@ function Transporte() {
       return;
     }
 
-    console.log("✅ Datos filtrados:", filteredData);
+    // console.log("✅ Datos filtrados:", filteredData);
 
     const groupedData = {};
 
@@ -2248,7 +2388,7 @@ function Transporte() {
       return 0;
     });
 
-    console.log("📂 Datos listos para exportar:", exportData);
+    // console.log("📂 Datos listos para exportar:", exportData);
 
     // 🔹 Crear hoja de Excel
     const ws = XLSX.utils.json_to_sheet(exportData, {
@@ -2285,7 +2425,7 @@ function Transporte() {
     // 🔹 Descargar el archivo
     XLSX.writeFile(wb, `Datos_Directa_${today}.xlsx`);
 
-    console.log("✅ Archivo Excel generado correctamente.");
+    // console.log("✅ Archivo Excel generado correctamente.");
   };
 
   // ✅ Versión con tabla de IMPORTE AGREGADA al final (corregida)
@@ -2951,10 +3091,9 @@ function Transporte() {
       const tableWidth = 90;
       const leftMargin = (pageWidth - tableWidth) / 2;
 
-          const totalConIva = pedidoEncontrado?.TotalConIva
+      const totalConIva = pedidoEncontrado?.TotalConIva
         ? parseFloat(pedidoEncontrado.TotalConIva)
         : totalImporte;
-
 
       doc.autoTable({
         startY: currentY,
@@ -2993,7 +3132,6 @@ function Transporte() {
             },
           ],
         ],
-
 
         body: [
           [
@@ -3312,7 +3450,7 @@ function Transporte() {
   };
 
   const openDirectaModal = (data) => {
-    console.log("🔍 Datos recibidos en openDirectaModal:", data);
+    // console.log("🔍 Datos recibidos en openDirectaModal:", data);
 
     setSelectedId(data.id); // ✅ ¡Agregar esto!
     setSelectedDirectaData(data);
@@ -3335,6 +3473,10 @@ function Transporte() {
     setTransporte(data.TRANSPORTE || "");
     setPaqueteria(data.PAQUETERIA || "");
     setDiasEntrega(data["DIAS_DE_ENTREGA"] || "");
+
+    setTotalFacturaLT(data.TOTAL_FACTURA_LT || "");
+    setNumeroFacturaLT(data.NUMERO_DE_FACTURA_LT || "");
+
     setEntregaSatisfactoria(
       data["ENTREGA_SATISFACTORIA_O_NO_SATISFACTORIA"] || ""
     );
@@ -3356,35 +3498,35 @@ function Transporte() {
 
     setTipo(data.TIPO || "");
 
-    console.log("📌 Estado después de setState:");
-    console.log({
-      guia,
-      selectedNoOrden,
-      fecha,
-      numCliente,
-      nombreCliente,
-      municipio,
-      estado,
-      observaciones,
-      total,
-      partidas,
-      piezas,
-      zona,
-      tipoZona,
-      noFactura,
-      diaEnRuta,
-      cajas,
-      transporte,
-      paqueteria,
-      diasEntrega,
-      entregaSatisfactoria,
-      motivo,
-      diferencia,
-      fechaEmbarque,
-      fechaEntregaCliente,
-      fechaEstimadaCliente,
-      tipo,
-    });
+    // console.log("📌 Estado después de setState:");
+    // console.log({
+    //   guia,
+    //   selectedNoOrden,
+    //   fecha,
+    //   numCliente,
+    //   nombreCliente,
+    //   municipio,
+    //   estado,
+    //   observaciones,
+    //   total,
+    //   partidas,
+    //   piezas,
+    //   zona,
+    //   tipoZona,
+    //   noFactura,
+    //   diaEnRuta,
+    //   cajas,
+    //   transporte,
+    //   paqueteria,
+    //   diasEntrega,
+    //   entregaSatisfactoria,
+    //   motivo,
+    //   diferencia,
+    //   fechaEmbarque,
+    //   fechaEntregaCliente,
+    //   fechaEstimadaCliente,
+    //   tipo,
+    // });
 
     setDirectaModalOpen(true);
   };
@@ -3464,9 +3606,9 @@ function Transporte() {
             id_veh: Number(value), // Actualizar id_veh
           };
         } else {
-          console.warn(
-            "⚠️ No se encontró la empresa seleccionada en los datos."
-          );
+          // console.warn(
+          //   "⚠️ No se encontró la empresa seleccionada en los datos."
+          // );
         }
       } else {
         // Si no hay valor seleccionado, limpiar los campos
@@ -4065,9 +4207,9 @@ function Transporte() {
     setTotalPedidos(0);
     setTotalGeneral(0);
 
-    console.log(
-      "🗑️ Datos de clientes, pedidos y total eliminados de localStorage."
-    );
+    // console.log(
+    //   "🗑️ Datos de clientes, pedidos y total eliminados de localStorage."
+    // );
   };
 
   // Cambiar de página
@@ -4088,7 +4230,7 @@ function Transporte() {
     }
 
     try {
-      console.log("Llamando a la API con No Ordenes:", noOrdenes);
+      // console.log("Llamando a la API con No Ordenes:", noOrdenes);
       // Construimos la URL, uniendo los pedidos con comas
       const response = await axios.get(
         `http://66.232.105.87:3007/api/Trasporte/pedido/ultimas-fechas-embarque?pedidos=${noOrdenes.join(
@@ -4214,7 +4356,7 @@ function Transporte() {
       );
       const data = await response.json();
 
-      console.log("🧪 DATA recibida:", data); // ✅ DEBUG VISUAL
+      // console.log("🧪 DATA recibida:", data);
 
       if (Array.isArray(data) && data.length > 0) {
         setPedidos(data);
@@ -4350,7 +4492,7 @@ function Transporte() {
       })),
     };
 
-    console.log("📤 Enviando datos a la API:", datosAGuardar);
+    // console.log("📤 Enviando datos a la API:", datosAGuardar);
 
     try {
       const response = await fetch(
@@ -4399,88 +4541,145 @@ function Transporte() {
   const [selectedRuta, setSelectedRuta] = useState(null);
   const [lastSync, setLastSync] = useState(null);
 
-  const syncRoutesToDB = async () => {
-    if (loadingSync) return; // ✅ Evita que se ejecute si ya está en proceso
+  // ==== Helpers de normalización (puedes ponerlos arriba de tu componente) ====
 
-    setLoadingSync(true);
-    let rutasMap = {};
+  const toISODate = (raw) => {
+    if (!raw) return null;
+
+    if (typeof raw === "string") {
+      // Soporta "DD/MM/YYYY" o "DD-MM-YYYY"
+      const m = raw.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$/);
+      if (m) {
+        const [, d, M, y] = m;
+        const yyyy = String(y).length === 2 ? `20${y}` : y;
+        return `${String(yyyy).padStart(4, "0")}-${String(M).padStart(
+          2,
+          "0"
+        )}-${String(d).padStart(2, "0")}`;
+      }
+      // Ya viene en ISO
+      if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+    }
 
     try {
-      console.log("🔄 Iniciando sincronización automática...");
+      const d = new Date(raw);
+      if (!isNaN(d.getTime())) return d.toISOString().split("T")[0];
+    } catch (_) {}
 
+    return null; // mejor null que basura
+  };
+
+  const parseMoney = (v) => {
+    if (v == null) return null;
+    if (typeof v === "number") return v;
+    const s = String(v).replace(/[$,%\s,]/g, ""); // quita $, %, espacios y comas
+    const n = Number(s);
+    return isNaN(n) ? null : n;
+  };
+
+  const toStringOrEmpty = (v) => (v == null ? "" : String(v));
+
+  // ==== FUNCIÓN ACTUALIZADA ====
+
+  const syncRoutesToDB = async () => {
+    if (loadingSync) return;
+
+    setLoadingSync(true);
+    const rutasMap = {};
+    let totalPedidosSync = 0; // 👈 contador de pedidos sincronizados
+
+    try {
       const rutasArray = Object.keys(groupedData || {});
-
       if (rutasArray.length === 0) {
-        console.warn("⚠️ No hay rutas para sincronizar.");
         setLoadingSync(false);
         return;
       }
 
+      // 1) Crear/obtener rutas
       for (const route of rutasArray) {
         try {
-          const response = await axios.post(
+          const { data } = await axios.post(
             "http://66.232.105.87:3007/api/Trasporte/rutas",
-            {
-              nombre: route,
-            }
+            { nombre: route },
+            { headers: { "Content-Type": "application/json" } }
           );
 
-          console.log("✅ Ruta sincronizada:", response.data);
-          rutasMap[route] = response.data.ruta_id;
+          const rutaId =
+            data?.ruta_id ?? data?.id ?? data?.data?.ruta_id ?? data?.data?.id;
+          if (!rutaId) continue;
+          rutasMap[route] = rutaId;
         } catch (error) {
-          console.error(`❌ Error al sincronizar la ruta ${route}:`, error);
+          console.error(
+            `❌ Error al sincronizar la ruta "${route}":`,
+            error.response?.status,
+            error.response?.data || error.message
+          );
         }
       }
 
+      // 2) Enviar pedidos
       for (const route of rutasArray) {
+        const ruta_id = rutasMap[route];
+        if (!ruta_id) continue;
+
         const pedidos = groupedData[route]?.rows || [];
-
-        if (pedidos.length === 0) {
-          console.log(`🔹 No hay pedidos para la ruta ${route}, omitiendo...`);
-          continue;
-        }
-
-        console.log(
-          `📤 Enviando ${pedidos.length} pedidos para la ruta ${route}`
-        );
+        if (pedidos.length === 0) continue;
 
         for (const pedido of pedidos) {
+          const tipoOriginal =
+            pedido["tipo_original"] ??
+            pedido["TIPO ORIGINAL"] ??
+            pedido["TPO ORIGINAL"] ??
+            pedido["tipo"] ??
+            "";
+
           const mappedPedido = {
-            ruta_id: rutasMap[route],
-            no_orden: pedido["NO ORDEN"],
-            num_cliente: pedido["NUM. CLIENTE"],
-            nombre_cliente: pedido["NOMBRE DEL CLIENTE"],
-            municipio: pedido["MUNICIPIO"],
-            estado: pedido["ESTADO"],
-            total: pedido["TOTAL"],
-            partidas: pedido["PARTIDAS"],
-            piezas: pedido["PIEZAS"],
-            fecha_emision: parseFechaEmision(pedido["FECHA"]),
+            ruta_id,
+            no_orden: Number(pedido["NO ORDEN"]) || null,
+            num_cliente: pedido["NUM. CLIENTE"] || "",
+            nombre_cliente: pedido["NOMBRE DEL CLIENTE"] || "",
+            municipio: pedido["MUNICIPIO"] || "",
+            estado: pedido["ESTADO"] || "",
+            total:
+              parseFloat(String(pedido["TOTAL"]).replace(/[$,%\s,]/g, "")) || 0,
+            partidas: Number(pedido["PARTIDAS"]) || 0,
+            piezas: Number(pedido["PIEZAS"]) || 0,
+            fecha_emision: toISODate(pedido["FECHA"]),
             observaciones: pedido["OBSERVACIONES"] || "Sin observaciones",
-            tipo: pedido["TIPO ORIGINAL"] || "", // 👈 esta es la línea clave
+            tipo: String(tipoOriginal).toUpperCase().trim(),
           };
 
-          console.log("📤 Enviando pedido a la API:", mappedPedido);
+          if (!mappedPedido.no_orden || !mappedPedido.tipo) continue;
 
           try {
-            const response = await axios.post(
+            await axios.post(
               "http://66.232.105.87:3007/api/Trasporte/rutas/pedidos",
-              mappedPedido
+              mappedPedido,
+              { headers: { "Content-Type": "application/json" } }
             );
-            console.log("✅ Pedido sincronizado:", response.data);
+            totalPedidosSync++; // ✅ sumamos cuando se sincroniza bien
           } catch (error) {
-            console.error("❌ Error al sincronizar pedido:", error);
+            console.error(
+              "❌ Error al sincronizar pedido:",
+              error.response?.status,
+              error.response?.data || error.message
+            );
           }
         }
       }
 
-      console.log("✅ Rutas y pedidos sincronizados con éxito.");
-      setLastSync(new Date().toLocaleTimeString()); // ✅ Guardar la hora de la última sincronización
+      console.log(
+        `✅ Sincronización completada. Total pedidos sincronizados: ${totalPedidosSync}`
+      );
+      setLastSync(new Date().toLocaleTimeString());
     } catch (error) {
-      console.error("❌ Error al sincronizar rutas y pedidos:", error);
+      console.error(
+        "❌ Error general al sincronizar rutas y pedidos:",
+        error.message
+      );
+    } finally {
+      setLoadingSync(false);
     }
-
-    setLoadingSync(false);
   };
 
   const parseFechaEmision = (fecha) => {
@@ -4508,7 +4707,7 @@ function Transporte() {
     syncRoutesToDB(); // ✅ Se ejecuta una vez al inicio
 
     const interval = setInterval(() => {
-      console.log("⏳ Ejecutando sincronización automática...");
+      // console.log("⏳ Ejecutando sincronización automática...");
       syncRoutesToDB();
     }, 5 * 60 * 1000); // 🔹 5 minutos en milisegundos
 
@@ -4520,7 +4719,7 @@ function Transporte() {
       const response = await axios.get(
         "http://66.232.105.87:3007/api/Trasporte/Rutasconpedido"
       );
-      console.log("✅ Rutas obtenidas:", response.data);
+      // console.log("✅ Rutas obtenidas:", response.data);
       setRutasConPedidos(response.data);
     } catch (error) {
       console.error("❌ Error al obtener rutas y pedidos:", error);
@@ -4544,7 +4743,7 @@ function Transporte() {
       );
 
       const statusMap = response.data;
-      console.log("✅ StatusMap directo:", statusMap);
+      // console.log("✅ StatusMap directo:", statusMap);
 
       const pedidosActualizados = pedidos.map((pedido) => {
         const match = statusMap[pedido.no_orden];
@@ -4608,7 +4807,7 @@ function Transporte() {
           statusCounts["Pedido Finalizado"]++;
           break;
         case "Sin coincidencia de tipo":
-          console.warn("🚫 Pedido sin coincidencia de tipo:", pedido.no_orden);
+          // console.warn("🚫 Pedido sin coincidencia de tipo:", pedido.no_orden);
           break;
         default:
           statusCounts.Otro++;
@@ -5051,7 +5250,7 @@ function Transporte() {
         GUIA: pedido.GUIA || "",
       };
 
-      console.log("✅ Pedido normalizado:", pedidoNormalizado); // Verifica visualmente
+      // console.log("✅ Pedido normalizado:", pedidoNormalizado); // Verifica visualmente
 
       nuevaRuta.rows.push(pedidoNormalizado);
     });
@@ -5114,6 +5313,211 @@ function Transporte() {
     }
   };
 
+  // Funcionamiento del porrateo
+
+  // Funcionamiento del porrateo
+
+  // ====== PORRATEO (modal con transporte seleccionado) ======
+  const [openPorrateo, setOpenPorrateo] = useState(false);
+  const [loadingPorrateo, setLoadingPorrateo] = useState(false);
+  const [errorPorrateo, setErrorPorrateo] = useState("");
+  const [porrateoGroups, setPorrateoGroups] = useState({});
+  const [transportKeys, setTransportKeys] = useState([]);
+  const [selectedTransport, setSelectedTransport] = useState("");
+  const [porrateoPage, setPorrateoPage] = useState(0);
+  const [porrateoRowsPerPage, setPorrateoRowsPerPage] = useState(25);
+
+  const [selectedMonthPorrateo, setSelectedMonthPorrateo] = useState(() => {
+    const d = new Date();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    return `${d.getFullYear()}-${mm}`; // "YYYY-MM"
+  });
+
+  const aNumero = (v) => {
+    if (v === null || v === undefined || v === "") return null;
+    const n = parseFloat(String(v).replace(/,/g, ""));
+    return Number.isNaN(n) ? null : n;
+  };
+
+  const handleOpenPorrateo = async () => {
+    try {
+      setOpenPorrateo(true);
+      setLoadingPorrateo(true);
+      setErrorPorrateo("");
+
+      const [yStr, mStr] = selectedMonthPorrateo.split("-");
+      const { data } = await axios.get(
+        "http://66.232.105.87:3007/api/Trasporte/Actualizar-Porrateo",
+        { params: { year: parseInt(yStr, 10), month: parseInt(mStr, 10) } }
+      );
+
+      const rows = Array.isArray(data) ? data : data.rows || [];
+
+      // Orden alfabético por TRANSPORTE
+      rows.sort((a, b) =>
+        String(a.TRANSPORTE || "").localeCompare(
+          String(b.TRANSPORTE || ""),
+          "es"
+        )
+      );
+
+      // Agrupar
+      const grouped = rows.reduce((acc, r) => {
+        const k = r.TRANSPORTE || "SIN_TRANSPORTE";
+        (acc[k] ||= []).push(r);
+        return acc;
+      }, {});
+
+      // Orden interno por NO ORDEN (numérico si aplica)
+      Object.keys(grouped).forEach((k) => {
+        grouped[k].sort((a, b) =>
+          String(a["NO ORDEN"]).localeCompare(String(b["NO ORDEN"]), "es", {
+            numeric: true,
+          })
+        );
+      });
+
+      // Llaves ordenadas
+      const keys = Object.keys(grouped).sort((a, b) =>
+        a.localeCompare(b, "es")
+      );
+
+      setPorrateoGroups(grouped);
+      setTransportKeys(keys);
+      setSelectedTransport(keys[0] || ""); // Selecciona el primero por defecto
+      setPorrateoPage(0);
+    } catch (e) {
+      console.error(e);
+      setErrorPorrateo("Error al cargar datos de porrteo.");
+    } finally {
+      setLoadingPorrateo(false);
+    }
+  };
+
+  // === ENDPOINT de actualización (uno a uno) ===
+  const UPDATE_ONE_URL =
+    "http://66.232.105.87:3007/api/Trasporte/Paqueteria/actualizar";
+
+  // Lee NO ORDEN robusto (sirve si viene "NO ORDEN", no_orden o noOrden)
+  const getNoOrden = (r) => r["NO ORDEN"] ?? r.no_orden ?? r.noOrden ?? "";
+
+  // Llave única por fila = NO ORDEN + tipo_original
+  const keyFor = (r) =>
+    `${getNoOrden(r)}|${String(r.tipo_original || "").trim()}`;
+
+  // Normaliza fecha para el input
+  const normFecha = (f) =>
+    !f || f === "0000-00-00" || f === "0000-00-00 00:00:00"
+      ? ""
+      : String(f).substring(0, 10);
+
+  // Convierte a número o cadena vacía (para el input)
+  const toNumberOrEmpty = (v) => {
+    if (v === null || v === undefined || v === "") return "";
+    const n = parseFloat(String(v).replace(/,/g, ""));
+    return Number.isNaN(n) ? "" : n;
+  };
+
+  // Editor por fila: { "NO|TIPO": {guia, fecha, total} }
+  const [editPorrateo, setEditPorrateo] = useState({});
+  const [savingRowKey, setSavingRowKey] = useState(""); // loading por fila
+
+  // Obtiene lo editado o la fila original si no hay cambios
+  const getEdit = (row) => {
+    const k = keyFor(row);
+    return (
+      editPorrateo[k] ?? {
+        guia: row.GUIA || "",
+        fecha: normFecha(row.FECHA_DE_ENTREGA_CLIENTE),
+        total: toNumberOrEmpty(row.TOTAL_FACTURA_LT),
+      }
+    );
+  };
+
+  // Cambia un campo del editor de ESA fila
+  const setEditField = (row, field, value) => {
+    const k = keyFor(row);
+    const base = getEdit(row);
+    setEditPorrateo((prev) => ({ ...prev, [k]: { ...base, [field]: value } }));
+  };
+
+  // ===================== ACTUALIZAR UNA SOLA FILA =====================
+
+  const handleUpdatePorrateo = async (row) => {
+    const k = keyFor(row);
+    const ed = getEdit(row);
+
+    try {
+      setSavingRowKey(k); // loading sólo en esa fila
+      setErrorPorrateo(""); // limpia error del modal (si lo usas)
+
+      const body = {
+        no_orden: String(getNoOrden(row)), // <- NO ORDEN robusto
+        tipo_original: String(row.tipo_original || "").trim(),
+        guia: (ed.guia || "").trim(), // "" -> backend lo guarda NULL
+        fecha_de_entrega_cliente: ed.fecha || "", // "" -> NULL
+        total_factura_lt: ed.total === "" ? "" : Number(ed.total), // "" -> NULL
+      };
+
+      await axios.put(UPDATE_ONE_URL, body);
+
+      // Parchea sólo la fila clickeada dentro del transporte seleccionado
+      const t = selectedTransport;
+      setPorrateoGroups((prev) => {
+        const copy = { ...prev };
+        copy[t] = (copy[t] || []).map((r) =>
+          keyFor(r) === k
+            ? {
+                ...r,
+                GUIA: body.guia || null,
+                FECHA_DE_ENTREGA_CLIENTE: body.fecha_de_entrega_cliente || null,
+                TOTAL_FACTURA_LT:
+                  body.total_factura_lt === "" ? null : body.total_factura_lt,
+              }
+            : r
+        );
+        return copy;
+      });
+
+      // (Opcional) limpiar el editor de esa fila:
+      // setEditPorrateo(prev => { const x = {...prev}; delete x[k]; return x; });
+    } catch (e) {
+      console.error(e);
+      setErrorPorrateo?.("Error al actualizar esta fila.");
+    } finally {
+      setSavingRowKey("");
+    }
+  };
+
+  // Normaliza la GUIA (incluye opción "SIN_GUIA" cuando viene vacía)
+  const normGuia = (v) => {
+    const s = String(v ?? "").trim();
+    return s === "" ? "SIN_GUIA" : s;
+  };
+
+  const [selectedGuia, setSelectedGuia] = useState(""); // chip seleccionada (guía exacta)
+  const [guiaQuery, setGuiaQuery] = useState(""); // texto libre para buscar por guía
+
+  // Monto total de la factura del grupo (lo que escribirás)
+  const [montoGrupo, setMontoGrupo] = useState("");
+
+  // utilidades numéricas
+  const toNumber = (v) => {
+    if (v === null || v === undefined || v === "") return 0;
+    return parseFloat(String(v).replace(/[^0-9.-]/g, "")) || 0;
+  };
+  const round2 = (n) => Math.round(n * 100) / 100;
+
+  // (helper por si lo necesitas)
+
+  const paqueterias = [
+    "TRES GUERRAS",
+    "PAQUETEXPRESS",
+    "PITIC",
+    "FLECHISA",
+    "FEDEX",
+  ];
+
   return (
     <Paper elevation={3} style={{ padding: "20px" }}>
       {/* Pestañas */}
@@ -5140,452 +5544,460 @@ function Transporte() {
           user?.role === "Trans" ||
           user?.role === "Control" ||
           user?.role === "Embar") && (
-          <Box marginTop={2}>
-            <Typography variant="h5">Cargar Archivo Excel</Typography>
-
-            <TextField
-              label="Buscar No. Orden"
+          <Box mt={2}>
+            {/* === HEADER / TOOLBAR === */}
+            <Paper
               variant="outlined"
-              size="small"
-              value={filterOrderValue}
-              onChange={(e) => setFilterOrderValue(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  handleBuscarPorOrden(); // Función que definimos abajo
-                }
-              }}
-              style={{ marginRight: 10 }}
-            />
-            <Button variant="contained" onClick={handleBuscarPorOrden}>
-              Buscar Orden
-            </Button>
-
-            <Button
-              variant="contained"
-              color="error"
-              onClick={() => {
-                const keysToClear = [
-                  "sentRoutesData",
-                  "transporteTimestamp",
-                  "observacionesPorRegistro",
-                  "totalClientes",
-                  "totalPedidos",
-                  "totalGeneral",
-                ];
-
-                keysToClear.forEach((key) => localStorage.removeItem(key));
-
-                alert(
-                  "🧹 Se limpiaron todos los datos de localStorage utilizados."
-                );
-                window.location.reload(); // Opcional para forzar recarga del componente
+              sx={{
+                p: 2,
+                mb: 2,
+                borderRadius: 2,
+                boxShadow: "0 10px 24px rgba(0,0,0,0.06)",
+                background:
+                  "linear-gradient(135deg, rgba(246,248,252,0.9) 0%, rgba(255,255,255,1) 60%)",
               }}
             >
-              Limpiar LocalStorage
-            </Button>
-
-            <Box marginTop={2} display="flex" alignItems="center" gap={2}>
-              <label htmlFor="file-upload">
-                <input
-                  id="file-upload"
-                  type="file"
-                  accept=".xlsx, .xls"
-                  onChange={handleFileUpload}
-                  style={{ display: "none" }}
-                />
-
-                <Button
-                  variant="contained"
-                  component="span"
-                  color="primary"
-                  sx={{
-                    textTransform: "none",
-                    backgroundColor: "#1976D2",
-                    "&:hover": {
-                      backgroundColor: "#135BA1",
-                    },
-                  }}
-                >
-                  📂 Subir Archivo
-                </Button>
-
-                <Button
-                  variant={modoCarga === "api" ? "contained" : "outlined"}
-                  onClick={() => {
-                    setModoCarga("api");
-                    fetchPedidosDesdeAPI();
-                  }}
-                >
-                  Cargar desde JDI
-                </Button>
-              </label>
-
-              <Button
-                onClick={clearLocalStorage}
-                variant="contained"
-                color="secondary"
+              {/* Fila 1: Buscar + Acciones de datos (izquierda)  |  Nueva Ruta + Agregar (derecha) */}
+              {/* Fila 1: Nueva Ruta (izquierda) | Buscar + Acciones (derecha) */}
+              <Stack
+                direction={{ xs: "column", xl: "row" }}
+                alignItems={{ xs: "stretch", xl: "center" }}
+                spacing={1}
+                useFlexGap
+                flexWrap="wrap"
               >
-                Limpiar Datos
-              </Button>
-
-              <Autocomplete
-                freeSolo
-                value={newRoute || ""}
-                onChange={(event, newValue) => {
-                  if (newValue && !options.includes(newValue)) {
-                    setOptions((prevOptions) => [...prevOptions, newValue]);
-                  }
-                  setNewRoute(newValue || ""); // asegurar que no sea null
-                }}
-                inputValue={newRoute || ""}
-                onInputChange={(event, newInputValue) => {
-                  setNewRoute(newInputValue || ""); // prevenir null
-                }}
-                id="autocomplete-routes"
-                options={options}
-                sx={{ width: 300, marginRight: "10px" }}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Nueva Ruta"
-                    variant="outlined"
+                {/* IZQUIERDA — NUEVA RUTA + AGREGAR */}
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  alignItems="center"
+                  useFlexGap
+                  flexWrap="wrap"
+                  sx={{ minWidth: 300 }}
+                >
+                  <Autocomplete
+                    freeSolo // 👈 permite escribir valores no incluidos en la lista
+                    disablePortal
+                    options={paqueterias}
+                    value={newRoute || ""}
+                    onChange={(event, newValue) => setNewRoute(newValue || "")}
+                    onInputChange={(event, newInputValue) =>
+                      setNewRoute(newInputValue || "")
+                    }
+                    sx={{ width: { xs: 160, sm: 220, md: 260 } }}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        size="small"
+                        label="Nueva Ruta"
+                        placeholder="Selecciona o escribe paquetería"
+                      />
+                    )}
                   />
-                )}
-              />
 
-              <Button
-                onClick={addRoute}
-                variant="contained"
-                sx={{
-                  backgroundColor: "#FF9800", // Color de fondo personalizado (naranja)
-                  color: "white", // Color del texto
-                  "&:hover": {
-                    backgroundColor: "#FB8C00", // Color de fondo cuando el cursor está encima (naranja oscuro)
-                  },
-                }}
-              >
-                Agregar Ruta
-              </Button>
-
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={() => {
-                  setTipoRuta("paqueteria"); // Establecer el tipo de ruta como "paquetería"
-                  setConfirmSendModalOpen(true); // Abrir el modal
-                  handleGenerateRoutes();
-                }}
-                style={{
-                  backgroundColor:
-                    tipoRuta === "paqueteria" ? "#1976D2" : "#E3F2FD",
-                  color: tipoRuta === "paqueteria" ? "white" : "black",
-                }}
-              >
-                Paquetería
-              </Button>
-
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={() => {
-                  setTipoRuta("Directa"); // Establecer el tipo de ruta como "ruta1"
-                  setConfirmSendModalOpen(true); // Abrir el modal
-                  handleGenerateRoutes();
-                }}
-                style={{
-                  backgroundColor:
-                    tipoRuta === "Directa" ? "#FF5722" : "#FFCCBC",
-                  color: tipoRuta === "ruta1" ? "white" : "black",
-                }}
-              >
-                Directa
-              </Button>
-
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={() => {
-                  setTipoRuta("venta empleado"); // Establecer el tipo de ruta como "venta empleado"
-                  setConfirmSendModalOpen(true); // Abrir el modal
-                  handleGenerateRoutes();
-                }}
-                style={{
-                  backgroundColor:
-                    tipoRuta === "venta empleado" ? "#4CAF50" : "#C8E6C9",
-                  color: tipoRuta === "venta empleado" ? "white" : "black",
-                }}
-              >
-                Venta Empleado
-              </Button>
-
-              <Button
-                onClick={syncRoutesToDB}
-                variant="contained"
-                sx={{
-                  backgroundColor: "#1976D2",
-                  color: "white",
-                  "&:hover": { backgroundColor: "#1565C0" },
-                  marginTop: "10px",
-                }}
-                disabled={loadingSync} // 🔹 Deshabilita si está sincronizando
-              >
-                {loadingSync ? "Sincronizando..." : "Sincronizar Rutas"}
-              </Button>
-
-              {/* Botón para abrir el modal */}
-              {user?.role === "Admin" || user?.role === "Master" ? (
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={handleOpenHistoricoModal}
-                >
-                  Histórico 2024
-                </Button>
-              ) : null}
-
-              <Dialog
-                open={historicoModalOpen}
-                onClose={handleCloseHistoricoModal}
-                maxWidth="md"
-                fullWidth
-              >
-                <DialogTitle>Histórico 2024</DialogTitle>
-                <DialogContent>
-                  {/* Selección de Cliente */}
-                  <FormControl fullWidth>
-                    <InputLabel>Selecciona un Cliente</InputLabel>
-
-                    {/* 🔍 Input para buscar clientes */}
-                    <TextField
-                      label="Buscar Cliente"
-                      variant="outlined"
-                      fullWidth
-                      margin="dense"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-
-                    {/* 📋 Selector con paginación */}
-                    <Select
-                      value={selectedCliente}
-                      onChange={(event) =>
-                        setSelectedCliente(event.target.value)
-                      }
-                      displayEmpty
-                    >
-                      {filteredClientes
-                        .slice(page * rowsPerPage, (page + 1) * rowsPerPage)
-                        .map((cliente) => (
-                          <MenuItem
-                            key={cliente.noCliente}
-                            value={cliente.noCliente}
-                          >
-                            {cliente.noCliente} - {cliente.nombreCliente}
-                          </MenuItem>
-                        ))}
-                    </Select>
-
-                    {/* 📌 Paginación de 10 en 10 */}
-                    <TablePagination
-                      component="div"
-                      count={filteredClientes.length}
-                      page={page}
-                      rowsPerPage={rowsPerPage}
-                      onPageChange={(event, newPage) => setPage(newPage)}
-                      rowsPerPageOptions={[10]}
-                    />
-                  </FormControl>
-
-                  {/* Selección de Columnas */}
-                  <FormControl fullWidth margin="dense">
-                    <InputLabel>Selecciona Columnas</InputLabel>
-                    <Select
-                      multiple
-                      value={selectedColumns}
-                      onChange={(event) =>
-                        setSelectedColumns(event.target.value)
-                      }
-                      onClose={() =>
-                        console.log("Selector de columnas cerrado")
-                      }
-                      renderValue={(selected) =>
-                        selected.length
-                          ? selected.join(", ")
-                          : "Selecciona columnas"
-                      }
-                    >
-                      {columnasDisponibles.map((col) => (
-                        <MenuItem key={col} value={col}>
-                          {col}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-
-                  {/* Selector de Mes (solo si "FECHA" está seleccionada) */}
-                  {selectedColumns.includes("FECHA") && (
-                    <FormControl fullWidth margin="dense">
-                      <InputLabel>Selecciona un Mes</InputLabel>
-                      <Select
-                        value={selectedMonth}
-                        onChange={(event) =>
-                          setSelectedMonth(event.target.value)
-                        }
-                      >
-                        {meses.map((mes) => (
-                          <MenuItem key={mes.value} value={mes.value}>
-                            {mes.label}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  )}
-
-                  {/* Botones de Acción */}
-                  <div
-                    style={{ display: "flex", gap: "10px", marginTop: "10px" }}
-                  >
-                    <Button
-                      variant="contained"
-                      color="primary"
-                      onClick={handleFetchHistoricoData}
-                    >
-                      Buscar
-                    </Button>
-
-                    <Button
-                      variant="outlined"
-                      color="secondary"
-                      onClick={resetFilters}
-                    >
-                      Reiniciar
-                    </Button>
-                  </div>
-
-                  {/* Tabla de Datos */}
-                  <TableContainer
-                    component={Paper}
-                    style={{ marginTop: "20px" }}
-                  >
-                    <Table>
-                      <TableHead>
-                        <TableRow>
-                          {selectedColumns.map((col) => (
-                            <TableCell key={col}>{col}</TableCell>
-                          ))}
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {historicoData.map((row, index) => (
-                          <TableRow key={index}>
-                            {selectedColumns.map((col) => (
-                              <TableCell key={col}>{row[col]}</TableCell>
-                            ))}
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                </DialogContent>
-
-                {/* Acciones del Modal */}
-                <DialogActions>
-                  <Button onClick={handleCloseHistoricoModal} color="secondary">
-                    Cerrar
-                  </Button>
-                </DialogActions>
-              </Dialog>
-
-              <Snackbar
-                open={snackbarOpen}
-                autoHideDuration={6000}
-                onClose={handleSnackbarClose}
-                message={snackbarMessage}
-                action={
-                  <IconButton
+                  <Button
                     size="small"
-                    color="inherit"
-                    onClick={handleSnackbarClose}
+                    variant="contained"
+                    onClick={addRoute}
+                    sx={{
+                      textTransform: "none",
+                      bgcolor: "#fb8c00",
+                      "&:hover": { bgcolor: "#ef6c00" },
+                    }}
                   >
-                    <CloseIcon fontSize="small" />
-                  </IconButton>
-                }
-              />
-            </Box>
+                    AGREGAR RUTA
+                  </Button>
 
-            {(user?.role === "Admin" ||
-              user?.role === "Control" ||
-              user?.role === "Embar" ||
-              user?.role === "") && (
+                  {/* Subir archivo */}
+                  <Button
+                    size="small"
+                    variant="contained"
+                    component="label"
+                    sx={{
+                      textTransform: "none",
+                      bgcolor: "#1976d2",
+                      "&:hover": { bgcolor: "#135BA1" },
+                    }}
+                    startIcon={<UploadFileIcon />}
+                  >
+                    Subir Archivo
+                    <input
+                      hidden
+                      id="file-upload"
+                      type="file"
+                      accept=".xlsx, .xls"
+                      onChange={handleFileUpload}
+                    />
+                  </Button>
+
+                  {/* Cargar JDI */}
+                  <Button
+                    size="small"
+                    variant="contained"
+                    startIcon={<CloudDownloadIcon />}
+                    onClick={() => {
+                      setModoCarga("api");
+                      fetchPedidosDesdeAPI();
+                    }}
+                    sx={{
+                      textTransform: "none",
+                      bgcolor: "#e53935",
+                      "&:hover": { bgcolor: "#c62828" },
+                    }}
+                  >
+                    CARGAR DESDE JDI
+                  </Button>
+                </Stack>
+
+                {/* DERECHA — BUSCAR + ACCIONES (empujado a la derecha) */}
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  useFlexGap
+                  flexWrap="wrap"
+                  alignItems="center"
+                  justifyContent={{ xl: "flex-end" }}
+                  sx={{ flex: 1, minWidth: 300, ml: { xl: "auto" } }}
+                >
+                  {/* Buscar por No. Orden */}
+                  <TextField
+                    label="Buscar No. Orden"
+                    variant="outlined"
+                    size="small"
+                    value={filterOrderValue}
+                    onChange={(e) => setFilterOrderValue(e.target.value)}
+                    onKeyDown={(e) =>
+                      e.key === "Enter" && handleBuscarPorOrden()
+                    }
+                    sx={{ width: { xs: "100%", sm: 230 } }}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <SearchIcon fontSize="small" />
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                  <Button
+                    variant="contained"
+                    size="small"
+                    onClick={handleBuscarPorOrden}
+                    sx={{ textTransform: "none" }}
+                  >
+                    BUSCAR ORDEN
+                  </Button>
+
+                  <Button
+                    variant="contained"
+                    size="small"
+                    color="error"
+                    onClick={() => {
+                      const keysToClear = [
+                        "sentRoutesData",
+                        "transporteTimestamp",
+                        "observacionesPorRegistro",
+                        "totalClientes",
+                        "totalPedidos",
+                        "totalGeneral",
+                      ];
+                      keysToClear.forEach((k) => localStorage.removeItem(k));
+                      alert(
+                        "🧹 Se limpiaron todos los datos de localStorage utilizados."
+                      );
+                      window.location.reload();
+                    }}
+                    sx={{ textTransform: "none" }}
+                  >
+                    LIMPIAR LOCALSTORAGE
+                  </Button>
+
+                  <Divider
+                    flexItem
+                    orientation="vertical"
+                    sx={{ mx: 0.5, display: { xs: "none", md: "block" } }}
+                  />
+
+                  {/* Limpiar Datos suaves */}
+                  <Button
+                    size="small"
+                    variant="contained"
+                    startIcon={<CleaningServicesIcon />}
+                    onClick={clearLocalStorage}
+                    sx={{
+                      textTransform: "none",
+                      bgcolor: "#ef9a9a",
+                      color: "#222",
+                      "&:hover": { bgcolor: "#e57373" },
+                    }}
+                  >
+                    LIMPIAR DATOS
+                  </Button>
+                </Stack>
+              </Stack>
+
+              {/* Fila 2: Tipos de ruta + Sincronizar + Histórico (alineados) */}
+              <Stack
+                direction={{ xs: "column", md: "row" }}
+                spacing={1}
+                alignItems={{ xs: "stretch", md: "center" }}
+                useFlexGap
+                flexWrap="wrap"
+                sx={{ mt: 1 }}
+              >
+                {/* Tipos de ruta con tonos pastel */}
+                <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
+                  <Button
+                    size="small"
+                    variant={
+                      tipoRuta === "paqueteria" ? "contained" : "outlined"
+                    }
+                    startIcon={<LocalShippingIcon />}
+                    onClick={() => {
+                      setTipoRuta("paqueteria");
+                      setConfirmSendModalOpen(true);
+                      handleGenerateRoutes();
+                    }}
+                    sx={{
+                      textTransform: "none",
+                      ...(tipoRuta === "paqueteria"
+                        ? {
+                            bgcolor: "#90caf9",
+                            color: "#0d47a1",
+                            "&:hover": { bgcolor: "#64b5f6" },
+                          }
+                        : {}),
+                    }}
+                  >
+                    PAQUETERÍA
+                  </Button>
+
+                  <Button
+                    size="small"
+                    variant={tipoRuta === "Directa" ? "contained" : "outlined"}
+                    startIcon={<RouteIcon />}
+                    onClick={() => {
+                      setTipoRuta("Directa");
+                      setConfirmSendModalOpen(true);
+                      handleGenerateRoutes();
+                    }}
+                    sx={{
+                      textTransform: "none",
+                      ...(tipoRuta === "Directa"
+                        ? {
+                            bgcolor: "#ffccbc",
+                            color: "#0f0cbfff",
+                            "&:hover": { bgcolor: "#ffab91" },
+                          }
+                        : {}),
+                    }}
+                  >
+                    DIRECTA
+                  </Button>
+
+                  <Button
+                    size="small"
+                    variant={
+                      tipoRuta === "venta empleado" ? "contained" : "outlined"
+                    }
+                    startIcon={<BadgeIcon />}
+                    onClick={() => {
+                      setTipoRuta("venta empleado");
+                      setConfirmSendModalOpen(true);
+                      handleGenerateRoutes();
+                    }}
+                    sx={{
+                      textTransform: "none",
+                      ...(tipoRuta === "venta empleado"
+                        ? {
+                            bgcolor: "#c8e6c9",
+                            color: "#1b5e20",
+                            "&:hover": { bgcolor: "#a5d6a7" },
+                          }
+                        : {}),
+                    }}
+                  >
+                    VENTA EMPLEADO
+                  </Button>
+                </Stack>
+
+                <Box sx={{ flex: 1 }} />
+
+                {/* Sincronizar / Histórico */}
+                <Stack direction="row" spacing={1} flexWrap="wrap">
+                  <Button
+                    size="small"
+                    variant="contained"
+                    startIcon={<SyncIcon />}
+                    onClick={syncRoutesToDB}
+                    disabled={loadingSync}
+                    sx={{
+                      textTransform: "none",
+                      bgcolor: "#1976d2",
+                      "&:hover": { bgcolor: "#135BA1" },
+                    }}
+                  >
+                    {loadingSync ? "Sincronizando..." : "SINCRONIZAR RUTAS"}
+                  </Button>
+
+                  {(user?.role === "Admin" || user?.role === "Master") && (
+                    <Button
+                      size="small"
+                      variant="contained"
+                      startIcon={<HistoryIcon />}
+                      onClick={handleOpenHistoricoModal}
+                      sx={{
+                        textTransform: "none",
+                        bgcolor: "#e53935",
+                        "&:hover": { bgcolor: "#c62828" },
+                      }}
+                    >
+                      HISTÓRICO 2024
+                    </Button>
+                  )}
+                </Stack>
+              </Stack>
+            </Paper>
+
+            {/* =========== (TODO LO DEMÁS SE MANTIENE: resumen, rutas, carrusel, modales y tabla) =========== */}
+
+            {/* === Rutas disponibles (horizontal con scroll) === */}
+            {(user?.role === "Admin" || user?.role === "Control") && (
               <Box>
                 <Typography variant="h6" gutterBottom>
                   Rutas Disponibles
                 </Typography>
 
-                <Grid container spacing={2}>
+                <Box
+                  sx={{
+                    display: "grid",
+                    gridAutoFlow: "column",
+                    gridAutoColumns: {
+                      xs: "90%",
+                      sm: "60%",
+                      md: "40%",
+                      lg: "32%",
+                      xl: "26%",
+                    },
+                    gap: 2,
+                    overflowX: "auto",
+                    scrollSnapType: "x mandatory",
+                    px: 1,
+                    py: 1,
+                    "&::-webkit-scrollbar": { height: 8 },
+                    "&::-webkit-scrollbar-thumb": {
+                      bgcolor: "divider",
+                      borderRadius: 4,
+                    },
+                    "& > *": { scrollSnapAlign: "start" },
+                    borderRadius: 2,
+                  }}
+                >
                   {rutasConPedidos.length > 0 ? (
                     rutasConPedidos.map((ruta) => {
                       const totalRuta =
                         ruta.pedidos?.reduce(
-                          (acc, pedido) => acc + pedido.total,
+                          (acc, p) => acc + (Number(p.total) || 0),
                           0
                         ) || 0;
                       const statusCount = getStatusCountForRuta(
                         ruta.pedidos || []
                       );
-
                       return (
-                        <Grid item key={ruta.id} xs={12} sm={6} md={4}>
-                          <Card
-                            sx={{
-                              bgcolor: "#f5f5f5",
-                              borderRadius: "8px",
-                              p: 2,
-                            }}
-                          >
-                            <CardContent>
-                              <Typography variant="h6" textAlign="center">
-                                {ruta.nombre}
-                              </Typography>
-                              <Typography variant="body2" color="textSecondary">
+                        <Card
+                          key={ruta.id}
+                          sx={{
+                            borderRadius: 3,
+                            boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
+                            minHeight: 180,
+                            display: "flex",
+                            flexDirection: "column",
+                          }}
+                        >
+                          <CardContent sx={{ pb: 1 }}>
+                            <Typography
+                              variant="h6"
+                              align="center"
+                              sx={{
+                                fontWeight: 700,
+                                letterSpacing: 0.3,
+                                mb: 0.5,
+                              }}
+                            >
+                              {ruta.nombre}
+                            </Typography>
+
+                            <Stack
+                              spacing={0.3}
+                              sx={{ color: "text.secondary" }}
+                            >
+                              <Typography variant="body2">
                                 Pedidos: {ruta.pedidos?.length || 0}
                               </Typography>
+                              <Typography variant="body2">
+                                Total:{" "}
+                                {formatCurrency(
+                                  Number.isFinite(totalRuta) ? totalRuta : 0
+                                )}
+                              </Typography>
+                            </Stack>
 
-                              {/* Resumen de estatus */}
+                            <Stack
+                              direction="row"
+                              spacing={0.5}
+                              flexWrap="wrap"
+                              sx={{ mt: 1 }}
+                            >
                               {Object.entries(statusCount).map(
                                 ([status, count]) =>
                                   count > 0 ? (
-                                    <Typography key={status} variant="body2">
-                                      {status}: {count}
-                                    </Typography>
+                                    <Chip
+                                      key={status}
+                                      label={`${status}: ${count}`}
+                                      size="small"
+                                      sx={{ bgcolor: "grey.100" }}
+                                    />
                                   ) : null
                               )}
-                            </CardContent>
+                            </Stack>
+                          </CardContent>
 
-                            <CardActions sx={{ justifyContent: "center" }}>
-                              <Button
-                                variant="contained"
-                                color="primary"
-                                onClick={() => {
-                                  openDetallesRuta?.(ruta.nombre); // Si la usas
-                                  openPedidosDeBDModal?.(ruta); // Si la usas
-                                  setModalRoute(ruta.nombre);
-                                  setSelectedRuta(ruta);
-                                }}
-                              >
-                                Ver Pedidos
-                              </Button>
-                            </CardActions>
-                          </Card>
-                        </Grid>
+                          <CardActions
+                            sx={{ justifyContent: "center", mt: "auto", pb: 2 }}
+                          >
+                            <Button
+                              variant="contained"
+                              sx={{ textTransform: "none" }}
+                              onClick={() => {
+                                openDetallesRuta?.(ruta.nombre);
+                                openPedidosDeBDModal?.(ruta);
+                                setModalRoute(ruta.nombre);
+                                setSelectedRuta(ruta);
+                              }}
+                            >
+                              Ver Pedidos
+                            </Button>
+                          </CardActions>
+                        </Card>
                       );
                     })
                   ) : (
-                    <Typography>No hay rutas disponibles.</Typography>
+                    <Paper
+                      variant="outlined"
+                      sx={{
+                        p: 3,
+                        textAlign: "center",
+                        color: "text.secondary",
+                        minHeight: 120,
+                        display: "grid",
+                        placeItems: "center",
+                      }}
+                    >
+                      No hay rutas disponibles.
+                    </Paper>
                   )}
-                </Grid>
+                </Box>
 
-                {/* Modal para mostrar pedidos de la ruta seleccionada */}
+                {/* Modal Pedidos de la ruta */}
                 <Modal
                   open={!!selectedRuta}
                   onClose={() => setSelectedRuta(null)}
@@ -5596,17 +6008,18 @@ function Transporte() {
                       top: "50%",
                       left: "50%",
                       transform: "translate(-50%, -50%)",
-                      width: "80%",
-                      maxHeight: "80vh",
+                      width: "95%",
+                      maxWidth: 1100,
+                      maxHeight: "85vh",
                       overflowY: "auto",
-                      bgcolor: "white",
+                      bgcolor: "background.paper",
                       boxShadow: 24,
-                      p: 4,
-                      borderRadius: "12px",
+                      p: 3,
+                      borderRadius: 2,
                     }}
                   >
                     <Typography variant="h6" gutterBottom>
-                      Pedidos de la Ruta: {selectedRuta?.nombre} -{" "}
+                      Pedidos de la Ruta: {selectedRuta?.nombre} —{" "}
                       {formatCurrency(getTotalRuta(selectedRuta))}
                     </Typography>
 
@@ -5619,12 +6032,11 @@ function Transporte() {
                               getPedidosRuta(selectedRuta.nombre)
                             )
                           }
-                          sx={{ mb: 2 }}
+                          sx={{ m: 1 }}
                         >
                           Reactivar como Ruta
                         </Button>
-
-                        <Table>
+                        <Table size="small">
                           <TableHead>
                             <TableRow>
                               <TableCell>No. Orden</TableCell>
@@ -5640,7 +6052,6 @@ function Transporte() {
                               <TableCell>Status</TableCell>
                             </TableRow>
                           </TableHead>
-
                           <TableBody>
                             {getPedidosRuta(selectedRuta?.nombre).map(
                               (pedido) => (
@@ -5662,15 +6073,14 @@ function Transporte() {
                                   <TableCell>
                                     <Typography
                                       variant="body2"
-                                      style={{ color: pedido.color }}
+                                      sx={{ color: pedido.color }}
                                     >
                                       {pedido.statusText}
                                     </Typography>
-
                                     {pedido.fusionWith && (
                                       <Typography
                                         variant="caption"
-                                        style={{
+                                        sx={{
                                           color: "#800080",
                                           fontWeight: "bold",
                                         }}
@@ -5686,137 +6096,26 @@ function Transporte() {
                         </Table>
                       </TableContainer>
                     ) : (
-                      <Typography color="textSecondary">
+                      <Typography color="text.secondary">
                         No hay pedidos en esta ruta.
                       </Typography>
                     )}
+
+                    <Box textAlign="right" mt={2}>
+                      <Button
+                        onClick={() => setSelectedRuta(null)}
+                        variant="contained"
+                        size="small"
+                      >
+                        Cerrar
+                      </Button>
+                    </Box>
                   </Box>
                 </Modal>
               </Box>
             )}
 
-            <center>
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                {/* Contenedor de la tabla */}
-                <div
-                  id="data-to-capture"
-                  style={{
-                    padding: "10px",
-                    maxWidth: "600px",
-                    fontSize: "14px",
-                  }}
-                >
-                  <table
-                    style={{
-                      width: "100%",
-                      borderCollapse: "collapse",
-                      borderColor: "black",
-                      borderRadius: "1px",
-                      fontSize: "14px",
-                    }}
-                  >
-                    <thead>
-                      <tr style={{ backgroundColor: "#FFEB3B" }}>
-                        <th
-                          style={{
-                            padding: "6px",
-                            fontWeight: "bold",
-                            textAlign: "center",
-                          }}
-                        >
-                          CLIENTES
-                        </th>
-                        <th
-                          style={{
-                            padding: "6px",
-                            fontWeight: "bold",
-                            textAlign: "center",
-                          }}
-                        >
-                          PEDIDOS
-                        </th>
-                        <th
-                          style={{
-                            padding: "6px",
-                            fontWeight: "bold",
-                            textAlign: "center",
-                          }}
-                        >
-                          TOTAL
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td style={{ padding: "6px", textAlign: "center" }}>
-                          {resumen ? resumen.totalClientes : "Cargando..."}
-                        </td>
-                        <td style={{ padding: "6px", textAlign: "center" }}>
-                          {resumen ? resumen.totalPedidos : "Cargando..."}
-                        </td>
-                        <td style={{ padding: "6px", textAlign: "center" }}>
-                          {resumen
-                            ? formatCurrency(resumen.totalGeneral)
-                            : "Cargando..."}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Contenedor de los botones al lado derecho */}
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "5px",
-                    marginLeft: "10px",
-                  }}
-                >
-                  {/* Botón para limpiar localStorage */}
-                  <IconButton
-                    style={{
-                      backgroundColor: "red",
-                      color: "white",
-                      borderRadius: "5px",
-                    }}
-                    onClick={() => {
-                      localStorage.removeItem("totalClientes");
-                      localStorage.removeItem("totalPedidos");
-                      localStorage.removeItem("totalGeneral");
-                      setResumen({
-                        totalClientes: 0,
-                        totalPedidos: 0,
-                        totalGeneral: 0,
-                      });
-                    }}
-                  >
-                    🗑️
-                  </IconButton>
-
-                  {/* Botón para descargar */}
-                  <IconButton
-                    style={{
-                      backgroundColor: "#1976D2",
-                      color: "white",
-                      borderRadius: "5px",
-                    }}
-                    onClick={() => {
-                      // Aquí debe ir tu función exportToImage
-                    }}
-                  >
-                    ⬇️
-                  </IconButton>
-                </div>
-              </div>
-            </center>
-
+            {/* === Carrusel de rutas (groupedData) o selector múltiple === */}
             {Object.keys(groupedData).length <= MAX_VISIBLE_ROUTES ? (
               <>
                 <Box
@@ -5824,73 +6123,50 @@ function Transporte() {
                     display: "flex",
                     overflowX: "auto",
                     whiteSpace: "nowrap",
-                    padding: "10px",
-                    gap: "10px",
+                    px: 1,
+                    py: 1,
+                    gap: 1,
                     maxWidth: "100%",
                   }}
                 >
                   {Object.keys(groupedData)
-                    .filter((route) => !hiddenRoutes.includes(route)) // 👈 filtra rutas ocultas
+                    .filter((route) => !hiddenRoutes.includes(route))
                     .map((route) => {
                       const totals = calculateTotals(route);
                       const pedidosOrdenes = groupedData[route].rows
-                        .map((pedido) => pedido["NO ORDEN"])
+                        .map((p) => p["NO ORDEN"])
                         .join(", ");
-
                       return (
                         <Tooltip
                           key={route}
                           title={
-                            <Typography
-                              sx={{
-                                fontSize: "16px",
-                                fontWeight: "bold",
-                                p: 1,
-                              }}
-                            >
-                              Órdenes:{" "}
-                              {pedidosOrdenes.length > 0
-                                ? pedidosOrdenes
-                                : "Sin pedidos"}
+                            <Typography sx={{ fontSize: 14, p: 1 }}>
+                              <b>Órdenes:</b> {pedidosOrdenes || "Sin pedidos"}
                             </Typography>
                           }
                           arrow
-                          sx={{
-                            "& .MuiTooltip-tooltip": {
-                              fontSize: "16px",
-                              maxWidth: "300px",
-                              backgroundColor: "#333",
-                              color: "white",
-                              padding: "10px",
-                            },
-                          }}
                         >
-                          <Box
+                          <Paper
+                            elevation={1}
                             sx={{
-                              minWidth: "200px",
-                              maxWidth: "200px",
+                              minWidth: 220,
+                              maxWidth: 220,
                               textAlign: "center",
-                              padding: "10px",
-                              border: "1px solid #ddd",
-                              borderRadius: "5px",
-                              backgroundColor: "#fff",
-                              boxShadow: "2px 2px 5px rgba(0,0,0,0.1)",
+                              p: 1.5,
+                              borderRadius: 1.5,
                               position: "relative",
                               cursor: "pointer",
                             }}
                           >
-                            {/* Botón para ocultar ruta */}
                             <Box
                               sx={{
                                 position: "absolute",
-                                top: "5px",
-                                right: "5px",
+                                top: 6,
+                                right: 6,
                                 display: "flex",
-                                flexDirection: "row",
-                                gap: "4px",
+                                gap: 0.5,
                               }}
                             >
-                              {/* Ocultar */}
                               <IconButton
                                 size="small"
                                 color="warning"
@@ -5898,16 +6174,14 @@ function Transporte() {
                                   setHiddenRoutes((prev) => [...prev, route])
                                 }
                               >
-                                <VisibilityOffIcon />
+                                <VisibilityOffIcon fontSize="small" />
                               </IconButton>
-
-                              {/* Eliminar */}
                               <IconButton
                                 size="small"
                                 color="error"
                                 onClick={() => removeRoute(route)}
                               >
-                                <CloseIcon />
+                                <CloseIcon fontSize="small" />
                               </IconButton>
                             </Box>
 
@@ -5915,69 +6189,59 @@ function Transporte() {
                               checked={selectedRoutes.includes(route)}
                               onChange={() => handleSelectRoute(route)}
                             />
-                            <Typography variant="h6" fontWeight="bold">
+                            <Typography variant="subtitle1" fontWeight={700}>
                               Ruta: {route}
                             </Typography>
                             <Typography variant="body2">
-                              <strong>Total:</strong>{" "}
-                              {formatCurrency(totals.TOTAL)}
+                              <b>Total:</b> {formatCurrency(totals.TOTAL)}
                             </Typography>
                             <Typography variant="body2">
-                              <strong>Partidas:</strong> {totals.PARTIDAS}
+                              <b>Partidas:</b> {totals.PARTIDAS}
                             </Typography>
                             <Typography variant="body2">
-                              <strong>Piezas:</strong> {totals.PIEZAS}
+                              <b>Piezas:</b> {totals.PIEZAS}
                             </Typography>
                             <Button
                               onClick={() => openModal(route)}
                               size="small"
-                              color="primary"
+                              sx={{ mt: 0.5 }}
                             >
                               Ver Detalles
                             </Button>
-                          </Box>
+                          </Paper>
                         </Tooltip>
                       );
                     })}
                 </Box>
 
-                {/* Sección para mostrar rutas ocultas */}
                 {hiddenRoutes.length > 0 && (
-                  <Box mt={2}>
+                  <Box mt={1.5}>
                     <Typography fontWeight="bold">Rutas ocultas:</Typography>
-                    {hiddenRoutes.map((route) => (
-                      <Box
-                        key={route}
-                        display="flex"
-                        alignItems="center"
-                        gap={1}
-                        mt={1}
-                      >
-                        <Typography>{route}</Typography>
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          onClick={() =>
+                    <Stack direction="row" spacing={1} flexWrap="wrap" mt={0.5}>
+                      {hiddenRoutes.map((route) => (
+                        <Chip
+                          key={route}
+                          label={route}
+                          onDelete={() =>
                             setHiddenRoutes((prev) =>
                               prev.filter((r) => r !== route)
                             )
                           }
-                        >
-                          Mostrar
-                        </Button>
-                      </Box>
-                    ))}
+                          variant="outlined"
+                        />
+                      ))}
+                    </Stack>
                   </Box>
                 )}
               </>
             ) : (
-              <FormControl fullWidth style={{ marginTop: "20px" }}>
+              <FormControl fullWidth sx={{ mt: 2 }}>
                 <InputLabel>Seleccionar Ruta</InputLabel>
                 <Select
                   multiple
                   value={selectedRoutes}
                   onChange={(e) => setSelectedRoutes(e.target.value)}
-                  renderValue={(selected) => selected.join(", ")}
+                  renderValue={(s) => s.join(", ")}
                 >
                   {Object.keys(groupedData).map((route) => (
                     <MenuItem key={route} value={route}>
@@ -5989,39 +6253,29 @@ function Transporte() {
               </FormControl>
             )}
 
-            {/* Modal para mandar a paqueteria */}
+            {/* Confirmar envío */}
             <Modal
               open={confirmSendModalOpen}
               onClose={() => setConfirmSendModalOpen(false)}
               aria-labelledby="confirm-send-modal-title"
-              aria-describedby="confirm-send-modal-description"
             >
               <Box
-                padding="20px"
-                backgroundColor="white"
-                margin="50px auto"
-                maxWidth="400px"
-                textAlign="center"
-                borderRadius="8px"
+                sx={{
+                  p: 2,
+                  bgcolor: "background.paper",
+                  m: "50px auto",
+                  maxWidth: 420,
+                  textAlign: "center",
+                  borderRadius: 2,
+                }}
               >
                 <Typography variant="h6" id="confirm-send-modal-title">
                   ¿Está seguro de mandar estas rutas?
                 </Typography>
-
-                <Typography variant="body1" style={{ marginTop: 20 }}>
+                <Typography variant="body1" sx={{ mt: 2 }}>
                   Rutas seleccionadas: {selectedRoutes.join(", ")}
                 </Typography>
-
-                <Box
-                  position="relative"
-                  style={{
-                    padding: "20px",
-                    backgroundColor: "#f5f5f5",
-                    borderRadius: "8px",
-                  }}
-                ></Box>
-
-                <Box marginTop={2}>
+                <Box mt={2} display="flex" gap={1} justifyContent="center">
                   <Button
                     variant="contained"
                     color="primary"
@@ -6029,12 +6283,10 @@ function Transporte() {
                   >
                     Sí
                   </Button>
-
                   <Button
                     variant="outlined"
                     color="secondary"
                     onClick={() => setConfirmSendModalOpen(false)}
-                    style={{ marginLeft: 10 }}
                   >
                     No
                   </Button>
@@ -6042,19 +6294,21 @@ function Transporte() {
               </Box>
             </Modal>
 
-            {/* Modal para mostrar detalles de la ruta */}
+            {/* === Modal Detalles de la Ruta === */}
             <Modal open={modalOpen} onClose={closeModal}>
               <Box
-                padding="30px"
-                backgroundColor="white"
-                margin="20px auto"
-                maxWidth="90%"
-                maxHeight="90%"
-                overflow="auto"
-                borderRadius="12px"
-                boxShadow="0 4px 20px rgba(0, 0, 0, 0.1)"
+                sx={{
+                  p: 3,
+                  bgcolor: "background.paper",
+                  m: "20px auto",
+                  maxWidth: "95%",
+                  maxHeight: "90vh",
+                  overflow: "auto",
+                  borderRadius: 2,
+                  boxShadow: 6,
+                }}
               >
-                <Box display="flex" alignItems="center" gap={1}>
+                <Box display="flex" alignItems="center" gap={1} mb={1}>
                   {editingRoute === selectedRoute ? (
                     <>
                       <TextField
@@ -6093,34 +6347,20 @@ function Transporte() {
                 {selectedRoute &&
                 groupedData[selectedRoute]?.rows?.length > 0 ? (
                   <>
-                    <TableContainer>
-                      <Grid
-                        item
-                        xs={12}
-                        sm={4}
-                        style={{ marginBottom: "20px" }}
-                      >
-                        <TextField
-                          label="Buscar por No Orden"
-                          variant="outlined"
-                          value={filterOrderValue}
-                          onChange={handleOrderFilterChange}
-                          fullWidth
-                          size="small"
-                          style={{ maxWidth: "300px" }}
-                        />
-                      </Grid>
-
-                      <Table
+                    <Grid item xs={12} sm={4} sx={{ mb: 2 }}>
+                      <TextField
+                        label="Buscar por No Orden"
+                        variant="outlined"
+                        value={filterOrderValue}
+                        onChange={handleOrderFilterChange}
+                        fullWidth
                         size="small"
-                        sx={{
-                          "& td, & th": {
-                            padding: "4px 8px",
-                            fontSize: "12px",
-                          },
-                          "& tr": { height: "36px" },
-                        }}
-                      >
+                        sx={{ maxWidth: 300 }}
+                      />
+                    </Grid>
+
+                    <TableContainer component={Paper}>
+                      <Table size="small">
                         <TableHead>
                           <TableRow>
                             <TableCell>Movimientos</TableCell>
@@ -6140,13 +6380,12 @@ function Transporte() {
                             <TableCell>ACCIONES</TableCell>
                           </TableRow>
                         </TableHead>
-
                         <TableBody>
                           {groupedData[selectedRoute].rows.map((row, index) => (
                             <TableRow
                               key={row["NO ORDEN"]}
-                              style={{
-                                backgroundColor:
+                              sx={{
+                                bgcolor:
                                   highlightedRow === row["NO ORDEN"]
                                     ? "#fff59d"
                                     : "transparent",
@@ -6197,7 +6436,6 @@ function Transporte() {
                                 {row["NUM. CLIENTE"] || row.num_cliente}
                               </TableCell>
                               <TableCell>
-                                {" "}
                                 {row["NOMBRE DEL CLIENTE"] ||
                                   row.nombre_cliente}
                               </TableCell>
@@ -6227,10 +6465,10 @@ function Transporte() {
                                     variant="outlined"
                                     size="small"
                                     autoFocus
-                                    onKeyDown={(e) => {
-                                      if (e.key === "Enter")
-                                        setEditingObservationId(null);
-                                    }}
+                                    onKeyDown={(e) =>
+                                      e.key === "Enter" &&
+                                      setEditingObservationId(null)
+                                    }
                                   />
                                 ) : (
                                   <span
@@ -6302,7 +6540,7 @@ function Transporte() {
                   </Typography>
                 )}
 
-                <Box textAlign="right" marginTop={2}>
+                <Box textAlign="right" mt={2}>
                   <Button onClick={closeModal} variant="contained" size="small">
                     Cerrar
                   </Button>
@@ -6310,15 +6548,9 @@ function Transporte() {
               </Box>
             </Modal>
 
-            {/* Tabla de datos cargados */}
-            <TableContainer component={Paper} style={{ marginTop: "20px" }}>
-              {/* Filtros */}
-              <Grid
-                container
-                spacing={1}
-                marginBottom={2}
-                style={{ marginTop: "20px" }}
-              >
+            {/* === Tabla principal con filtros === */}
+            <TableContainer component={Paper} sx={{ mt: 2 }}>
+              <Grid container spacing={1} sx={{ p: 2, pb: 0 }}>
                 <Grid item xs={12} sm={4}>
                   <TextField
                     label="Buscar por No Orden"
@@ -6327,11 +6559,10 @@ function Transporte() {
                     value={filter.noOrden}
                     onChange={handleFilterChange}
                     fullWidth
-                    size="small" // Ajuste del tamaño
-                    style={{ maxWidth: "200px" }} // Limitar la longitud
+                    size="small"
+                    sx={{ maxWidth: 260 }}
                   />
                 </Grid>
-
                 <Grid item xs={12} sm={4}>
                   <TextField
                     label="Buscar por Num Cliente"
@@ -6340,11 +6571,10 @@ function Transporte() {
                     value={filter.numCliente}
                     onChange={handleFilterChange}
                     fullWidth
-                    size="small" // Ajuste del tamaño
-                    style={{ maxWidth: "200px" }} // Limitar la longitud
+                    size="small"
+                    sx={{ maxWidth: 260 }}
                   />
                 </Grid>
-
                 <Grid item xs={12} sm={4}>
                   <TextField
                     label="Buscar por Estado"
@@ -6353,8 +6583,8 @@ function Transporte() {
                     value={filter.estado}
                     onChange={handleFilterChange}
                     fullWidth
-                    size="small" // Ajuste del tamaño
-                    style={{ maxWidth: "200px" }} // Limitar la longitud
+                    size="small"
+                    sx={{ maxWidth: 260 }}
                   />
                 </Grid>
               </Grid>
@@ -6362,11 +6592,11 @@ function Transporte() {
               {tabIndex === 0 &&
                 selectedOrders.length > 0 &&
                 ["Admin", "Master", "Trans"].includes(user?.role) && (
-                  <Box display="flex" alignItems="center" gap={2} mb={2}>
+                  <Box display="flex" alignItems="center" gap={2} p={2}>
                     <FormControl
                       variant="outlined"
                       size="small"
-                      style={{ minWidth: 200 }}
+                      sx={{ minWidth: 240 }}
                     >
                       <InputLabel>Seleccionar Ruta</InputLabel>
                       <Select
@@ -6381,7 +6611,6 @@ function Transporte() {
                         ))}
                       </Select>
                     </FormControl>
-
                     <Button
                       variant="contained"
                       color="primary"
@@ -6395,7 +6624,7 @@ function Transporte() {
 
               <TablePagination
                 component="div"
-                count={filteredData.length} // Se asegura de que `count` es válido
+                count={filteredData.length}
                 rowsPerPage={rowsPerPage}
                 page={Math.min(
                   page,
@@ -6404,10 +6633,10 @@ function Transporte() {
                 onPageChange={(event, newPage) => setPage(newPage)}
                 labelRowsPerPage=""
                 rowsPerPageOptions={[]}
+                sx={{ px: 2 }}
               />
 
-              {/* Tabla */}
-              <Table>
+              <Table size="small">
                 <TableHead>
                   <TableRow>
                     <TableCell>Seleccionar</TableCell>
@@ -6429,7 +6658,7 @@ function Transporte() {
                 <TableBody>
                   {paginatedData.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={12} style={{ textAlign: "center" }}>
+                      <TableCell colSpan={13} align="center">
                         No hay datos disponibles.
                       </TableCell>
                     </TableRow>
@@ -6476,6 +6705,7 @@ function Transporte() {
                               onClick={() =>
                                 handleEditObservation(row["NUM. CLIENTE"])
                               }
+                              style={{ cursor: "pointer" }}
                             >
                               {observacionesPorRegistro[row["NUM. CLIENTE"]] ||
                                 "Sin observaciones"}
@@ -6487,7 +6717,7 @@ function Transporte() {
                         <TableCell>{row.PARTIDAS}</TableCell>
                         <TableCell>{row.PIEZAS}</TableCell>
                         <TableCell>
-                          <FormControl fullWidth>
+                          <FormControl fullWidth size="small">
                             <InputLabel>Seleccionar Ruta</InputLabel>
                             <Select
                               value=""
@@ -6692,19 +6922,10 @@ function Transporte() {
                 </Card>
               )}
 
-            {["Admin", "Master", "Tran", "Trans", "Rep"].includes(
+            {["Admin", "Master", "Tran", "Trans", "Rep", "AdminTran"].includes(
               user?.role
             ) && (
               <Box display="flex" gap={2} mb={2}>
-                <Button
-                  variant="contained"
-                  color="error"
-                  onClick={handleOpenModalGuia}
-                  sx={{ fontWeight: "bold" }}
-                >
-                  PRORRATEO
-                </Button>
-
                 <Button
                   variant="contained"
                   color="warning"
@@ -6723,38 +6944,13 @@ function Transporte() {
                   EXPORTAR PAQUETERÍA POR MES
                 </Button>
 
-                {/* <select
-                  value={mesSeleccionado}
-                  onChange={(e) => setMesSeleccionado(e.target.value)}
-                  style={{
-                    padding: "6px 12px",
-                    borderRadius: "4px",
-                    border: "1px solid #ccc",
-                    fontWeight: "bold",
-                    color: "#333",
-                    backgroundColor: "#fff",
-                    cursor: "pointer",
-                    boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-                    outline: "none",
-                    transition: "border-color 0.3s ease",
-                  }}
-                  onFocus={(e) => (e.target.style.borderColor = "#ff6600")}
-                  onBlur={(e) => (e.target.style.borderColor = "#ccc")}
+                <Button
+                  variant="contained"
+                  onClick={handleOpenPorrateo}
+                  style={{ marginBottom: 10 }}
                 >
-                  <option value="">Últimos 3 días</option>
-                  <option value="1">Enero</option>
-                  <option value="2">Febrero</option>
-                  <option value="3">Marzo</option>
-                  <option value="4">Abril</option>
-                  <option value="5">Mayo</option>
-                  <option value="6">Junio</option>
-                  <option value="7">Julio</option>
-                  <option value="8">Agosto</option>
-                  <option value="9">Septiembre</option>
-                  <option value="10">Octubre</option>
-                  <option value="11">Noviembre</option>
-                  <option value="12">Diciembre</option>
-                </select> */}
+                  Ver Porrateo (por Transporte)
+                </Button>
               </Box>
             )}
 
@@ -6772,11 +6968,715 @@ function Transporte() {
               <option value="6">Junio</option>
               <option value="7">Julio</option>
               <option value="8">Agosto</option>
-              {/* <option value="9">Septiembre</option>
-                <option value="10">Octubre</option>
+              <option value="9">Septiembre</option>
+              {/*  <option value="10">Octubre</option>
                 <option value="11">Noviembre</option>
                 <option value="12">Diciembre</option> */}
             </select>
+
+            {/* ===== Modal: Porrateo por Transporte ===== */}
+
+            <Dialog
+              open={openPorrateo}
+              onClose={() => setOpenPorrateo(false)}
+              fullWidth
+              maxWidth="xl"
+              PaperProps={{
+                sx: {
+                  width: { xs: "100vw", md: "95vw" },
+                  maxWidth: { xs: "100vw", md: "95vw" },
+                  height: { xs: "100vh", md: "90vh" },
+                },
+              }}
+            >
+              <DialogTitle>Porrateo por Transporte</DialogTitle>
+
+              <DialogContent dividers sx={{ p: 1 }}>
+                {/* Barra superior */}
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1,
+                    mb: 2,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <TextField
+                    label="Mes"
+                    type="month"
+                    size="small"
+                    value={selectedMonthPorrateo}
+                    onChange={(e) => setSelectedMonthPorrateo(e.target.value)}
+                  />
+                  <Button variant="outlined" onClick={handleOpenPorrateo}>
+                    Cargar
+                  </Button>
+
+                  {/* ÚNICO campo que captura el usuario */}
+                  <TextField
+                    label="Total Factura LT (grupo)"
+                    size="small"
+                    value={montoGrupo}
+                    onChange={(e) => setMontoGrupo(e.target.value)}
+                    sx={{ ml: 1, minWidth: 220 }}
+                  />
+
+                  <TextField
+                    label="Número de Factura LT (grupo)"
+                    size="small"
+                    value={numeroFacturaGrupo}
+                    onChange={(e) => setNumeroFacturaGrupo(e.target.value)}
+                    sx={{ ml: 1, minWidth: 220 }}
+                  />
+
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1,
+                      ml: "auto",
+                    }}
+                  >
+                    <TextField
+                      label="Buscar por Guía"
+                      size="small"
+                      value={guiaQuery}
+                      onChange={(e) => {
+                        setGuiaQuery(e.target.value);
+                        setPorrateoPage(0);
+                      }}
+                    />
+                    <Button
+                      variant="text"
+                      onClick={() => {
+                        setSelectedGuia("");
+                        setGuiaQuery("");
+                        setPorrateoPage(0);
+                      }}
+                    >
+                      Limpiar
+                    </Button>
+                  </Box>
+
+                  {loadingPorrateo && (
+                    <Typography variant="body2">Cargando…</Typography>
+                  )}
+                  {errorPorrateo && (
+                    <Typography color="error">{errorPorrateo}</Typography>
+                  )}
+                </Box>
+
+                {/* Chips transporte */}
+                {transportKeys.length > 0 && (
+                  <Box
+                    sx={{
+                      display: "flex",
+                      gap: 1,
+                      overflowX: "auto",
+                      pb: 1,
+                      mb: 2,
+                    }}
+                  >
+                    {transportKeys.map((t) => (
+                      <Chip
+                        key={t}
+                        label={`${t} — ${porrateoGroups[t]?.length || 0}`}
+                        clickable
+                        color={selectedTransport === t ? "primary" : "default"}
+                        onClick={() => {
+                          setSelectedTransport(t);
+                          setPorrateoPage(0);
+                        }}
+                        sx={{ flexShrink: 0 }}
+                      />
+                    ))}
+                  </Box>
+                )}
+
+                {/* Chips guía */}
+                {!!selectedTransport && (
+                  <Box
+                    sx={{
+                      display: "flex",
+                      gap: 1,
+                      overflowX: "auto",
+                      pb: 1,
+                      mb: 2,
+                    }}
+                  >
+                    {Object.entries(
+                      (porrateoGroups[selectedTransport] || []).reduce(
+                        (acc, r) => {
+                          const g = String(r.GUIA ?? "").trim();
+                          acc[g] = (acc[g] || 0) + 1;
+                          return acc;
+                        },
+                        {}
+                      )
+                    )
+                      .sort(([a], [b]) =>
+                        a.localeCompare(b, "es", { numeric: true })
+                      )
+                      .map(([g, count]) => (
+                        <Chip
+                          key={g}
+                          label={`${g} — ${count}`}
+                          clickable
+                          color={selectedGuia === g ? "primary" : "default"}
+                          onClick={() => {
+                            setSelectedGuia(selectedGuia === g ? "" : g);
+                            setPorrateoPage(0);
+                          }}
+                          sx={{ flexShrink: 0 }}
+                        />
+                      ))}
+                  </Box>
+                )}
+
+                {/* Tabla / cálculo */}
+                {!selectedTransport ? (
+                  <Typography variant="body2">
+                    Selecciona un transporte.
+                  </Typography>
+                ) : (
+                  <>
+                    {(() => {
+                      // ===== Helpers =====
+                      const normGuia = (v) => String(v ?? "").trim();
+                      const toNumber = (v) => {
+                        if (v === null || v === undefined) return 0;
+                        const n = Number(String(v).replace(/[^0-9.\-]/g, ""));
+                        return Number.isFinite(n) ? n : 0;
+                      };
+                      const round2 = (n) =>
+                        Math.round((n + Number.EPSILON) * 100) / 100;
+                      const formatCurrency = (n) =>
+                        n?.toLocaleString?.("es-MX", {
+                          style: "currency",
+                          currency: "MXN",
+                        }) ?? n;
+                      const formatDate = (iso) => {
+                        if (!iso) return "";
+                        const d = new Date(iso);
+                        if (isNaN(d)) return String(iso);
+                        const dd = String(d.getDate()).padStart(2, "0");
+                        const mm = String(d.getMonth() + 1).padStart(2, "0");
+                        const yy = d.getFullYear();
+                        return `${dd}/${mm}/${yy}`;
+                      };
+                      // llave ESTABLE (NO usa GUIA)
+                      const keyForStable = (r) =>
+                        `${
+                          r["NO ORDEN"] ?? r.no_orden ?? r.noOrden ?? ""
+                        }__${String(r.tipo_original ?? "").trim()}`;
+                      const getNoOrden = (r) =>
+                        r["NO ORDEN"] ?? r.no_orden ?? r.noOrden ?? "";
+
+                      const baseRows = porrateoGroups[selectedTransport] || [];
+                      const byChip = selectedGuia
+                        ? baseRows.filter(
+                            (r) => normGuia(r.GUIA) === selectedGuia
+                          )
+                        : baseRows;
+                      const q = guiaQuery.trim().toLowerCase();
+                      const filteredRows = q
+                        ? byChip.filter((r) =>
+                            normGuia(r.GUIA).toLowerCase().includes(q)
+                          )
+                        : byChip;
+
+                      // === Cálculos ===
+                      const baseTotal = filteredRows.reduce(
+                        (acc, r) => acc + toNumber(r.TOTAL),
+                        0
+                      );
+
+                      // Prefiere lo que capture el usuario; si no hay, toma el primero que venga de BD
+                      const grupoFromDB = toNumber(
+                        filteredRows[0]?.TOTAL_FACTURA_LT
+                      );
+                      const totalGrupoEff =
+                        toNumber(montoGrupo) || grupoFromDB || 0;
+
+                      const factor =
+                        baseTotal > 0 ? totalGrupoEff / baseTotal : 0;
+
+                      // Paginación
+                      const totalCount = filteredRows.length;
+                      const pageStart = porrateoPage * porrateoRowsPerPage;
+                      const pageEnd = pageStart + porrateoRowsPerPage;
+                      const pageRows = filteredRows.slice(pageStart, pageEnd);
+
+                      // PUT por fila:
+                      // - prorrateo_factura_lt = prCalc
+                      // - suma_flete          = prCalc
+                      // - total_factura_lt    = totalGrupoEff SOLO en la PRIMERA fila; en las demás NULL (para limpiar)
+                      const putFila = async (
+                        r,
+                        isFirst,
+                        prCalc,
+                        totalGrupoEff
+                      ) => {
+                        const body = {
+                          no_orden: String(getNoOrden(r)),
+                          tipo_original: String(r.tipo_original || "").trim(),
+                          guia: String(r.GUIA ?? "").trim(),
+                          fecha_de_entrega_cliente:
+                            r.fecha_de_entrega_cliente || "",
+                          prorrateo_factura_lt: prCalc, // 👈 cálculo
+                          suma_flete: prCalc, // 👈 cálculo
+                          total_factura_lt: isFirst ? totalGrupoEff : null, // 👈 solo primera; demás NULL
+                          NUMERO_DE_FACTURA_LT:
+                            numeroFacturaGrupo || r.NUMERO_DE_FACTURA_LT,
+                          por_paq: (factor * 100).toFixed(2),
+                        };
+
+                        const rowKey = keyForStable(r);
+                        try {
+                          setSavingRowKey(rowKey);
+                          await axios.put(
+                            "http://66.232.105.87:3007/api/Trasporte/Paqueteria/actualizarNuevoPorrateo",
+                            body
+                          );
+
+                          // Parche local
+                          const t = selectedTransport;
+                          setPorrateoGroups((prev) => {
+                            const copy = { ...prev };
+                            copy[t] = (copy[t] || []).map((x) =>
+                              keyForStable(x) === rowKey
+                                ? {
+                                    ...x,
+                                    TOTAL_FACTURA_LT: isFirst
+                                      ? totalGrupoEff
+                                      : null,
+                                    PRORRATEO_FACTURA_LT: prCalc,
+                                    SUMA_FLETE: prCalc,
+                                    NUMERO_DE_FACTURA_LT:
+                                      numeroFacturaGrupo ||
+                                      r.NUMERO_DE_FACTURA_LT,
+                                    PORCENTAJE_PAQUETERIA: (
+                                      factor * 100
+                                    ).toFixed(2),
+                                  }
+                                : x
+                            );
+                            return copy;
+                          });
+                        } catch (e) {
+                          console.error(
+                            "[PUT ERROR]",
+                            e?.response?.status,
+                            e?.response?.data || e.message
+                          );
+                          setErrorPorrateo?.("Error al actualizar la fila.");
+                        } finally {
+                          setSavingRowKey("");
+                        }
+                      };
+
+                      // Guardado masivo
+                      const aplicarYGuardarProrrateo = async () => {
+                        if (totalGrupoEff <= 0 || baseTotal <= 0) {
+                          alert(
+                            "Escribe un Total Factura LT (grupo) válido y asegúrate que la suma de TOTAL sea mayor a 0."
+                          );
+                          return;
+                        }
+                        for (let i = 0; i < filteredRows.length; i++) {
+                          const r = filteredRows[i];
+                          const prCalc = round2(factor * toNumber(r.TOTAL));
+                          await putFila(r, i === 0, prCalc, totalGrupoEff); // i===0 manda total_factura_lt, los demás NULL
+                        }
+                      };
+
+                      return (
+                        <>
+                          {/* Resumen */}
+                          <Box
+                            sx={{
+                              display: "flex",
+                              gap: 2,
+                              mb: 1,
+                              flexWrap: "wrap",
+                            }}
+                          >
+                            <Typography
+                              variant="subtitle1"
+                              sx={{ fontWeight: 600 }}
+                            >
+                              {selectedTransport} — {totalCount} registros
+                              {selectedGuia ? ` (Guía: ${selectedGuia})` : ""}
+                            </Typography>
+                            <Typography variant="body2">
+                              Suma TOTAL (base): {formatCurrency(baseTotal)}
+                            </Typography>
+                            <Typography variant="body2">
+                              Total Factura LT (grupo):{" "}
+                              {formatCurrency(totalGrupoEff)}
+                            </Typography>
+                            <Typography variant="body2">
+                              Factor: {factor.toFixed(6)}
+                            </Typography>
+                            <Button
+                              variant="contained"
+                              size="small"
+                              onClick={aplicarYGuardarProrrateo}
+                            >
+                              Aplicar prorrateo y guardar
+                            </Button>
+                          </Box>
+
+                          {/* Tabla */}
+                          <Box sx={{ overflowX: "auto" }}>
+                            <Box sx={{ minWidth: 1500 }}>
+                              <Table size="small">
+                                <TableHead>
+                                  <TableRow>
+                                    <TableCell sx={{ whiteSpace: "nowrap" }}>
+                                      NO ORDEN / TIPO
+                                    </TableCell>
+                                    <TableCell
+                                      sx={{
+                                        whiteSpace: "nowrap",
+                                        minWidth: 110,
+                                      }}
+                                    >
+                                      Guía
+                                    </TableCell>
+
+                                    <TableCell
+                                      sx={{
+                                        whiteSpace: "nowrap",
+                                        minWidth: 170,
+                                      }}
+                                    >
+                                      Número Factura LT
+                                    </TableCell>
+
+                                    <TableCell
+                                      sx={{
+                                        whiteSpace: "nowrap",
+                                        minWidth: 150,
+                                      }}
+                                    >
+                                      Fecha Entrega (Cliente)
+                                    </TableCell>
+                                    <TableCell
+                                      sx={{
+                                        whiteSpace: "nowrap",
+                                        minWidth: 130,
+                                      }}
+                                    >
+                                      Total (base)
+                                    </TableCell>
+
+                                    <TableCell
+                                      sx={{
+                                        whiteSpace: "nowrap",
+                                        minWidth: 170,
+                                      }}
+                                    >
+                                      Total Factura LT (actual)
+                                    </TableCell>
+                                    <TableCell
+                                      sx={{
+                                        whiteSpace: "nowrap",
+                                        minWidth: 170,
+                                      }}
+                                    >
+                                      PRORRATEO_FACTURA_LT (actual)
+                                    </TableCell>
+
+                                    <TableCell
+                                      sx={{
+                                        whiteSpace: "nowrap",
+                                        minWidth: 150,
+                                      }}
+                                    >
+                                      % Paquetería
+                                    </TableCell>
+
+                                    <TableCell
+                                      sx={{
+                                        whiteSpace: "nowrap",
+                                        minWidth: 150,
+                                      }}
+                                    >
+                                      SUMA_FLETE (actual)
+                                    </TableCell>
+
+                                    <TableCell
+                                      sx={{
+                                        whiteSpace: "nowrap",
+                                        minWidth: 170,
+                                      }}
+                                    >
+                                      Prorrateo (cálculo en vivo)
+                                    </TableCell>
+
+                                    <TableCell
+                                      sx={{
+                                        whiteSpace: "nowrap",
+                                        minWidth: 110,
+                                      }}
+                                    >
+                                      Tipo Ruta
+                                    </TableCell>
+
+                                    <TableCell
+                                      sx={{
+                                        whiteSpace: "nowrap",
+                                        minWidth: 120,
+                                      }}
+                                    >
+                                      Creado
+                                    </TableCell>
+
+                                    <TableCell
+                                      sx={{
+                                        whiteSpace: "nowrap",
+                                        minWidth: 120,
+                                      }}
+                                    >
+                                      Acciones
+                                    </TableCell>
+                                  </TableRow>
+                                </TableHead>
+
+                                <TableBody>
+                                  {pageRows.map((r, idx) => {
+                                    const rowKey = keyForStable(r);
+                                    const totalBase = toNumber(r.TOTAL);
+                                    const prCalc = round2(factor * totalBase);
+
+                                    const totalLtDB = toNumber(
+                                      r.TOTAL_FACTURA_LT
+                                    );
+                                    const prorrDB = toNumber(
+                                      r.PRORRATEO_FACTURA_LT
+                                    );
+                                    const sumaFleteDB = toNumber(r.SUMA_FLETE);
+
+                                    // Mostrar lo que haya en BD; si no, el cálculo
+                                    const prActual = prorrDB || prCalc;
+                                    const sumaFleteActual =
+                                      sumaFleteDB || prCalc;
+
+                                    // índice absoluto (no por página) para saber si es la 1a fila
+                                    const absIndex = pageStart + idx;
+                                    const isFirst = absIndex === 0;
+
+                                    return (
+                                      <TableRow key={`${rowKey}-${idx}`}>
+                                        <TableCell>
+                                          {r["NO ORDEN"] ??
+                                            r.no_orden ??
+                                            r.noOrden ??
+                                            ""}{" "}
+                                          - {r.tipo_original}
+                                        </TableCell>
+
+                                        {/* Guía editable */}
+                                        <TableCell>
+                                          <TextField
+                                            size="small"
+                                            value={String(r.GUIA ?? "")}
+                                            onChange={(e) => {
+                                              const v = e.target.value;
+                                              const t = selectedTransport;
+                                              setPorrateoGroups((prev) => {
+                                                const copy = { ...prev };
+                                                copy[t] = (copy[t] || []).map(
+                                                  (x) =>
+                                                    keyForStable(x) === rowKey
+                                                      ? { ...x, GUIA: v }
+                                                      : x
+                                                );
+                                                return copy;
+                                              });
+                                            }}
+                                            placeholder="Guía"
+                                          />
+                                        </TableCell>
+
+                                        {/* Número Factura LT editable */}
+                                        <TableCell>
+                                          <TextField
+                                            size="small"
+                                            value={String(
+                                              r.NUMERO_DE_FACTURA_LT ?? ""
+                                            )}
+                                            onChange={(e) => {
+                                              const v = e.target.value;
+                                              const t = selectedTransport;
+                                              setPorrateoGroups((prev) => {
+                                                const copy = { ...prev };
+                                                copy[t] = (copy[t] || []).map(
+                                                  (x) =>
+                                                    keyForStable(x) === rowKey
+                                                      ? {
+                                                          ...x,
+                                                          NUMERO_DE_FACTURA_LT:
+                                                            v,
+                                                        }
+                                                      : x
+                                                );
+                                                return copy;
+                                              });
+                                            }}
+                                            placeholder="Factura LT"
+                                          />
+                                        </TableCell>
+
+                                        {/* Fecha editable */}
+                                        <TableCell>
+                                          <TextField
+                                            size="small"
+                                            type="date"
+                                            value={(
+                                              r.fecha_de_entrega_cliente ??
+                                              r.FECHA_DE_ENTREGA_CLIENTE ??
+                                              ""
+                                            )
+                                              .toString()
+                                              .slice(0, 10)}
+                                            onChange={(e) => {
+                                              const v = e.target.value; // YYYY-MM-DD
+                                              const t = selectedTransport;
+                                              setPorrateoGroups((prev) => {
+                                                const copy = { ...prev };
+                                                copy[t] = (copy[t] || []).map(
+                                                  (x) =>
+                                                    keyForStable(x) === rowKey
+                                                      ? {
+                                                          ...x,
+                                                          fecha_de_entrega_cliente:
+                                                            v,
+                                                        }
+                                                      : x
+                                                );
+                                                return copy;
+                                              });
+                                            }}
+                                            InputLabelProps={{ shrink: true }}
+                                            placeholder="yyyy-mm-dd"
+                                          />
+                                        </TableCell>
+
+                                        {/* Total base (solo lectura) */}
+                                        <TableCell>
+                                          {formatCurrency(totalBase)}
+                                        </TableCell>
+
+                                        {/* Total Factura LT (actual) => SOLO en la primera fila; BD o grupo */}
+                                        <TableCell>
+                                          <TextField
+                                            size="small"
+                                            type="number"
+                                            value={
+                                              isFirst
+                                                ? totalLtDB || totalGrupoEff
+                                                : ""
+                                            }
+                                            InputProps={{ readOnly: true }}
+                                            placeholder={isFirst ? "" : "—"}
+                                          />
+                                        </TableCell>
+
+                                        {/* PRORRATEO_FACTURA_LT (actual) => prorrateo */}
+                                        <TableCell>
+                                          <TextField
+                                            size="small"
+                                            type="number"
+                                            value={prActual}
+                                            InputProps={{ readOnly: true }}
+                                          />
+                                        </TableCell>
+
+                                        <TableCell>
+                                          {r.PORCENTAJE_PAQUETERIA != null
+                                            ? `${toNumber(
+                                                r.PORCENTAJE_PAQUETERIA
+                                              ).toFixed(2)}%`
+                                            : `${(factor * 100).toFixed(2)}%`}
+                                        </TableCell>
+
+                                        {/* SUMA_FLETE (actual) => prorrateo */}
+                                        <TableCell>
+                                          <TextField
+                                            size="small"
+                                            type="number"
+                                            value={sumaFleteActual}
+                                            InputProps={{ readOnly: true }}
+                                          />
+                                        </TableCell>
+
+                                        {/* Prorrateo (visual formateado) */}
+                                        <TableCell>
+                                          {formatCurrency(prCalc)}
+                                        </TableCell>
+
+                                        <TableCell>{r.TIPO}</TableCell>
+                                        <TableCell>
+                                          {formatDate(r.created_at)}
+                                        </TableCell>
+
+                                        <TableCell>
+                                          <Button
+                                            variant="outlined"
+                                            size="small"
+                                            onClick={() =>
+                                              putFila(
+                                                r,
+                                                isFirst,
+                                                prCalc,
+                                                totalGrupoEff
+                                              )
+                                            }
+                                            disabled={savingRowKey === rowKey}
+                                          >
+                                            {savingRowKey === rowKey
+                                              ? "Guardando..."
+                                              : "Actualizar"}
+                                          </Button>
+                                        </TableCell>
+                                      </TableRow>
+                                    );
+                                  })}
+                                </TableBody>
+                              </Table>
+                            </Box>
+                          </Box>
+
+                          <TablePagination
+                            component="div"
+                            count={totalCount}
+                            page={porrateoPage}
+                            onPageChange={(e, newPage) =>
+                              setPorrateoPage(newPage)
+                            }
+                            rowsPerPage={porrateoRowsPerPage}
+                            onRowsPerPageChange={(e) => {
+                              setPorrateoRowsPerPage(
+                                parseInt(e.target.value, 10)
+                              );
+                              setPorrateoPage(0);
+                            }}
+                            rowsPerPageOptions={[10, 25, 50, 100]}
+                          />
+                        </>
+                      );
+                    })()}
+                  </>
+                )}
+              </DialogContent>
+
+              <DialogActions sx={{ p: 1 }}>
+                <Button onClick={() => setOpenPorrateo(false)}>Cerrar</Button>
+              </DialogActions>
+            </Dialog>
 
             {/* Modal para actualizar las guias */}
 

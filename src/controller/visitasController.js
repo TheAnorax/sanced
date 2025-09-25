@@ -1273,12 +1273,13 @@ const getVisitasAct = async (req, res) => {
 const darSalidaVisitante = async (req, res) => {
     console.log('q', req.body);
     const { id_visit } = req.params; 
-    const {  est, id_usu_out, tiempo_visita } = req.body;
+    const {  est, id_usu_out, tiempo_visita, placa } = req.body;
+    const reg_salida = new Date();
     const [[{ id_vit } = {}]] = await pool.query('SELECT id_vit FROM visitas WHERE id_visit = ?', [id_visit]);
 
     try {
-        const reg_salida = new Date();
         let tabla = null;
+        
         
         if (id_vit.startsWith('VT') || id_vit.startsWith('PR') || id_vit.startsWith('CL')) {
             tabla = 'visitantes';
@@ -1288,12 +1289,17 @@ const darSalidaVisitante = async (req, res) => {
             return res.status(400).json({ error: 'Prefijo de clave no válido' });
         }
 
-        await pool.query(`UPDATE ${tabla} SET foto = ? WHERE clave = ?`, [null, id_vit]);
+        //await pool.query(`UPDATE ${tabla} SET foto = ? WHERE clave = ?`, [null, id_vit]);
 
         const result = await pool.query(
             'UPDATE visitas SET ? WHERE id_visit = ?',
             [{ reg_salida, est, id_usu_out, tiempo_visita }, id_visit]
         );
+
+        if(placa){
+            const SQL_UPDATE_CLAVE = 'UPDATE vehiculos SET clave_con = NULL  WHERE placa = ?';
+            await pool.query(SQL_UPDATE_CLAVE, [placa])
+        }
 
         if (result.affectedRows === 0) {
             return res.status(404).json({ 
@@ -1344,7 +1350,7 @@ const darSalidaOper = async (req, res) => {
             return res.status(400).json({ error: 'Prefijo de clave no válido' });
         }
 
-        await pool.query(`UPDATE ${tabla} SET foto = ? WHERE clave = ?`, [null, id_vit]);
+        //await pool.query(`UPDATE ${tabla} SET foto = ? WHERE clave = ?`, [null, id_vit]);
 
         const result = await pool.query(
             'UPDATE visitas SET ? WHERE id_visit = ?',
@@ -3566,6 +3572,7 @@ const createTransportista = async (req, res) => {
         const clavePersonalizada = `${prefijoClave}${dia}${id_persona}`;
 
         await pool.query(SQL_UPDATE_CLAVE, [clavePersonalizada, id_persona]);
+        await pool.query(`UPDATE transportista SET foto = ? WHERE clave = ?`, [null, clavePersonalizada]);
 
         res.json({
             tipo: prefijoClave,

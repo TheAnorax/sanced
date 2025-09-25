@@ -1364,18 +1364,22 @@ const getTopProductosPorEstado = async (req, res) => {
 // - Devuelve agregados por estado/mes, totales por mes (todos los estados) y un total global (todos los estados + meses)
 // - Importes NUMÉRICOS (sin $) para facilitar el formateo en el frontend
 
+// controllers/historicoController.js
+// Asume que ya tienes `pool` importado desde tu módulo de conexión:
+// const pool = require('../db/pool');
 const getHistorico2025 = async (req, res) => {
   try {
     // 1) Datos base por ESTADO/FECHA desde paqueteria
     const [rows] = await pool.query(`
       SELECT
         TRIM(ESTADO) AS ESTADO,
-        FECHA,
-        CAST(IFNULL(TOTAL,0) AS UNSIGNED) AS TOTAL_FACTURA_LT,
-        CAST(IFNULL(SUMA_FLETE,0)       AS UNSIGNED) AS SUMA_FLETE,
-        CAST(IFNULL(DIAS_DE_ENTREGA,0)  AS UNSIGNED) AS DIAS_DE_ENTREGA,
+        FECHA_DE_FACTURA AS FECHA,
+        CAST(IFNULL(TOTAL,0) AS DECIMAL(12,2))       AS TOTAL_FACTURA_LT,
+        CAST(IFNULL(TOTAL_FACTURA_LT,0) AS DECIMAL(12,2))  AS SUMA_FLETE,
+        CAST(IFNULL(DIAS_DE_ENTREGA,0) AS UNSIGNED)  AS DIAS_DE_ENTREGA,
         \`NUM. CLIENTE\` AS NUM_CLIENTE,
-        \`NO ORDEN\`     AS NO_ORDEN
+        \`NO ORDEN\`     AS NO_ORDEN,
+        GUIA
       FROM paqueteria
       WHERE ESTADO IS NOT NULL AND ESTADO <> ''
     `);
@@ -1399,6 +1403,11 @@ const getHistorico2025 = async (req, res) => {
       cajas_total: 0,
     };
 
+    // Sets para evitar sumar el flete repetido por GUIA
+    const seenEstadoMesGuia = new Set(); // clave: `${estado}|${mes}|${guia}`
+    const seenMesGuia = new Set();       // clave: `${mes}|${guia}`
+    const seenGlobalGuia = new Set();    // clave: `${guia}`
+
     // 2) Agregado base (ventas, flete, días, clientes) por estado/mes y por mes (global)
     for (const row of rows) {
       const estado = row.ESTADO;
@@ -1406,6 +1415,10 @@ const getHistorico2025 = async (req, res) => {
       if (isNaN(fecha.getTime())) continue;
 
       const mes = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, "0")}`;
+      const guia = (row.GUIA || '').trim();
+      const totalLt = Number(row.TOTAL_FACTURA_LT || 0);
+      const flete   = Number(row.SUMA_FLETE || 0);
+      const dias    = Number(row.DIAS_DE_ENTREGA || 0);
 
       // Bucket estado/mes
       if (!resultado[estado]) resultado[estado] = {};
@@ -1420,13 +1433,7 @@ const getHistorico2025 = async (req, res) => {
           cajas: 0,
         };
       }
-
       const g = resultado[estado][mes];
-      g.total_factura_lt += row.TOTAL_FACTURA_LT || 0;
-      g.total_flete += row.SUMA_FLETE || 0;
-      g.total_dias_entrega += row.DIAS_DE_ENTREGA || 0;
-      g.total_registros += 1;
-      if (row.NUM_CLIENTE) g.clientes.add(row.NUM_CLIENTE);
 
       // Bucket global por mes
       if (!totalGeneral[mes]) {
@@ -1435,57 +1442,83 @@ const getHistorico2025 = async (req, res) => {
           total_flete: 0,
           total_dias_entrega: 0,
           total_registros: 0,
-          clientes: new Set(),  // clientes únicos por mes
+          clientes: new Set(),
           tarimas_total: 0,
           cajas_total: 0,
         };
       }
-
       const tg = totalGeneral[mes];
-      tg.total_factura_lt += row.TOTAL_FACTURA_LT || 0;
-      tg.total_flete += row.SUMA_FLETE || 0;
-      tg.total_dias_entrega += row.DIAS_DE_ENTREGA || 0;
+
+      // Ventas, días, registros, clientes (siempre por fila)
+      g.total_factura_lt += totalLt;
+      g.total_dias_entrega += dias;
+      g.total_registros += 1;
+      if (row.NUM_CLIENTE) g.clientes.add(row.NUM_CLIENTE);
+
+      tg.total_factura_lt += totalLt;
+      tg.total_dias_entrega += dias;
       tg.total_registros += 1;
       if (row.NUM_CLIENTE) tg.clientes.add(row.NUM_CLIENTE);
 
-      // Acumular GLOBAL (todos los meses)
-      globalAgg.total_factura_lt += row.TOTAL_FACTURA_LT || 0;
-      globalAgg.total_flete += row.SUMA_FLETE || 0;
-      globalAgg.total_dias_entrega += row.DIAS_DE_ENTREGA || 0;
+      globalAgg.total_factura_lt += totalLt;
+      globalAgg.total_dias_entrega += dias;
       globalAgg.total_registros += 1;
       if (row.NUM_CLIENTE) globalAgg.clientes.add(row.NUM_CLIENTE);
+
+      // ⚠️ FLETE: contar una sola vez por GUIA
+      if (guia && flete > 0) {
+        const kEMG = `${estado}|${mes}|${guia}`;
+        const kMG  = `${mes}|${guia}`;
+
+        if (!seenEstadoMesGuia.has(kEMG)) {
+          g.total_flete += flete;
+          seenEstadoMesGuia.add(kEMG);
+        }
+        if (!seenMesGuia.has(kMG)) {
+          tg.total_flete += flete;
+          seenMesGuia.add(kMG);
+        }
+        if (!seenGlobalGuia.has(guia)) {
+          globalAgg.total_flete += flete;
+          seenGlobalGuia.add(guia);
+        }
+      } else {
+        // Si NO hay GUIA (o flete = 0), conservar comportamiento previo (sumar por fila)
+        g.total_flete += flete;
+        tg.total_flete += flete;
+        globalAgg.total_flete += flete;
+      }
     }
 
     // 3) TARIMAS y CAJAS por estado/mes (desde pedido_finalizado)
     const [logisticaRows] = await pool.query(`
       SELECT
-  p.ESTADO,
-  u.MES,
-  SUM(CASE WHEN u.tipo_norm = 'TARIMA' THEN 1 ELSE 0 END) AS TARIMAS,
-  SUM(CASE WHEN u.tipo_norm = 'CAJA'   THEN 1 ELSE 0 END) AS CAJAS
-FROM (
-  /* Una fila por pedido-mes-tipo (TARIMA o CAJA) */
-  SELECT
-    f.pedido,
-    DATE_FORMAT(f.fin_embarque, '%Y-%m') AS MES,
-    CASE
-      WHEN UPPER(f.tipo_caja) LIKE 'TARIMA%' THEN 'TARIMA'
-      WHEN UPPER(f.tipo_caja) LIKE 'CAJA%'   THEN 'CAJA'
-      ELSE NULL
-    END AS tipo_norm
-  FROM pedido_finalizado f
-  WHERE f.fin_embarque IS NOT NULL
-  GROUP BY f.pedido, MES, tipo_norm
-) u
-JOIN (
-  SELECT \`NO ORDEN\` AS pedido, MAX(ESTADO) AS ESTADO
-  FROM paqueteria
-  WHERE ESTADO IS NOT NULL AND ESTADO <> ''
-  GROUP BY \`NO ORDEN\`
-) p ON p.pedido = u.pedido
-WHERE u.tipo_norm IS NOT NULL
-GROUP BY p.ESTADO, u.MES;
-
+        p.ESTADO,
+        u.MES,
+        SUM(CASE WHEN u.tipo_norm = 'TARIMA' THEN 1 ELSE 0 END) AS TARIMAS,
+        SUM(CASE WHEN u.tipo_norm = 'CAJA'   THEN 1 ELSE 0 END) AS CAJAS
+      FROM (
+        /* Una fila por pedido-mes-tipo (TARIMA o CAJA) */
+        SELECT
+          f.pedido,
+          DATE_FORMAT(f.fin_embarque, '%Y-%m') AS MES,
+          CASE
+            WHEN UPPER(f.tipo_caja) LIKE 'TARIMA%' THEN 'TARIMA'
+            WHEN UPPER(f.tipo_caja) LIKE 'CAJA%'   THEN 'CAJA'
+            ELSE NULL
+          END AS tipo_norm
+        FROM pedido_finalizado f
+        WHERE f.fin_embarque IS NOT NULL
+        GROUP BY f.pedido, MES, tipo_norm
+      ) u
+      JOIN (
+        SELECT \`NO ORDEN\` AS pedido, MAX(ESTADO) AS ESTADO
+        FROM paqueteria
+        WHERE ESTADO IS NOT NULL AND ESTADO <> ''
+        GROUP BY \`NO ORDEN\`
+      ) p ON p.pedido = u.pedido
+      WHERE u.tipo_norm IS NOT NULL
+      GROUP BY p.ESTADO, u.MES;
     `);
 
     // 4) Mezclar tarimas/cajas al resultado por estado/mes y a totales por mes y global
@@ -1534,7 +1567,6 @@ GROUP BY p.ESTADO, u.MES;
       for (const mes in resultado[estado]) {
         const g = resultado[estado][mes];
 
-        // Si vino de base, clientes es Set; si vino solo de logística, también está (vacío)
         g.promedio_dias_entrega = Number(
           ((g.total_dias_entrega || 0) / (g.total_registros || 1)).toFixed(1)
         );
@@ -1600,6 +1632,339 @@ GROUP BY p.ESTADO, u.MES;
   }
 };
 
+const getFletesClientes = async (req, res) => {
+  try {
+    // --- 1) Rango por defecto: del 1 de junio del año solicitado -> inicio del mes siguiente al actual ---
+    const now  = new Date();
+    const year = Number(req.query.year) || now.getFullYear();
+
+    const pad = (n) => String(n).padStart(2, "0");
+    const defFrom = `${year}-06-01`;
+    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const defTo = `${nextMonth.getFullYear()}-${pad(nextMonth.getMonth() + 1)}-01`;
+
+    // Si mandas ?month=MM, forzamos a ese mes específico
+    const qMonth = req.query.month ? Number(req.query.month) : null;
+    const from = req.query.from || (qMonth
+      ? `${year}-${pad(qMonth)}-01`
+      : defFrom);
+    const to = req.query.to || (qMonth
+      ? (qMonth === 12 ? `${year + 1}-01-01` : `${year}-${pad(qMonth + 1)}-01`)
+      : defTo);
+
+    // --- 2) Traer filas del periodo con etiqueta de mes (YYYY-MM) ya calculada en SQL ---
+    const [rows] = await pool.query(
+      `
+     SELECT 
+        DATE_FORMAT(FECHA_DE_FACTURA, '%Y-%m') AS ym,
+        \`NUM. CLIENTE\` AS num_cliente,
+        \`NOMBRE DEL CLIENTE\` AS nombre_cliente,
+        GUIA,
+        CAST(IFNULL(TOTAL,0) AS DECIMAL(12,2)) AS total_facturado,
+        CAST(REPLACE(REPLACE(IFNULL(PRORRATEO_FACTURA_LT,'0'),'$',''),',','') AS DECIMAL(12,2)) AS flete,
+        ESTADO
+      FROM paqueteria
+      WHERE  FECHA_DE_FACTURA >= ? 
+        AND FECHA_DE_FACTURA <  ?;
+      `,
+      [from, to]
+    );
+
+    if (!rows?.length) {
+      return res.status(404).json({ message: "No hay datos disponibles." });
+    }
+
+    // --- 3) Agrupar por mes -> por cliente ---
+    const months = new Map(); // ym -> { clients: Map, guiasGlobal: Set, totFactura, totFlete }
+
+    for (const r of rows) {
+      const ym = r.ym; // 'YYYY-MM'
+      if (!months.has(ym)) {
+        months.set(ym, {
+          clients: new Map(),   // num_cliente -> { nombre_cliente, total_factura, total_flete, guias:Set }
+          guiasGlobal: new Set(),
+          totFactura: 0,
+          totFlete: 0
+        });
+      }
+      const bucket = months.get(ym);
+
+      const cliente = r.num_cliente || "SIN_CLIENTE";
+      const nombre  = (r.nombre_cliente || "").trim();
+      const total   = Number(r.total_facturado || 0);
+      const flete   = Number(r.flete || 0);
+      const guia    = String(r.GUIA || "").trim();
+      const estado = r.ESTADO || "SIN ESTADO";
+
+      // Global del mes
+      bucket.totFactura += total;
+      bucket.totFlete   += flete;
+      if (guia) bucket.guiasGlobal.add(guia);
+
+      // Por cliente del mes
+      if (!bucket.clients.has(cliente)) {
+        bucket.clients.set(cliente, {
+          nombre_cliente: nombre,
+          total_factura: 0,
+          total_flete: 0,
+          guias: new Set(),
+          estado
+        });
+      }
+      const c = bucket.clients.get(cliente);
+      c.total_factura += total;
+      c.total_flete   += flete;
+      if (guia) c.guias.add(guia);
+    }
+
+    // --- 4) Armar respuesta ordenada por mes (asc) y clientes por flete desc ---
+    const monthsArr = Array.from(months.entries())
+      .sort(([a], [b]) => a.localeCompare(b)) // 'YYYY-MM'
+      .map(([ym, b]) => {
+        const data = Array.from(b.clients.entries())
+          .map(([num_cliente, d]) => {
+            const pct = d.total_factura > 0 ? (d.total_flete / d.total_factura) * 100 : 0;
+            return {
+              num_cliente,
+              nombre_cliente: d.nombre_cliente,
+              total_factura: Number(d.total_factura.toFixed(2)),
+              total_flete: Number(d.total_flete.toFixed(2)),
+              total_guias: d.guias.size,
+              porcentaje_flete: Number(pct.toFixed(2)),
+              estado: d.estado || "SIN ESTADO"   // 👈 nuevo
+            };
+          })
+          .sort((x, y) => y.total_flete - x.total_flete || y.total_factura - x.total_factura);
+
+        const porcentaje_flete_global = b.totFactura > 0 ? (b.totFlete / b.totFactura) * 100 : 0;
+
+        return {
+          ym, // 'YYYY-MM'
+          total_factura_global: Number(b.totFactura.toFixed(2)),
+          total_flete_global:   Number(b.totFlete.toFixed(2)),
+          porcentaje_flete_global: Number(porcentaje_flete_global.toFixed(2)),
+          total_guias_global: b.guiasGlobal.size,
+          data
+        };
+      });
+
+    return res.status(200).json({
+      meta: { from, to, months: monthsArr.length },
+      months: monthsArr
+    });
+  } catch (error) {
+    console.error("Error en getFletesClientes:", error);
+    res.status(500).json({ message: "Error en el servidor", error: error.message });
+  }
+};
+
+const getHistorico2025Transportes = async (req, res) => {
+  try {
+    // 1) Datos base por ESTADO/TRANSPORTE/FECHA desde paqueteria
+    const [rows] = await pool.query(`
+      SELECT
+        routeName,
+        TRANSPORTE,
+        TRIM(ESTADO) AS ESTADO,
+        FECHA,
+        CAST(IFNULL(TOTAL,0) AS DECIMAL(12,2))       AS TOTAL_FACTURA_LT,
+        CAST(IFNULL(TOTAL_FACTURA_LT,0) AS DECIMAL(12,2))  AS SUMA_FLETE,
+        CAST(IFNULL(DIAS_DE_ENTREGA,0) AS UNSIGNED)  AS DIAS_DE_ENTREGA,
+        \`NUM. CLIENTE\` AS NUM_CLIENTE,
+        \`NO ORDEN\`     AS NO_ORDEN,
+        GUIA
+      FROM paqueteria
+      WHERE ESTADO IS NOT NULL AND ESTADO <> ''
+    `);
+
+    if (!rows || rows.length === 0) {
+      return res.status(404).json({ message: "No hay datos disponibles." });
+    }
+
+    // Estructuras
+    const resultado = {};     // { [estado]: { [transporte]: { [mes]: { ... } } } }
+    const totalGeneral = {};  // { [mes]: { sumas globales del mes } }
+
+    const globalAgg = {
+      total_factura_lt: 0,
+      total_flete: 0,
+      total_dias_entrega: 0,
+      total_registros: 0,
+      clientes: new Set(),
+      tarimas_total: 0,
+      cajas_total: 0,
+    };
+
+    const seenEstadoMesGuia = new Set();
+    const seenMesGuia = new Set();
+    const seenGlobalGuia = new Set();
+
+    // 2) Agregado base por estado/transporte/mes
+    for (const row of rows) {
+      const estado = row.ESTADO;
+      const transporte = row.TRANSPORTE || "SIN_TRANSPORTE";
+      const fecha = new Date(row.FECHA);
+      if (isNaN(fecha.getTime())) continue;
+
+      const mes = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, "0")}`;
+      const guia = (row.GUIA || '').trim();
+      const totalLt = Number(row.TOTAL_FACTURA_LT || 0);
+      const flete   = Number(row.SUMA_FLETE || 0);
+      const dias    = Number(row.DIAS_DE_ENTREGA || 0);
+
+      // Bucket estado → transporte → mes
+      if (!resultado[estado]) resultado[estado] = {};
+      if (!resultado[estado][transporte]) resultado[estado][transporte] = {};
+      if (!resultado[estado][transporte][mes]) {
+        resultado[estado][transporte][mes] = {
+          total_factura_lt: 0,
+          total_flete: 0,
+          total_dias_entrega: 0,
+          total_registros: 0,
+          clientes: new Set(),
+          tarimas: 0,
+          cajas: 0,
+        };
+      }
+      const g = resultado[estado][transporte][mes];
+
+      // Bucket global por mes (para todos los transportes)
+      if (!totalGeneral[mes]) {
+        totalGeneral[mes] = {
+          total_factura_lt: 0,
+          total_flete: 0,
+          total_dias_entrega: 0,
+          total_registros: 0,
+          clientes: new Set(),
+          tarimas_total: 0,
+          cajas_total: 0,
+        };
+      }
+      const tg = totalGeneral[mes];
+
+      // Ventas, días, clientes
+      g.total_factura_lt += totalLt;
+      g.total_dias_entrega += dias;
+      g.total_registros += 1;
+      if (row.NUM_CLIENTE) g.clientes.add(row.NUM_CLIENTE);
+
+      tg.total_factura_lt += totalLt;
+      tg.total_dias_entrega += dias;
+      tg.total_registros += 1;
+      if (row.NUM_CLIENTE) tg.clientes.add(row.NUM_CLIENTE);
+
+      globalAgg.total_factura_lt += totalLt;
+      globalAgg.total_dias_entrega += dias;
+      globalAgg.total_registros += 1;
+      if (row.NUM_CLIENTE) globalAgg.clientes.add(row.NUM_CLIENTE);
+
+      // ⚠️ FLETE (único por GUIA)
+      if (guia && flete > 0) {
+        const kETMG = `${estado}|${transporte}|${mes}|${guia}`;
+        const kMG   = `${mes}|${guia}`;
+
+        if (!seenEstadoMesGuia.has(kETMG)) {
+          g.total_flete += flete;
+          seenEstadoMesGuia.add(kETMG);
+        }
+        if (!seenMesGuia.has(kMG)) {
+          tg.total_flete += flete;
+          seenMesGuia.add(kMG);
+        }
+        if (!seenGlobalGuia.has(guia)) {
+          globalAgg.total_flete += flete;
+          seenGlobalGuia.add(guia);
+        }
+      } else {
+        g.total_flete += flete;
+        tg.total_flete += flete;
+        globalAgg.total_flete += flete;
+      }
+    }
+
+    // 3) Formateo final de cada bucket
+    for (const estado in resultado) {
+      for (const transporte in resultado[estado]) {
+        for (const mes in resultado[estado][transporte]) {
+          const g = resultado[estado][transporte][mes];
+
+          g.promedio_dias_entrega = Number(
+            ((g.total_dias_entrega || 0) / (g.total_registros || 1)).toFixed(1)
+          );
+          g.total_clientes = g.clientes.size;
+          g.porcentaje_flete = Number(
+            (((g.total_flete || 0) / (g.total_factura_lt || 1)) * 100).toFixed(1)
+          );
+
+          delete g.clientes;
+          delete g.total_dias_entrega;
+          delete g.total_registros;
+        }
+      }
+    }
+
+    // 4) Resumen por mes (global)
+    const resumenPorMes = {};
+    for (const mes in totalGeneral) {
+      const m = totalGeneral[mes];
+      resumenPorMes[mes] = {
+        total_factura_lt: m.total_factura_lt,
+        total_flete: m.total_flete,
+        promedio_dias_entrega: Number(
+          ((m.total_dias_entrega || 0) / (m.total_registros || 1)).toFixed(1)
+        ),
+        total_clientes: m.clientes.size,
+        porcentaje_flete: Number(
+          (((m.total_flete || 0) / (m.total_factura_lt || 1)) * 100).toFixed(1)
+        ),
+        tarimas: m.tarimas_total || 0,
+        cajas: m.cajas_total || 0,
+      };
+    }
+
+    // 5) Global
+    const totalGlobal = {
+      total_factura_lt: globalAgg.total_factura_lt,
+      total_flete: globalAgg.total_flete,
+      promedio_dias_entrega: Number(
+        ((globalAgg.total_dias_entrega || 0) / (globalAgg.total_registros || 1)).toFixed(1)
+      ),
+      total_clientes: globalAgg.clientes.size,
+      porcentaje_flete: Number(
+        (((globalAgg.total_flete || 0) / (globalAgg.total_factura_lt || 1)) * 100).toFixed(1)
+      ),
+      tarimas_total: globalAgg.tarimas_total || 0,
+      cajas_total: globalAgg.cajas_total || 0,
+    };
+
+    // 6) Respuesta final
+    const payload = {
+      ...resultado,  // agrupado por estado → transporte → mes
+      total_general: {
+        por_mes: resumenPorMes,
+        global: totalGlobal,
+      },
+    };
+
+    res.status(200).json(payload);
+  } catch (error) {
+    console.error("Error en getHistorico2025Transportes:", error);
+    res.status(500).json({ message: "Error en el servidor", error: error.message });
+  }
+};
+
+// GET /api/kpi/getFletesClientes?from=2025-06-01&to=2025-07-01
+
+
+
+
+
+
+
+
+
+
+
 
 
 module.exports = {
@@ -1614,4 +1979,6 @@ module.exports = {
   getPrduSurtidoPorRango,
   getPrduPaqueteriaPorrango,
   getHistorico2025,
+  getHistorico2025Transportes,
+  getFletesClientes
 };

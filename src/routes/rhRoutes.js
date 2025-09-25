@@ -1,32 +1,26 @@
-// const express = require('express');
-// const { getInsumosRH, createInsumo, updateInsumo, deleteInsumo } = require('../controller/rhController');
-
-// const router = express.Router();
-
-// // Rutas del CRUD
-// router.get('/RH', getInsumosRH);
-// router.post('/RH', createInsumo);
-// router.put('/RH/:id', updateInsumo);
-// router.delete('/RH/:id', deleteInsumo);
-
-// module.exports = router;
-
-const express = require("express");
+// routes/rh.js
+const express = require('express');
+const {
+  getInsumosRH, createInsumo, updateInsumo, deleteInsumo,
+  buscarProducto, createTraspaso, Traspasos,
+  excelToJson, importTraspasosExcel, importTraspasosExcelMiddleware,
+} = require('../controller/rhController');
 
 const router = express.Router();
-const multer = require("multer");
-const upload = multer({ storage: multer.memoryStorage() });
-const {
-  buscarProducto,
-  createTraspaso,
-  Traspasos,
-  excelToJson,
-} = require("../controller/rhController");
 
-router.get("/productos/:codigo", buscarProducto);
-router.post("/traspaso", createTraspaso);
-router.get("/ObtenerTraspaso", Traspasos);
+// CRUD
+router.get('/RH', getInsumosRH);
+router.post('/RH', createInsumo);
+router.put('/RH/:id', updateInsumo);
+router.delete('/RH/:id', deleteInsumo);
 
-router.post("/excel-to-json", upload.single("archivoExcel"), excelToJson);
+// Traspasos
+router.get('/productos/:codigo', buscarProducto);
+router.post('/traspaso', createTraspaso);
+router.get('/ObtenerTraspaso', Traspasos);
+
+// Excel
+router.post('/excel-to-json', importTraspasosExcelMiddleware, excelToJson);
+router.post('/import-excel', importTraspasosExcelMiddleware, importTraspasosExcel);
 
 module.exports = router;

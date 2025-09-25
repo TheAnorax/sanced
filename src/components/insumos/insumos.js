@@ -80,6 +80,7 @@ function Insumos() {
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [selectedInsumo, setSelectedInsumo] = useState(null);
+  const [selectedInsumos, setfecha_entrega] = useState(null);
   const [openForm, setOpenForm] = useState(false);
   const [openConsumeForm, setOpenConsumeForm] = useState(false);
   const [tabValue, setTabValue] = useState(0); // Inicializa tabValue a 0
@@ -150,22 +151,18 @@ function Insumos() {
       const response = await axios.get("http://66.232.105.87:3007/insumo/lista");
       const data = response.data.resultado.list;
 
-      // Procesamos los insumos para calcular el requerimiento basado en la diferencia
       const updatedData = data.map((insumo) => {
         const inventario = Number(insumo.inv);
         const inventarioMinimo = Number(insumo.inventariomin);
         let requerimiento = 0;
 
-        // Si el inventario actual es menor que el inventario mínimo
         if (inventario < inventarioMinimo) {
-          // La diferencia se calcula como lo que falta para llegar al inventario mínimo
           requerimiento = inventarioMinimo - inventario;
         }
 
-        return { ...insumo, requerimiento }; // Actualizamos el requerimiento
+        return { ...insumo, requerimiento };
       });
 
-      // Actualizamos los insumos con el campo requerimiento
       setInsumos(updatedData);
       setFilteredInsumos(updatedData);
     } catch (error) {
@@ -186,7 +183,6 @@ function Insumos() {
         return false;
       }
 
-      // Solo incluye productos cuyo requerimiento sea mayor a 0
       return requerimiento > 0;
     });
 
@@ -337,16 +333,14 @@ function Insumos() {
                                         </tr>
                                         <tr>
                                             <td colspan="2">Usuario y Correo</td>
-                                            <td colspan="4">${user.name} - ${
-      user.email
-    }</td>
+                                            <td colspan="4">${user.name} - ${user.email
+      }</td>
                                         </tr>
                                         <tr>
                                             <td colspan="2">Observaciones</td>
-                                            <td colspan="4">${
-                                              observationText ||
-                                              "Sin Observaciones"
-                                            }</td>
+                                            <td colspan="4">${observationText ||
+      "Sin Observaciones"
+      }</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -363,8 +357,8 @@ function Insumos() {
                                             <th>Dónde se utilizará</th>
                                         </tr>
                                         ${lowInventoryByConsumption
-                                          .map(
-                                            (producto) => `
+        .map(
+          (producto) => `
                                             <tr>
                                                 <td>${producto.id_codigo}</td>
                                                 <td>${producto.requerimiento}</td>
@@ -373,8 +367,8 @@ function Insumos() {
                                                 <td>CEDIS</td>
                                             </tr>
                                         `
-                                          )
-                                          .join("")}
+        )
+        .join("")}
                                     </tbody>
                                 </table>
                             </div> 
@@ -405,9 +399,8 @@ function Insumos() {
       // Mensaje para WhatsApp
       const message = `
                         Hola, se ha generado un informe de inventario bajo en Insumos. 
-                        Observaciones: ${
-                          observationText || "Sin Observaciones"
-                        }.
+                        Observaciones: ${observationText || "Sin Observaciones"
+        }.
                         Fecha: ${new Date().toLocaleDateString()}.
                     `;
       const phoneNumber = "5524433962"; // Número de teléfono destino
@@ -551,11 +544,11 @@ function Insumos() {
       console.error("No se ha seleccionado un insumo.");
       setAlertMessage("No se ha seleccionado un insumo.");
       setAlertOpen(true);
-      return; // No continúes si no hay insumo seleccionado
+      return;
     }
 
-    const inventario = Number(selectedInsumo.inv); // Convierte el inventario a un número
-    const cantidadReducida = Number(consumeData.cantidad_reducida); // Convierte la cantidad reducida a un número
+    const inventario = Number(selectedInsumo.inv);
+    const cantidadReducida = Number(consumeData.cantidad_reducida);
 
     console.log("Inventario disponible:", inventario);
     console.log("Cantidad reducida:", cantidadReducida);
@@ -623,7 +616,6 @@ function Insumos() {
 
     const { codigopropuesto, ...dataToUpdate } = selectedInsumo;
 
-    // Calculamos el requerimiento basado en el nuevo inventario
     const inventario = Number(dataToUpdate.inventario);
     const inventarioMinimo = Number(dataToUpdate.inventariominimo);
     let requerimiento = 0;
@@ -632,7 +624,6 @@ function Insumos() {
       requerimiento = inventarioMinimo - inventario;
     }
 
-    // Actualizamos el requerimiento
     const updatedData = { ...dataToUpdate, requerimiento };
 
     const requestBody = { codigopropuesto, ...updatedData };
@@ -731,7 +722,7 @@ function Insumos() {
   };
 
   const handleConsumeFormOpen = (insumo) => {
-    console.log("Insumo seleccionado:", insumo); // Agrega un log para verificar los datos
+    console.log("Insumo seleccionado:", insumo);
 
     setConsumeData({
       ...consumeData,
@@ -822,11 +813,12 @@ function Insumos() {
     { field: "desc", headerName: "Descripción", width: 300 },
     { field: "car", headerName: "Medidas/Características", width: 300 },
     { field: "inv", headerName: "Inventario", width: 100 },
+    { field: "fecha_entrega", headerName: "Fecha estimada de Entrega", width: 150 },
     { field: "consumo_mensual", headerName: "Consumo Mensual", width: 150 },
     { field: "um", headerName: "Unidad de Medida", width: 150 },
     { field: "inventariomin", headerName: "Inventario Minimo", width: 150 },
     { field: "requerimiento", headerName: "Requerimiento", width: 150 },
-    { field: "fecha", headerName: "Fecha de registro", width: 170 },
+    // { field: "fecha", headerName: "Fecha de registro", width: 170 },
     {
       field: "actions",
       headerName: "Acciones",
@@ -836,23 +828,23 @@ function Insumos() {
           {(user?.role === "Admin" ||
             user?.role === "Master" ||
             user?.role === "INV" || user?.role === "Dep") && (
-            <IconButton
-              sx={{ color: "#51acf8" }}
-              onClick={() => handleView(params.row)}
-            >
-              <EditIcon />
-            </IconButton>
-          )}
+              <IconButton
+                sx={{ color: "#51acf8" }}
+                onClick={() => handleView(params.row)}
+              >
+                <EditIcon />
+              </IconButton>
+            )}
 
           {(user?.role === "Admin" ||
             user?.role === "Master" || user?.role === "INV" || user?.role === "Recibo" || user?.role === "Eti" || user?.role === "Dep") && (
-            <IconButton
-              sx={{ color: "black" }}
-              onClick={() => handleConsumeFormOpen(params.row)}
-            >
-              <ExposureIcon />
-            </IconButton>
-          )}
+              <IconButton
+                sx={{ color: "black" }}
+                onClick={() => handleConsumeFormOpen(params.row)}
+              >
+                <ExposureIcon />
+              </IconButton>
+            )}
         </Box>
       ),
     },
@@ -882,14 +874,14 @@ function Insumos() {
           {(user?.role === "Admin" ||
             user?.role === "Master" ||
             user?.role === "INV" || user?.role === "Dep") && (
-            <Button
-              variant="contained"
-              sx={{ background: "green" }}
-              onClick={handleShowInsumo}
-            >
-              Informacion de Insumo
-            </Button>
-          )}
+              <Button
+                variant="contained"
+                sx={{ background: "green" }}
+                onClick={handleShowInsumo}
+              >
+                Informacion de Insumo
+              </Button>
+            )}
 
           <Button
             variant="contained"
@@ -906,10 +898,10 @@ function Insumos() {
               {(user?.role === "Admin" ||
                 user?.role === "Master" ||
                 user?.role === "INV") && (
-                <IconButton onClick={handleFilterToggle} color="primary">
-                  <NotificationsIcon />
-                </IconButton>
-              )}
+                  <IconButton onClick={handleFilterToggle} color="primary">
+                    <NotificationsIcon />
+                  </IconButton>
+                )}
             </Tooltip>
 
             {/* Contenedor de insumos con scroll habilitado al aplicar el filtro */}
@@ -1039,6 +1031,7 @@ function Insumos() {
                     fullWidth
                   />
                 </Grid>
+
                 <Grid item xs={6}>
                   <TextField
                     label="Unidad de Medida"
@@ -1053,6 +1046,25 @@ function Insumos() {
                     fullWidth
                   />
                 </Grid>
+
+                <Grid item xs={6}>
+                  <TextField
+                    label="Fecha Estimada de Entrega"
+                    type="date"
+                    value={selectedInsumo?.fecha_entrega || ""}
+                    onChange={(e) =>
+                      setSelectedInsumo((prev) => ({
+                        ...prev,
+                        fecha_entrega: e.target.value,
+                      }))
+                    }
+                    fullWidth
+                    InputLabelProps={{ shrink: true }}
+                  />
+                </Grid>
+
+
+
                 {/* Tercera fila */}
                 <Grid item xs={12}>
                   <TextField

@@ -31,7 +31,7 @@ function Embarques() {
   const [pedidoLiberarManual, setPedidoLiberarManual] = useState('');
 
 
-  useEffect(() => {
+  useEffect(() => { 
     const fetchPedidos = async () => {
       try {
         const response = await axios.get('http://66.232.105.87:3007/api/embarque/embarque');
@@ -132,33 +132,38 @@ function Embarques() {
   });
 
   const columns = [
-    { field: 'pedido', headerName: 'Pedido', width: 150 },
-    { field: 'tipo', headerName: 'Tipo', width: 150 },
-    { field: 'partidas', headerName: 'Partidas', width: 150 },
-    {
-      field: 'usuario',
-      headerName: 'Usuario de Embarques',
-      width: 200,
-      renderCell: (params) => (
-        <FormControl fullWidth size="small" sx={{ minWidth: 120 }}>
-          <InputLabel id={`select-label-${params.row.pedido}`}>Seleccione Usuario</InputLabel>
-          <Select
-            labelId={`select-label-${params.row.pedido}`}
-            value={selectedUsuarios[params.row.pedido] || ''}
-            label="Seleccione Usuario"
-            onChange={(event) => handleUserChange(params.row.pedido, params.row.tipo, event)}
-
-          >
-            {usuarios.map((usuario) => (
-              <MenuItem key={usuario.id_usu} value={usuario.id_usu}>
-                {usuario.name}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-      ),
-    },
-  ];
+      { field: 'pedido', headerName: 'Pedido', width: 90 },
+      { field: 'tipo', headerName: 'Tipo', width: 50 },
+      { field: 'partidas', headerName: 'Partidas', width: 80 },
+      { field: 'monto', headerName: 'Monto', width: 100,  renderCell: (params) => (params.value ? params.value : <span style={{ color: '#999', fontStyle: 'italic' }}>Sin asignar</span> ) },    
+      { field: 'ruta', headerName: 'Ruta-Paqueteria', width: 200,  renderCell: (params) => (params.value ? params.value : <span style={{ color: '#999', fontStyle: 'italic' }}>Sin asignar</span> ) },    
+      { field: 'cliente', headerName: 'Cliente', width: 250,  renderCell: (params) => (params.value ? params.value : <span style={{ color: '#999', fontStyle: 'italic' }}>Sin asignar</span> ) },  
+      { field: 'factura', headerName: 'Factura', width: 200,  renderCell: (params) => (params.value ? params.value : <span style={{ color: '#999', fontStyle: 'italic' }}>Sin Factura</span> ) },    
+     { field: 'registro_embarque', headerName: 'Registro', width: 200 }, 
+      {
+        field: 'usuario',
+        headerName: 'Usuario de Paquetería',
+        width: 200,
+        renderCell: (params) => (
+          <FormControl fullWidth size="small" sx={{ minWidth: 120 }}>
+            <InputLabel id={`select-label-${params.row.pedido}`}>Seleccione Usuario</InputLabel>
+            <Select
+              labelId={`select-label-${params.row.pedido}`}
+              value={selectedUsuarios[params.row.pedido] || ''}
+              label="Seleccione Usuario"
+              onChange={(event) => handleUserChange(params.row.pedido, params.row.tipo, event)}
+  
+            >
+              {usuarios.map((usuario) => (
+                <MenuItem key={usuario.id_usu} value={usuario.id_usu}>
+                  {usuario.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        ),
+      },
+    ];
 
   return (
     <ThemeProvider theme={theme}>

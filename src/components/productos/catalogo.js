@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext} from "react";
+import React, { useEffect, useRef, useState, useContext } from "react";
 import {
   Box,
   Typography,
@@ -8,7 +8,7 @@ import {
   Modal,
   Button,
   Grid,
-  Paper, 
+  Paper,
   Stack,
   CircularProgress,
   TextField,
@@ -16,6 +16,8 @@ import {
   Alert,
   useMediaQuery,
   Dialog,
+  Tabs,
+  Tab,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import SaveIcon from "@mui/icons-material/Save";
@@ -23,6 +25,7 @@ import { DataGrid } from "@mui/x-data-grid";
 import Barcode from "react-barcode";
 import CancelIcon from "@mui/icons-material/Cancel";
 import { UserContext } from "../context/UserContext";
+
 const styleModal = {
   position: "absolute",
   top: "50%",
@@ -30,17 +33,19 @@ const styleModal = {
   transform: "translate(-50%, -50%)",
   width: "95%",
   maxWidth: 1300,
-  maxHeight: "95vh",
+  maxHeight: "98vh",
   overflowY: "auto",
   bgcolor: "background.paper",
   borderRadius: 4,
   boxShadow: 24,
-  p: 5,
+  p: 3,
 };
 
 const unidades = ["Pieza", "Inner", "Master"];
 
 function Catalogo() {
+
+  const inputRefs = useRef({ pz: null, inner: null, master: null });
   const [productos, setProductos] = useState([]);
   const [productoSeleccionado, setProductoSeleccionado] = useState(null);
   const [detalleProducto, setDetalleProducto] = useState(null);
@@ -57,12 +62,38 @@ function Catalogo() {
   const [filteredProductos, setFilteredProductos] = useState([]);
   const [editandoImagenes, setEditandoImagenes] = useState(false);
   const [imagenesSeleccionadas, setImagenesSeleccionadas] = useState({});
-  const baseURL = "https://sanced.santulconnect.com:3011"; // Puedes mover esto a un archivo config.js si gustas
+  const baseURL = "https://sanced.santulconnect.com:3011"; // servidor estático
 
   const [detalleOriginal, setDetalleOriginal] = useState(null);
   const isSmallScreen = useMediaQuery("(max-width:600px)");
-  const isMediumScreen = useMediaQuery("(max-width:960px)");
   const [imagenZoom, setImagenZoom] = useState(null);
+
+  // ---------- Tabs ----------
+  const [tab, setTab] = useState(0);
+
+  function TabPanel({ children, value, index }) {
+    return value === index ? <Box sx={{ mt: 2 }}>{children}</Box> : null;
+  }
+
+  const formatDateTime = (iso) => {
+    if (!iso) return "—";
+    try {
+      return new Date(iso).toLocaleString();
+    } catch {
+      return iso;
+    }
+  };
+
+  // URL del doc con cache-busting para ver cambios al instante
+  // URL del doc con cache-busting para ver cambios al instante
+  const docUrl = (tipo) => {
+    if (!detalleProducto) return null;
+    // usamos la API del 3007: GET /api/productos/:codigo_pro/archivos/:tipo
+    const ts = detalleProducto?.[`${tipo}_file_updated_at`];
+    const v = ts ? new Date(ts).getTime() : Date.now();
+    return `http://66.232.105.87:3007/api/productos/${detalleProducto.codigo_pro}/archivos/${tipo}?v=${v}`;
+  };
+
 
   const handleOpen = async (producto) => {
     setProductoSeleccionado(producto);
@@ -75,11 +106,25 @@ function Catalogo() {
       );
       const data = await res.json();
       setDetalleProducto(data);
-      setDetalleOriginal(data); // guardar copia original
+      setDetalleOriginal(data);
     } catch (error) {
       console.error("Error al obtener detalle:", error);
     } finally {
       setCargandoDetalle(false);
+    }
+  };
+
+  const refetchDetalle = async () => {
+    if (!productoSeleccionado) return;
+    try {
+      const res = await fetch(
+        `http://66.232.105.87:3007/api/productos/catalogo-detall?codigo_pro=${productoSeleccionado.codigo_pro}`
+      );
+      const data = await res.json();
+      setDetalleProducto(data);
+      setDetalleOriginal(data);
+    } catch (e) {
+      console.error("Error al refrescar detalle:", e);
     }
   };
 
@@ -94,13 +139,11 @@ function Catalogo() {
       );
       const data = await response.json();
 
-      // Convertir en objeto clave => cantidad
       const inventarioMap = {};
       data.forEach((item) => {
         inventarioMap[item.Clave] = item.Cant;
       });
 
-      // Mezclar con productos
       setProductos((prev) =>
         prev.map((prod) => ({
           ...prod,
@@ -121,33 +164,19 @@ function Catalogo() {
     const filtered = productos.filter(
       (producto) =>
         (producto.des &&
-          String(producto.des)
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase())) ||
+          String(producto.des).toLowerCase().includes(searchTerm.toLowerCase())) ||
         (producto.codigo_pro &&
-          String(producto.codigo_pro)
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase())) ||
+          String(producto.codigo_pro).toLowerCase().includes(searchTerm.toLowerCase())) ||
         (producto.code_pz &&
-          String(producto.code_pz)
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase())) ||
+          String(producto.code_pz).toLowerCase().includes(searchTerm.toLowerCase())) ||
         (producto.code_pq &&
-          String(producto.code_pq)
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase())) ||
+          String(producto.code_pq).toLowerCase().includes(searchTerm.toLowerCase())) ||
         (producto.code_master &&
-          String(producto.code_master)
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase())) ||
+          String(producto.code_master).toLowerCase().includes(searchTerm.toLowerCase())) ||
         (producto.code_inner &&
-          String(producto.code_inner)
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase())) ||
+          String(producto.code_inner).toLowerCase().includes(searchTerm.toLowerCase())) ||
         (producto.code_palet &&
-          String(producto.code_palet)
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase()))
+          String(producto.code_palet).toLowerCase().includes(searchTerm.toLowerCase()))
     );
     setFilteredProductos(filtered);
   };
@@ -158,54 +187,53 @@ function Catalogo() {
     setModoEdicion(false);
   };
 
-  const handleEditarDatos = () => {
-    setModoEdicion(true);
-  };
+
   const handleCancelarEdicion = () => {
     setDetalleProducto(detalleOriginal);
     setModoEdicion(false);
   };
 
   const handleGuardarCambios = async () => {
-  try {
-    const payload = {
-      ...detalleProducto,
-      id_usuario: user.id_usu, // ⬅️ enviar el ID del usuario logeado
-    };
+    try {
+      const payload = {
+        ...detalleProducto,
+        code_pz: localCodes.pz,
+        code_inner: localCodes.inner,
+        code_master: localCodes.master,
+        id_usuario: user.id_usu,
+      };
 
-    const res = await fetch(
-      "http://66.232.105.87:3007/api/productos/catalogo-detall-update",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      }
-    );
+      const res = await fetch(
+        "http://66.232.105.87:3007/api/productos/catalogo-detall-update",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
 
-    const result = await res.json();
-
-    setModoEdicion(false);
-    setAlerta({
-      open: true,
-      mensaje: "¡Datos actualizados correctamente!",
-      tipo: "success",
-    });
-  } catch (error) {
-    console.error("Error al guardar:", error);
-    setAlerta({
-      open: true,
-      mensaje: "Error al guardar los datos.",
-      tipo: "error",
-    });
-  }
-};
-
+      await res.json();
+      setModoEdicion(false);
+      setAlerta({
+        open: true,
+        mensaje: "¡Datos actualizados correctamente!",
+        tipo: "success",
+      });
+      refetchDetalle();
+    } catch (error) {
+      console.error("Error al guardar:", error);
+      setAlerta({
+        open: true,
+        mensaje: "Error al guardar los datos.",
+        tipo: "error",
+      });
+    }
+  };
 
   const handleGuardarImagenes = async () => {
     const formData = new FormData();
     formData.append("codigo_pro", detalleProducto.codigo_pro);
 
-    // Asegúrate de que `imagenesSeleccionadas` tenga claves como: pz, inner, master
     Object.entries(imagenesSeleccionadas).forEach(([unidad, archivo]) => {
       if (archivo) {
         const nombreArchivo = `${detalleProducto.codigo_pro}.jpg`;
@@ -218,21 +246,20 @@ function Catalogo() {
         "http://66.232.105.87:3007/api/productos/catalogo-detall-img",
         {
           method: "POST",
-          body: formData, // ❗ NO agregues headers, fetch lo hace automáticamente
+          body: formData,
         }
       );
 
-      if (res.ok) {
-        setAlerta({
-          open: true,
-          mensaje: "Imágenes actualizadas correctamente",
-          tipo: "success",
-        });
-        setEditandoImagenes(false);
-        setImagenesSeleccionadas({});
-      } else {
-        throw new Error("Error al subir imágenes");
-      }
+      if (!res.ok) throw new Error("Error al subir imágenes");
+
+      setAlerta({
+        open: true,
+        mensaje: "Imágenes actualizadas correctamente",
+        tipo: "success",
+      });
+      setEditandoImagenes(false);
+      setImagenesSeleccionadas({});
+      refetchDetalle();
     } catch (error) {
       console.error("Error al subir imágenes:", error);
       setAlerta({
@@ -246,9 +273,7 @@ function Catalogo() {
   useEffect(() => {
     const obtenerCatalogo = async () => {
       try {
-        const response = await fetch(
-          "http://66.232.105.87:3007/api/productos/catalogo"
-        );
+        const response = await fetch("http://66.232.105.87:3007/api/productos/catalogo");
         const data = await response.json();
         const dataConId = data.map((item, index) => ({
           id: item.id_prod || index,
@@ -260,7 +285,7 @@ function Catalogo() {
       }
     };
     obtenerCatalogo().then(() => {
-      obtenerInventarioSantul(); // ⬅ después de cargar productos
+      obtenerInventarioSantul();
     });
   }, []);
 
@@ -271,12 +296,12 @@ function Catalogo() {
       width: 100,
       renderCell: (params) => (
         <img
-          src={`${baseURL}/imagenes/img_pz/${params.row.codigo_pro}.jpg`} // ✅ Nueva ruta externa
+          src={`${baseURL}/imagenes/img_pz/${params.row.codigo_pro}.jpg`}
           alt="Producto"
           style={{ width: 50, height: 50, objectFit: "cover", borderRadius: 4 }}
           onError={(e) => {
             e.target.onerror = null;
-            e.target.src = `${baseURL}/imagenes/img_pz/noimage.png`; // también redirige correctamente si falla
+            e.target.src = `${baseURL}/imagenes/img_pz/noimage.png`;
           }}
         />
       ),
@@ -296,22 +321,241 @@ function Catalogo() {
       headerName: "Cant. Santul",
       width: 120,
     },
-
     {
       field: "acciones",
       headerName: "Acciones",
       width: 130,
       renderCell: (params) => (
-        <Button
-          variant="outlined"
-          size="small"
-          onClick={() => handleOpen(params.row)}
-        >
+        <Button variant="outlined" size="small" onClick={() => handleOpen(params.row)}>
           Ver Detalle
         </Button>
       ),
     },
   ];
+
+  // ----- Sub-componente para cada TAB de documentos -----
+  const DocumentUploader = ({ tipo, titulo }) => {
+    const [localFile, setLocalFile] = useState(null);
+    const [localPreview, setLocalPreview] = useState(null);
+    const [subiendo, setSubiendo] = useState(false);
+
+    const nombre = detalleProducto?.[`${tipo}_file`];
+    const updatedAt = detalleProducto?.[`${tipo}_file_updated_at`];
+    const url = docUrl(tipo);
+
+    const isImageName = (name) => /\.(png|jpe?g|webp|gif)$/i.test(name || "");
+    const isPdfName = (name) => /\.pdf$/i.test(name || "");
+
+    useEffect(() => {
+      if (!localFile) {
+        if (localPreview) {
+          URL.revokeObjectURL(localPreview);
+          setLocalPreview(null);
+        }
+        return;
+      }
+      const objUrl = URL.createObjectURL(localFile);
+      setLocalPreview(objUrl);
+      return () => URL.revokeObjectURL(objUrl);
+    }, [localFile]);
+
+    const subir = async () => {
+      if (!localFile) {
+        setAlerta({ open: true, mensaje: "Selecciona un archivo primero.", tipo: "warning" });
+        return;
+      }
+      try {
+        setSubiendo(true);
+
+        const form = new FormData();
+        form.append("archivo", localFile);
+
+        form.append("id_usuario", user.id_usu);
+
+        const res = await fetch(
+          `http://66.232.105.87:3007/api/productos/${detalleProducto.codigo_pro}/archivos/${tipo}`,
+          { method: "POST", body: form }
+        );
+
+        const payload = await res.json().catch(async () => ({ message: await res.text() }));
+        if (!res.ok) throw new Error(payload?.message || "Error al subir archivo");
+
+        setAlerta({ open: true, mensaje: "Archivo subido correctamente", tipo: "success" });
+        setLocalFile(null);
+        await refetchDetalle();
+      } catch (e) {
+        console.error(e);
+        setAlerta({ open: true, mensaje: e.message || "No se pudo subir el archivo", tipo: "error" });
+      } finally {
+        setSubiendo(false);
+      }
+    };
+
+
+    const previewSrc = localPreview || url;
+    const previewName = localFile?.name || nombre;
+
+    const PREVIEW_HEIGHT = isSmallScreen ? '60vh' : '75vh';
+
+
+    return (
+      <Paper elevation={3} sx={{ p: 3, borderRadius: 3 }}>
+        <Typography variant="h6" gutterBottom>{titulo}</Typography>
+
+        <Grid container spacing={2}>
+          {/* PREVIEW */}
+          <Grid item xs={12} md={8}>
+            <Stack spacing={1}>
+              <Typography variant="body2">
+                <strong>Archivo actual:</strong>{" "}
+                {nombre ? (
+                  <a href={url} target="_blank" rel="noreferrer">{nombre}</a>
+                ) : "—"}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Última actualización:</strong>{" "}
+                {formatDateTime(updatedAt)}
+              </Typography>
+
+              {/* Vista previa inline */}
+              {previewSrc && previewName ? (
+                // ---- PDF ----
+                isPdfName(previewName) ? (
+                  <Box
+                    sx={{
+                      mt: 1,
+                      border: '1px solid #e5e7eb',
+                      borderRadius: 2,
+                      overflow: 'hidden',        // evita scroll interior del contenedor
+                      height: PREVIEW_HEIGHT,    // << alto controlado
+                      backgroundColor: '#fafafa',
+                    }}
+                  >
+                    <object
+                      data={`${previewSrc}#toolbar=1&navpanes=0&view=FitH`} // opcional: controla zoom/toolbar
+                      type="application/pdf"
+                      style={{ width: '100%', height: '100%' }}            // << ocupa todo el alto
+                    >
+                      <iframe
+                        title={`${tipo}-preview`}
+                        src={`${previewSrc}#toolbar=1&navpanes=0&view=FitH`}
+                        style={{ border: 0, width: '100%', height: '100%' }}  // << ocupa todo el alto
+                      />
+                    </object>
+                  </Box>
+                )
+                  // ---- IMAGEN ----
+                  : isImageName(previewName) ? (
+                    <Box
+                      sx={{
+                        mt: 1,
+                        border: '1px solid #e5e7eb',
+                        borderRadius: 2,
+                        p: 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        height: PREVIEW_HEIGHT,
+                        backgroundColor: '#fafafa',
+                      }}
+                    >
+                      <img
+                        src={previewSrc}
+                        alt={titulo}
+                        style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                      />
+                    </Box>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      No hay vista previa disponible para este tipo de archivo.
+                    </Typography>
+                  )
+              ) : (
+                <Typography variant="body2" color="text.secondary">
+                  Sin archivo para previsualizar.
+                </Typography>
+              )}
+
+
+              {/* Selector de archivo */}
+              <input
+                type="file"
+                accept="image/*,application/pdf"
+                onChange={(e) => setLocalFile(e.target.files?.[0] || null)}
+                style={{ marginTop: 8 }}
+              />
+              {localFile && (
+                <Typography variant="caption" color="text.secondary">
+                  Archivo seleccionado: {localFile.name}
+                </Typography>
+              )}
+            </Stack>
+          </Grid>
+
+          {/* ACCIONES */}
+          <Grid
+            item
+            xs={12}
+            md={4}
+            display="flex"
+            alignItems="center"
+            justifyContent="flex-end"
+          >
+            <Stack direction="row" spacing={1}>
+              <Button
+                variant="contained"
+                disabled={!localFile || subiendo}
+                onClick={subir}
+              >
+                {subiendo ? "Subiendo..." : "Subir archivo"}
+              </Button>
+              {url && (
+                <Button
+                  variant="outlined"
+                  onClick={() => window.open(url, "_blank")}
+                >
+                  Ver archivo
+                </Button>
+              )}
+            </Stack>
+          </Grid>
+        </Grid>
+      </Paper>
+    );
+  };
+
+  const [localCodes, setLocalCodes] = useState({ pz: "", inner: "", master: "" });
+
+  const handleEditarDatos = () => {
+    setLocalCodes({
+      pz: detalleProducto?.code_pz ?? "",
+      inner: detalleProducto?.code_inner ?? "",
+      master: detalleProducto?.code_master ?? "",
+    });
+    setModoEdicion(true);
+  }
+
+
+  useEffect(() => {
+    if (!open) return;
+
+    // Captura global (fase capture = true) para frenar cualquier keydown/keyup
+    const stopAllKeys = (e) => {
+      // Permite Esc si lo usas para cerrar el modal. Si NO, quítalo.
+      // if (e.key === 'Escape') return;
+      e.stopPropagation();
+    };
+
+    window.addEventListener('keydown', stopAllKeys, true);
+    window.addEventListener('keyup', stopAllKeys, true);
+
+    return () => {
+      window.removeEventListener('keydown', stopAllKeys, true);
+      window.removeEventListener('keyup', stopAllKeys, true);
+    };
+  }, [open]);
+
 
   return (
     <Box p={3}>
@@ -332,37 +576,40 @@ function Catalogo() {
               mb: isSmallScreen ? 2 : 0,
             }}
           />
+
           <Box sx={{ height: "auto", width: "100%", overflowX: "auto" }}>
-            <DataGrid
-              rows={search ? filteredProductos : productos}
-              columns={columnas}
-              autoHeight
-              pageSize={20}
-              rowsPerPageOptions={[10, 20, 50]}
-              disableSelectionOnClick
-              sx={{
-                minWidth: 1000,
-                borderRadius: 2,
-                rowSpacing: 2, // <-- Espacio entre filas
-                "& .MuiDataGrid-columnHeaders": {
-                  backgroundColor: "#f0f2f5", // Fondo header más elegante
-                  fontWeight: "bold",
-                  fontSize: "16px",
-                  color: "#333",
-                },
-                "& .MuiDataGrid-cell": {
-                  fontSize: "14px",
-                },
-                "& .MuiDataGrid-row:hover": {
-                  backgroundColor: "#f9f9f9", // Efecto hover suave en filas
-                },
-              }}
-            />
+            {!open && (
+              <DataGrid
+                rows={search ? filteredProductos : productos}
+                columns={columnas}
+                autoHeight
+                pageSize={20}
+                rowsPerPageOptions={[10, 20, 50]}
+                disableSelectionOnClick
+                sx={{
+                  minWidth: 1000,
+                  borderRadius: 2,
+                  rowSpacing: 2,
+                  "& .MuiDataGrid-columnHeaders": {
+                    backgroundColor: "#f0f2f5",
+                    fontWeight: "bold",
+                    fontSize: "16px",
+                    color: "#333",
+                  },
+                  "& .MuiDataGrid-cell": { fontSize: "14px" },
+                  "& .MuiDataGrid-row:hover": { backgroundColor: "#f9f9f9" },
+                }}
+              />
+            )}
           </Box>
+
+
+
         </CardContent>
       </Card>
 
-      <Modal open={open} onClose={handleClose}>
+      {/* ================= MODAL ================= */}
+      <Modal open={open} onClose={handleClose} keepMounted>
         <Box sx={{ ...styleModal, position: "relative" }}>
           {/* Botón de cerrar */}
           <Button
@@ -386,7 +633,7 @@ function Catalogo() {
             </Box>
           ) : detalleProducto ? (
             <>
-              {/* Encabezado con código y descripción */}
+              {/* Encabezado */}
               <Box
                 mb={3}
                 display="flex"
@@ -399,7 +646,17 @@ function Catalogo() {
                   {detalleProducto.codigo_pro} - {detalleProducto.des}
                 </Typography>
               </Box>
-              <Box display="flex" justifyContent="center" mb={3}>
+
+              {/* Acciones principales */}
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 1,
+                  mb: 2,
+                }}
+              >
                 <Stack direction="row" spacing={1}>
                   {modoEdicion ? (
                     <>
@@ -458,203 +715,242 @@ function Catalogo() {
                     </Box>
                   )}
                 </Stack>
-              </Box>
 
-              <Grid container spacing={3}>
-                {unidades.map((unidad) => {
-                  const suffix =
-                    unidad === "Pieza"
-                      ? "pz"
-                      : unidad === "Inner"
-                      ? "inner"
-                      : "master";
-
-                  return (
-                    <Grid item xs={12} md={4} key={unidad}>
-                      <Paper elevation={3} sx={{ p: 3, borderRadius: 3 }}>
-                        <Typography
-                          variant="h6"
-                          mb={2}
-                          align="center"
-                          color="primary"
-                        >
-                           Unidad: {unidad === "Pieza" ? detalleProducto?.um || "Pieza" : unidad}
-                        </Typography>
-
-                        <Box display="flex" justifyContent="center" mb={2}>
-                          {editandoImagenes ? (
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={(e) => {
-                                const file = e.target.files[0];
-                                setImagenesSeleccionadas((prev) => ({
-                                  ...prev,
-                                  [suffix]: file,
-                                }));
-                              }}
-                            />
-                          ) : (
-                            // Puedes mover esto a un archivo config.js si gustas
-                            <img
-                              src={`https://sanced.santulconnect.com:3011/imagenes/img_${suffix}/${detalleProducto?.codigo_pro}.jpg`}
-                              alt={`${unidad}`}
-                              style={{
-                                width: 120,
-                                height: 120,
-                                objectFit: "contain",
-                                cursor: "zoom-in",
-                              }}
-                              onClick={() =>
-                                setImagenZoom(
-                                  `https://sanced.santulconnect.com:3011/imagenes/img_${suffix}/${detalleProducto?.codigo_pro}.jpg`
-                                )
-                              }
-                              onError={(e) => {
-                                e.target.onerror = null;
-                                e.target.src = `https://sanced.santulconnect.com:3011/imagenes/img_${suffix}/noimage.png`;
-                              }}
-                            />
-                          )}
-                        </Box>
-
-                        {modoEdicion ? (
-                          <TextField
-                            label={`Código de Barras (${suffix})`}
-                            fullWidth
-                            size="small"
-                            value={detalleProducto[`code_${suffix}`] || ""}
-                            onChange={(e) =>
-                              setDetalleProducto({
-                                ...detalleProducto,
-                                [`code_${suffix}`]: e.target.value,
-                              })
-                            }
-                          />
-                        ) : (
-                          <Box mb={2} display="flex" justifyContent="center">
-                            <Barcode
-                              value={
-                                detalleProducto[`code_${suffix}`]?.toString() ||
-                                ""
-                              }
-                              width={2}
-                              height={60}
-                              fontSize={16}
-                              displayValue={true}
-                            />
-                          </Box>
-                        )}
-
-                        <Stack spacing={1} mt={2}>
-                          <TextField
-                            label="Cantidad"
-                            variant="outlined"
-                            size="small"
-                            fullWidth
-                            value={detalleProducto[`_${suffix}`] || ""}
-                            onChange={(e) =>
-                              setDetalleProducto({
-                                ...detalleProducto,
-                                [`_${suffix}`]: e.target.value,
-                              })
-                            }
-                            disabled={!modoEdicion}
-                          />
-
-                          <Grid container spacing={1}>
-                            {["largo", "ancho", "alto", "peso"].map((dim) => (
-                              <Grid item xs={6} key={dim}>
-                                <TextField
-                                  label={`${
-                                    dim.charAt(0).toUpperCase() + dim.slice(1)
-                                  } (${dim === "peso" ? "kg" : "m"})`}
-                                  variant="outlined"
-                                  size="small"
-                                  fullWidth
-                                  value={
-                                    detalleProducto[`${dim}_${suffix}`] || ""
-                                  }
-                                  onChange={(e) =>
-                                    setDetalleProducto({
-                                      ...detalleProducto,
-                                      [`${dim}_${suffix}`]: e.target.value,
-                                    })
-                                  }
-                                  disabled={!modoEdicion}
-                                />
-                              </Grid>
-                            ))}
-                          </Grid>
-                        </Stack>
-                      </Paper>
-                    </Grid>
-                  );
-                })}
-              </Grid>
-
-              {/* Sección de Volumetría */}
-              <Box mt={5}>
-                <Box
-                  display="flex"
-                  justifyContent="space-between"
-                  alignItems="center"
-                  mb={2}
+                {/* Tabs centrados bajo los botones */}
+                <Tabs
+                  value={tab}
+                  onChange={(e, v) => setTab(v)}
+                  variant="scrollable"
+                  allowScrollButtonsMobile
+                  sx={{
+                    width: "fit-content",
+                    mx: "auto",
+                    ".MuiTabs-flexContainer": {
+                      justifyContent: "center",
+                    },
+                  }}
                 >
-                  <Typography
-                    variant="h6"
-                    sx={{ fontWeight: "bold", color: "primary.main" }}
-                  >
-                    Volumetría Tarima
-                  </Typography>
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    startIcon={<EditIcon />}
-                    color="primary"
-                  >
-                    Editar volumetría
-                  </Button>
-                </Box>
-
-                <Paper elevation={3} sx={{ p: 3, borderRadius: 3 }}>
-                  <Grid container spacing={2}>
-                    <Grid item xs={12} sm={6} md={4}>
-                      <Typography variant="body2">
-                        <strong>Cajas por cama:</strong> 25
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={12} sm={6} md={4}>
-                      <Typography variant="body2">
-                        <strong>Piezas por cama:</strong> 250
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={12} sm={6} md={4}>
-                      <Typography variant="body2">
-                        <strong>Cajas por tarima:</strong> 100
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={12} sm={6} md={4}>
-                      <Typography variant="body2">
-                        <strong>Camas por tarima:</strong> 4
-                      </Typography>
-                    </Grid>
-                    <Grid item xs={12} sm={6} md={4}>
-                      <Typography variant="body2">
-                        <strong>Piezas por tarima:</strong> 1000
-                      </Typography>
-                    </Grid>
-                  </Grid>
-                </Paper>
+                  <Tab label="VOLUMETRÍA" />
+                  <Tab label="FLYER" />
+                  <Tab label="FICHA TÉCNICA" />
+                  <Tab label="FICHA COMERCIAL" />
+                </Tabs>
               </Box>
+
+              {/* TAB 0 */}
+              <TabPanel value={tab} index={0}>
+                <Grid container spacing={3}>
+                  {unidades.map((unidad) => {
+                    const suffix =
+                      unidad === "Pieza" ? "pz" : unidad === "Inner" ? "inner" : "master";
+
+                    return (
+                      <Grid item xs={12} md={4} key={unidad}>
+                        <Paper elevation={3} sx={{ p: 3, borderRadius: 3 }}>
+                          <Typography
+                            variant="h6"
+                            mb={2}
+                            align="center"
+                            color="primary"
+                          >
+                            Unidad:{" "}
+                            {unidad === "Pieza" ? detalleProducto?.um || "Pieza" : unidad}
+                          </Typography>
+
+                          <Box display="flex" justifyContent="center" mb={2}>
+                            {editandoImagenes ? (
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) => {
+                                  const file = e.target.files[0];
+                                  setImagenesSeleccionadas((prev) => ({
+                                    ...prev,
+                                    [suffix]: file,
+                                  }));
+                                }}
+                              />
+                            ) : (
+                              <img
+                                src={`${baseURL}/imagenes/img_${suffix}/${detalleProducto?.codigo_pro}.jpg`}
+                                alt={`${unidad}`}
+                                style={{
+                                  width: 120,
+                                  height: 120,
+                                  objectFit: "contain",
+                                  cursor: "zoom-in",
+                                }}
+                                onClick={() =>
+                                  setImagenZoom(
+                                    `${baseURL}/imagenes/img_${suffix}/${detalleProducto?.codigo_pro}.jpg`
+                                  )
+                                }
+                                onError={(e) => {
+                                  e.target.onerror = null;
+                                  e.target.src = `${baseURL}/imagenes/img_${suffix}/noimage.png`;
+                                }}
+                              />
+                            )}
+                          </Box>
+
+                          {modoEdicion ? (
+                            <TextField
+                              key={`barcode-input-${suffix}`}
+                              id={`barcode-${detalleProducto?.codigo_pro}-${suffix}`}
+                              label={`Código de Barras (${suffix})`}
+                              fullWidth
+                              size="small"
+                              value={localCodes[suffix] ?? ""}
+                              // guarda la referencia al input real (no al wrapper)
+                              inputRef={(el) => { inputRefs.current[suffix] = el; }}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                setLocalCodes(prev => ({ ...prev, [suffix]: v }));
+                                // re-enfoca y coloca el cursor al final después del render
+                                queueMicrotask(() => {
+                                  const el = inputRefs.current[suffix];
+                                  if (el) {
+                                    el.focus({ preventScroll: true });
+                                    if (el.setSelectionRange) {
+                                      const len = el.value?.length ?? 0;
+                                      el.setSelectionRange(len, len);
+                                    }
+                                  }
+                                });
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                              onKeyDown={(e) => e.stopPropagation()}
+                            />
+
+
+                          ) : (
+                            <Box mb={2} display="flex" justifyContent="center">
+                              <Barcode
+                                value={(detalleProducto[`code_${suffix}`] ?? "").toString()}
+                                width={2}
+                                height={60}
+                                fontSize={16}
+                                displayValue={true}
+                              />
+                            </Box>
+                          )}
+
+
+
+                          <Stack spacing={1} mt={2}>
+                            <TextField
+                              label="Cantidad"
+                              variant="outlined"
+                              size="small"
+                              fullWidth
+                              value={detalleProducto[`_${suffix}`] || ""}
+                              onChange={(e) =>
+                                setDetalleProducto({
+                                  ...detalleProducto,
+                                  [`_${suffix}`]: e.target.value,
+                                })
+                              }
+                              disabled={!modoEdicion}
+                            />
+
+                            <Grid container spacing={1}>
+                              {["largo", "ancho", "alto", "peso"].map((dim) => (
+                                <Grid item xs={6} key={dim}>
+                                  <TextField
+                                    label={`${dim.charAt(0).toUpperCase() + dim.slice(1)} (${dim === "peso" ? "kg" : "m"
+                                      })`}
+                                    variant="outlined"
+                                    size="small"
+                                    fullWidth
+                                    value={detalleProducto[`${dim}_${suffix}`] || ""}
+                                    onChange={(e) =>
+                                      setDetalleProducto({
+                                        ...detalleProducto,
+                                        [`${dim}_${suffix}`]: e.target.value,
+                                      })
+                                    }
+                                    disabled={!modoEdicion}
+                                  />
+                                </Grid>
+                              ))}
+                            </Grid>
+                          </Stack>
+                        </Paper>
+                      </Grid>
+                    );
+                  })}
+                </Grid>
+
+                {/* Volumetría Tarima */}
+                <Box mt={5}>
+                  <Box
+                    display="flex"
+                    justifyContent="space-between"
+                    alignItems="center"
+                    mb={2}
+                  >
+                    <Typography variant="h6" sx={{ fontWeight: "bold", color: "primary.main" }}>
+                      Volumetría Tarima
+                    </Typography>
+                    <Button variant="outlined" size="small" color="primary">
+                      Editar volumetría
+                    </Button>
+                  </Box>
+
+                  <Paper elevation={3} sx={{ p: 3, borderRadius: 3 }}>
+                    <Grid container spacing={2}>
+                      <Grid item xs={12} sm={6} md={4}>
+                        <Typography variant="body2">
+                          <strong>Cajas por cama:</strong> 25
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={12} sm={6} md={4}>
+                        <Typography variant="body2">
+                          <strong>Piezas por cama:</strong> 250
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={12} sm={6} md={4}>
+                        <Typography variant="body2">
+                          <strong>Cajas por tarima:</strong> 100
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={12} sm={6} md={4}>
+                        <Typography variant="body2">
+                          <strong>Camas por tarima:</strong> 4
+                        </Typography>
+                      </Grid>
+                      <Grid item xs={12} sm={6} md={4}>
+                        <Typography variant="body2">
+                          <strong>Piezas por tarima:</strong> 1000
+                        </Typography>
+                      </Grid>
+                    </Grid>
+                  </Paper>
+                </Box>
+              </TabPanel>
+
+              {/* TAB 1: FLYER */}
+              <TabPanel value={tab} index={1}>
+                <DocumentUploader tipo="flyer" titulo="Flyer del producto" />
+              </TabPanel>
+
+              {/* TAB 2: FICHA TÉCNICA */}
+              <TabPanel value={tab} index={2}>
+                <DocumentUploader tipo="ficha_tecnica" titulo="Ficha técnica" />
+              </TabPanel>
+
+              {/* TAB 3: FICHA COMERCIAL */}
+              <TabPanel value={tab} index={3}>
+                <DocumentUploader tipo="ficha_comercial" titulo="Ficha comercial" />
+              </TabPanel>
             </>
           ) : (
-            <Typography color="error">
-              No se pudo cargar el detalle del producto
-            </Typography>
+            <Typography color="error">No se pudo cargar el detalle del producto</Typography>
           )}
         </Box>
       </Modal>
+
+      {/* Zoom de imagen */}
       <Dialog
         open={!!imagenZoom}
         onClose={() => setImagenZoom(null)}
@@ -681,6 +977,7 @@ function Catalogo() {
         />
       </Dialog>
 
+      {/* Snackbar */}
       <Snackbar
         open={alerta.open}
         autoHideDuration={4000}
@@ -695,7 +992,8 @@ function Catalogo() {
           {alerta.mensaje}
         </Alert>
       </Snackbar>
-    </Box>
+
+    </Box >
   );
 }
 

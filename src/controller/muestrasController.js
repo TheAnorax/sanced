@@ -800,7 +800,7 @@ const correosPorNombre = {
   "Flor Guerrero": "rh.cedis@santul.net",
   "Michel Escobar Jimenez": "michel.escobar@santul.net",
   "Sergio Regalado Alvarez": "sergio.regalado@santul.net",
-  "Enrrique Saavedra": "gerente.almacen@santul.net",
+  "Juan Pablo": "gerente.almacen@santul.net",
   "Elias Sandler": "elias.sandler@santul.net",
   "Eduardo Sandler": "eduardo.sandler@santul.net",
   "Mauricio Sandler": "mauricio.sandler@santul.net",

@@ -1,143 +1,200 @@
-// const pool = require('../config/database');
+// src/controller/rhController.js  (CommonJS)
 
-// // Obtener todos los insumos
-// const getInsumosRH = async (req, res) => {
-//   try {
-//     const [rows] = await pool.query('SELECT * FROM insumosrh');
-//     res.json(rows);
-//   } catch (error) {
-//     res.status(500).json({ message: 'Error al obtener los insumos', error: error.message });
-//   }
-// };
-
-// // Crear un insumo
-// const createInsumo = async (req, res) => {
-//     try {
-//       console.log('Datos recibidos en createInsumo:', req.body);
-  
-//       const { Codigo, Descripcion, Cantidad, Talla, Categoria, UM } = req.body;
-//       await pool.query('INSERT INTO insumosrh SET ?', { Codigo, Descripcion, Cantidad, Talla, Categoria, UM });
-//       res.status(201).json({ message: 'Insumo creado correctamente' });
-//     } catch (error) {
-//       console.error('Error en createInsumo:', error.message);
-//       res.status(500).json({ message: 'Error al crear el insumo', error: error.message });
-//     }
-//   };
-  
-  
-
-// // Actualizar un insumo
-// const updateInsumo = async (req, res) => {
-//   try {
-//     const { id } = req.params;
-//     const { Codigo, Descripcion, Cantidad, Talla, Categoria, UM } = req.body;
-//     await pool.query('UPDATE insumosrh SET ? WHERE Codigo = ?', [{ Codigo, Descripcion, Cantidad, Talla, Categoria, UM }, id]);
-//     res.status(200).json({ message: 'Insumo actualizado correctamente' });
-//   } catch (error) {
-//     res.status(500).json({ message: 'Error al actualizar el insumo', error: error.message });
-//   }
-// };
-
-// // Eliminar un insumo
-// const deleteInsumo = async (req, res) => {
-//   try {
-//     const { id } = req.params;
-//     await pool.query('DELETE FROM insumosrh WHERE Codigo = ?', [id]);
-//     res.status(200).json({ message: 'Insumo eliminado correctamente' });
-//   } catch (error) {
-//     res.status(500).json({ message: 'Error al eliminar el insumo', error: error.message });
-//   }
-// };
-
-// module.exports = {
-//   getInsumosRH,
-//   createInsumo,
-//   updateInsumo,
-//   deleteInsumo,
-// };
-
-
-
-
+const multer = require('multer');
+const XLSX = require('xlsx');
 const pool = require('../config/database');
 
+/* =========================
+   UTILIDADES
+   ========================= */
+function toMySQLDateTime(v) {
+  if (v == null || v === '') return null;
+  if (typeof v === 'number') { // serial Excel
+    const ms = Math.round((v - 25569) * 86400 * 1000);
+    const d = new Date(ms);
+    if (Number.isNaN(d.getTime())) return null;
+    return d.toISOString().slice(0, 19).replace('T', ' ');
+  }
+  const s = String(v).trim();
+  const d = new Date(s.includes('T') || s.includes(':') ? s : (s + ' 00:00:00'));
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString().slice(0, 19).replace('T', ' ');
+}
 
+function toIntOrNull(n) {
+  if (n == null || n === '') return null;
+  const v = parseInt(String(n).replace(/[^0-9\-]/g, ''), 10);
+  return Number.isNaN(v) ? null : v;
+}
+
+const norm = (s) =>
+  String(s ?? '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+function pickAlias(row, aliases = []) {
+  const map = new Map(Object.keys(row || {}).map(k => [norm(k), k]));
+  for (const a of aliases) {
+    const real = map.get(norm(a));
+    if (real && row[real] != null && String(row[real]).trim() !== '') return row[real];
+  }
+  return '';
+}
+
+// EXTRAE(D,4,4) sobre “2º nº artículo”
+function codigoFromSegundoArticulo(val) {
+  if (!val) return null;
+  const s = String(val);
+  const sub = s.length >= 7 ? s.substring(3, 7) : s.replace(/\D+/g, '').substring(0, 4);
+  const n = toIntOrNull(sub);
+  if (n != null) return n;
+  const m = s.match(/(\d{4})/);
+  return m ? toIntOrNull(m[1]) : null;
+}
+
+function deriveCodigo(obj) {
+  const direct = pickAlias(obj, ['CÓDIGO', 'CODIGO', 'Codigo', 'codigo']);
+  if (direct) return toIntOrNull(direct);
+  const art = pickAlias(obj, [
+    '2º nº artículo', '2° nº artículo', '2º n° artículo', '2° n° artículo',
+    '2o nº artículo', '2o n° artículo', '2º nº articulo', '2o n° articulo'
+  ]);
+  const fromArt = codigoFromSegundoArticulo(art);
+  return fromArt != null ? fromArt : null;
+}
+
+function guessHeaderRow(allRows) {
+  const EXPECTED = [
+    'código', 'codigo', 'descripcion', 'descripción', 'clave', 'um', '_pz', 'pz',
+    'cantidad', 'almacen', 'almacén', 'almacen_envio', 'fecha', 'solicitud',
+    'dia', 'envio', 'llegada', 'estimado', 'tiempo', '2º nº artículo', '2° nº artículo',
+    'numero orden', 'número orden', 'tp ord', 'venta'
+  ];
+  let bestIdx = 0, bestScore = -1;
+  for (let i = 0; i < Math.min(25, allRows.length); i++) {
+    const row = (allRows[i] || []).map(x => String(x ?? '').trim());
+    const nonEmpty = row.filter(Boolean).length;
+    const matches = row.filter(c => EXPECTED.some(k => c.toLowerCase().includes(k))).length;
+    const score = nonEmpty + matches * 3;
+    if (score > bestScore) { bestScore = score; bestIdx = i; }
+  }
+  return bestIdx;
+}
+
+/* =========================
+   CRUD INSUMOS RH
+   ========================= */
+const getInsumosRH = async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT * FROM insumosrh');
+    res.json(rows);
+  } catch (error) {
+    res.status(500).json({ message: 'Error al obtener los insumos', error: error.message });
+  }
+};
+
+const createInsumo = async (req, res) => {
+  try {
+    const { Codigo, Descripcion, Cantidad, Talla, Categoria, UM } = req.body;
+    await pool.query('INSERT INTO insumosrh SET ?', { Codigo, Descripcion, Cantidad, Talla, Categoria, UM });
+    res.status(201).json({ message: 'Insumo creado correctamente' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error al crear el insumo', error: error.message });
+  }
+};
+
+const updateInsumo = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { Codigo, Descripcion, Cantidad, Talla, Categoria, UM } = req.body;
+    await pool.query('UPDATE insumosrh SET ? WHERE Codigo = ?', [{ Codigo, Descripcion, Cantidad, Talla, Categoria, UM }, id]);
+    res.status(200).json({ message: 'Insumo actualizado correctamente' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error al actualizar el insumo', error: error.message });
+  }
+};
+
+const deleteInsumo = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.query('DELETE FROM insumosrh WHERE Codigo = ?', [id]);
+    res.status(200).json({ message: 'Insumo eliminado correctamente' });
+  } catch (error) {
+    res.status(500).json({ message: 'Error al eliminar el insumo', error: error.message });
+  }
+};
+
+/* =========================
+   PRODUCTO (autocompletar)
+   ========================= */
 const buscarProducto = async (req, res) => {
   const { codigo } = req.params;
   try {
     const [rows] = await pool.query(
-      `SELECT 
-         codigo_pro AS codigo,
-         des,
-         um,
-         _pz,
-         clave
-       FROM productos
-       WHERE codigo_pro = ?`,
+      `SELECT codigo_pro AS codigo, des, um, _pz, clave
+         FROM productos
+        WHERE codigo_pro = ?`,
       [codigo]
     );
-
-    if (rows.length === 0) {
-      return res.status(404).json({ message: "Producto no encontrado" });
-    }
-
+    if (rows.length === 0) return res.status(404).json({ message: 'Producto no encontrado' });
     res.json(rows[0]);
   } catch (error) {
-    console.error("Error al buscar el producto:", error);
-    res.status(500).json({ message: "Error al buscar el producto" });
+    res.status(500).json({ message: 'Error al buscar el producto' });
   }
 };
 
-
+/* =========================
+   CREAR TRASPASO (manual)
+   ========================= */
 const createTraspaso = async (req, res) => {
   try {
-    const {
-      Codigo,
-      Descripcion,
-      Clave,
-      um,
-      _pz,
-      Cantidad,
-      dia_envio,
-      almacen_envio,
-      tiempo_llegada_estimado,
-    } = req.body;
+    const body = req.body || {};
+    let {
+      Codigo, Descripcion, Clave, um, _pz,
+      Cantidad, dia_envio, almacen_envio, tiempo_llegada_estimado,
+    } = body;
 
-    // Validar mínimos:
-    if (
-      Codigo == null ||
-      !Descripcion ||
-      Cantidad == null ||
-      !dia_envio ||
-      !tiempo_llegada_estimado
-    ) {
+    // mapea variaciones para No_Orden y tipo_orden si vinieran en el body
+    const No_Orden = pickAlias(body, ['No_Orden', 'NO_Orden', 'Número orden', 'Numero orden', 'No Orden']) || null;
+    const tipo_orden = pickAlias(body, ['tipo_orden', 'Tp ord', 'TP ORD', 'Tipo ord']) || null;
+
+    if (Codigo == null || Codigo === '') {
+      return res.status(400).json({ message: 'Falta Codigo.' });
+    }
+    if (!Descripcion || Cantidad == null || !dia_envio) {
       return res.status(400).json({
-        message:
-          'Faltan campos obligatorios: Codigo, Descripcion, Cantidad, dia_envio, tiempo_llegada_estimado',
+        message: 'Faltan campos obligatorios: Descripcion, Cantidad, dia_envio'
       });
     }
 
-    // Insertamos tal cual: MySQL acepta el string ISO en DATETIME
+    const CantidadN = toIntOrNull(Cantidad) ?? 0;
+    const _pzN = toIntOrNull(_pz);
+    const envio = toMySQLDateTime(dia_envio);
+    const llegada = toMySQLDateTime(tiempo_llegada_estimado) || envio;
+
     await pool.query(
-      `INSERT INTO mandar_traspaso 
-        (Codigo, Descripcion, Clave, um, _pz, Cantidad, dia_envio, almacen_envio, tiempo_llegada_estimado)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO mandar_traspaso
+       (No_Orden, tipo_orden, Codigo, Descripcion, Clave, um, _pz, Cantidad, dia_envio, almacen_envio, tiempo_llegada_estimado)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        Codigo,
-        Descripcion,
+        No_Orden,
+        tipo_orden,
+        toIntOrNull(Codigo),
+        String(Descripcion).trim(),
         Clave || null,
         um || null,
-        _pz != null ? _pz : null,
-        Cantidad,
-        dia_envio,               // ya es un ISO string completo
+        _pzN,
+        CantidadN,
+        envio,
         almacen_envio || null,
-        tiempo_llegada_estimado, // ya es un ISO string completo
+        llegada,
       ]
     );
-
     res.status(201).json({ message: 'Registro de traspaso creado correctamente' });
   } catch (error) {
-    console.error('Error en createTraspaso:', error.message);
     if (error.code === 'ER_DUP_ENTRY') {
       return res.status(409).json({ message: 'El Código ya existe. No se puede duplicar.' });
     }
@@ -145,64 +202,226 @@ const createTraspaso = async (req, res) => {
   }
 };
 
+/* =========================
+   LISTAR TRASPASOS
+   ========================= */
 const Traspasos = async (req, res) => {
   try {
-    // Ejecutamos una consulta simple para traer todos los campos de cada fila
     const [rows] = await pool.query('SELECT * FROM mandar_traspaso');
-    // Devolvemos el resultado como JSON
     res.status(200).json(rows);
   } catch (error) {
-    console.error('Error al obtener los traspasos:', error.message);
-    res.status(500).json({
-      message: 'Error al obtener los traspasos',
-      error: error.message
-    });
+    res.status(500).json({ message: 'Error al obtener los traspasos', error: error.message });
   }
 };
 
-// controllers/excelController.js
-const XLSX = require('xlsx');
+/* =========================
+   EXCEL: PREVIEW + IMPORT
+   ========================= */
 
+// multer en memoria
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+});
+const importTraspasosExcelMiddleware = upload.single('archivoExcel');
+
+/* -------- PREVIEW -------- */
 const excelToJson = (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No se envió archivo Excel.' });
-    }
+    if (!req.file) return res.status(400).json({ error: 'No se envió archivo Excel.' });
 
-    // Leer el archivo Excel desde el buffer recibido en memoria
-    const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
-    const sheetName = workbook.SheetNames[0];
-    const sheet = workbook.Sheets[sheetName];
-
-    // Convertir hoja completa a arreglo de arreglos
+    const wb = XLSX.read(req.file.buffer, { type: 'buffer' });
+    const sheet = wb.Sheets[wb.SheetNames[0]];
     const allRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+    if (!allRows.length) return res.json({ headers: [], data: [] });
 
-    // Omitir las primeras 6 filas (cabeceras vacías o basura)
-    const rows = allRows.slice(6);
+    const hIdx = guessHeaderRow(allRows);
+    let headers = (allRows[hIdx] || []).map((h, i) => String(h ?? '').trim() || `Col${i + 1}`);
+    const dataRows = allRows.slice(hIdx + 1).filter(r => (r || []).some(c => String(c ?? '').trim() !== ''));
 
-    // La primera fila después del corte es el encabezado real
-    const [headers, ...dataRows] = rows;
-
-    // Mapear los datos a objetos usando los headers
     const data = dataRows.map(row =>
-      headers.reduce((obj, key, i) => {
-        obj[key] = row[i] ?? '';
-        return obj;
-      }, {})
+      headers.reduce((o, k, i) => { o[k] = row[i] ?? ''; return o; }, {})
     );
 
-    res.json({ data, headers });
+    // Garantizar columna CÓDIGO y ponerla al frente
+    const hasCodigo = headers.some(h => ['codigo', 'código'].includes(norm(h)));
+    if (!hasCodigo) {
+      headers = ['CÓDIGO', ...headers];
+      for (const obj of data) obj['CÓDIGO'] = deriveCodigo(obj) ?? '';
+    } else {
+      for (const obj of data) {
+        const cur = pickAlias(obj, ['CÓDIGO', 'CODIGO', 'Codigo', 'codigo']);
+        if (!cur) {
+          const d = deriveCodigo(obj);
+          const key = ['CÓDIGO', 'CODIGO', 'Codigo', 'codigo'].find(k => Object.prototype.hasOwnProperty.call(obj, k)) || 'CÓDIGO';
+          obj[key] = d ?? '';
+        }
+      }
+      const canonical = ['CÓDIGO', 'CODIGO', 'Codigo', 'codigo'].find(c => headers.includes(c));
+      if (canonical) headers = [canonical, ...headers.filter(h => h !== canonical)];
+    }
+
+    return res.json({ headers, data });
   } catch (error) {
     console.error('Error procesando el Excel:', error);
     res.status(500).json({ error: 'No se pudo procesar el archivo Excel.' });
   }
 };
 
+/* -------- IMPORT -------- */
+// -------- IMPORT (con lookup a productos) --------
+const importTraspasosExcel = async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ ok: false, msg: 'No se adjuntó archivo.' });
 
+    // Fecha de llegada única para todo el lote (opcional, si la mandas junto al file)
+    const { tiempoLlegadaLote } = req.body;
+    const llegadaLote = toMySQLDateTime(tiempoLlegadaLote);
 
+    const wb = XLSX.read(req.file.buffer, { type: 'buffer' });
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+
+    // 1) Parse preliminar + reunir códigos para el lookup
+    const parsed = [];
+    const codigos = new Set();
+
+    for (const r of rows) {
+      const Codigo = deriveCodigo(r);
+
+      const No_Orden = pickAlias(r, ['Número orden', 'Numero orden', 'No Orden', 'No_Orden', 'NO_Orden']) || null;
+      const tipo_orden = pickAlias(r, ['Tp ord', 'TP ORD', 'tipo_orden', 'Tipo ord']) || null;
+
+      // Venta -> almacen_envio (si no hay, intenta por alias de almacén)
+      const almacen_envio =
+        pickAlias(r, ['Venta', 'venta']) ||
+        pickAlias(r, ['almacen_envio', 'almacén', 'almacen']) || null;
+
+      // Fecha solicitud -> dia_envio
+      const dia_envio = toMySQLDateTime(
+        pickAlias(r, ['Fecha solicitud', 'FECHA SOLICITUD', 'fecha solicitud', 'dia_envio', 'DIA_ENVIO'])
+      );
+
+      const tiempo_llegada_estimado =
+        llegadaLote ||
+        toMySQLDateTime(pickAlias(r, [
+          'tiempo_llegada_estimado', 'LLEGADA ESTIMADA', 'TIEMPO LLEGADA', 'Llegada Estimada'
+        ])) ||
+        dia_envio;
+
+      const articulo2 = pickAlias(r, [
+        '2º nº artículo', '2° nº artículo', '2º n° artículo', '2º nº articulo'
+      ]) || null;
+
+      const DescripcionExcel = pickAlias(r, ['Descripcion', 'DESCRIPCION', 'descripción', 'descripcion']);
+      const ClaveExcel = pickAlias(r, ['Clave', 'CLAVE', 'clave']);
+      const umExcel = pickAlias(r, ['um', 'UM', 'Um']);
+      const pzExcel = toIntOrNull(pickAlias(r, ['_pz', 'PZ', 'pz']));
+      const Cantidad = toIntOrNull(pickAlias(r, ['Cantidad', 'CANTIDAD', 'cantidad'])) ?? 0;
+
+      parsed.push({
+        raw: r,
+        Codigo,
+        No_Orden,
+        tipo_orden,
+        almacen_envio,
+        dia_envio,
+        tiempo_llegada_estimado,
+        DescripcionExcel,
+        ClaveExcel,
+        umExcel,
+        pzExcel,
+        Cantidad,
+        articulo2,
+      });
+
+      if (Codigo != null) codigos.add(Number(Codigo));
+    }
+
+    // 2) Lookup a productos por lote (para completar descripcion/clave/um/_pz)
+    let productoByCod = new Map();
+    if (codigos.size) {
+      const uniq = [...codigos];
+      const placeholders = uniq.map(() => '?').join(',');
+      const [prodRows] = await pool.query(
+        `SELECT codigo_pro AS codigo, des, clave, um, _pz
+           FROM productos
+          WHERE codigo_pro IN (${placeholders})`,
+        uniq
+      );
+      productoByCod = new Map(prodRows.map(p => [Number(p.codigo), p]));
+    }
+
+    // 3) Insertar
+    let inserted = 0, skipped = 0;
+    const errors = [];
+
+    for (const r of parsed) {
+      try {
+        const Codigo = toIntOrNull(r.Codigo);
+        if (Codigo == null) { skipped++; errors.push({ row: r.raw, reason: 'Sin Código válido' }); continue; }
+        if (!r.dia_envio) { skipped++; errors.push({ row: r.raw, reason: 'Falta dia_envio (Fecha solicitud)' }); continue; }
+
+        const prod = productoByCod.get(Codigo) || null;
+
+        const Descripcion =
+          (r.DescripcionExcel && String(r.DescripcionExcel).trim()) ||
+          (prod && prod.des) ||
+          'SIN DESCRIPCION';
+
+        const Clave = r.ClaveExcel || (prod && prod.clave) || r.articulo2 || null;
+        const um = r.umExcel || (prod && prod.um) || null;
+        const _pz = (r.pzExcel != null ? r.pzExcel : (prod ? prod._pz : null));
+
+        await pool.query(
+          `INSERT INTO mandar_traspaso
+           (No_Orden, tipo_orden, Codigo, Descripcion, Clave, um, _pz, Cantidad, dia_envio, almacen_envio, tiempo_llegada_estimado)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            r.No_Orden,
+            r.tipo_orden,
+            Codigo,
+            Descripcion,
+            Clave,
+            um,
+            _pz,
+            r.Cantidad,
+            r.dia_envio,
+            r.almacen_envio,
+            r.tiempo_llegada_estimado,
+          ]
+        );
+        inserted++;
+      } catch (e) {
+        skipped++;
+        errors.push({ row: r.raw, reason: e.message });
+      }
+    }
+
+    return res.json({ ok: true, inserted, skipped, errors });
+  } catch (err) {
+    console.error('importTraspasosExcel error:', err);
+    return res.status(500).json({ ok: false, msg: 'Error importando Excel', error: err.message });
+  }
+};
+
+/* =========================
+   EXPORTS
+   ========================= */
 module.exports = {
+  // CRUD RH
+  getInsumosRH,
+  createInsumo,
+  updateInsumo,
+  deleteInsumo,
+
+  // Traspasos
   buscarProducto,
   createTraspaso,
   Traspasos,
-  excelToJson
+
+  // Excel
+  importTraspasosExcelMiddleware,
+  excelToJson,
+  importTraspasosExcel,
 };

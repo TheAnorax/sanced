@@ -38,7 +38,7 @@ const autorizarRecibo = async (req, res) => {
     codigo,
     oc,
     cantidad_recibida,
-    fecha_recibo, 
+    fecha_recibo,
     id_recibo_compras,
     userId,
   } = req.body;
@@ -76,7 +76,7 @@ const actualizarUbicacion = async (req, res) => {
     caducidad,
   } = req.body;
 
-  console.log("Datos para actualizar Alma :", req.body);  
+  console.log("Datos para actualizar Alma :", req.body);
 
   const finalCodeProd = code_prod || null;
   const finalCantStock = cant_stock || null;
@@ -114,19 +114,22 @@ const actualizarUbicacion = async (req, res) => {
           (ubi_origen, ubi_destino, code_prod, cant_stock, lote, almacen_origen, almacen_destino, fecha_movimiento, usuario) 
          VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), ?)`,
         [
-          'AJUSTE INV.',     // ubi_origen
-          ubi,               // ubi_destino
+          "AJUSTE INV.", // ubi_origen
+          ubi, // ubi_destino
           finalCodeProd,
           finalCantStock,
           finalLote,
-          almacenOrigen,     // 👈 aquí corregido
+          almacenOrigen, // 👈 aquí corregido
           finalAlmacen || 7050,
-          user_id
+          user_id,
         ]
       );
 
       await connection.commit();
-      res.json({ success: true, message: "Actualización y registro en historial exitosos" });
+      res.json({
+        success: true,
+        message: "Actualización y registro en historial exitosos",
+      });
     } else {
       await connection.rollback();
       res.status(404).json({
@@ -143,12 +146,9 @@ const actualizarUbicacion = async (req, res) => {
       error: error.message,
     });
   } finally {
-    if (connection) connection.release(); 
+    if (connection) connection.release();
   }
 };
-
-
-
 
 const insertNuevaUbicacion = async (req, res) => {
   console.log("Datos recibidos en el backend:", req.body);
@@ -211,8 +211,6 @@ const insertNuevaUbicacion = async (req, res) => {
     });
   }
 };
-
-
 
 const insertarNuevoProducto = async (req, res) => {
   try {
@@ -280,7 +278,16 @@ ORDER BY u.ubi ASC
 };
 
 const updatePeacking = async (req, res) => {
-  const { id_ubi, code_prod, cant_stock, pasillo, lote, almacen, user_id, ubi } = req.body;
+  const {
+    id_ubi,
+    code_prod,
+    cant_stock,
+    pasillo,
+    lote,
+    almacen,
+    user_id,
+    ubi,
+  } = req.body;
   console.log("Update Pick:", req.body);
 
   // Validación de entrada
@@ -306,7 +313,7 @@ const updatePeacking = async (req, res) => {
         `INSERT INTO historial_pick 
          (id_ubi, ubi, code_prod, cant_stock, lote, almacen, user_id) 
          VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [id_ubi, ubi || 'N/A', code_prod, cant_stock, lote, almacen, user_id]
+        [id_ubi, ubi || "N/A", code_prod, cant_stock, lote, almacen, user_id]
       );
 
       return res.json({
@@ -329,9 +336,8 @@ const updatePeacking = async (req, res) => {
   }
 };
 
-
 const insertPeacking = async (req, res) => {
-  console.log("Datos recibidos en el backend:", req.body); 
+  console.log("Datos recibidos en el backend:", req.body);
 
   const { ubi, code_prod, cant_stock, pasillo, lote, almacen } = req.body;
 
@@ -370,7 +376,7 @@ const insertPeacking = async (req, res) => {
   }
 };
 
-const obtenerUbiAlma = async (req, res) => { 
+const obtenerUbiAlma = async (req, res) => {
   try {
     // Realizar la consulta para obtener todos los registros
     const [rows] = await pool.query(`
@@ -487,7 +493,6 @@ const getUbicacionesPares = async (req, res) => {
   }
 };
 
-
 const deletepickUnbi = async (req, res) => {
   const { id_ubi } = req.body;
   console.log("DELETE ubicaciones", req.body);
@@ -500,7 +505,10 @@ const deletepickUnbi = async (req, res) => {
   }
 
   try {
-    const [result] = await pool.query("DELETE FROM ubicaciones WHERE id_ubi = ?", [id_ubi]);
+    const [result] = await pool.query(
+      "DELETE FROM ubicaciones WHERE id_ubi = ?",
+      [id_ubi]
+    );
 
     if (result.affectedRows === 0) {
       return res.status(404).json({
@@ -538,13 +546,43 @@ const getProductsWithoutLocation = async (req, res) => {
 
     res.json(rows);
   } catch (error) {
-    console.error('Error al obtener productos sin ubicación:', error);
-    res.status(500).json({ message: 'Error al obtener productos sin ubicación', error: error.message });
+    console.error("Error al obtener productos sin ubicación:", error);
+    res.status(500).json({
+      message: "Error al obtener productos sin ubicación",
+      error: error.message,
+    });
   }
 };
 
+// Obtener historial de modificaciones
+const modificacionesRoutes = async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT 
+        m.id_modi,
+        m.codigo,
+        p.des AS descripcion_producto,
+        m.tabla,
+        m.campo,
+        m.valor_anterior,
+        m.valor_nuevo,
+        DATE_FORMAT(m.fecha_modificacion, '%Y-%m-%d %H:%i:%s') AS fecha_modificacion,
+        u.name AS usuario
+      FROM modificaciones m
+      LEFT JOIN usuarios u ON m.id_usuario = u.id_usu
+      LEFT JOIN productos p ON m.codigo = p.codigo_pro
+      ORDER BY m.fecha_modificacion DESC;
+    `);
 
-
+    res.json(rows);
+  } catch (error) {
+    console.error("❌ Error al obtener historial de modificaciones:", error);
+    res.status(500).json({
+      message: "Error al obtener historial de modificaciones",
+      error: error.message,
+    });
+  }
+};
 module.exports = {
   getInventarios,
   autorizarRecibo,
@@ -553,11 +591,12 @@ module.exports = {
   getPeacking,
   updatePeacking,
   insertPeacking,
-  obtenerUbiAlma, 
+  obtenerUbiAlma,
   deleteTarea,
   getUbicacionesImpares,
   getUbicacionesPares,
   insertNuevaUbicacion,
   deletepickUnbi,
-  getProductsWithoutLocation
-}; 
+  getProductsWithoutLocation,
+  modificacionesRoutes,
+};

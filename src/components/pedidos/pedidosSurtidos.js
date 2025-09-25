@@ -128,6 +128,10 @@ function EnSurtido() {
     setSelectedBahiasModal([]);
   };
 
+
+
+
+
   const updateBahiasFromModal = async () => {
     try {
       const combinedBahias = [
@@ -1634,7 +1638,7 @@ const authorizePedido = async () => {
             boxShadow: 24,
             p: 4,
             overflowY: "auto",
-          }}
+          }} 
         >
           <Typography variant="h5" mb={2}>
             Cancelar Pedidos
@@ -1677,168 +1681,212 @@ const authorizePedido = async () => {
               </Table>
             </TableContainer>
           )}
-          {tabValue === 1 && (
-            <Box>
-              <Box
-                display="flex"
-                justifyContent="space-between"
-                alignItems="center"
-                width="auto"
-                mb={2}
-              >
-                <Typography variant="h6">Pedidos del Turno</Typography>
-              </Box>
-              <Box
-                display="flex"
-                flexDirection="column"
-                alignItems="center"
-                bgcolor="#faf7f7"
-                p={2}
-                borderRadius={4}
-                boxShadow={2}
-                width="auto"
-              >
-                <TableContainer component={Paper} sx={{ maxHeight: 500 }}>
-                  <Table stickyHeader size="small">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>
-                          <strong>Nombre</strong>
-                        </TableCell>
-                        <TableCell>
-                          <strong>Códigos</strong>
-                        </TableCell>
-                        <TableCell>
-                          <strong>Pedidos</strong>
-                        </TableCell>
-                        <TableCell>
-                          <strong>Piezas</strong>
-                        </TableCell>
-                        <TableCell>
-                          <strong>Tiempo de Surtido</strong>
-                        </TableCell>
-                        <TableCell>
-                          <strong>Tiempo General</strong>
-                        </TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {Object.keys(usuarios)
-                        .map((usuario) => ({
-                          nombre: usuario,
-                          ...usuarios[usuario],
-                        }))
-                        .sort(
-                          (a, b) =>
-                            (b.productos_surtidos || 0) -
-                            (a.productos_surtidos || 0)
-                        ) // <-- Aquí se ordena de mayor a menor
-                        .map((usuario, index) => (
-                          <TableRow key={index}>
-                            <TableCell>{usuario.nombre}</TableCell>
-                            <TableCell>
-                              {usuario.productos_surtidos
-                                ? Number(
-                                    usuario.productos_surtidos
-                                  ).toLocaleString("es-MX")
-                                : "N/A"}
-                            </TableCell>
-                            <TableCell>
-                              {usuario.pedidos_surtidos
-                                ? Number(
-                                    usuario.pedidos_surtidos
-                                  ).toLocaleString("es-MX")
-                                : "N/A"}
-                            </TableCell>
-                            <TableCell>
-                              {usuario.cantidad_total_surti
-                                ? Number(
-                                    usuario.cantidad_total_surti
-                                  ).toLocaleString("es-MX")
-                                : "N/A"}
-                            </TableCell>
-                            <TableCell>
-                              {usuario.tiempo_surtido || "N/A"}
-                            </TableCell>
-                            <TableCell>
-                              {usuario.tiempo_general || "N/A"}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              </Box>
+{tabValue === 1 && (
+  <Box>
+    <Box
+      display="flex"
+      justifyContent="space-between"
+      alignItems="center"
+      width="auto"
+      mb={2}
+    >
+      <Typography variant="h6">Pedidos del Turno</Typography>
+    </Box>
 
-              <Typography variant="h6" mb={2} mt={5}>
-                Total de pedidos: {turnoPedidosCount} - Total de partidas:{" "}
-                {totalPartidas} - Total de piezas: {totalPiezas}
-              </Typography>
-              <RadioGroup
-                row
-                aria-label="turno"
-                name="row-radio-buttons-group"
-                value={selectedTurno}
-                onChange={handleTurnoChange}
-              >
-                <FormControlLabel
-                  value="turno1"
-                  control={<Radio />}
-                  label="Turno 1"
-                />
-                <FormControlLabel
-                  value="turno2"
-                  control={<Radio />}
-                  label="Turno 2"
-                />
-                <FormControlLabel
-                  value="turno3"
-                  control={<Radio />}
-                  label="Turno 3"
-                />
-              </RadioGroup>
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={handleExportToExcel}
-              >
-                Descargar en Excel
-              </Button>
-              <TableContainer component={Paper}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Pedido</TableCell>
-                      <TableCell>Tipo</TableCell>
-                      <TableCell>Partidas</TableCell>
-                      <TableCell>PZ</TableCell>
-                      <TableCell>Bahia</TableCell>
-                      <TableCell>Inicio Surtido</TableCell>
-                      <TableCell>Fin Surtido</TableCell>
-                      <TableCell>Tiempo de Surtido</TableCell>
-                      <TableCell>Status</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {turnoPedidos.map((pedido, index) => (
-                      <TableRow key={index}>
-                        <TableCell>{pedido.pedido}</TableCell>
-                        <TableCell>{pedido.productos[0].tipo}</TableCell>
-                        <TableCell>{pedido.partidas}</TableCell>
-                        <TableCell>{pedido.totalPZ}</TableCell>
-                        <TableCell>{pedido.ubi_bahia}</TableCell>{" "}
-                        {/* Aquí se muestra ubi_bahia */}
-                        <TableCell>{pedido.inicio_surtido}</TableCell>
-                        <TableCell>{pedido.fin_surtido}</TableCell>
-                        <TableCell>{pedido.tiempo_surtido}</TableCell>
-                        <TableCell>{pedido.origen}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Box>
-          )}
+    {(() => {
+      const parseTimeToHours = (timeString) => {
+        if (!timeString || timeString === "N/A") return 0;
+
+        // Caso 1: formato HH:MM:SS
+        if (timeString.includes(":")) {
+          const parts = timeString.split(":");
+          const hours = parseInt(parts[0], 10) || 0;
+          const minutes = parseInt(parts[1], 10) || 0;
+          const seconds = parseInt(parts[2], 10) || 0;
+          return hours + minutes / 60 + seconds / 3600;
+        }
+
+        // Caso 2: formato con horas y minutos tipo "2h 14min"
+        if (timeString.includes("h") || timeString.includes("min")) {
+          const regex = /(?:(\d+)h)?\s*(?:(\d+(?:\.\d+)?)min)?/i;
+          const match = timeString.match(regex);
+          if (match) {
+            const hours = parseInt(match[1], 10) || 0;
+            const minutes = parseFloat(match[2]) || 0;
+            return hours + minutes / 60;
+          }
+        }
+
+        // Caso 3: solo minutos tipo "36.92 min"
+        if (/min/i.test(timeString)) {
+          const minutes = parseFloat(timeString.replace("min", "").trim()) || 0;
+          return minutes / 60;
+        }
+
+        return 0;
+      };
+
+      return (
+        <>
+          <Box
+            display="flex"
+            flexDirection="column"
+            alignItems="center"
+            bgcolor="#faf7f7"
+            p={2}
+            borderRadius={4}
+            boxShadow={2}
+            width="auto"
+          >
+            <TableContainer component={Paper} sx={{ maxHeight: 500 }}>
+              <Table stickyHeader size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell><strong>Nombre</strong></TableCell>
+                    <TableCell><strong>Códigos</strong></TableCell>
+                    <TableCell><strong>Pedidos</strong></TableCell>
+                    <TableCell><strong>Piezas</strong></TableCell>
+                    <TableCell><strong>Tiempo de Surtido</strong></TableCell>
+                    <TableCell><strong>Tiempo General</strong></TableCell>
+                    <TableCell><strong>Líneas/Hora</strong></TableCell>
+                    <TableCell><strong>Meta</strong></TableCell>
+                    <TableCell><strong>% Cumplimiento</strong></TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {Object.keys(usuarios)
+                    .map((usuario) => ({
+                      nombre: usuario,
+                      ...usuarios[usuario],
+                    }))
+                    .sort(
+                      (a, b) =>
+                        (b.productos_surtidos || 0) -
+                        (a.productos_surtidos || 0)
+                    )
+                    .map((usuario, index) => {
+                      const horas = parseTimeToHours(usuario.tiempo_general);
+
+                      // 🔹 Líneas/hora reales (si hay tiempo)
+                      const lph =
+                        usuario.productos_surtidos && horas > 0
+                          ? usuario.productos_surtidos / horas
+                          : null;
+
+                      // 🔹 Meta fija 300 códigos
+                      const meta = 300;
+
+                      // 🔹 % cumplimiento = avance real contra meta fija
+                      const cumplimiento =
+                        usuario.productos_surtidos && meta > 0
+                          ? (usuario.productos_surtidos / meta) * 100
+                          : null;
+
+                      return (
+                        <TableRow key={index}>
+                          <TableCell>{usuario.nombre}</TableCell>
+                          <TableCell>
+                            {usuario.productos_surtidos
+                              ? Number(usuario.productos_surtidos).toLocaleString("es-MX")
+                              : "N/A"}
+                          </TableCell>
+                          <TableCell>
+                            {usuario.pedidos_surtidos
+                              ? Number(usuario.pedidos_surtidos).toLocaleString("es-MX")
+                              : "N/A"}
+                          </TableCell>
+                          <TableCell>
+                            {usuario.cantidad_total_surti
+                              ? Number(usuario.cantidad_total_surti).toLocaleString("es-MX")
+                              : "N/A"}
+                          </TableCell>
+                          <TableCell>{usuario.tiempo_surtido || "N/A"}</TableCell>
+                          <TableCell>{usuario.tiempo_general || "N/A"}</TableCell>
+
+                          {/* 🔹 Líneas/hora */}
+                          <TableCell>
+                            {lph ? lph.toFixed(1) : "N/A"}
+                          </TableCell>
+
+                          {/* 🔹 Meta fija */}
+                          <TableCell>{meta}</TableCell>
+
+                          {/* 🔹 % Cumplimiento */}
+                          <TableCell>
+                            {cumplimiento ? `${cumplimiento.toFixed(1)}%` : "N/A"}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Box>
+        </>
+      );
+    })()}
+
+    <Typography variant="h6" mb={2} mt={5}>
+      Total de pedidos: {turnoPedidosCount} - Total de partidas: {totalPartidas} - Total de piezas: {totalPiezas}
+    </Typography>
+
+    <RadioGroup
+      row
+      aria-label="turno"
+      name="row-radio-buttons-group"
+      value={selectedTurno}
+      onChange={handleTurnoChange}
+    >
+      <FormControlLabel value="turno1" control={<Radio />} label="Turno 1" />
+      <FormControlLabel value="turno2" control={<Radio />} label="Turno 2" />
+      <FormControlLabel value="turno3" control={<Radio />} label="Turno 3" />
+    </RadioGroup>
+
+    <Button
+      variant="contained"
+      color="primary"
+      onClick={handleExportToExcel}
+    >
+      Descargar en Excel
+    </Button>
+
+    {/* 🔹 Tabla de pedidos del turno */}
+    <TableContainer component={Paper}>
+      <Table>
+        <TableHead>
+          <TableRow>
+            <TableCell>Pedido</TableCell>
+            <TableCell>Tipo</TableCell>
+            <TableCell>Partidas</TableCell>
+            <TableCell>PZ</TableCell>
+            <TableCell>Bahia</TableCell>
+            <TableCell>Inicio Surtido</TableCell>
+            <TableCell>Fin Surtido</TableCell>
+            <TableCell>Tiempo de Surtido</TableCell>
+            <TableCell>Status</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {turnoPedidos.map((pedido, index) => (
+            <TableRow key={index}>
+              <TableCell>{pedido.pedido}</TableCell>
+              <TableCell>{pedido.productos[0].tipo}</TableCell>
+              <TableCell>{pedido.partidas}</TableCell>
+              <TableCell>{pedido.totalPZ}</TableCell>
+              <TableCell>{pedido.ubi_bahia}</TableCell>
+              <TableCell>{pedido.inicio_surtido}</TableCell>
+              <TableCell>{pedido.fin_surtido}</TableCell>
+              <TableCell>{pedido.tiempo_surtido}</TableCell>
+              <TableCell>{pedido.origen}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  </Box>
+)}
+
+
 
           <Box sx={{ mt: 2, textAlign: "center" }}>
             <Button

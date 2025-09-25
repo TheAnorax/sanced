@@ -60,7 +60,8 @@ const io = new Server(server, {
 
 const corsOptions = {
   origin: [
-    'http://localhost:9100',              // <-- necesario
+    'http://localhost:9100',              // <-- necesarioF    
+    'http://localhost:9102', 
     'http://localhost:3000',
     'http://66.232.105.87:3000',
     'http://sanced.santulconnect.com',

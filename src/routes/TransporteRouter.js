@@ -36,6 +36,9 @@ const {
   actualizarTipoOriginalDesdeExcel,
   actualizarGuiaCompleta,
   datosPedidos,
+  getPaqueteriaByMonth,
+  updatePaqueteriaUno,
+  updatePaqueteriaBatch,
 } = require("../controller/TrasporteController");
 
 router.get("/getPaqueteriaData", getPaqueteriaData);
@@ -115,7 +118,7 @@ router.get("/referencias", getReferenciasClientes);
 router.post("/obtenerPedidos", async (req, res) => {
   try {
     const response = await axios.post(
-      "http://santul.verpedidos.com:9011/Santul/SANCED"
+      "http://santul.verpedidos.com:9010/Santul/SANCED"
     );
     res.json(response.data);
   } catch (err) {
@@ -136,5 +139,11 @@ router.get("/pedidosRegistrados", async (req, res) => {
     res.status(500).json({ error: "Error en servidor" });
   }
 });
+
+router.get("/Actualizar-Porrateo", getPaqueteriaByMonth);
+
+router.put("/Paqueteria/actualizarNuevoPorrateo", updatePaqueteriaUno);
+
+router.put("/Paqueteria/actualizar-batch", updatePaqueteriaBatch);
 
 module.exports = router;

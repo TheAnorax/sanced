@@ -55,6 +55,7 @@ function Recibo() {
   const [filterOC, setFilterOC] = useState("");
   const [filterCodigo, setFilterCodigo] = useState("");
   const { user } = useContext(UserContext);
+//  const baseURL = "https://sanced.santulconnect.com:3011"; // servidor estático
 
   const handlePrint = async () => {
     setLoadingDialogOpen(true); // Mostrar el diálogo de carga
@@ -584,7 +585,7 @@ function Recibo() {
                   <TableCell>
                     <img
                       src={`../assets/image/img_pz/${recibo.codigo}.jpg`}
-                      alt="Producto"
+                      alt="Producto" 
                       style={{
                         width: "80px",
                         height: "80px",

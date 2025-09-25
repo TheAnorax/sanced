@@ -35,7 +35,13 @@ import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFnsV3";
+import { es } from "date-fns/locale"; // en v3 es "named export"
+
 function ProyectoQueretaro() {
+  const [posicion, setPosicion] = useState(null);
   const [ciudadSeleccionada, setCiudadSeleccionada] = useState("queretaro");
   const [data, setData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
@@ -90,22 +96,25 @@ function ProyectoQueretaro() {
   }, [selectedZona, selectedRuta, diaVisita]);
 
   useEffect(() => {
-    if (currentDay && selectedRuta) {
-      axios
-        .get(
-          `http://66.232.105.87:3007/api/Queretaro/proyectoqueretaro?dia_visita=${currentDay}&ruta=${selectedRuta}`
-        )
-        .then((response) => {
-          const ordenados = response.data.sort(
-            (a, b) => (a.orden_visita || 9999) - (b.orden_visita || 9999)
-          );
-          setData(ordenados);
-          setFilteredData(ordenados);
-        })
-        .catch((error) => {
-          console.error("Error al obtener los datos filtrados:", error);
-        });
-    }
+    if (!currentDay) return;
+
+    const base = "http://66.232.105.87:3007/api/Queretaro/proyectoqueretaro";
+    const url = selectedRuta
+      ? `${base}?dia_visita=${currentDay}&ruta=${selectedRuta}`
+      : `${base}?dia_visita=${currentDay}`;
+
+    axios
+      .get(url)
+      .then((response) => {
+        const ordenados = response.data.sort(
+          (a, b) => (a.orden_visita || 9999) - (b.orden_visita || 9999)
+        );
+        setData(ordenados);
+        setFilteredData(ordenados);
+      })
+      .catch((error) => {
+        console.error("Error al obtener los datos:", error);
+      });
   }, [currentDay, selectedRuta]);
 
   const handleRutaRepartoChange = (event) => {
@@ -233,7 +242,7 @@ function ProyectoQueretaro() {
       .catch((err) => {
         console.error("❌ Error al obtener productos comprados:", err);
         setProductosComprados([]);
-      }); 
+      });
 
     const promDatosCategoria = axios
       .get(
@@ -283,9 +292,7 @@ function ProyectoQueretaro() {
 
     // Filtrar los proyectos según la zona seleccionada
     axios
-      .get(
-        `http://66.232.105.87:3007/api/Queretaro/proyectoqueretaro?zona=${zone}`
-      )
+      .get(`http://66.232.105.87:3007/api/Queretaro/proyectoqueretaro?zona=${zone}`)
       .then((response) => {
         setFilteredData(response.data);
         setPage(0); // Reset the page when changing the filter
@@ -394,8 +401,9 @@ function ProyectoQueretaro() {
               labelId="ruta-label"
               value={selectedRuta}
               label="Ruta"
-              disabled // ← bloqueado
+              onChange={(e) => setSelectedRuta(e.target.value)} // <--- habilitar cambio
             >
+              <MenuItem value="">Todas</MenuItem> {/* <--- importante */}
               <MenuItem value="1">Ruta 1</MenuItem>
               <MenuItem value="2">Ruta 2</MenuItem>
               <MenuItem value="3">Ruta 3</MenuItem>
@@ -1302,12 +1310,12 @@ function ProyectoQueretaro() {
                     Selecciona una Ruta
                   </InputLabel>
                   <Select
-                    labelId="ruta-select-label"
+                    labelId="ruta-label"
                     value={selectedRuta}
-                    onChange={(e) => setSelectedRuta(e.target.value)}
                     label="Ruta"
+                    onChange={(e) => setSelectedRuta(e.target.value)}
                   >
-                    <MenuItem value="">Selecciona una ruta</MenuItem>
+                    <MenuItem value="">Todas</MenuItem>
                     <MenuItem value="1">Ruta 1</MenuItem>
                     <MenuItem value="2">Ruta 2</MenuItem>
                     <MenuItem value="3">Ruta 3</MenuItem>
@@ -1349,6 +1357,7 @@ function ProyectoQueretaro() {
               {currentView === "default" && renderVistaPrincipal()}
               {currentView === "view1" && <MapaRutas />}
               {currentView === "orden" && renderOrdenVisita()}
+              {currentView === "visita" && renderVisita()}
             </>
           )}
         </>
@@ -1606,6 +1615,389 @@ function ProyectoQueretaro() {
     );
   };
 
+  useEffect(() => {
+    // Si viene ?visita=queretaro|guadalajara, abre esa vista directo
+    const params = new URLSearchParams(window.location.search);
+    const visita = (params.get("visita") || "").toLowerCase();
+
+    if (visita === "queretaro" || visita === "guadalajara") {
+      setCiudadSeleccionada(visita);
+      // elige qué quieres mostrar al abrir la pestaña:
+      setCurrentView("default"); // "default" (lugares), "view1" (mapa) o "orden"
+    }
+  }, []);
+
+  const abrirVisitaEnNuevaPestana = (ciudad) => {
+    const base = `${window.location.origin}${window.location.pathname}`;
+    const url = `${base}?visita=${encodeURIComponent(ciudad)}`;
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
+  // 1) Ten tu lista de asesores (puede venir de tu API)
+
+  const asesores = [
+    { clave: 128268, nom: "Solis Rodriguez Martha Elena" },
+    { clave: 124095, nom: "EVANGELINA BARRERA AVILA" },
+    { clave: 124837, nom: "VALERIA RODRIGUEZ CABRERA" },
+  ];
+
+  const asesoresMap = React.useMemo(() => {
+    const m = new Map();
+    asesores.forEach((a) => m.set(Number(a.clave), a.nom));
+    return m;
+  }, []);
+
+  const numVentas = React.useMemo(
+    () => Number(filteredData?.[0]?.num_ventas ?? NaN),
+    [filteredData]
+  );
+  const nombreAsesor = asesoresMap.get(numVentas) || "-";
+  const [fechaPos, setFechaPos] = React.useState(null);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+
+  const [posicionesDia, setPosicionesDia] = useState([]); // <-- NUEVO
+
+  const pickUltimaPos = (payload) => {
+    const arr =
+      payload?.posiciones || payload?.data?.posiciones || payload?.data || [];
+    if (!Array.isArray(arr) || arr.length === 0) return null;
+    return [...arr].sort((a, b) => new Date(a.fec) - new Date(b.fec)).at(-1);
+  };
+
+  const fetchPosicionesDelDia = async (clave, fechaISO) => {
+    try {
+      const res = await axios.post(
+        "http://66.232.105.79:9100/agente_posicion",
+        { clave, fecha: fechaISO }
+      );
+      const arr = res?.data?.posiciones ?? [];
+      return arr.sort((a, b) => new Date(a.fec) - new Date(b.fec));
+    } catch (e) {
+      console.error("agente_posicion error:", e);
+      return [];
+    }
+  };
+
+  // (opcional) fallback si no hay datos en ese día
+  const fetchPosicionConFallback = async (clave, fechaBase, rangoDias = 7) => {
+    for (let i = 0; i <= rangoDias; i++) {
+      const d = new Date(fechaBase);
+      d.setDate(d.getDate() - i);
+      const fechaISO = d.toISOString().split("T")[0];
+      const arr = await fetchPosicionesDelDia(clave, fechaISO);
+      if (arr.length) return { arr, fechaISO };
+    }
+    return { arr: [], fechaISO: null };
+  };
+
+  useEffect(() => {
+    const run = async () => {
+      if (!Number.isFinite(numVentas) || !selectedDate) {
+        setPosicionesDia([]);
+        setPosicion(null);
+        setFechaPos(null);
+        return;
+      }
+      const fechaISO = new Date(selectedDate).toISOString().split("T")[0];
+      // si NO quieres fallback, usa directamente fetchPosicionesDelDia
+      const { arr } = await fetchPosicionConFallback(
+        numVentas,
+        selectedDate,
+        7
+      );
+      setPosicionesDia(arr); // <-- todas las posiciones
+      const last = arr.at(-1) || null; // última para el banner
+      setPosicion(last);
+      setFechaPos(last?.fec || null);
+    };
+    run();
+  }, [numVentas, selectedDate]);
+
+  const clientesVisitados = React.useMemo(() => {
+    return new Set(posicionesDia.map((p) => String(p.clie).trim()));
+  }, [posicionesDia]);
+
+  // (fuera de renderVisita)
+  const matches = filteredData.filter((r) => {
+    const idFila = getClienteIdFromRow(r); // <-- se usa aquí...
+    return idFila && clientesVisitados.has(idFila);
+  });
+
+  // 1) Mapa: clie -> última posición de ese día
+  const posMap = React.useMemo(() => {
+    const m = new Map();
+    posicionesDia.forEach((p) => {
+      const key = String(p.clie).trim();
+      // si hay varias, nos quedamos con la última (ya viene ordenado; si no, compara fechas)
+      m.set(key, p);
+    });
+    return m;
+  }, [posicionesDia]);
+
+  // 2) Función que saca el id de cliente de una fila
+  function getClienteIdFromRow(r) {
+    const cand = [
+      r["FISCAL_RELACIONADO_(CAMPO 2)"],
+      r["FISCAL_RELACIONADO_(CAMPO_2)"],
+      r.FISCAL_RELACIONADO_CAMPO_2,
+      r.fiscal_relacionado,
+      r.fiscal_relacionado_campo2,
+      r.clie,
+      r.Num_cliente,
+      r.Num_Cliente,
+      r.num_cliente,
+      r.num_Cliente,
+    ].find((v) => v !== undefined && v !== null);
+    return cand == null ? null : String(cand).trim();
+  }
+
+  const dayName = (d) => {
+    const days = [
+      "DOMINGO",
+      "LUNES",
+      "MARTES",
+      "MIERCOLES",
+      "JUEVES",
+      "VIERNES",
+      "SÁBADO",
+    ];
+    return days[d.getDay()];
+  };
+
+  useEffect(() => {
+    setCurrentDay(dayName(selectedDate));
+  }, [selectedDate]);
+
+  const renderVisita = () => {
+    const clieFromPos =
+      posicion?.clie != null ? String(posicion.clie).trim() : null;
+
+    const matches = clieFromPos
+      ? filteredData.filter((r) => {
+          const idFila = getClienteIdFromRow(r);
+          return idFila && idFila === clieFromPos;
+        })
+      : [];
+
+    return (
+      <Box sx={{ p: 2 }}>
+        <Typography variant="h6" gutterBottom>
+          Visita – Resumen de Clientes (Querétaro)
+          <br />
+          Asesor De Ventas: {Number.isNaN(numVentas) ? "-" : numVentas} –{" "}
+          {nombreAsesor}
+          {fechaPos && (
+            <span style={{ fontWeight: 400 }}>
+              {"  "}• Última posición: {new Date(fechaPos).toLocaleString()}
+            </span>
+          )}
+        </Typography>
+
+        <br></br>
+        <Grid
+          container
+          spacing={2}
+          justifyContent="center"
+          alignItems="center"
+          sx={{ mb: 2 }}
+        >
+          <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={es}>
+            <DatePicker
+              label="Selecciona día"
+              value={selectedDate}
+              onChange={(newValue) => {
+                if (newValue) setSelectedDate(newValue);
+              }}
+              slotProps={{
+                textField: { size: "small", sx: { minWidth: 220 } },
+              }}
+            />
+          </LocalizationProvider>
+        </Grid>
+
+        {/* Banner con última posición */}
+        {posicion && (
+          <Box
+            sx={{
+              mb: 2,
+              p: 2,
+              border: "1px solid #e0e0e0",
+              borderRadius: 1,
+              backgroundColor: "#f7f7f7",
+              fontSize: 14,
+            }}
+          >
+            <strong>Última posición del asesor:</strong>{" "}
+            {new Date(posicion.fec).toLocaleString()} &nbsp;|&nbsp;
+            <strong>lat:</strong> {posicion.lat} &nbsp;|&nbsp;{" "}
+            <strong>lon:</strong> {posicion.lon}
+            {Boolean(posicionesDia.length) && (
+              <>
+                {" "}
+                &nbsp;|&nbsp; <strong>paradas:</strong> {posicionesDia.length}
+              </>
+            )}
+          </Box>
+        )}
+
+        {/* KPIs */}
+        <Grid container spacing={2} sx={{ mb: 2 }}>
+          <Grid item xs={12} sm={6} md={3}>
+            <Card>
+              <CardContent>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Total lugares
+                </Typography>
+                <Typography variant="h5">{filteredData.length}</Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <Card>
+              <CardContent>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Activos
+                </Typography>
+                <Typography variant="h5">
+                  {filteredData.filter((x) => x.status === "ACTIVO").length}
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <Card>
+              <CardContent>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Prospectos
+                </Typography>
+                <Typography variant="h5">
+                  {filteredData.filter((x) => x.status === "PROSPECTO").length}
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <Card>
+              <CardContent>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Ruta seleccionada
+                </Typography>
+                <Typography variant="h5">{selectedRuta || "-"}</Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+
+        {/* Tabla */}
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell>#</TableCell>
+              <TableCell>Nombre</TableCell>
+              <TableCell>Num Cliente</TableCell>
+              <TableCell>Total de Venta</TableCell>
+              <TableCell>Portafolio</TableCell>
+              <TableCell>Dia de Visita</TableCell>
+              <TableCell>lat</TableCell>
+              <TableCell>long</TableCell>
+              <TableCell>Fecha y Hora de visita</TableCell>
+            </TableRow>
+          </TableHead>
+
+          <TableBody>
+            {filteredData.map((row, idx) => {
+              const idFila = getClienteIdFromRow(row);
+
+              // ← AQUÍ SÍ definimos pos usando el mapa de posiciones del día
+              const pos = idFila ? posMap.get(idFila) : null;
+
+              const isVisited = Boolean(pos); // hay posición para este cliente hoy
+              const fechaBonita = pos?.fec
+                ? new Date(pos.fec.replace(" ", "T")).toLocaleString()
+                : "";
+
+              return (
+                <TableRow
+                  key={row.id || idx}
+                  hover
+                  sx={
+                    isVisited
+                      ? {
+                          backgroundColor: "#C8F7C5",
+                          "& td": { color: "#1B5E20", fontWeight: 700 },
+                          borderLeft: "4px solid #2e7d32",
+                        }
+                      : {
+                          backgroundColor: "#fdecea",
+                          "& td": { color: "#b71c1c", fontWeight: 700 },
+                          borderLeft: "4px solid #c62828",
+                        }
+                  }
+                >
+                  <TableCell>{idx + 1}</TableCell>
+
+                  <TableCell>
+                    {row.nombre}
+                    <span style={{ marginLeft: 8, fontSize: 12 }}>
+                      {isVisited ? "● Visitado" : "● No visitado"}
+                    </span>
+                  </TableCell>
+
+                  <TableCell>{idFila || ""}</TableCell>
+                  <TableCell>{/* Total de Venta si lo tienes */}</TableCell>
+                  <TableCell>{/* Portafolio si lo tienes */}</TableCell>
+                  <TableCell>{row.dia_visita}</TableCell>
+
+                  {/* lat/lon de la posición del día (si no hay, vacío) */}
+                  <TableCell>{pos?.lat ?? ""}</TableCell>
+                  <TableCell>{pos?.lon ?? ""}</TableCell>
+
+                  {/* fecha/hora de la visita (si no hay, vacío) */}
+                  <TableCell>{fechaBonita}</TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </Box>
+    );
+  };
+
+  useEffect(() => {
+    const getTomorrowName = () => {
+      const days = [
+        "DOMINGO",
+        "LUNES",
+        "MARTES",
+        "MIERCOLES",
+        "JUEVES",
+        "VIERNES",
+        "SÁBADO",
+      ];
+      const tomorrowIndex = (new Date().getDay() + 1) % 7;
+      return days[tomorrowIndex];
+    };
+
+    const diaManana = getTomorrowName();
+
+    const base = "http://66.232.105.87:3007/api/Queretaro/proyectoqueretaro";
+    const url = selectedRuta
+      ? `${base}?dia_visita=${diaManana}&ruta=${selectedRuta}` // solo esa ruta
+      : `${base}?dia_visita=${diaManana}`; // TODAS las rutas
+
+    axios
+      .get(url)
+      .then((response) => {
+        const ordenados = response.data.sort(
+          (a, b) => (a.orden_visita || 9999) - (b.orden_visita || 9999)
+        );
+        setOrdenData(ordenados);
+      })
+      .catch((error) => {
+        console.error("Error al obtener datos del día siguiente:", error);
+      });
+  }, [selectedRuta]); // si quieres que también se recalcule al cambiar la fecha de hoy, agrega esa dep.
+
   return (
     <>
       {/* Botones para cambiar la ciudad */}
@@ -1616,15 +2008,24 @@ function ProyectoQueretaro() {
         >
           Ver Guadalajara
         </Button>
+
         <Button
           onClick={() => setCiudadSeleccionada("queretaro")}
           sx={{ color: "red" }}
         >
           Ver Querétaro
         </Button>
+
+        <Button
+          onClick={() => {
+            setCurrentView("visita");
+          }}
+          sx={{ color: "red" }}
+        >
+          Lugares que se visitaron
+        </Button>
       </Grid>
 
-      {/* Renderiza la vista seleccionada */}
       {renderView()}
 
       {/* //MODAL PARA ABRIR LAS IMAGENES */}
@@ -1665,6 +2066,6 @@ function ProyectoQueretaro() {
       </Modal>
     </>
   );
-}    
+}
 
 export default ProyectoQueretaro;

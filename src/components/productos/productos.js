@@ -470,6 +470,8 @@ function ProductoCRUD() {
         Número: index + 1,
         Código: producto.codigo_pro,
         Descripción: producto.des,
+        "UM": producto.um,
+        "Minimo": producto.minimo,
         "Código de PIEZA": producto.code_pz,
         "Cantidad en PIEZA": producto._pz,
         "Código de PAQUETE": producto.code_pq,
@@ -576,7 +578,7 @@ function ProductoCRUD() {
         {
           field: "image",
           headerName: "Imagen",
-          width: 100,
+          width: 70,
           renderCell: (params) => (
             <img
               src={`../assets/image/img_pz/${params.row.codigo_pro}.jpg`}
@@ -599,9 +601,21 @@ function ProductoCRUD() {
             />
           ),
         },
-        { field: "codigo_pro", headerName: "Código", width: 80 },
-        { field: "des", headerName: "Descripción", width: 300 },        
-        { field: "ubicaciones", headerName: "Ubi.", width: 150 },
+        { field: "codigo_pro", headerName: "Código", width: 70 },
+        { field: "des", headerName: "Descripción", width: 250 },        
+        { field: "ubicaciones", headerName: "Ubi.", width: 100 },        
+        { field: "um", headerName: "UM", width: 80 },
+        { 
+          field: "minimo", 
+          headerName: "Mínimo", 
+          width: 100,
+          renderCell: (params) => (
+            <span>
+              {params.value > 1 ? `${params.value} pzas` : params.value}
+            </span>
+          )
+        },
+
         { field: "_pz", headerName: "PZ", width: 80 },
         { field: "_inner", headerName: "Inner", width: 80 },
         { field: "_master", headerName: "Master", width: 80 },

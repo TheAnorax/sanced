@@ -71,6 +71,7 @@ import {
   CircularProgress,
   CardContent,
   CardActions,
+  FormControlLabel,
 } from "@mui/material";
 
 import { jsPDF } from "jspdf";
@@ -800,9 +801,24 @@ function Transporte() {
     "TIPO ORIGINAL": row["Tipo"] || "",
   });
 
-  const handleFileUpload = (e) => {
+  const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     const reader = new FileReader();
+
+    // 🔹 Función para generar clave única
+    const buildKey = (orden, tipo) => {
+      return `${String(orden || "").trim()}_${String(tipo || "")
+        .trim()
+        .toUpperCase()}`;
+    };
+
+    // 🔹 Pedidos ya registrados en BD
+    const registradosRes = await axios.get(
+      "http://66.232.105.87:3007/api/Trasporte/pedidosRegistrados"
+    );
+    const pedidosRegistradosDB = new Set(
+      registradosRes.data.map((r) => buildKey(r.no_orden, r.tipo_original))
+    );
 
     reader.onload = (evt) => {
       const bstr = evt.target.result;
@@ -813,30 +829,26 @@ function Transporte() {
         range: 6, // Omitir las primeras 6 filas
       });
 
-      // 🔹 Pedidos ya registrados
-      const pedidosRegistrados = new Set();
+      // 🔹 Pedidos ya registrados (de BD + enviados + asignados)
+      const pedidosRegistrados = new Set([...pedidosRegistradosDB]);
 
       // Pedidos ya enviados
-      sentRoutesData.forEach((r) => {
-        const orden = String(r["NO ORDEN"]).trim();
-        const tipo = String(r["TIPO ORIGINAL"] || r["tipo_original"])
-          .trim()
-          .toUpperCase();
-        pedidosRegistrados.add(`${orden}_${tipo}`);
-      });
+      sentRoutesData.forEach((r) =>
+        pedidosRegistrados.add(
+          buildKey(r["NO ORDEN"], r["TIPO ORIGINAL"] || r["tipo_original"])
+        )
+      );
 
       // Pedidos ya asignados a rutas
       Object.values(groupedData).forEach((route) => {
-        route.rows.forEach((r) => {
-          const orden = String(r["NO ORDEN"]).trim();
-          const tipo = String(r["TIPO ORIGINAL"] || r["tipo_original"])
-            .trim()
-            .toUpperCase();
-          pedidosRegistrados.add(`${orden}_${tipo}`);
-        });
+        route.rows.forEach((r) =>
+          pedidosRegistrados.add(
+            buildKey(r["NO ORDEN"], r["TIPO ORIGINAL"] || r["tipo_original"])
+          )
+        );
       });
 
-      // 🔹 Obtener los últimos 5 días hábiles
+      // 🔹 Obtener últimos 3 días hábiles
       const getLastBusinessDays = (numDays) => {
         const businessDays = [];
         let currentDate = new Date();
@@ -850,10 +862,9 @@ function Transporte() {
         }
         return businessDays;
       };
+      const lastBusinessDays = getLastBusinessDays(3);
 
-      const lastBusinessDays = getLastBusinessDays(5);
-
-      // 🔹 Pedidos con 'Lista Surtido' recientes
+      // 🔹 Pedidos con 'Lista Surtido'
       const filteredData = jsonData
         .map((row) => {
           if (!row["Fecha Lista Surtido"]) return null;
@@ -887,11 +898,11 @@ function Transporte() {
         .sort((a, b) => b.rowDateObject - a.rowDateObject)
         .map(mapColumns)
         .filter((row) => {
-          const orden = String(row["NO ORDEN"]).trim();
-          const tipo = String(row["TIPO ORIGINAL"] || row["tipo_original"])
-            .trim()
-            .toUpperCase();
-          return orden && tipo && !pedidosRegistrados.has(`${orden}_${tipo}`);
+          const key = buildKey(
+            row["NO ORDEN"],
+            row["TIPO ORIGINAL"] || row["tipo_original"]
+          );
+          return key && !pedidosRegistrados.has(key);
         });
 
       // 🔹 Pedidos Facturados
@@ -945,11 +956,11 @@ function Transporte() {
         const mappedFacturados = pedidosSeleccionados
           .map(mapColumns)
           .filter((row) => {
-            const orden = String(row["NO ORDEN"]).trim();
-            const tipo = String(row["TIPO ORIGINAL"] || row["tipo_original"])
-              .trim()
-              .toUpperCase();
-            return orden && tipo && !pedidosRegistrados.has(`${orden}_${tipo}`);
+            const key = buildKey(
+              row["NO ORDEN"],
+              row["TIPO ORIGINAL"] || row["tipo_original"]
+            );
+            return key && !pedidosRegistrados.has(key);
           });
 
         setData([...filteredData, ...mappedFacturados]);
@@ -5518,6 +5529,8 @@ function Transporte() {
     "FEDEX",
   ];
 
+  const [showExtras, setShowExtras] = useState(false);
+
   return (
     <Paper elevation={3} style={{ padding: "20px" }}>
       {/* Pestañas */}
@@ -6928,6 +6941,15 @@ function Transporte() {
               <Box display="flex" gap={2} mb={2}>
                 <Button
                   variant="contained"
+                  color="error"
+                  onClick={handleOpenModalGuia}
+                  sx={{ fontWeight: "bold" }}
+                >
+                  PRORRATEO
+                </Button>
+
+                <Button
+                  variant="contained"
                   color="warning"
                   onClick={() => setBulkGuiaModalOpen(true)}
                   sx={{ fontWeight: "bold" }}
@@ -6969,8 +6991,8 @@ function Transporte() {
               <option value="7">Julio</option>
               <option value="8">Agosto</option>
               <option value="9">Septiembre</option>
-              {/*  <option value="10">Octubre</option>
-                <option value="11">Noviembre</option>
+              <option value="10">Octubre</option>
+              {/*    <option value="11">Noviembre</option>
                 <option value="12">Diciembre</option> */}
             </select>
 
@@ -7208,15 +7230,12 @@ function Transporte() {
                       const pageEnd = pageStart + porrateoRowsPerPage;
                       const pageRows = filteredRows.slice(pageStart, pageEnd);
 
-                      // PUT por fila:
-                      // - prorrateo_factura_lt = prCalc
-                      // - suma_flete          = prCalc
-                      // - total_factura_lt    = totalGrupoEff SOLO en la PRIMERA fila; en las demás NULL (para limpiar)
                       const putFila = async (
                         r,
                         isFirst,
                         prCalc,
-                        totalGrupoEff
+                        totalGrupoEff,
+                        porcentajeGlobalCalc
                       ) => {
                         const body = {
                           no_orden: String(getNoOrden(r)),
@@ -7230,6 +7249,15 @@ function Transporte() {
                           NUMERO_DE_FACTURA_LT:
                             numeroFacturaGrupo || r.NUMERO_DE_FACTURA_LT,
                           por_paq: (factor * 100).toFixed(2),
+
+                          suma_gastos_extras:
+                            r.suma_gastos_extras !== undefined
+                              ? r.suma_gastos_extras
+                              : r.SUMA_GASTOS_EXTRAS,
+
+                          // 👇 igual para % global
+                          porcentaje_global:
+                            porcentajeGlobalCalc ?? r.PORCENTAJE_GLOBAL,
                         };
 
                         const rowKey = keyForStable(r);
@@ -7286,8 +7314,31 @@ function Transporte() {
                         }
                         for (let i = 0; i < filteredRows.length; i++) {
                           const r = filteredRows[i];
-                          const prCalc = round2(factor * toNumber(r.TOTAL));
-                          await putFila(r, i === 0, prCalc, totalGrupoEff); // i===0 manda total_factura_lt, los demás NULL
+
+                          // TOTAL de la fila (no el acumulado del grupo)
+                          const totalBaseRow = toNumber(r.TOTAL);
+
+                          // prorrateo para la fila
+                          const prCalc = round2(factor * totalBaseRow);
+
+                          // gasto extra de la fila
+                          const gastoExtra = toNumber(r.suma_gastos_extras);
+
+                          // % global de la fila = (prorrateo + gasto extra) / TOTAL fila * 100
+                          const porcentajeGlobalCalc =
+                            totalBaseRow > 0
+                              ? round2(
+                                  ((prCalc + gastoExtra) / totalBaseRow) * 100
+                                )
+                              : 0;
+
+                          await putFila(
+                            r,
+                            i === 0, // la primera manda TOTAL_FACTURA_LT
+                            prCalc,
+                            totalGrupoEff,
+                            porcentajeGlobalCalc // <-- ahora sí lo enviamos
+                          );
                         }
                       };
 
@@ -7326,6 +7377,18 @@ function Transporte() {
                             >
                               Aplicar prorrateo y guardar
                             </Button>
+
+                            <FormControlLabel
+                              control={
+                                <Checkbox
+                                  checked={showExtras}
+                                  onChange={(e) =>
+                                    setShowExtras(e.target.checked)
+                                  }
+                                />
+                              }
+                              label="Mostrar Gastos Extras"
+                            />
                           </Box>
 
                           {/* Tabla */}
@@ -7416,13 +7479,35 @@ function Transporte() {
                                       Prorrateo (cálculo en vivo)
                                     </TableCell>
 
+                                    {showExtras && (
+                                      <TableCell
+                                        sx={{
+                                          whiteSpace: "nowrap",
+                                          minWidth: 110,
+                                        }}
+                                      >
+                                        % Global
+                                      </TableCell>
+                                    )}
+
+                                    {showExtras && (
+                                      <TableCell
+                                        sx={{
+                                          whiteSpace: "nowrap",
+                                          minWidth: 110,
+                                        }}
+                                      >
+                                        Gastos Extras
+                                      </TableCell>
+                                    )}
+
                                     <TableCell
                                       sx={{
                                         whiteSpace: "nowrap",
                                         minWidth: 110,
                                       }}
                                     >
-                                      Tipo Ruta
+                                      Tipo
                                     </TableCell>
 
                                     <TableCell
@@ -7464,7 +7549,20 @@ function Transporte() {
                                     const sumaFleteActual =
                                       sumaFleteDB || prCalc;
 
-                                    // índice absoluto (no por página) para saber si es la 1a fila
+                                    const gastoExtra = toNumber(
+                                      r.suma_gastos_extras
+                                    );
+
+                                    // 🔥 cálculo del % Global
+                                    const porcentajeGlobalCalc =
+                                      totalBase > 0
+                                        ? (
+                                            ((prActual + gastoExtra) /
+                                              totalBase) *
+                                            100
+                                          ).toFixed(2)
+                                        : "0.00";
+
                                     const absIndex = pageStart + idx;
                                     const isFirst = absIndex === 0;
 
@@ -7618,7 +7716,82 @@ function Transporte() {
                                           {formatCurrency(prCalc)}
                                         </TableCell>
 
+                                        {/* % Global editable por fila */}
+                                        {showExtras && (
+                                          <TableCell>
+                                            <TextField
+                                              size="small"
+                                              type="text"
+                                              value={
+                                                r.PORCENTAJE_GLOBAL !==
+                                                undefined
+                                                  ? `${Number(
+                                                      r.PORCENTAJE_GLOBAL
+                                                    ).toFixed(2)}%`
+                                                  : `${porcentajeGlobalCalc}%`
+                                              }
+                                              InputProps={{ readOnly: true }}
+                                              sx={{ minWidth: 120 }}
+                                            />
+                                          </TableCell>
+                                        )}
+
+                                        {showExtras && (
+                                          <TableCell>
+                                            <TextField
+                                              size="small"
+                                              type="number"
+                                              value={
+                                                r.suma_gastos_extras !==
+                                                undefined
+                                                  ? r.suma_gastos_extras
+                                                  : r.SUMA_GASTOS_EXTRAS ?? ""
+                                              }
+                                              onChange={(e) => {
+                                                const v = e.target.value;
+                                                const gastoExtra = toNumber(v);
+                                                const totalBaseRow = toNumber(
+                                                  r.TOTAL
+                                                );
+                                                const prCalc = round2(
+                                                  factor * totalBaseRow
+                                                );
+
+                                                const nuevoPorcentajeGlobal =
+                                                  totalBaseRow > 0
+                                                    ? round2(
+                                                        ((prCalc + gastoExtra) /
+                                                          totalBaseRow) *
+                                                          100
+                                                      )
+                                                    : 0;
+
+                                                const t = selectedTransport;
+                                                setPorrateoGroups((prev) => {
+                                                  const copy = { ...prev };
+                                                  copy[t] = (copy[t] || []).map(
+                                                    (x) =>
+                                                      keyForStable(x) === rowKey
+                                                        ? {
+                                                            ...x,
+                                                            suma_gastos_extras:
+                                                              v,
+                                                            PORCENTAJE_GLOBAL:
+                                                              nuevoPorcentajeGlobal,
+                                                          }
+                                                        : x
+                                                  );
+                                                  return copy;
+                                                });
+                                              }}
+                                              placeholder="Suma Gastos Extras"
+                                              sx={{ minWidth: 160 }}
+                                            />
+                                          </TableCell>
+                                        )}
+
                                         <TableCell>{r.TIPO}</TableCell>
+
                                         <TableCell>
                                           {formatDate(r.created_at)}
                                         </TableCell>
@@ -7632,7 +7805,8 @@ function Transporte() {
                                                 r,
                                                 isFirst,
                                                 prCalc,
-                                                totalGrupoEff
+                                                totalGrupoEff,
+                                                porcentajeGlobalCalc
                                               )
                                             }
                                             disabled={savingRowKey === rowKey}

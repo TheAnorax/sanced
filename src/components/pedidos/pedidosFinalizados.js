@@ -603,7 +603,9 @@ function Finalizados() {
             onClick={() =>
               generatePDF(
                 String(params.row.pedido),
-                String(params.row.tipo).toUpperCase().trim()
+                String(params.row.tipo).toUpperCase().trim(),
+                rutas, // 👈 pasas el estado precargado
+                pedidosExternos // 👈 pasas el estado precargado
               )
             }
           >
@@ -808,8 +810,36 @@ function Finalizados() {
     return tipoMasUsado === "ATA" ? "ATADO" : tipoMasUsado;
   };
 
-  const generatePDF = async (pedido, tipo_original) => {
+  const [rutas, setRutas] = useState([]);
+  const [pedidosExternos, setPedidosExternos] = useState([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Rutas
+        const resRutas = await fetch(
+          "http://66.232.105.87:3007/api/Trasporte/ruta-unica"
+        );
+        setRutas(await resRutas.json());
+
+        // Pedidos externos
+        const resPedidos = await axios.post(
+          "http://66.232.105.87:3007/api/Trasporte/obtenerPedidos"
+        );
+        setPedidosExternos(resPedidos.data);
+      } catch (err) {
+        console.error("❌ Error precargando datos:", err);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // 🔹 Dentro de generatePDF
+
+  const generatePDF = async (pedido, tipo_original, rutas, pedidosExternos) => {
     try {
+      console.time("⏳ Tiempo total PDF");
       let numero = "";
       let numeroFactura = "";
       let nombreCliente = "";
@@ -819,151 +849,84 @@ function Finalizados() {
       let totalConIva = 0; // Total CON IVA
       let pedidoEncontrado = "";
 
-      // Cargar BD (ruta-unica)
-      const responseRoutes = await fetch(
-        "http://66.232.105.87:3007/api/Trasporte/ruta-unica"
+      // ======================
+      // 1. Buscar en memoria rutas/pedidos
+      // ======================
+      console.time("Buscar en memoria");
+      const route = rutas.find((r) => String(r["NO ORDEN"]) === String(pedido));
+      pedidoEncontrado = pedidosExternos.find(
+        (p) => String(p.NoOrden) === String(pedido)
       );
-      const routesData = await responseRoutes.json();
-      const route = routesData.find(
-        (r) => String(r["NO ORDEN"]) === String(pedido)
+      console.timeEnd("Buscar en memoria");
+
+      if (!route && !pedidoEncontrado) {
+        alert("❌ No se encontraron datos para el pedido.");
+        return;
+      }
+
+      // ======================
+      // 2. Datos del pedido
+      // ======================
+      tipo_original = route?.["tipo_original"] || tipo_original;
+      nombreCliente =
+        route?.["NOMBRE DEL CLIENTE"] ||
+        pedidoEncontrado?.Nombre_Cliente ||
+        "No disponible";
+      direccion = cleanAddress(
+        pedidoEncontrado?.Direccion || route?.["DIRECCION"] || "No disponible"
       );
+      numeroFactura =
+        pedidoEncontrado?.NoFactura || route?.["NO_FACTURA"] || "No disponible";
+      numero =
+        route?.["NUM. CLIENTE"] ||
+        pedidoEncontrado?.NumConsigna ||
+        "No disponible";
+      telefono =
+        route?.["TELEFONO"] || pedidoEncontrado?.Telefono || "No disponible";
 
-      if (!route) {
-        try {
-          const direccionAPI = await axios.post(
-            "http://66.232.105.87:3007/api/Trasporte/obtenerPedidos"
-          );
-          const pedidosExternos = direccionAPI.data;
+      rawTotal =
+        parseFloat(
+          String(route?.["TOTAL"] || pedidoEncontrado?.Total || "0").replace(
+            /[^0-9.-]+/g,
+            ""
+          )
+        ) || 0;
 
-          pedidoEncontrado = pedidosExternos.find(
-            (p) => String(p.NoOrden) === String(pedido)
-          );
+      const totalIvaAPI = pedidoEncontrado?.TotalConIva
+        ? parseFloat(
+            String(pedidoEncontrado.TotalConIva).replace(/[^0-9.-]+/g, "")
+          )
+        : 0;
 
-          // Datos base
-          nombreCliente =
-            route?.["NOMBRE DEL CLIENTE"] ||
-            pedidoEncontrado?.Nombre_Cliente ||
-            "No disponible";
-
-          direccion = cleanAddress(
-            pedidoEncontrado?.Direccion ||
-              route?.["DIRECCION"] ||
-              "No disponible"
-          );
-
-          numeroFactura =
-            pedidoEncontrado?.NoFactura ||
-            route?.["NO_FACTURA"] ||
-            "No disponible";
-
-          numero =
-            route?.["NUM. CLIENTE"] ||
-            pedidoEncontrado?.NumConsigna ||
-            "No disponible";
-
-          telefono =
-            route?.["TELEFONO"] ||
-            pedidoEncontrado?.Telefono ||
-            "No disponible";
-
-          // Subtotal (sin IVA)
-          rawTotal =
-            parseFloat(
-              String(
-                route?.["TOTAL"] || pedidoEncontrado?.Total || "0"
-              ).replace(/[^0-9.-]+/g, "")
-            ) || 0;
-
-          // Fallback Total con IVA:
-          // 1) API externa (TotalConIva)
-          // 2) Tu BD (totalIva o TOTAL_FACTURA_LT) si existiera para esta orden
-          // 3) Subtotal como último recurso
-          const totalIvaAPI = pedidoEncontrado?.TotalConIva
-            ? parseFloat(
-                String(pedidoEncontrado.TotalConIva).replace(/[^0-9.-]+/g, "")
-              )
-            : 0;
-
-          // Por si existe en routesData otra fila de esa orden (normalmente no, pero queda el intento)
-          const routeFallback = routesData.find(
-            (r) => String(r["NO ORDEN"]) === String(pedido)
-          );
-          const totalIvaDB = routeFallback
-            ? parseFloat(
-                String(
-                  routeFallback.totalIva ?? routeFallback.TOTAL_FACTURA_LT ?? 0
-                ).replace(/[^0-9.-]+/g, "")
-              ) || 0
-            : 0;
-
-          totalConIva = totalIvaAPI || totalIvaDB || rawTotal;
-        } catch (error) {
-          console.error("❌ Error al consultar pedido externo:", error);
-          return alert("Error al obtener datos del pedido desde API externa.");
-        }
-      } else {
-        // Datos desde BD
-        tipo_original = route["tipo_original"] || tipo_original;
-        nombreCliente = route["NOMBRE DEL CLIENTE"] || nombreCliente;
-
-        // Intentar también API externa
-        const direccionAPI = await axios.post(
-          "http://66.232.105.87:3007/api/Trasporte/obtenerPedidos"
-        );
-        const pedidosExternos = direccionAPI.data;
-        pedidoEncontrado = pedidosExternos.find(
-          (p) => String(p.NoOrden) === String(pedido)
-        );
-
-        direccion = cleanAddress(
-          pedidoEncontrado?.Direccion || route["DIRECCION"] || "No disponible"
-        );
-        numeroFactura =
-          pedidoEncontrado?.NoFactura || route["NO_FACTURA"] || "No disponible";
-        numero = route["NUM. CLIENTE"] || numero;
-        telefono = route["TELEFONO"] || telefono;
-
-        // Subtotal (sin IVA)
-        rawTotal =
-          parseFloat(String(route["TOTAL"]).replace(/[^0-9.-]+/g, "")) || 0;
-
-        // Fallback Total con IVA:
-        // 1) API externa (TotalConIva)
-        // 2) Tu BD (totalIva o TOTAL_FACTURA_LT)
-        // 3) Subtotal
-        const totalIvaAPI = pedidoEncontrado?.TotalConIva
-          ? parseFloat(
-              String(pedidoEncontrado.TotalConIva).replace(/[^0-9.-]+/g, "")
-            )
-          : 0;
-
-        const totalIvaDB =
-          parseFloat(
+      const totalIvaDB = route
+        ? parseFloat(
             String(route?.totalIva ?? route?.TOTAL_FACTURA_LT ?? 0).replace(
               /[^0-9.-]+/g,
               ""
             )
-          ) || 0;
+          ) || 0
+        : 0;
 
-        totalConIva = totalIvaAPI || totalIvaDB || rawTotal;
-      }
+      totalConIva = totalIvaAPI || totalIvaDB || rawTotal;
 
-      // === Confirmar totales y, si es necesario, permitir editarlos ===
+      // ======================
+      // 3. Confirmar totales (idéntico)
+      // ======================
       const { isConfirmed: aceptaTotales } = await Swal.fire({
         title: `Pedido ${pedido}-${tipo_original}`,
         html: `
-          <div style="font-size:14px; line-height:1.7; text-align:left">
-            <h2><div><b>Subtotal (sin IVA):</b> $${(
-              Number(rawTotal) || 0
-            ).toFixed(2)}</div></h2>
-            <h2><div><b>Total factura (con IVA):</b> $${(
-              Number(totalConIva) || 0
-            ).toFixed(2)}</div></h2>
-          </div>
-          <h2><div style="margin-top:6px; color:#666; font-size:12px;">
-            ¿Está de acuerdo con estos totales?
-          </div></h2>
-    `,
+        <div style="font-size:14px; line-height:1.7; text-align:left">
+          <h2><div><b>Subtotal (sin IVA):</b> $${(
+            Number(rawTotal) || 0
+          ).toFixed(2)}</div></h2>
+          <h2><div><b>Total factura (con IVA):</b> $${(
+            Number(totalConIva) || 0
+          ).toFixed(2)}</div></h2>
+        </div>
+        <h2><div style="margin-top:6px; color:#666; font-size:12px;">
+          ¿Está de acuerdo con estos totales?
+        </div></h2>
+      `,
         icon: "question",
         showCancelButton: true,
         confirmButtonText: "Sí, continuar",
@@ -974,19 +937,19 @@ function Finalizados() {
         const { value: nuevos, isConfirmed } = await Swal.fire({
           title: "Modificar totales",
           html: `
-    <div style="text-align:left">
-      <label style="font-size:12px;">Subtotal (sin IVA)</label>
-      <input id="swal-subtotal" type="number" step="0.01" min="0"
-             inputmode="decimal"
-             value="${(Number(rawTotal) || 0).toFixed(2)}"
-             class="swal2-input" style="width:100%;margin:6px 0 10px;">
-      <label style="font-size:12px;">Total factura (con IVA)</label>
-      <input id="swal-total" type="number" step="0.01" min="0"
-             inputmode="decimal"
-             value="${(Number(totalConIva) || 0).toFixed(2)}"
-             class="swal2-input" style="width:100%;margin:6px 0 10px;">
-    </div>
-  `,
+          <div style="text-align:left">
+            <label style="font-size:12px;">Subtotal (sin IVA)</label>
+            <input id="swal-subtotal" type="number" step="0.01" min="0"
+                   inputmode="decimal"
+                   value="${(Number(rawTotal) || 0).toFixed(2)}"
+                   class="swal2-input" style="width:100%;margin:6px 0 10px;">
+            <label style="font-size:12px;">Total factura (con IVA)</label>
+            <input id="swal-total" type="number" step="0.01" min="0"
+                   inputmode="decimal"
+                   value="${(Number(totalConIva) || 0).toFixed(2)}"
+                   class="swal2-input" style="width:100%;margin:6px 0 10px;">
+          </div>
+        `,
           focusConfirm: false,
           showCancelButton: true,
           confirmButtonText: "Usar estos totales",
@@ -1022,27 +985,32 @@ function Finalizados() {
 
         if (!isConfirmed || !nuevos) {
           await Swal.fire("Cancelado", "No se generó el PDF.", "info");
-          return; // detener generación
+          return;
         }
 
-        // Actualizar con lo que el usuario escribió
         rawTotal = nuevos.subtotal;
         totalConIva = nuevos.total;
       }
 
-      // === Fin confirmación/edición ===
+      // ======================
+      // 4. Obtener productos (solo aquí sigue fetch real)
+      // ======================
+      console.time("Fetch embarque");
       const responseEmbarque = await fetch(
         `http://66.232.105.87:3007/api/Trasporte/embarque/${pedido}/${tipo_original}`
       );
       const result = await responseEmbarque.json();
+      console.timeEnd("Fetch embarque");
 
       if (!result || !result.datos || result.datos.length === 0)
         return alert("No hay productos");
 
       console.log(`✅ Productos recibidos: ${result.totalLineas} líneas`);
-      const data = result.datos; // Mantiene el comportamiento original del PDF
+      const data = result.datos;
 
-      // 🔍 Consultar OC mediante la API surtidoOC SOLO para clientes específicos
+      // ======================
+      // 5. Obtener OC (sin quitar nada)
+      // ======================
       let numeroOC = "";
       if (
         nombreCliente === "IMPULSORA INDUSTRIAL MONTERREY" ||
@@ -1061,6 +1029,7 @@ function Finalizados() {
         }
       }
 
+      //inico de la creacion del pdf
       const doc = new jsPDF();
       const marginLeft = 10;
       let currentY = 26;
@@ -1827,51 +1796,57 @@ function Finalizados() {
   };
 
   const exportarPedidoAExcel = () => {
-  if (!selectedPedido || pedidoDetalles.length === 0) {
-    Swal.fire("Sin datos", "No hay detalles para exportar este pedido.", "info");
-    return;
-  }
+    if (!selectedPedido || pedidoDetalles.length === 0) {
+      Swal.fire(
+        "Sin datos",
+        "No hay detalles para exportar este pedido.",
+        "info"
+      );
+      return;
+    }
 
-  // 🔹 Estructuramos los datos en formato Excel
-  const data = pedidoDetalles.map((detalle) => ({
-    Pedido: selectedPedido.pedido,
-    Tipo: selectedPedido.tipo,
-    Código: detalle.codigo_ped,
-    Descripción: detalle.descripcion,
-    Cantidad: detalle.cantidad,
-    Surtido: detalle.cant_surti,
-    "No Enviado": detalle.cant_no_env,
-    Motivo: detalle.motivo || "N/A",
-    Surtidor: detalle.usuario_surtido || "N/A",
-    Validador: detalle.usuario_paqueteria || "N/A",
-    "S. PZ": detalle._pz || 0,
-    "S. PQ": detalle._pq || 0,
-    "S. INNER": detalle._inner || 0,
-    "S. MASTER": detalle._master || 0,
-    "V. PZ": detalle.v_pz || 0,
-    "V. PQ": detalle.v_pq || 0,
-    "V. INNER": detalle.v_inner || 0,
-    "V. MASTER": detalle.v_master || 0,
-    InicioSurtido: detalle.inicio_surtido,
-    FinSurtido: detalle.fin_surtido,
-    InicioEmbarque: detalle.inicio_embarque,
-    FinEmbarque: detalle.fin_embarque,
-  }));
+    // 🔹 Estructuramos los datos en formato Excel
+    const data = pedidoDetalles.map((detalle) => ({
+      Pedido: selectedPedido.pedido,
+      Tipo: selectedPedido.tipo,
+      Código: detalle.codigo_ped,
+      Descripción: detalle.descripcion,
+      Cantidad: detalle.cantidad,
+      Surtido: detalle.cant_surti,
+      "No Enviado": detalle.cant_no_env,
+      Motivo: detalle.motivo || "N/A",
+      Surtidor: detalle.usuario_surtido || "N/A",
+      Validador: detalle.usuario_paqueteria || "N/A",
+      "S. PZ": detalle._pz || 0,
+      "S. PQ": detalle._pq || 0,
+      "S. INNER": detalle._inner || 0,
+      "S. MASTER": detalle._master || 0,
+      "V. PZ": detalle.v_pz || 0,
+      "V. PQ": detalle.v_pq || 0,
+      "V. INNER": detalle.v_inner || 0,
+      "V. MASTER": detalle.v_master || 0,
+      InicioSurtido: detalle.inicio_surtido,
+      FinSurtido: detalle.fin_surtido,
+      InicioEmbarque: detalle.inicio_embarque,
+      FinEmbarque: detalle.fin_embarque,
+    }));
 
-  // 🔹 Crear hoja de Excel
-  const worksheet = XLSX.utils.json_to_sheet(data);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, "Pedido");
+    // 🔹 Crear hoja de Excel
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Pedido");
 
-  // 🔹 Exportar archivo
-  const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
-  const blob = new Blob([excelBuffer], {
-    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  });
+    // 🔹 Exportar archivo
+    const excelBuffer = XLSX.write(workbook, {
+      bookType: "xlsx",
+      type: "array",
+    });
+    const blob = new Blob([excelBuffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
 
-  saveAs(blob, `Pedido_${selectedPedido.pedido}_${selectedPedido.tipo}.xlsx`);
-};
-
+    saveAs(blob, `Pedido_${selectedPedido.pedido}_${selectedPedido.tipo}.xlsx`);
+  };
 
   return (
     <Box p={3}>
@@ -2092,13 +2067,12 @@ function Finalizados() {
                   Generar PDF Surtido
                 </Button>
                 <Button
-  variant="outlined"
-  color="success"
-  onClick={exportarPedidoAExcel}
->
-  Exportar Pedido a Excel
-</Button>
-
+                  variant="outlined"
+                  color="success"
+                  onClick={exportarPedidoAExcel}
+                >
+                  Exportar Pedido a Excel
+                </Button>
 
                 <Button
                   variant="contained"

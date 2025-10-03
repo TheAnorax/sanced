@@ -90,7 +90,7 @@ function EnSurtido() {
   
     const otroUsuario = pedido.productos.find(producto => producto.pasillo !== 'AV' && producto.usuario);
     return otroUsuario ? otroUsuario.usuario : 'Por Pasillo';
-  };
+  }; 
 
   return (
     <ThemeProvider theme={theme}>

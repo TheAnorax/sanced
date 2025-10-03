@@ -818,7 +818,7 @@ function Insumos() {
     { field: "um", headerName: "Unidad de Medida", width: 150 },
     { field: "inventariomin", headerName: "Inventario Minimo", width: 150 },
     { field: "requerimiento", headerName: "Requerimiento", width: 150 },
-    // { field: "fecha", headerName: "Fecha de registro", width: 170 },
+    { field: "fecha", headerName: "Fecha de Actualización", width: 170 },
     {
       field: "actions",
       headerName: "Acciones",

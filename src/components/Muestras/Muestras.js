@@ -31,6 +31,7 @@ import {
   DialogContent,
   DialogTitle,
   Tooltip,
+  TablePagination,
 } from "@mui/material";
 
 import { pdfTemplate } from "./pdfTemplate";
@@ -56,10 +57,12 @@ import DoNotDisturbIcon from "@mui/icons-material/DoNotDisturb";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import DoneAllIcon from "@mui/icons-material/DoneAll";
 import ClearAllIcon from "@mui/icons-material/ClearAll";
+import InfiniteScroll from "react-infinite-scroll-component";
 
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import DownloadIcon from "@mui/icons-material/Download";
+import SaveIcon from "@mui/icons-material/Save";
 
 const capitalize = (str) =>
   str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
@@ -80,6 +83,7 @@ function Muestras() {
   const [cantidad, setCantidad] = useState(1);
   const [codigo, setCodigo] = useState("");
   const [producto, setProducto] = useState(null);
+  const [productos, setProductos] = useState([]);
 
   const [alerta, setAlerta] = useState(false);
   const [alertaMessage, setAlertaMessage] = useState("");
@@ -256,11 +260,11 @@ function Muestras() {
     const value = event.target.value;
     setCodigo(value);
 
-    // Si hay un "timeout" previo, lo limpia para esperar el nuevo valor
-    clearTimeout(timeoutId);
+    if (timeoutId.current) {
+      clearTimeout(timeoutId.current);
+    }
 
-    // Establece un nuevo "timeout" para ejecutar la búsqueda después de 500ms
-    timeoutId = setTimeout(() => {
+    timeoutId.current = setTimeout(() => {
       buscarProducto(value);
     }, 500);
   };
@@ -279,41 +283,45 @@ function Muestras() {
       // Verifica la estructura de la respuesta
       console.log("Producto recibido:", response.data);
 
-      setProducto(response.data); // Asigna la respuesta del producto
+      // Si el backend devuelve un array de varios productos
+      if (Array.isArray(response.data)) {
+        setProductos(response.data); // 👉 guardamos todos en la lista
+        setProducto(null); // limpiamos el producto único
+      } else {
+        // Si solo viene un objeto (ej. búsqueda exacta por código)
+        setProducto(response.data);
+        setProductos([]);
+      }
     } catch (error) {
       console.error("Error al buscar el producto:", error);
       setProducto(null);
     }
   };
 
-  const agregarAlCarrito = () => {
-    if (!producto || !producto.codigo || cantidad <= 0) {
-      setAlerta(true);
-      setAlertaMessage("Producto no válido o cantidad incorrecta");
-      return;
+  const agregarAlCarrito = (item) => {
+    let nuevasSolicitudes = [...solicitudes];
+
+    // 👉 Si no hay solicitudes aún, creamos una nueva automáticamente
+    if (nuevasSolicitudes.length === 0) {
+      nuevasSolicitudes.push({
+        folio: Date.now(), // o lo que uses como identificador único
+        carrito: [],
+        uso: uso || "",
+        nombre: user?.name || "",
+        departamento: departamento || "",
+        motivo: motivo || "",
+        regresaArticulo: false,
+        fecha: null,
+        requiereEnvio: false,
+        detalleEnvio: "",
+        autorizado: false,
+        enviadoParaAutorizar: false,
+        observaciones: "",
+      });
     }
 
-    const totalPiezas = cantidad * (producto._pz || 1); // 👈 Calculas antes de usarla
-
-    const item = {
-      codigo: producto.codigo,
-      des: producto.des,
-      imagen: `../assets/image/img_pz/${producto.codigo}.jpg`,
-      cantidad,
-      ubi: String(totalPiezas),
-      um: producto.um || "", // ✅ Aquí se agrega
-    };
-
-    const lastSolicitudIndex = solicitudes.length - 1;
-    if (lastSolicitudIndex < 0) {
-      setAlerta(true);
-      setAlertaMessage(
-        "No hay ninguna solicitud activa para agregar productos."
-      );
-      return;
-    }
-
-    const currentSolicitud = solicitudes[lastSolicitudIndex];
+    const lastSolicitudIndex = nuevasSolicitudes.length - 1;
+    const currentSolicitud = nuevasSolicitudes[lastSolicitudIndex];
 
     const productoExistente = currentSolicitud.carrito.find(
       (p) => p.codigo === item.codigo
@@ -321,24 +329,35 @@ function Muestras() {
 
     let updatedCarrito;
     if (productoExistente) {
+      // ✅ si ya existe, sumamos cantidades
       updatedCarrito = currentSolicitud.carrito.map((p) =>
-        p.codigo === item.codigo ? { ...p, cantidad: p.cantidad + cantidad } : p
+        p.codigo === item.codigo
+          ? {
+              ...p,
+              master: p.master + item.master,
+              inner: p.inner + item.inner,
+              piezas: p.piezas + item.piezas,
+              totalPiezas: p.totalPiezas + item.totalPiezas,
+            }
+          : p
       );
     } else {
       updatedCarrito = [...currentSolicitud.carrito, item];
     }
 
-    const updatedSolicitud = { ...currentSolicitud, carrito: updatedCarrito };
-    const updatedSolicitudes = [
-      ...solicitudes.slice(0, lastSolicitudIndex),
-      updatedSolicitud,
-    ];
+    nuevasSolicitudes[lastSolicitudIndex] = {
+      ...currentSolicitud,
+      carrito: updatedCarrito,
+    };
 
-    setSolicitudes(updatedSolicitudes);
+    setSolicitudes(nuevasSolicitudes);
 
-    setCodigo(""); // limpiar
-    setCantidad(1);
+    // limpiar inputs
+    setCodigo("");
     setProducto(null);
+    setCantMaster(0);
+    setCantInner(0);
+    setCantPz(0);
   };
 
   const handleTabChange = (event, newValue) => {
@@ -450,20 +469,35 @@ function Muestras() {
       if (!lastSolicitud.enviadoParaAutorizar) {
         lastSolicitud.enviadoParaAutorizar = true;
 
+        const carritoNormalizado = lastSolicitud.carrito.map((item) => ({
+          codigo: item.codigo,
+          des: item.des,
+          cantidad: item.totalPiezas || 0,
+          imagen:
+            item.imagen ||
+            `https://sanced.santulconnect.com:3011/imagenes/img_pz/${producto?.codigo}.jpg`,
+          ubi: item.totalPiezas || 0,
+          cantidad_surtida: item.cantidad_surtida || 0,
+          um: item.um || "PZ",
+        }));
+
+        const payload = { ...lastSolicitud, carrito: carritoNormalizado };
+
+        console.log("Payload enviado:", payload); // 👀 debug en consola
+
         await axios.post(
           "http://66.232.105.87:3007/api/muestras/solicitudes",
-          lastSolicitud
+          payload
         );
 
         setSolicitudes((prev) => {
           const copia = [...prev];
-          copia[lastSolicitudIndex] = lastSolicitud;
+          copia[lastSolicitudIndex] = payload; // ✅ guardar versión con carrito normalizado
           return copia;
         });
 
         setCurrentTab(1);
 
-        // ✅ Mensaje de confirmación
         await Swal.fire({
           icon: "success",
           title: "Solicitud enviada",
@@ -496,10 +530,7 @@ function Muestras() {
   const guardarAutorizadas = async (arr) => {
     setSolicitudesAutorizadas(arr);
     try {
-      await axios.post(
-        "http://66.232.105.87:3007/api/muestras/solicitudes",
-        arr
-      );
+      await axios.post("http://66.232.105.87:3007/api/muestras/solicitudes", arr);
     } catch (error) {
       console.error("Error al guardar autorizadas:", error);
       setAlerta(true);
@@ -722,10 +753,7 @@ function Muestras() {
         })),
       };
 
-      await axios.post(
-        "http://66.232.105.87:3007/api/muestras/surtido",
-        payload
-      );
+      await axios.post("http://66.232.105.87:3007/api/muestras/surtido", payload);
 
       setSolicitudesAutorizadas((prev) =>
         prev.map((sol) =>
@@ -806,12 +834,9 @@ function Muestras() {
 
       if (!confirmarSalida.isConfirmed) return;
 
-      await axios.patch(
-        `http://66.232.105.87:3007/api/muestras/salida/${folio}`,
-        {
-          salida_por: user.name,
-        }
-      );
+      await axios.patch(`http://66.232.105.87:3007/api/muestras/salida/${folio}`, {
+        salida_por: user.name,
+      });
 
       Swal.fire("✅ Listo", "Salida registrada correctamente", "success");
       await obtenerSolicitudesAutorizadas();
@@ -1041,7 +1066,7 @@ function Muestras() {
     "Mariana Lucero Ramirez Me": "Recursos Humanos",
     "Michel Escobar Jimenez": "E-COMMERCE",
     "Sergio Regalado Alvarez": "TALLER POP",
-    "Juan Pablo": "Cedis",
+    "Enrrique Saavedra": "Cedis",
     "Elias Sandler": "Direccion",
     "Eduardo Sandler": "Direccion",
     "Mauricio Sandler": "Direccion",
@@ -1348,8 +1373,6 @@ function Muestras() {
     setMarcandoSinMaterial(false);
   };
 
-  //poner cantidad surtida
-
   // Copiar la cantidad solicitada de UNA fila a cantidad_surtida
   const rellenarFilaConSolicitada = (index) => {
     setSolicitudSeleccionada((prev) => {
@@ -1389,6 +1412,50 @@ function Muestras() {
         carrito: prev.carrito.map((it) => ({ ...it, cantidad_surtida: "" })),
       };
     });
+  };
+
+  const [openUnidadModal, setOpenUnidadModal] = useState(false);
+  const [cantMaster, setCantMaster] = useState(0);
+  const [cantInner, setCantInner] = useState(0);
+  const [cantPz, setCantPz] = useState(0);
+
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+
+  const [items, setItems] = useState([]);
+  const [hasMore, setHasMore] = useState(true);
+
+  useEffect(() => {
+    if (productos.length > 0) {
+      setItems(productos.slice(0, 10)); // primeras 10
+      setHasMore(productos.length > 10);
+    }
+  }, [productos]);
+
+  const fetchMoreData = () => {
+    if (items.length >= productos.length) {
+      setHasMore(false);
+      return;
+    }
+    setTimeout(() => {
+      setItems(productos.slice(0, items.length + 10));
+    }, 500); // simula tiempo de carga
+  };
+
+  const calcularTotalPiezas = () => {
+    if (!producto) return 0;
+    return (
+      cantMaster * (producto._master || 0) +
+      cantInner * (producto._inner || 0) +
+      cantPz * (producto._pz || 1)
+    );
+  };
+
+  const confirmarButtonStyle = {
+    mt: 2,
+    backgroundColor: "#00ff15", // Verde personalizado
+    color: "#fff",
+    "&:hover": { backgroundColor: "#00cc12" }, // Hover
   };
 
   return (
@@ -1737,129 +1804,26 @@ function Muestras() {
                 <Grid container spacing={2}>
                   <Grid item xs={12}>
                     <TextField
-                      label="Código del Producto"
+                      label="Buscar por código o descripción"
                       variant="outlined"
                       fullWidth
                       value={codigo}
-                      onChange={handleCodigoChange} // Llama a la función que maneja el cambio
+                      onChange={handleCodigoChange}
                     />
                   </Grid>
                 </Grid>
 
-                {producto && (
-                  <TableContainer
-                    component={Paper}
-                    style={{ marginTop: "20px" }}
+                {/* 🔹 Si existe un producto encontrado */}
+                {productos.length > 0 && (
+                  <InfiniteScroll
+                    dataLength={items.length}
+                    next={fetchMoreData}
+                    hasMore={hasMore}
+                    loader={
+                      <h4 style={{ textAlign: "center" }}>Cargando más...</h4>
+                    }
+                    height={400} // 👈 altura fija con scroll interno
                   >
-                    <Table>
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>Imagen</TableCell>
-                          <TableCell>Código</TableCell>
-                          <TableCell>Descripción</TableCell>
-                          <TableCell>UM - Cantidad</TableCell>
-                          <TableCell>Acciones</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        <TableRow>
-                          <TableCell>
-                            <img
-                              src={`../assets/image/img_pz/${producto.codigo}.jpg`}
-                              onError={(e) => {
-                                e.target.onerror = null;
-                                e.target.src =
-                                  "/assets/image/img_pz/noimage.png";
-                              }}
-                              alt="Producto"
-                              style={{
-                                width: "50px",
-                                height: "50px",
-                                objectFit: "cover",
-                              }}
-                            />
-                          </TableCell>
-                          <TableCell>{producto.codigo}</TableCell>
-                          <TableCell>{producto.des}</TableCell>
-                          <TableCell>
-                            {producto.um} - {producto._pz}
-                          </TableCell>
-
-                          <TableCell>
-                            <Grid container spacing={1} alignItems="center">
-                              <Grid item>
-                                <IconButton
-                                  onClick={() =>
-                                    setCantidad(cantidad > 1 ? cantidad - 1 : 1)
-                                  }
-                                  sx={{ minWidth: "40px", padding: "10px" }}
-                                  title="Disminuir cantidad"
-                                >
-                                  <RemoveCircleOutlineIcon />
-                                </IconButton>
-                              </Grid>
-                              <Grid item>
-                                <TextField
-                                  type="number"
-                                  value={cantidad}
-                                  onChange={(e) =>
-                                    setCantidad(Number(e.target.value))
-                                  }
-                                  inputProps={{ min: 1 }}
-                                  style={{ width: "80px", textAlign: "center" }}
-                                />
-                              </Grid>
-                              <Grid item>
-                                <IconButton
-                                  onClick={() => setCantidad(cantidad + 1)}
-                                  sx={{ minWidth: "40px", padding: "10px" }}
-                                  title="Aumentar cantidad"
-                                >
-                                  <AddCircleOutlineIcon />
-                                </IconButton>
-                              </Grid>
-                              <Grid item xs={12}>
-                                <Typography variant="body2">
-                                  Total:{" "}
-                                  <strong>
-                                    {cantidad * (producto._pz || 1)} piezas
-                                  </strong>
-                                </Typography>
-                              </Grid>
-                            </Grid>
-                          </TableCell>
-
-                          <TableCell>
-                            <Button
-                              sx={{
-                                backgroundColor: "green",
-                                color: "white",
-                                "&:hover": { backgroundColor: "darkgreen" },
-                              }}
-                              onClick={agregarAlCarrito}
-                              startIcon={<AddShoppingCartIcon />}
-                            >
-                              Agregar
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                )}
-
-                {solicitudes.length > 0 && (
-                  <>
-                    <Box
-                      display="flex"
-                      alignItems="center"
-                      justifyContent="space-between"
-                      mt={2}
-                    >
-                      <Typography variant="h6">
-                        Productos en la Última Solicitud:
-                      </Typography>
-                    </Box>
                     <TableContainer
                       component={Paper}
                       style={{ marginTop: "20px" }}
@@ -1867,70 +1831,403 @@ function Muestras() {
                       <Table>
                         <TableHead>
                           <TableRow>
-                            <TableCell>Código</TableCell>
                             <TableCell>Imagen</TableCell>
+                            <TableCell>Código</TableCell>
                             <TableCell>Descripción</TableCell>
-                            <TableCell>Cantidad (UM)</TableCell>
-                            <TableCell>Total Piezas</TableCell>
-                            <TableCell>Acciones</TableCell>
+                            <TableCell>Solicitar</TableCell>
                           </TableRow>
                         </TableHead>
-
                         <TableBody>
-                          {solicitudes[solicitudes.length - 1].carrito.map(
-                            (item, index) => (
-                              <TableRow key={index}>
-                                <TableCell>{item.codigo}</TableCell>
-                                <TableCell>
-                                  <img
-                                    src={`../assets/image/img_pz/${item.codigo}.jpg`}
-                                    onError={(e) => {
-                                      e.target.onerror = null;
-                                      e.target.src =
-                                        "/assets/image/img_pz/noimage.png";
-                                    }}
-                                    alt="Producto"
-                                    style={{
-                                      width: "50px",
-                                      height: "50px",
-                                      objectFit: "cover",
-                                    }}
-                                  />
-                                </TableCell>
-                                <TableCell>{item.des}</TableCell>
-                                <TableCell>{item.cantidad}</TableCell>
-                                <TableCell>{item.ubi}</TableCell>
-                                <TableCell>
-                                  <IconButton
-                                    onClick={() => {
-                                      const folio =
-                                        solicitudes[solicitudes.length - 1]
-                                          .folio;
-                                      removeProduct(item.codigo, folio);
-                                    }}
-                                    color="error"
-                                  >
-                                    <DeleteIcon />
-                                  </IconButton>
-                                </TableCell>
-                              </TableRow>
-                            )
-                          )}
+                          {items.map((prod) => (
+                            <TableRow key={prod.codigo}>
+                              <TableCell>
+                                <img
+                                  src={`https://sanced.santulconnect.com:3011/imagenes/img_pz/${prod.codigo}.jpg`}
+                                  onError={(e) => {
+                                    e.target.onerror = null;
+                                    e.target.src =
+                                      "https://sanced.santulconnect.com:3011/imagenes/img_pz/noimage.png";
+                                  }}
+                                  alt="Producto"
+                                  style={{
+                                    width: "50px",
+                                    height: "50px",
+                                    objectFit: "cover",
+                                  }}
+                                />
+                              </TableCell>
+                              <TableCell>{prod.codigo}</TableCell>
+                              <TableCell>{prod.des}</TableCell>
+                              <TableCell>
+                                <Button
+                                  sx={{
+                                    backgroundColor: "blue",
+                                    color: "white",
+                                    "&:hover": { backgroundColor: "blue" },
+                                  }}
+                                  onClick={() => {
+                                    setProducto(prod); // 👈 Guardar el producto que se va a trabajar
+                                    setOpenUnidadModal(true); // 👈 Abrir modal
+                                  }}
+                                  startIcon={<AddShoppingCartIcon />}
+                                >
+                                  Agregar
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
                         </TableBody>
                       </Table>
-                      <Button
-                        variant="contained"
-                        color="primary"
-                        onClick={enviarAAutorizar}
-                        disabled={enviandoSolicitud}
-                      >
-                        {enviandoSolicitud
-                          ? "Enviando..."
-                          : "Enviar a Autorizar"}
-                      </Button>
                     </TableContainer>
-                  </>
+                  </InfiniteScroll>
                 )}
+
+                {/* 🔹 Tabla de productos en carrito */}
+                {solicitudes.length > 0 &&
+                  solicitudes[solicitudes.length - 1]?.carrito &&
+                  solicitudes[solicitudes.length - 1].carrito.length > 0 && (
+                    <>
+                      <Box
+                        display="flex"
+                        alignItems="center"
+                        justifyContent="space-between"
+                        mt={2}
+                      >
+                        <Typography variant="h6">
+                          Productos en la Última Solicitud:
+                        </Typography>
+                      </Box>
+                      <TableContainer
+                        component={Paper}
+                        style={{ marginTop: "20px" }}
+                      >
+                        <Table>
+                          <TableHead>
+                            <TableRow>
+                              <TableCell>Código</TableCell>
+                              <TableCell>Imagen</TableCell>
+                              <TableCell>Descripción</TableCell>
+                              <TableCell>Master</TableCell>
+                              <TableCell>Inner</TableCell>
+                              <TableCell>Piezas</TableCell>
+                              <TableCell>Total Piezas</TableCell>
+                              <TableCell>Acciones</TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {solicitudes[solicitudes.length - 1].carrito.map(
+                              (item, index) => (
+                                <TableRow key={index}>
+                                  <TableCell>{item.codigo}</TableCell>
+                                  <TableCell>
+                                    <img
+                                      src={`https://sanced.santulconnect.com:3011/imagenes/img_pz/${item.codigo}.jpg`}
+                                      onError={(e) => {
+                                        e.target.onerror = null;
+                                        e.target.src =
+                                          "https://sanced.santulconnect.com:3011/imagenes/img_pz/noimage.png";
+                                      }}
+                                      alt="Producto"
+                                      style={{
+                                        width: "50px",
+                                        height: "50px",
+                                        objectFit: "cover",
+                                      }}
+                                    />
+                                  </TableCell>
+                                  <TableCell>{item.des}</TableCell>
+                                  <TableCell>{item.master}</TableCell>
+                                  <TableCell>{item.inner}</TableCell>
+                                  <TableCell>{item.piezas}</TableCell>
+                                  <TableCell>{item.totalPiezas}</TableCell>
+                                  <TableCell>
+                                    <IconButton
+                                      onClick={() => {
+                                        const folio =
+                                          solicitudes[solicitudes.length - 1]
+                                            .folio;
+                                        removeProduct(item.codigo, folio);
+                                      }}
+                                      color="error"
+                                    >
+                                      <DeleteIcon />
+                                    </IconButton>
+                                  </TableCell>
+                                </TableRow>
+                              )
+                            )}
+                          </TableBody>
+                        </Table>
+                        <Button
+                          variant="contained"
+                          color="primary"
+                          onClick={enviarAAutorizar}
+                          disabled={enviandoSolicitud}
+                        >
+                          {enviandoSolicitud
+                            ? "Enviando..."
+                            : "Enviar a Autorizar"}
+                        </Button>
+                      </TableContainer>
+                    </>
+                  )}
+
+                {/* 🔹 Modal para seleccionar MASTER / INNER / PZ */}
+
+                <Dialog
+                  open={openUnidadModal}
+                  onClose={() => setOpenUnidadModal(false)}
+                >
+                  <DialogTitle>Seleccionar cantidades</DialogTitle>
+
+                  <DialogContent>
+                    <Box display="flex" justifyContent="center" mb={2}>
+                      {producto ? (
+                        <img
+                          src={`https://sanced.santulconnect.com:3011/imagenes/img_pz/${producto.codigo}.jpg`}
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src =
+                              "https://sanced.santulconnect.com:3011/imagenes/img_pz/noimage.png";
+                          }}
+                          alt="Producto"
+                          style={{
+                            width: "300px",
+                            height: "300px",
+                            objectFit: "cover",
+                          }}
+                        />
+                      ) : (
+                        <Typography variant="body2" color="textSecondary">
+                          No hay producto seleccionado
+                        </Typography>
+                      )}
+                    </Box>
+
+                    <Grid
+                      container
+                      spacing={2}
+                      alignItems="center"
+                      justifyContent="center"
+                    >
+                      {/* Master */}
+                      <Grid item xs={4} textAlign="center">
+                        <Typography variant="subtitle1">
+                          Master <br />({producto?._master || 0} piezas c/u)
+                        </Typography>
+                        <Grid
+                          container
+                          spacing={1}
+                          justifyContent="center"
+                          alignItems="center"
+                        >
+                          <Grid item>
+                            <IconButton
+                              onClick={() =>
+                                setCantMaster(Math.max(0, cantMaster - 1))
+                              }
+                              disabled={
+                                !producto?._master || producto._master === 0
+                              } // 👈 se desactiva si es 0
+                            >
+                              <RemoveCircleOutlineIcon />
+                            </IconButton>
+                          </Grid>
+                          <Grid item>
+                            <TextField
+                              type="number"
+                              value={cantMaster}
+                              onChange={(e) =>
+                                setCantMaster(Number(e.target.value))
+                              }
+                              inputProps={{
+                                min: 0,
+                                style: { textAlign: "center" },
+                              }}
+                              sx={{ width: "70px" }}
+                              disabled={
+                                !producto?._master || producto._master === 0
+                              } // 👈 se desactiva si es 0
+                            />
+                          </Grid>
+                          <Grid item>
+                            <IconButton
+                              onClick={() => setCantMaster(cantMaster + 1)}
+                              disabled={
+                                !producto?._master || producto._master === 0
+                              } // 👈 se desactiva si es 0
+                            >
+                              <AddCircleOutlineIcon />
+                            </IconButton>
+                          </Grid>
+                        </Grid>
+                      </Grid>
+
+                      {/* Inner */}
+                      <Grid item xs={4} textAlign="center">
+                        <Typography variant="subtitle1">
+                          Inner <br />({producto?._inner || 0} piezas c/u)
+                        </Typography>
+                        <Grid
+                          container
+                          spacing={1}
+                          justifyContent="center"
+                          alignItems="center"
+                        >
+                          <Grid item>
+                            <IconButton
+                              onClick={() =>
+                                setCantInner(Math.max(0, cantInner - 1))
+                              }
+                              disabled={
+                                !producto?._inner || producto._inner === 0
+                              }
+                            >
+                              <RemoveCircleOutlineIcon />
+                            </IconButton>
+                          </Grid>
+                          <Grid item>
+                            <TextField
+                              type="number"
+                              value={cantInner}
+                              onChange={(e) =>
+                                setCantInner(Number(e.target.value))
+                              }
+                              inputProps={{
+                                min: 0,
+                                style: { textAlign: "center" },
+                              }}
+                              sx={{ width: "70px" }}
+                              disabled={
+                                !producto?._inner || producto._inner === 0
+                              }
+                            />
+                          </Grid>
+                          <Grid item>
+                            <IconButton
+                              onClick={() => setCantInner(cantInner + 1)}
+                              disabled={
+                                !producto?._inner || producto._inner === 0
+                              }
+                            >
+                              <AddCircleOutlineIcon />
+                            </IconButton>
+                          </Grid>
+                        </Grid>
+                      </Grid>
+
+                      {/* Piezas */}
+                      <Grid item xs={4} textAlign="center">
+                        <Typography variant="subtitle1">
+                          Piezas <br />({producto?._pz || 0} piezas c/u)
+                        </Typography>
+                        <Grid
+                          container
+                          spacing={1}
+                          justifyContent="center"
+                          alignItems="center"
+                        >
+                          <Grid item>
+                            <IconButton
+                              onClick={() => setCantPz(Math.max(0, cantPz - 1))}
+                              disabled={!producto?._pz || producto._pz === 0}
+                            >
+                              <RemoveCircleOutlineIcon />
+                            </IconButton>
+                          </Grid>
+                          <Grid item>
+                            <TextField
+                              type="number"
+                              value={cantPz}
+                              onChange={(e) =>
+                                setCantPz(Number(e.target.value))
+                              }
+                              inputProps={{
+                                min: 0,
+                                style: { textAlign: "center" },
+                              }}
+                              sx={{ width: "70px" }}
+                              disabled={!producto?._pz || producto._pz === 0}
+                            />
+                          </Grid>
+                          <Grid item>
+                            <IconButton
+                              onClick={() => setCantPz(cantPz + 1)}
+                              disabled={!producto?._pz || producto._pz === 0}
+                            >
+                              <AddCircleOutlineIcon />
+                            </IconButton>
+                          </Grid>
+                        </Grid>
+                      </Grid>
+
+                      {/* Total */}
+                      <Grid item xs={12}>
+                        <Typography
+                          variant="h6"
+                          align="center"
+                          sx={{ mt: 2, color: "#000000" }}
+                        >
+                          Total: {calcularTotalPiezas()} piezas
+                        </Typography>
+                      </Grid>
+                    </Grid>
+                  </DialogContent>
+
+                  <DialogActions>
+                    <Button
+                      onClick={() => setOpenUnidadModal(false)}
+                      color="error"
+                    >
+                      Cancelar
+                    </Button>
+
+                    <Button
+                      variant="contained"
+                      startIcon={<SaveIcon />} // Ícono guardado
+                      sx={confirmarButtonStyle}
+                      onClick={() => {
+                        const total = calcularTotalPiezas();
+
+                        if (total <= 0) {
+                          Swal.fire({
+                            icon: "warning",
+                            title: "Cantidad inválida",
+                            text: "Debes seleccionar al menos una cantidad antes de confirmar.",
+                            confirmButtonText: "Entendido",
+                          });
+                          return;
+                        }
+
+                        const item = {
+                          codigo: producto.codigo,
+                          des: producto.des,
+                          descripcion: producto.des,
+                          imagen: `../assets/image/img_pz/${producto?.codigo}.jpg`,
+
+                          master: cantMaster,
+                          inner: cantInner,
+                          piezas: cantPz,
+                          totalPiezas: total, // ✅ importante que ya venga calculado aquí
+
+                          cantidad: total, // ✅ igual que totalPiezas
+                          ubi: String(total), // ✅ compatibilidad vieja
+                          um: producto.um || "PZ",
+                        };
+
+                        agregarAlCarrito(item);
+
+                        // limpiar y cerrar
+                        setCantMaster(0);
+                        setCantInner(0);
+                        setCantPz(0);
+                        setOpenUnidadModal(false);
+                      }}
+                    >
+                      Confirmar
+                    </Button>
+                  </DialogActions>
+                </Dialog>
               </Paper>
             )}
           </Paper>
@@ -2368,7 +2665,12 @@ function Muestras() {
                   <TableRow key={index}>
                     <TableCell>
                       <img
-                        src={item.imagen}
+                        src={`https://sanced.santulconnect.com:3011/imagenes/img_pz/${item.codigo}.jpg`}
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src =
+                            "https://sanced.santulconnect.com:3011/imagenes/img_pz/noimage.png";
+                        }}
                         alt="Producto"
                         style={{
                           width: "50px",
@@ -2490,9 +2792,18 @@ function Muestras() {
                       <TableRow key={index}>
                         <TableCell>
                           <img
-                            src={`/assets/image/img_pz/${item.codigo}.jpg`}
-                            alt="producto"
-                            width={50}
+                            src={`https://sanced.santulconnect.com:3011/imagenes/img_pz/${item.codigo}.jpg`}
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src =
+                                "https://sanced.santulconnect.com:3011/imagenes/img_pz/noimage.png";
+                            }}
+                            alt="Producto"
+                            style={{
+                              width: "50px",
+                              height: "50px",
+                              objectFit: "cover",
+                            }}
                           />
                         </TableCell>
 

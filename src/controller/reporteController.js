@@ -1369,259 +1369,173 @@ const getTopProductosPorEstado = async (req, res) => {
 // const pool = require('../db/pool');
 const getHistorico2025 = async (req, res) => {
   try {
-    // 1) Datos base por ESTADO/FECHA desde paqueteria
-    const [rows] = await pool.query(`
-      SELECT
-        TRIM(ESTADO) AS ESTADO,
-        FECHA_DE_FACTURA AS FECHA,
-        CAST(IFNULL(TOTAL,0) AS DECIMAL(12,2))       AS TOTAL_FACTURA_LT,
-        CAST(IFNULL(TOTAL_FACTURA_LT,0) AS DECIMAL(12,2))  AS SUMA_FLETE,
-        CAST(IFNULL(DIAS_DE_ENTREGA,0) AS UNSIGNED)  AS DIAS_DE_ENTREGA,
-        \`NUM. CLIENTE\` AS NUM_CLIENTE,
-        \`NO ORDEN\`     AS NO_ORDEN,
-        GUIA
+    // --- 1) Calcular rango de fechas ---
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, "0");
+
+    const from = req.query.from || `${now.getFullYear()}-01-01`; 
+    const to =
+      req.query.to ||
+      `${now.getFullYear()}-${pad(now.getMonth() + 1)}-31`;
+
+    // --- 2) Query directo a SQL con agregación por estado y mes ---
+    const [rows] = await pool.query(
+      `
+      SELECT 
+        TRIM(ESTADO) AS estado,
+        DATE_FORMAT(FECHA_DE_FACTURA, '%Y-%m') AS mes,
+        SUM(CAST(IFNULL(TOTAL,0) AS DECIMAL(12,2))) AS total_factura_lt,
+        SUM(CAST(REPLACE(REPLACE(IFNULL(PRORRATEO_FACTURA_LT,'0'),'$',''),',','') AS DECIMAL(12,2))) AS total_flete,
+        COUNT(DISTINCT \`NUM. CLIENTE\`) AS total_clientes,
+        AVG(DIAS_DE_ENTREGA) AS promedio_dias_entrega
       FROM paqueteria
-      WHERE ESTADO IS NOT NULL AND ESTADO <> ''
-    `);
+      WHERE ESTADO IS NOT NULL 
+        AND ESTADO <> ''
+        AND FECHA_DE_FACTURA >= ? 
+        AND FECHA_DE_FACTURA < ?
+      GROUP BY estado, mes
+      ORDER BY estado, mes;
+      `,
+      [from, to]
+    );
 
     if (!rows || rows.length === 0) {
-      return res.status(404).json({ message: "No hay datos disponibles." });
+      return res.status(404).json({ message: "No hay datos disponibles en ese rango." });
     }
 
-    // Estructuras
-    const resultado = {};     // { [estado]: { [mes]: { ... } } }
-    const totalGeneral = {};  // { [mes]: { sumas globales del mes } }
+    // --- 3) Estructuras de salida ---
+    const resultado = {};     // { estado: { mes: {...} } }
+    const resumenPorMes = {}; // Totales solo por mes
+    let globalFactura = 0;
+    let globalFlete = 0;
+    let globalDias = 0;
+    let globalRegistros = 0;
 
-    // Para total GLOBAL (todos los meses)
-    const globalAgg = {
-      total_factura_lt: 0,
-      total_flete: 0,
-      total_dias_entrega: 0,
-      total_registros: 0,
-      clientes: new Set(),   // clientes únicos globales
-      tarimas_total: 0,
-      cajas_total: 0,
-    };
-
-    // Sets para evitar sumar el flete repetido por GUIA
-    const seenEstadoMesGuia = new Set(); // clave: `${estado}|${mes}|${guia}`
-    const seenMesGuia = new Set();       // clave: `${mes}|${guia}`
-    const seenGlobalGuia = new Set();    // clave: `${guia}`
-
-    // 2) Agregado base (ventas, flete, días, clientes) por estado/mes y por mes (global)
     for (const row of rows) {
-      const estado = row.ESTADO;
-      const fecha = new Date(row.FECHA);
-      if (isNaN(fecha.getTime())) continue;
+      const estado = row.estado;
+      const mes = row.mes;
+      const total_factura_lt = Number(row.total_factura_lt || 0);
+      const total_flete = Number(row.total_flete || 0);
+      const total_clientes = Number(row.total_clientes || 0);
+      const promedio_dias_entrega = Number(Number(row.promedio_dias_entrega || 0).toFixed(1));
 
-      const mes = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, "0")}`;
-      const guia = (row.GUIA || '').trim();
-      const totalLt = Number(row.TOTAL_FACTURA_LT || 0);
-      const flete   = Number(row.SUMA_FLETE || 0);
-      const dias    = Number(row.DIAS_DE_ENTREGA || 0);
-
-      // Bucket estado/mes
+      // --- Estado/Mes ---
       if (!resultado[estado]) resultado[estado] = {};
-      if (!resultado[estado][mes]) {
-        resultado[estado][mes] = {
+      resultado[estado][mes] = {
+        total_factura_lt,
+        total_flete,
+        promedio_dias_entrega,
+        total_clientes,
+        porcentaje_flete: Number(((total_flete / (total_factura_lt || 1)) * 100).toFixed(1)),
+        tarimas: 0,
+        cajas: 0,
+      };
+
+      // --- Totales por mes (todos los estados juntos) ---
+      if (!resumenPorMes[mes]) {
+        resumenPorMes[mes] = {
           total_factura_lt: 0,
           total_flete: 0,
-          total_dias_entrega: 0,
-          total_registros: 0,
-          clientes: new Set(),
+          promedio_dias_entrega: 0,
+          total_clientes: 0,
+          porcentaje_flete: 0,
           tarimas: 0,
           cajas: 0,
         };
       }
-      const g = resultado[estado][mes];
 
-      // Bucket global por mes
-      if (!totalGeneral[mes]) {
-        totalGeneral[mes] = {
-          total_factura_lt: 0,
-          total_flete: 0,
-          total_dias_entrega: 0,
-          total_registros: 0,
-          clientes: new Set(),
-          tarimas_total: 0,
-          cajas_total: 0,
-        };
-      }
-      const tg = totalGeneral[mes];
+      resumenPorMes[mes].total_factura_lt += total_factura_lt;
+      resumenPorMes[mes].total_flete += total_flete;
+      resumenPorMes[mes].total_clientes += total_clientes;
+      resumenPorMes[mes].promedio_dias_entrega = Number(
+        ((resumenPorMes[mes].promedio_dias_entrega + promedio_dias_entrega) / 2).toFixed(1)
+      );
+      resumenPorMes[mes].porcentaje_flete = Number(
+        ((resumenPorMes[mes].total_flete / (resumenPorMes[mes].total_factura_lt || 1)) * 100).toFixed(1)
+      );
 
-      // Ventas, días, registros, clientes (siempre por fila)
-      g.total_factura_lt += totalLt;
-      g.total_dias_entrega += dias;
-      g.total_registros += 1;
-      if (row.NUM_CLIENTE) g.clientes.add(row.NUM_CLIENTE);
-
-      tg.total_factura_lt += totalLt;
-      tg.total_dias_entrega += dias;
-      tg.total_registros += 1;
-      if (row.NUM_CLIENTE) tg.clientes.add(row.NUM_CLIENTE);
-
-      globalAgg.total_factura_lt += totalLt;
-      globalAgg.total_dias_entrega += dias;
-      globalAgg.total_registros += 1;
-      if (row.NUM_CLIENTE) globalAgg.clientes.add(row.NUM_CLIENTE);
-
-      // ⚠️ FLETE: contar una sola vez por GUIA
-      if (guia && flete > 0) {
-        const kEMG = `${estado}|${mes}|${guia}`;
-        const kMG  = `${mes}|${guia}`;
-
-        if (!seenEstadoMesGuia.has(kEMG)) {
-          g.total_flete += flete;
-          seenEstadoMesGuia.add(kEMG);
-        }
-        if (!seenMesGuia.has(kMG)) {
-          tg.total_flete += flete;
-          seenMesGuia.add(kMG);
-        }
-        if (!seenGlobalGuia.has(guia)) {
-          globalAgg.total_flete += flete;
-          seenGlobalGuia.add(guia);
-        }
-      } else {
-        // Si NO hay GUIA (o flete = 0), conservar comportamiento previo (sumar por fila)
-        g.total_flete += flete;
-        tg.total_flete += flete;
-        globalAgg.total_flete += flete;
-      }
+      // --- Totales globales ---
+      globalFactura += total_factura_lt;
+      globalFlete += total_flete;
+      globalDias += promedio_dias_entrega;
+      globalRegistros++;
     }
 
-    // 3) TARIMAS y CAJAS por estado/mes (desde pedido_finalizado)
-    const [logisticaRows] = await pool.query(`
+    // --- 4) Traer tarimas y cajas también agrupadas por estado y mes ---
+    const [logisticaRows] = await pool.query(
+      `
       SELECT
-        p.ESTADO,
-        u.MES,
-        SUM(CASE WHEN u.tipo_norm = 'TARIMA' THEN 1 ELSE 0 END) AS TARIMAS,
-        SUM(CASE WHEN u.tipo_norm = 'CAJA'   THEN 1 ELSE 0 END) AS CAJAS
-      FROM (
-        /* Una fila por pedido-mes-tipo (TARIMA o CAJA) */
-        SELECT
-          f.pedido,
-          DATE_FORMAT(f.fin_embarque, '%Y-%m') AS MES,
-          CASE
-            WHEN UPPER(f.tipo_caja) LIKE 'TARIMA%' THEN 'TARIMA'
-            WHEN UPPER(f.tipo_caja) LIKE 'CAJA%'   THEN 'CAJA'
-            ELSE NULL
-          END AS tipo_norm
-        FROM pedido_finalizado f
-        WHERE f.fin_embarque IS NOT NULL
-        GROUP BY f.pedido, MES, tipo_norm
-      ) u
+        p.ESTADO AS estado,
+        DATE_FORMAT(f.fin_embarque, '%Y-%m') AS mes,
+        SUM(CASE WHEN UPPER(f.tipo_caja) LIKE 'TARIMA%' THEN 1 ELSE 0 END) AS tarimas,
+        SUM(CASE WHEN UPPER(f.tipo_caja) LIKE 'CAJA%'   THEN 1 ELSE 0 END) AS cajas
+      FROM pedido_finalizado f
       JOIN (
         SELECT \`NO ORDEN\` AS pedido, MAX(ESTADO) AS ESTADO
         FROM paqueteria
         WHERE ESTADO IS NOT NULL AND ESTADO <> ''
         GROUP BY \`NO ORDEN\`
-      ) p ON p.pedido = u.pedido
-      WHERE u.tipo_norm IS NOT NULL
-      GROUP BY p.ESTADO, u.MES;
-    `);
+      ) p ON p.pedido = f.pedido
+      WHERE f.fin_embarque IS NOT NULL
+        AND f.fin_embarque >= ? 
+        AND f.fin_embarque < ?
+      GROUP BY p.ESTADO, mes;
+      `,
+      [from, to]
+    );
 
-    // 4) Mezclar tarimas/cajas al resultado por estado/mes y a totales por mes y global
+    let globalTarimas = 0;
+    let globalCajas = 0;
+
     for (const r of logisticaRows) {
-      const estado = r.ESTADO;
-      const mes = r.MES;
-      const tarimas = Number(r.TARIMAS) || 0;
-      const cajas   = Number(r.CAJAS) || 0;
+      const estado = r.estado;
+      const mes = r.mes;
+      const tarimas = Number(r.tarimas) || 0;
+      const cajas = Number(r.cajas) || 0;
 
       if (!resultado[estado]) resultado[estado] = {};
       if (!resultado[estado][mes]) {
         resultado[estado][mes] = {
           total_factura_lt: 0,
           total_flete: 0,
-          total_dias_entrega: 0,
-          total_registros: 0,
-          clientes: new Set(),
+          promedio_dias_entrega: 0,
+          total_clientes: 0,
+          porcentaje_flete: 0,
           tarimas: 0,
           cajas: 0,
         };
       }
+
       resultado[estado][mes].tarimas += tarimas;
-      resultado[estado][mes].cajas   += cajas;
+      resultado[estado][mes].cajas += cajas;
 
-      if (!totalGeneral[mes]) {
-        totalGeneral[mes] = {
-          total_factura_lt: 0,
-          total_flete: 0,
-          total_dias_entrega: 0,
-          total_registros: 0,
-          clientes: new Set(),
-          tarimas_total: 0,
-          cajas_total: 0,
-        };
+      if (resumenPorMes[mes]) {
+        resumenPorMes[mes].tarimas += tarimas;
+        resumenPorMes[mes].cajas += cajas;
       }
-      totalGeneral[mes].tarimas_total += tarimas;
-      totalGeneral[mes].cajas_total   += cajas;
 
-      // Global (todos los meses)
-      globalAgg.tarimas_total += tarimas;
-      globalAgg.cajas_total   += cajas;
+      globalTarimas += tarimas;
+      globalCajas += cajas;
     }
 
-    // 5) Formateo final por estado/mes (cálculos derivados)
-    for (const estado in resultado) {
-      for (const mes in resultado[estado]) {
-        const g = resultado[estado][mes];
-
-        g.promedio_dias_entrega = Number(
-          ((g.total_dias_entrega || 0) / (g.total_registros || 1)).toFixed(1)
-        );
-        g.total_clientes = (g.clientes && g.clientes.size) ? g.clientes.size : 0;
-        g.porcentaje_flete = Number(
-          (((g.total_flete || 0) / (g.total_factura_lt || 1)) * 100).toFixed(1)
-        );
-
-        // Quitar campos internos
-        delete g.clientes;
-        delete g.total_dias_entrega;
-        delete g.total_registros;
-      }
-    }
-
-    // 6) Resumen general por mes
-    const resumenPorMes = {};
-    for (const mes in totalGeneral) {
-      const m = totalGeneral[mes];
-      resumenPorMes[mes] = {
-        total_factura_lt: m.total_factura_lt,
-        total_flete: m.total_flete,
-        promedio_dias_entrega: Number(
-          ((m.total_dias_entrega || 0) / (m.total_registros || 1)).toFixed(1)
-        ),
-        total_clientes: m.clientes.size,
-        porcentaje_flete: Number(
-          (((m.total_flete || 0) / (m.total_factura_lt || 1)) * 100).toFixed(1)
-        ),
-        tarimas: m.tarimas_total || 0,
-        cajas: m.cajas_total || 0,
-      };
-    }
-
-    // 7) Total global (todos los meses y estados)
+    // --- 5) Totales globales ---
     const totalGlobal = {
-      total_factura_lt: globalAgg.total_factura_lt,
-      total_flete: globalAgg.total_flete,
-      promedio_dias_entrega: Number(
-        ((globalAgg.total_dias_entrega || 0) / (globalAgg.total_registros || 1)).toFixed(1)
-      ),
-      total_clientes: globalAgg.clientes.size,
-      porcentaje_flete: Number(
-        (((globalAgg.total_flete || 0) / (globalAgg.total_factura_lt || 1)) * 100).toFixed(1)
-      ),
-      tarimas_total: globalAgg.tarimas_total || 0,
-      cajas_total: globalAgg.cajas_total || 0,
+      total_factura_lt: globalFactura,
+      total_flete: globalFlete,
+      promedio_dias_entrega: Number((globalDias / (globalRegistros || 1)).toFixed(1)),
+      total_clientes: Object.values(resumenPorMes).reduce((acc, m) => acc + m.total_clientes, 0),
+      porcentaje_flete: Number(((globalFlete / (globalFactura || 1)) * 100).toFixed(1)),
+      tarimas_total: globalTarimas,
+      cajas_total: globalCajas,
     };
 
-    // 8) Respuesta final
+    // --- 6) Respuesta final ---
     const payload = {
-      ...resultado,                     // por estado/mes
+      rango_consulta: { from, to },
+      ...resultado, // 👈 detalle por estado/mes
       total_general: {
-        por_mes: resumenPorMes,         // totales por mes (todos los estados)
-        global: totalGlobal,            // gran total (todos los estados + meses)
+        por_mes: resumenPorMes,
+        global: totalGlobal,
       },
     };
 
@@ -1631,6 +1545,11 @@ const getHistorico2025 = async (req, res) => {
     res.status(500).json({ message: "Error en el servidor", error: error.message });
   }
 };
+
+
+
+
+
 
 const getFletesClientes = async (req, res) => {
   try {

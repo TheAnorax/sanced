@@ -18,7 +18,9 @@ import {
   Grid,
   TextField,
   CircularProgress,
+  Button,
 } from "@mui/material";
+
 import { LocalizationProvider, DatePicker } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { NumerosALetras } from "numero-a-letras";
@@ -29,6 +31,9 @@ import barraFooter from "./BARRA.jpg";
 import IconButton from "@mui/material/IconButton";
 import ArticleIcon from "@mui/icons-material/Article";
 import Swal from "sweetalert2";
+import { saveAs } from "file-saver";
+
+import * as JSZip from "jszip";
 
 // Extender dayjs para manejar zona horaria
 dayjs.extend(utc);
@@ -44,11 +49,13 @@ function Plansurtido() {
   const [loading, setLoading] = useState(false);
   const [surtidores, setSurtidores] = useState(8); // Valor inicial
 
+  const [loadingZIP, setLoadingZIP] = useState(false);
+
   const fetchPaqueteria = async (fecha) => {
     setLoading(true);
     try {
       const response = await axios.get(
-        `http://66.232.105.87:3007/api/Trasporte/getPaqueteriaData?fecha=${fecha}` 
+        `http://66.232.105.87:3007/api/Trasporte/getPaqueteriaData?fecha=${fecha}`
       );
       setData(response.data);
     } catch (error) {
@@ -148,26 +155,50 @@ function Plansurtido() {
 
   const totalPagesExp = "___total_pages___";
 
-  function addPageNumber(doc) {
+  function addPageNumber(
+    doc,
+    pedido,
+    numeroFactura,
+    tipo_original,
+    numeroCliente
+  ) {
     const pageCount = doc.internal.getNumberOfPages();
     const pageWidth = doc.internal.pageSize.getWidth();
 
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i);
-      doc.setFontSize(9);
-      doc.setTextColor(0, 0, 0);
-      doc.setFont("helvetica", "bold");
+
+      const pageHeight = doc.internal.pageSize.height;
 
       if (i === 1) {
-        // Página 1: debajo del logo
-        const posX = 190;
-        const posY = 50;
-        doc.text(`PÁGINA ${i} de ${pageCount}`, posX, posY, { align: "right" });
+        // Página 1 → solo número de página arriba derecha
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        doc.setTextColor(0, 0, 0);
+        doc.text(`PÁGINA ${i} de ${pageCount}`, pageWidth - 10, 55, {
+          align: "right",
+        });
+      } else {
+        // Páginas 2+ → encabezado completo (orden, factura, página)
+        const headerY = 10;
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(60, 60, 60);
+
+        doc.text(`PEDIDO: ${pedido}-${tipo_original}`, 10, headerY + 4);
+        doc.text(`FACTURA: ${numeroFactura}`, 10, headerY + 8);
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        doc.setTextColor(0, 0, 0);
+        doc.text(`PÁGINA ${i} de ${pageCount}`, pageWidth - 10, headerY, {
+          align: "right",
+        });
       }
 
-      for (let i = 1; i <= pageCount; i++) {
-        doc.setPage(i);
-        const pageHeight = doc.internal.pageSize.height;
+      // Pie de página (si usas barraFooter)
+      if (typeof barraFooter !== "undefined") {
         doc.addImage(barraFooter, "JPEG", 10, pageHeight - 15, 190, 8);
       }
     }
@@ -208,136 +239,226 @@ function Plansurtido() {
     return tipoMasUsado === "ATA" ? "ATADO" : tipoMasUsado;
   };
 
-  const generatePDF = async (pedido, tipo_original) => {
+  const [rutas, setRutas] = useState([]);
+  const [pedidosExternos, setPedidosExternos] = useState([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Rutas
+        const resRutas = await fetch(
+          "http://66.232.105.87:3007/api/Trasporte/ruta-unica"
+        );
+        setRutas(await resRutas.json());
+
+        // Pedidos externos
+        const resPedidos = await axios.post(
+          "http://66.232.105.87:3007/api/Trasporte/obtenerPedidos"
+        );
+        setPedidosExternos(resPedidos.data);
+      } catch (err) {
+        console.error("❌ Error precargando datos:", err);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // 🔹 Dentro de generatePDF
+
+  const generatePDF = async (pedido, tipo_original, rutas, pedidosExternos) => {
     try {
+      console.time("⏳ Tiempo total PDF");
       let numero = "";
       let numeroFactura = "";
       let nombreCliente = "";
       let direccion = "";
       let telefono = "";
-      let rawTotal = 0;
+      let rawTotal = 0; // Subtotal SIN IVA
+      let totalConIva = 0; // Total CON IVA
+      let pedidoEncontrado = "";
 
-      const responseRoutes = await fetch(
-        "http://66.232.105.87:3007/api/Trasporte/ruta-unica"
+      // ======================
+      // 1. Buscar en memoria rutas/pedidos
+      // ======================
+      console.time("Buscar en memoria");
+      const route = rutas.find((r) => String(r["NO ORDEN"]) === String(pedido));
+      pedidoEncontrado = pedidosExternos.find(
+        (p) => String(p.NoOrden) === String(pedido)
       );
-      const routesData = await responseRoutes.json();
-      const route = routesData.find(
-        (r) => String(r["NO ORDEN"]) === String(pedido)
+      console.timeEnd("Buscar en memoria");
+
+      if (!route && !pedidoEncontrado) {
+        alert("❌ No se encontraron datos para el pedido.");
+        return;
+      }
+
+      // ======================
+      // 2. Datos del pedido
+      // ======================
+      tipo_original = route?.["tipo_original"] || tipo_original;
+      nombreCliente =
+        route?.["NOMBRE DEL CLIENTE"] ||
+        pedidoEncontrado?.Nombre_Cliente ||
+        "No disponible";
+      direccion = cleanAddress(
+        pedidoEncontrado?.Direccion || route?.["DIRECCION"] || "No disponible"
       );
+      numeroFactura =
+        pedidoEncontrado?.NoFactura || route?.["NO_FACTURA"] || "No disponible";
+      numero =
+        route?.["NUM. CLIENTE"] ||
+        pedidoEncontrado?.NumConsigna ||
+        "No disponible";
+      telefono =
+        route?.["TELEFONO"] || pedidoEncontrado?.Telefono || "No disponible";
 
-      if (!route) {
-        try {
-          // 🔁 SIEMPRE consultar datos externos por si falta algo
-          const direccionAPI = await axios.post(
-            "http://66.232.105.87:3007/api/Trasporte/obtenerPedidos"
-          );
-          const pedidosExternos = direccionAPI.data;
+      rawTotal =
+        parseFloat(
+          String(route?.["TOTAL"] || pedidoEncontrado?.Total || "0").replace(
+            /[^0-9.-]+/g,
+            ""
+          )
+        ) || 0;
 
-          const pedidoEncontrado = pedidosExternos.find(
-            (p) => String(p.NoOrden) === String(pedido)
-          );
+      const totalIvaAPI = pedidoEncontrado?.TotalConIva
+        ? parseFloat(
+            String(pedidoEncontrado.TotalConIva).replace(/[^0-9.-]+/g, "")
+          )
+        : 0;
 
-          // Rellenar todos los campos usando route o pedidoEncontrado como respaldo
-          nombreCliente =
-            route?.["NOMBRE DEL CLIENTE"] ||
-            pedidoEncontrado?.Nombre_Cliente ||
-            "No disponible";
-          direccion = cleanAddress(
-            pedidoEncontrado?.Direccion ||
-              route?.["DIRECCION"] ||
-              "No disponible"
-          );
-          numeroFactura =
-            pedidoEncontrado?.NoFactura ||
-            route?.["NO_FACTURA"] ||
-            "No disponible";
-          numero =
-            route?.["NUM. CLIENTE"] ||
-            pedidoEncontrado?.NumConsigna ||
-            "No disponible";
-          telefono =
-            route?.["TELEFONO"] ||
-            pedidoEncontrado?.Telefono ||
-            "No disponible";
-
-          rawTotal = parseFloat(
-            String(route?.["TOTAL"] || pedidoEncontrado?.Total || "0").replace(
+      const totalIvaDB = route
+        ? parseFloat(
+            String(route?.totalIva ?? route?.TOTAL_FACTURA_LT ?? 0).replace(
               /[^0-9.-]+/g,
               ""
             )
-          );
-        } catch (error) {
-          console.error("❌ Error al consultar pedido externo:", error);
-          return alert("Error al obtener datos del pedido desde API externa.");
-        }
-      } else {
-        tipo_original = route["tipo_original"] || tipo_original;
-        nombreCliente = route["NOMBRE DEL CLIENTE"] || nombreCliente;
+          ) || 0
+        : 0;
 
-        // 🔸 Obtener la dirección desde la API externa usando NoOrden
-        const direccionAPI = await axios.post(
-          "http://66.232.105.87:3007/api/Trasporte/obtenerPedidos"
-        );
-        const pedidosExternos = direccionAPI.data;
+      totalConIva = totalIvaAPI || totalIvaDB || rawTotal;
 
-        const pedidoEncontrado = pedidosExternos.find(
-          (p) => String(p.NoOrden) === String(pedido)
-        );
-        direccion = cleanAddress(
-          pedidoEncontrado?.Direccion || route["DIRECCION"] || "No disponible"
-        );
-        numeroFactura =
-          pedidoEncontrado?.NoFactura || route["NO_FACTURA"] || "No disponible";
+      // ======================
+      // 3. Confirmar totales (idéntico)
+      // ======================
+      const { isConfirmed: aceptaTotales } = await Swal.fire({
+        title: `Pedido ${pedido}-${tipo_original}`,
+        html: `
+        <div style="font-size:14px; line-height:1.7; text-align:left">
+          <h2><div><b>Subtotal (sin IVA):</b> $${(
+            Number(rawTotal) || 0
+          ).toFixed(2)}</div></h2>
+          <h2><div><b>Total factura (con IVA):</b> $${(
+            Number(totalConIva) || 0
+          ).toFixed(2)}</div></h2>
+        </div>
+        <h2><div style="margin-top:6px; color:#666; font-size:12px;">
+          ¿Está de acuerdo con estos totales?
+        </div></h2>
+      `,
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonText: "Sí, continuar",
+        cancelButtonText: "No, modificar",
+      });
 
-        numero = route["NUM. CLIENTE"] || numero;
-        telefono = route["TELEFONO"] || telefono;
-        rawTotal = route["TOTAL"];
-
-        rawTotal = parseFloat(String(rawTotal).replace(/[^0-9.-]+/g, "")) || 0;
-
-        // ✅ Mostrar mensaje de confirmación antes de generar el PDF
-        const { isConfirmed } = await Swal.fire({
-          title: `Pedido ${pedido}-${tipo_original}`,
-          text: `El total es de $${rawTotal.toFixed(
-            2
-          )}. ¿Está de acuerdo con este total?`,
-          icon: "question",
+      if (!aceptaTotales) {
+        const { value: nuevos, isConfirmed } = await Swal.fire({
+          title: "Modificar totales",
+          html: `
+          <div style="text-align:left">
+            <label style="font-size:12px;">Subtotal (sin IVA)</label>
+            <input id="swal-subtotal" type="number" step="0.01" min="0"
+                   inputmode="decimal"
+                   value="${(Number(rawTotal) || 0).toFixed(2)}"
+                   class="swal2-input" style="width:100%;margin:6px 0 10px;">
+            <label style="font-size:12px;">Total factura (con IVA)</label>
+            <input id="swal-total" type="number" step="0.01" min="0"
+                   inputmode="decimal"
+                   value="${(Number(totalConIva) || 0).toFixed(2)}"
+                   class="swal2-input" style="width:100%;margin:6px 0 10px;">
+          </div>
+        `,
+          focusConfirm: false,
           showCancelButton: true,
-          confirmButtonText: "Sí, continuar",
-          cancelButtonText: "No, modificar",
+          confirmButtonText: "Usar estos totales",
+          cancelButtonText: "Cancelar",
+          preConfirm: () => {
+            const s = parseFloat(
+              String(document.getElementById("swal-subtotal").value).replace(
+                ",",
+                "."
+              )
+            );
+            const t = parseFloat(
+              String(document.getElementById("swal-total").value).replace(
+                ",",
+                "."
+              )
+            );
+            if (!isFinite(s) || !isFinite(t)) {
+              Swal.showValidationMessage(
+                "Ambos totales son requeridos y deben ser números."
+              );
+              return false;
+            }
+            if (s < 0 || t < 0) {
+              Swal.showValidationMessage(
+                "Los totales no pueden ser negativos."
+              );
+              return false;
+            }
+            return { subtotal: s, total: t };
+          },
         });
 
-        if (!isConfirmed) {
-          // ✅ Si elige NO, pedir nuevo total
-          const { value: nuevoTotal } = await Swal.fire({
-            title: "Ingrese el nuevo total",
-            input: "number",
-            inputAttributes: { min: 0, step: "0.01" },
-            inputValue: rawTotal,
-            showCancelButton: true,
-            confirmButtonText: "Aceptar",
-            cancelButtonText: "Cancelar",
-          });
-
-          if (!nuevoTotal) {
-            return Swal.fire("Cancelado", "No se generó el PDF.", "info");
-          }
-
-          rawTotal = parseFloat(nuevoTotal); // ✅ Usar el nuevo total ingresado
+        if (!isConfirmed || !nuevos) {
+          await Swal.fire("Cancelado", "No se generó el PDF.", "info");
+          return;
         }
+
+        rawTotal = nuevos.subtotal;
+        totalConIva = nuevos.total;
       }
 
+      // ======================
+      // 4. Obtener productos (solo aquí sigue fetch real)
+      // ======================
+      console.time("Fetch embarque");
       const responseEmbarque = await fetch(
         `http://66.232.105.87:3007/api/Trasporte/embarque/${pedido}/${tipo_original}`
       );
       const result = await responseEmbarque.json();
+      console.timeEnd("Fetch embarque");
 
       if (!result || !result.datos || result.datos.length === 0)
         return alert("No hay productos");
 
       console.log(`✅ Productos recibidos: ${result.totalLineas} líneas`);
-      const data = result.datos; // Esto mantiene el comportamiento original del PDF
+      const data = result.datos;
 
+      // ======================
+      // 5. Obtener OC (sin quitar nada)
+      // ======================
+      let numeroOC = "";
+      if (
+        nombreCliente === "IMPULSORA INDUSTRIAL MONTERREY" ||
+        nombreCliente === "IMPULSORA INDUSTRIAL GUADALAJARA"
+      ) {
+        try {
+          const ocResponse = await axios.post(
+            "http://66.232.105.79:9100/surtidoOC",
+            {
+              orden: pedido,
+            }
+          );
+          numeroOC = ocResponse.data?.oc || "";
+        } catch (err) {
+          console.warn("⚠️ No se pudo obtener el OC desde surtidoOC:", err);
+        }
+      }
+
+      //inico de la creacion del pdf
       const doc = new jsPDF();
       const marginLeft = 10;
       let currentY = 26;
@@ -382,20 +503,14 @@ function Plansurtido() {
         nombreCliente,
         referenciasClientes
       );
-      let totalImporte = 0;
-      if (
-        rawTotal &&
-        !isNaN(parseFloat(String(rawTotal).replace(/[^0-9.-]+/g, "")))
-      ) {
-        totalImporte = parseFloat(String(rawTotal).replace(/[^0-9.-]+/g, ""));
-      }
+      let totalImporte = Number(rawTotal) || 0;
 
       doc.setFont("helvetica", "bold");
       doc.setFontSize(9.5);
       doc.setTextColor(0, 0, 0);
 
       doc.text(
-        `CLIENTE NO.: ${numero}                      NOMBRE DEL CLIENTE: ${nombreCliente}`,
+        `CLIENTE NO.: ${numero}   NOMBRE DEL CLIENTE: ${nombreCliente}`,
         marginLeft,
         currentY
       );
@@ -404,9 +519,7 @@ function Plansurtido() {
       currentY += 4;
 
       const direccionFormateada = `DIRECCIÓN: ${direccion}`;
-      doc.text(direccionFormateada, marginLeft, currentY, {
-        maxWidth: 180,
-      });
+      doc.text(direccionFormateada, marginLeft, currentY, { maxWidth: 180 });
 
       const lineCount = Math.ceil(doc.getTextWidth(direccionFormateada) / 180);
       currentY += 4 * lineCount;
@@ -414,20 +527,22 @@ function Plansurtido() {
       currentY += 4;
       doc.text(`No Orden: ${pedido}-${tipo_original}`, marginLeft, currentY);
       currentY += 4;
-      doc.text(`FACTURA No.: ${numeroFactura}`, marginLeft, currentY);
+      doc.text(
+        `FACTURA No.: ${numeroFactura}    OC: ${numeroOC}`,
+        marginLeft,
+        currentY
+      );
       currentY += 4;
 
-      // 🔴 Aquí agregamos el conteo de líneas
+      // 🔴 Conteo de líneas
       const totalLineasDB = result.totalLineas;
       const totalMotivo = result.totalMotivo;
       const totalLineasPDF = result.totalLineasPDF;
 
-      // Mostrar debajo de FACTURA
       const textoLineas = `Líneas BD: ${totalLineasDB} | Líneas PDF: ${totalLineasPDF} | Motivo: ${totalMotivo}`;
       doc.setFontSize(9);
       doc.setFont("helvetica", "bold");
 
-      // Si hay diferencia, mostrar en rojo
       if (totalLineasDB !== totalLineasPDF + totalMotivo) {
         doc.setTextColor(255, 0, 0);
       } else {
@@ -439,14 +554,14 @@ function Plansurtido() {
 
       const infoY = currentY;
       doc.setFillColor(255, 255, 0);
-      doc.rect(marginLeft, infoY, 190, 11, "F");
+      doc.rect(marginLeft, infoY, 190, 13, "F");
       doc.setFont("helvetica", "bold");
       doc.setFontSize(9.5);
       doc.setTextColor(0, 0, 0);
       doc.text("INFORMACIÓN IMPORTANTE", 105, infoY + 4, { align: "center" });
-      doc.setFontSize(5.3);
+      doc.setFontSize(6.3);
       doc.text(
-        "En caso de detectar cualquier irregularidad (daños, faltantes,cajas mojadas o manipulaciones), Favor de comunicarse de inmediato al departamento de atención al cliente al número:(55) 58727290 EXT.: (8815, 8819)",
+        "En caso de detectar cualquier irregularidad (daños, faltantes,cajas mojadas o manipulaciones), Favor de comunicarse de inmediato al departamento de atención al cliente al número:(55) 58727290 EXT.: (8815, 8819) en un Horario de Lunes a Viernes de 8:30 am a 5:00 pm",
         105,
         infoY + 9,
         { align: "center", maxWidth: 180 }
@@ -460,8 +575,7 @@ function Plansurtido() {
         (p) => (p.um || "").toUpperCase() === "ATA"
       );
 
-      // ✔️ Primero agrupamos productos por caja original
-
+      // ✔️ Agrupar productos por caja original
       const cajasAgrupadasOriginal = {};
 
       for (const item of productosConCaja) {
@@ -570,12 +684,31 @@ function Plansurtido() {
         return acc;
       }, {});
 
+      // Productos que NO tienen caja y NO tienen motivo registrado
+      const productosSinCajaNoRegistrada = productosSinCaja.filter(
+        (p) =>
+          (!p.caja || p.caja === null || p.caja === "") &&
+          (!p.motivo || p.motivo === null)
+      );
+
       let numeroCajaSecuencial = 1;
 
+      // ✅ Si hay productos sin caja, agrégalos a la última caja
+      if (
+        productosSinCajaNoRegistrada.length > 0 &&
+        cajasOrdenadas.length > 0
+      ) {
+        const indexUltimaCaja = cajasOrdenadas.length - 1;
+        cajasOrdenadas[indexUltimaCaja][1].push(
+          ...productosSinCajaNoRegistrada
+        );
+      }
+
+      // 🔁 Recorremos las cajas
       for (const [key, productos] of cajasOrdenadas) {
         const [_, numeroCaja] = key.split("_");
         const tipoVisible = getTipoDominante(productos);
-        const titulo = `Productos en  ${tipoVisible} ${numeroCaja}`;
+        const titulo = `Productos en ${tipoVisible} ${numeroCaja}`;
 
         // Título de la tabla
         doc.autoTable({
@@ -594,7 +727,6 @@ function Plansurtido() {
         });
 
         currentY = doc.lastAutoTable.finalY;
-
         let yaContinua = false;
 
         doc.autoTable({
@@ -674,6 +806,7 @@ function Plansurtido() {
         numeroCajaSecuencial++;
       }
 
+      // 🟢 Productos atados sin caja
       if (productosSinCajaAtados.length > 0) {
         currentY = verificarEspacio(doc, currentY, 2);
         doc.autoTable({
@@ -766,13 +899,15 @@ function Plansurtido() {
 
         currentY = doc.lastAutoTable.finalY + 4;
       }
-      // Agrupar los productos sin caja en dos: con algo (INNER, MASTER, TARIMA, ATADOS) y completamente vacíos
 
+      // Resumen totales
       currentY = doc.lastAutoTable.finalY + 5;
       currentY = verificarEspacio(doc, currentY, 1);
       const pageWidth = doc.internal.pageSize.getWidth();
       const tableWidth = 90;
       const leftMargin = (pageWidth - tableWidth) / 2;
+
+      const totalConIvaParaTexto = totalConIva; // ya viene de confirmación o edición
 
       doc.autoTable({
         startY: currentY,
@@ -802,7 +937,7 @@ function Plansurtido() {
               styles: { halign: "center", fontSize: 5 },
             },
             {
-              content: "TOTAL A PAGAR\n(SIN IVA)",
+              content: "TOTAL A PAGAR\n(con IVA)",
               styles: { halign: "center", fontSize: 5 },
             },
             {
@@ -814,7 +949,7 @@ function Plansurtido() {
         body: [
           [
             `$${totalImporte.toFixed(2)}`,
-            `$${totalImporte.toFixed(2)}`,
+            `$${totalConIvaParaTexto.toFixed(2)}`,
             "100.00 %",
           ],
         ],
@@ -859,23 +994,17 @@ function Plansurtido() {
 
       currentY = doc.lastAutoTable.finalY + 0;
 
-      // === LEYENDA VERTICAL EN EL LADO IZQUIERDO ===
-      doc.saveGraphicsState(); // Guarda el estado gráfico actual
+      // === LEYENDA VERTICAL
+      doc.saveGraphicsState();
       doc.setFont("helvetica", "normal");
       doc.setFontSize(8);
-
-      // Coordenadas para colocar el texto vertical (ajusta según altura de tu hoja)
       doc.text(
         "Documento expedido sobre resolución miscelánea vigente",
-        5, // X inicial al borde izquierdo
-        doc.internal.pageSize.getHeight() / 2 + 30, // Y centrado vertical con ajuste
-        {
-          angle: 270, // Rota el texto vertical
-          align: "center",
-        }
+        5,
+        doc.internal.pageSize.getHeight() / 2 + 30,
+        { angle: 270, align: "center" }
       );
-
-      doc.restoreGraphicsState(); // Restaura el estado gráfico original
+      doc.restoreGraphicsState();
 
       const instrucciones = [
         "•Estimado cliente, nuestro transportista cuenta con ruta asignada por lo que agradeceríamos agilizar el tiempo de recepción de su mercancía, el material viaja consignado por lo que solo podrá entregarse en la dirección estipulada en este documento.",
@@ -906,7 +1035,7 @@ function Plansurtido() {
 
       currentY = doc.lastAutoTable.finalY + 0;
 
-      const letras = NumerosALetras(totalImporte);
+      const letras = NumerosALetras(totalConIvaParaTexto);
       const fechaActual = new Date();
       const fechaHoy = fechaActual.toLocaleDateString("es-MX");
       const fechaVence = new Date(
@@ -915,7 +1044,7 @@ function Plansurtido() {
 
       const textoPagare =
         `En cualquier lugar de este documento donde se estampe la firma por este pagaré debo(emos) y pagaré(mos) ` +
-        `incondicionalmente a la vista y a la orden de SANTUL HERRAMIENTAS S.A. DE C.V., la cantidad de: $${totalImporte.toFixed(
+        `incondicionalmente a la vista y a la orden de SANTUL HERRAMIENTAS S.A. DE C.V., la cantidad de: $${totalConIvaParaTexto.toFixed(
           2
         )} ` +
         `(${letras} M.N.) En el total a pagar en Cuautitlán, Estado de México, o en la que SANTUL HERRAMIENTAS S.A. DE C.V., juzgue necesario. ` +
@@ -944,12 +1073,10 @@ function Plansurtido() {
       currentY = doc.lastAutoTable.finalY + 0;
       currentY = verificarEspacio(doc, currentY, 5);
 
-      //informacion bancaria
-      // === Información Bancaria + Observaciones alineadas ===
+      // === Información bancaria + Observaciones
+      const tablaBancosY = currentY + 10;
 
-      const tablaBancosY = currentY + 10; // Ajusta el +3 si lo quieres más arriba o abajo
-
-      // Muestra la referencia bancaria arriba de la tabla
+      // Referencia bancaria arriba de la tabla
       doc.setFontSize(10);
       doc.text("Referencia bancaria:", 20, tablaBancosY - 5, {
         styles: { fontStyle: "bold" },
@@ -958,7 +1085,7 @@ function Plansurtido() {
       doc.text(`${referenciaCliente}`, 75, tablaBancosY - 5, {
         align: "right",
         styles: { fontStyle: "bold" },
-      }); // Ajusta la posición x para alinearlo a la derecha
+      });
       doc.setFont(undefined, "normal");
 
       // TABLA DE BANCOS
@@ -986,58 +1113,52 @@ function Plansurtido() {
         ],
         body: [
           ["BANAMEX", "6860432", "7006", "002180700668604325"],
-          [
-            { content: "BANORTE" },
-            { content: "0890771176" },
-            { content: "04" },
-            { content: "072180008907711766" },
-          ],
+          ["BANORTE", "0890771176", "04", "072180008907711766"],
           ["BANCOMER", "CIE 2476827", "1838"],
         ],
-        theme: "plain", // Sin bordes, puro alineado como quieres
+        theme: "plain",
         styles: { fontSize: 8, cellPadding: 1, halign: "center" },
         margin: { left: 10 },
-        tableWidth: 115, // ajusta a 115-120 según el ancho de tu hoja, eso te da espacio a la derecha para observaciones
+        tableWidth: 115,
         headStyles: { textColor: [0, 0, 0], fontStyle: "bold" },
         bodyStyles: { textColor: [0, 0, 0] },
       });
-      // CAJA OBSERVACIONES (alineada a la derecha)
-      // =============== CAJA DE OBSERVACIONES ===============
+
+      // Caja de observaciones
       const obsBoxX = 133;
       const obsBoxY = tablaBancosY;
       const obsBoxWidth = 65;
       const obsBoxHeight = 28;
 
-      // Dibuja el recuadro
       doc.setDrawColor(120, 120, 120);
       doc.setLineWidth(0.3);
       doc.rect(obsBoxX, obsBoxY, obsBoxWidth, obsBoxHeight);
 
-      // Título
       doc.setFont("helvetica", "bold");
       doc.setFontSize(9);
-      doc.text("Observaciones:", obsBoxX + 3, obsBoxY + 7);
+      doc.text("Observaciones: ", obsBoxX + 3, obsBoxY + 7);
 
-      // Líneas punteadas dentro del recuadro, bien alineadas
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.text(`OC: ${numeroOC}`, obsBoxX + 5, obsBoxY + 15);
+
       doc.setFont("helvetica", "normal");
       doc.setFontSize(8);
 
       const numLineas = 4;
-      const leftPadding = 5; // padding izquierdo dentro de la caja
+      const leftPadding = 5;
       const rightPadding = 5;
       const lineaAncho = obsBoxWidth - leftPadding - rightPadding;
       for (let i = 0; i < numLineas; i++) {
-        // Empieza un poco debajo del título y separadas
         const lineaY = obsBoxY + 11 + i * 5.3;
         doc.text(
-          "...".repeat(Math.floor(lineaAncho / 2.5)), // Ajusta el divisor para el largo de puntos
+          "...".repeat(Math.floor(lineaAncho / 2.5)),
           obsBoxX + leftPadding,
           lineaY
         );
       }
 
-      // Poner leyenda final justo abajo, centrado
-      const leyendaY = obsBoxY + obsBoxHeight + 7; // Ajusta el +7 para el espaciado
+      const leyendaY = obsBoxY + obsBoxHeight + 7;
       doc.setFont("helvetica", "normal");
       doc.setFontSize(7.5);
       doc.text(
@@ -1046,14 +1167,36 @@ function Plansurtido() {
         leyendaY
       );
 
-      currentY = leyendaY + 4; // Si necesitas continuar después
+      currentY = leyendaY + 4;
 
-      addPageNumber(doc);
+      addPageNumber(doc, pedido, numeroFactura, tipo_original);
+
       doc.save(`PackingList_de_${pedido}-${tipo_original}.pdf`);
       alert(`PDF generado con éxito para el pedido ${pedido}-${tipo_original}`);
     } catch (error) {
       console.error("Error al generar el PDF:", error);
       alert("Hubo un error al generar el PDF.");
+    }
+  };
+
+  // 👉 Nueva función para descargar todos los PDFs de una ruta, uno por uno
+  const generateAllPDFs = async (grupo) => {
+    try {
+      for (const pedido of grupo.pedidos) {
+        const tipoFinal = (pedido.tipo_encontrado || pedido.tipo_original || "")
+          .toUpperCase()
+          .trim();
+
+        await generatePDF(
+          pedido.no_orden,
+          tipoFinal,
+          rutas, // 👈 los pasas aquí
+          pedidosExternos // 👈 también
+        );
+      }
+    } catch (error) {
+      console.error("❌ Error generando los PDFs:", error);
+      Swal.fire("Error", "Hubo un problema generando los PDFs", "error");
     }
   };
 
@@ -1227,9 +1370,26 @@ function Plansurtido() {
               </Box>
               {data.map((grupo, index) => (
                 <Box key={index} mb={4}>
-                  <Typography variant="h6" gutterBottom>
+                  <Typography
+                    variant="h6"
+                    sx={{ display: "flex", alignItems: "center", gap: 2 }}
+                  >
                     Ruta: {grupo.routeName}
+                    <Button
+                      variant="contained"
+                      size="small"
+                      color="primary"
+                      onClick={() => generateAllPDFs(grupo)} // 👈 ahora descarga 1x1
+                      disabled={loadingZIP}
+                    >
+                      {loadingZIP ? (
+                        <CircularProgress size={20} color="inherit" />
+                      ) : (
+                        "Generar todos los PackingList"
+                      )}
+                    </Button>
                   </Typography>
+
                   <TableContainer component={Paper}>
                     <Table>
                       <TableHead>
@@ -1315,7 +1475,9 @@ function Plansurtido() {
                                       String(pedido.no_orden),
                                       String(tipoFinal || "")
                                         .toUpperCase()
-                                        .trim()
+                                        .trim(),
+                                      rutas, // 👈 ahora sí como argumento
+                                      pedidosExternos // 👈 correcto
                                     )
                                   }
                                 >

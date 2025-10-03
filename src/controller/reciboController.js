@@ -1,4 +1,4 @@
-const pool = require('../config/database');
+const pool = require("../config/database");
 
 const getRecibo = async (req, res) => {
   try {
@@ -19,12 +19,21 @@ const getRecibo = async (req, res) => {
     `);
     res.json(rows);
   } catch (error) {
-    res.status(500).json({ message: 'Error al obtener los recibo', error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error al obtener los recibo", error: error.message });
   }
 };
 
 const updateVolumetria = async (req, res) => {
-  const { codigo, cajas_cama, camas_tarima, piezas_caja, cajas_tarima, piezas_tarima } = req.body;
+  const {
+    codigo,
+    cajas_cama,
+    camas_tarima,
+    piezas_caja,
+    cajas_tarima,
+    piezas_tarima,
+  } = req.body;
   console.log("tarimas", req.body);
 
   try {
@@ -38,36 +47,56 @@ const updateVolumetria = async (req, res) => {
       // Si existe, realizar actualización en volumetria
       await pool.query(
         `UPDATE volumetria SET cajas_cama = ?, camas_tarima = ?, pieza_caja = ?, cajas_tarima = ? , pieza_tarima = ? WHERE codigo = ?`,
-        [cajas_cama, camas_tarima, piezas_caja, cajas_tarima, piezas_tarima, codigo]
+        [
+          cajas_cama,
+          camas_tarima,
+          piezas_caja,
+          cajas_tarima,
+          piezas_tarima,
+          codigo,
+        ]
       );
-      console.log('Datos actualizados en volumetria');
+      console.log("Datos actualizados en volumetria");
     } else {
       // Si no existe, insertar los datos en volumetria
       await pool.query(
         `INSERT INTO volumetria (codigo, cajas_cama, camas_tarima, pieza_caja, cajas_tarima, pieza_tarima) VALUES (?, ?, ?, ?, ?, ?)`,
-        [codigo, cajas_cama, camas_tarima, piezas_caja, cajas_tarima, piezas_tarima]
+        [
+          codigo,
+          cajas_cama,
+          camas_tarima,
+          piezas_caja,
+          cajas_tarima,
+          piezas_tarima,
+        ]
       );
-      console.log('Datos insertados en volumetria');
+      console.log("Datos insertados en volumetria");
     }
 
     // Nueva actualización: Actualizar el campo _palet en la tabla productos
-    await pool.query(
-      `UPDATE productos SET _palet = ? WHERE codigo_pro = ?`,
-      [piezas_tarima, codigo]
+    await pool.query(`UPDATE productos SET _palet = ? WHERE codigo_pro = ?`, [
+      piezas_tarima,
+      codigo,
+    ]);
+    console.log(
+      `Campo _palet actualizado en productos para el código: ${codigo}`
     );
-    console.log(`Campo _palet actualizado en productos para el código: ${codigo}`);
 
-    res.json({ message: 'Datos de volumetria actualizados correctamente y campo _palet actualizado en productos' });
-
+    res.json({
+      message:
+        "Datos de volumetria actualizados correctamente y campo _palet actualizado en productos",
+    });
   } catch (error) {
-    console.error('Error al actualizar o insertar datos:', error);
-    res.status(500).json({ message: 'Error al actualizar o insertar datos de volumetria y productos', error: error.message });
+    console.error("Error al actualizar o insertar datos:", error);
+    res.status(500).json({
+      message: "Error al actualizar o insertar datos de volumetria y productos",
+      error: error.message,
+    });
   }
 };
 
-
 const saveRecibo = async (req, res) => {
-  console.log("recibiendo"); 
+  console.log("recibiendo");
   const {
     codigo,
     cantidad_recibida,
@@ -76,7 +105,7 @@ const saveRecibo = async (req, res) => {
     est, // Estado (enviado desde el frontend)
     pallete,
     restante,
-    idRecibo
+    idRecibo,
   } = req.body;
   console.log("datos recibo", req.body);
 
@@ -95,10 +124,21 @@ const saveRecibo = async (req, res) => {
     );
 
     if (reciboCompraRows.length === 0) {
-      return res.status(404).json({ message: 'No se encontraron datos en recibo_compras para el código y OC proporcionados.' });
+      return res.status(404).json({
+        message:
+          "No se encontraron datos en recibo_compras para el código y OC proporcionados.",
+      });
     }
 
-    const { id_recibo, naviera, pedimento, id_usuario, contenedor, cant_recibir, referencia } = reciboCompraRows[0];
+    const {
+      id_recibo,
+      naviera,
+      pedimento,
+      id_usuario,
+      contenedor,
+      cant_recibir,
+      referencia,
+    } = reciboCompraRows[0];
 
     // Verificar si existe un recibo en `recibo_cedis` con los mismos valores de `id_recibo_compras`
     const [existingRecibo] = await pool.query(
@@ -117,11 +157,20 @@ const saveRecibo = async (req, res) => {
             est = ?, 
             fecha_recibo = NOW() 
         WHERE id_recibo_compras = ?`,
-        [cantidad_recibida, cantidad_recibida, pallete, restante, est, id_recibo]
+        [
+          cantidad_recibida,
+          cantidad_recibida,
+          pallete,
+          restante,
+          est,
+          id_recibo,
+        ]
       );
 
       if (!responseSent) {
-        res.json({ message: "Registro actualizado correctamente en recibo_cedis" });
+        res.json({
+          message: "Registro actualizado correctamente en recibo_cedis",
+        });
         responseSent = true;
       }
     } else {
@@ -143,12 +192,14 @@ const saveRecibo = async (req, res) => {
           restante,
           cantidad_recibida,
           id_recibo,
-          referencia
+          referencia,
         ]
       );
 
       if (!responseSent) {
-        res.json({ message: "Datos del recibo guardados correctamente en recibo_cedis" });
+        res.json({
+          message: "Datos del recibo guardados correctamente en recibo_cedis",
+        });
         responseSent = true;
       }
     }
@@ -169,21 +220,89 @@ const saveRecibo = async (req, res) => {
       );
 
       if (!responseSent) {
-        res.json({ message: "Estado actualizado a 'F' en recibo_compras, cantidad total recibida" });
+        res.json({
+          message:
+            "Estado actualizado a 'F' en recibo_compras, cantidad total recibida",
+        });
         responseSent = true;
       }
     }
   } catch (error) {
     if (!responseSent) {
       console.error("Error al guardar los datos en la base de datos:", error);
-      res.status(500).json({ message: 'Error al guardar los datos del recibo', error: error.message });
+      res.status(500).json({
+        message: "Error al guardar los datos del recibo",
+        error: error.message,
+      });
     }
   }
 };
 
+const getRecibosPendientes = async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT 
+        rc.oc,
+        rc.codigo,
+        rc.cantidad_total AS Total,
+        rc.cantidad_recibida AS Recibo,
+        rc.est,
+        rc.fecha_recibo,
+        rcom.estado
+      FROM recibo_cedis rc
+      LEFT JOIN recibo_compras rcom 
+             ON rc.oc = rcom.oc 
+            AND rc.codigo = rcom.codigo
+      WHERE DATE(rc.fecha_recibo) = CURDATE()
+        AND rc.est = 'R'
+        AND rcom.estado = 'F'
+    `);
 
+    res.json(rows);
+  } catch (error) {
+    console.error("Error al obtener recibos pendientes:", error);
+    res.status(500).json({
+      message: "Error al obtener recibos pendientes",
+      error: error.message,
+    });
+  }
+};
 
+const cancelarRecibo = async (req, res) => {
+  const { oc, codigo } = req.body;
 
+  try {
+    // 1. Actualizar en recibo_cedis
+    await pool.query(
+      `UPDATE recibo_cedis 
+       SET cantidad_recibida = 0, est = 'C'
+       WHERE oc = ? AND codigo = ?`,
+      [oc, codigo]
+    );
 
+    // 2. Actualizar en recibo_compras
+    await pool.query(
+      `UPDATE recibo_compras 
+       SET estado = 'C'
+       WHERE oc = ? AND codigo = ?`,
+      [oc, codigo]
+    );
 
-module.exports = { getRecibo, updateVolumetria, saveRecibo };
+    res.json({
+      message: `Recibo OC ${oc} y código ${codigo} fue cancelado (estado C en ambas tablas).`,
+    });
+  } catch (error) {
+    console.error("❌ Error al cancelar recibo:", error);
+    res
+      .status(500)
+      .json({ message: "Error al cancelar recibo", error: error.message });
+  }
+};
+
+module.exports = {
+  getRecibo,
+  updateVolumetria,
+  saveRecibo,
+  getRecibosPendientes,
+  cancelarRecibo,
+};

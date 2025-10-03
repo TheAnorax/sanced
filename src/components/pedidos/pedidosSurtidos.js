@@ -511,6 +511,8 @@ function EnSurtido() {
     setIncidences(newIncidences);
   };
 
+// Guardar 
+
 const handleSave = async () => {
   // 🔥 Validación de motivo ANTES de guardar
   const missingMotives = selectedPedido.items.filter(

@@ -398,7 +398,6 @@ async function processInBatches(items, batchSize, worker) {
   return results;
 }
 
-
 const cache = new Map();
 
 async function enrichWithPortafolio(item) {
@@ -419,14 +418,21 @@ async function enrichWithPortafolio(item) {
     const url = `http://66.232.105.87:3007/api/Queretaro/category/${encodeURIComponent(
       giro
     )}/${encodeURIComponent(portafolio)}/${encodeURIComponent(segmento)}`;
-    
+
     const { data } = await axios.get(url, { timeout: 10000 });
-    const payload = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
+    const payload = Array.isArray(data)
+      ? data
+      : Array.isArray(data?.data)
+      ? data.data
+      : [];
 
     cache.set(key, payload); // Guardar en cache
     return { ...item, portafolio_detalle: payload };
   } catch (err) {
-    console.error(`❌ Error consultando portafolio para cliente ${item.Num_cliente}:`, err.message);
+    console.error(
+      `❌ Error consultando portafolio para cliente ${item.Num_cliente}:`,
+      err.message
+    );
     cache.set(key, []); // Evitar repetir fallo
     return { ...item, portafolio_detalle: [] };
   }
@@ -466,38 +472,12 @@ const postQueretaro = async (req, res) => {
       });
     }
 
-    const cache = new Map();
-
-    const datosConPortafolio = await processInBatches(rows, 10, async (item) => {
-      const giro = (item.giro || "").trim();
-      const portafolio = (item.portafolio || "").trim();
-      const segmento = (item.segmento || "").trim();
-
-      if (!giro || !portafolio || !segmento) {
-        return { ...item, portafolio_detalle: [] };
-      }
-
-      const key = `${giro}|${portafolio}|${segmento}`;
-      if (cache.has(key)) {
-        return { ...item, portafolio_detalle: cache.get(key) };
-      }
-
-      try {
-        const url = `http://66.232.105.87:3007/api/Queretaro/category/${encodeURIComponent(
-          giro
-        )}/${encodeURIComponent(portafolio)}/${encodeURIComponent(segmento)}`;
-        
-        const { data } = await axios.get(url, { timeout: 10000 });
-        const payload = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : [];
-
-        cache.set(key, payload);
-        return { ...item, portafolio_detalle: payload };
-      } catch (err) {
-        console.error(`❌ Error consultando portafolio para cliente ${item.Num_cliente}:`, err.message);
-        cache.set(key, []);
-        return { ...item, portafolio_detalle: [] };
-      }
-    });
+    // 🔹 Ya no hacemos consulta a la API externa
+    // Solo devolvemos portafolio_detalle vacío para mantener compatibilidad
+    const datosConPortafolio = rows.map((item) => ({
+      ...item,
+      portafolio_detalle: [], // 👈 se conserva la estructura esperada
+    }));
 
     return res.status(200).json({
       success: true,
@@ -513,6 +493,7 @@ const postQueretaro = async (req, res) => {
     });
   }
 };
+
 
 // 📌 Nueva API getInfoOC
 const BASE_PDF_URL = "https://sanced.santulconnect.com:3011/docs/";
@@ -698,9 +679,9 @@ const dataFacturas = async (req, res) => {
     return res.status(200).json({
       success: true,
       meta: {
-        mode: range.mode,       // "current-month" | "month" | "range"
-        from: range.from,       // YYYY-MM-DD
-        to: range.to,           // YYYY-MM-DD (inicio del mes siguiente / fin abierto)
+        mode: range.mode, // "current-month" | "month" | "range"
+        from: range.from, // YYYY-MM-DD
+        to: range.to, // YYYY-MM-DD (inicio del mes siguiente / fin abierto)
         total: rows.length,
       },
       datos: rows,
@@ -729,11 +710,16 @@ function resolveDateRange(q) {
 
   // 1) Rango explícito
   if (q.from && q.to) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(q.from) || !/^\d{4}-\d{2}-\d{2}$/.test(q.to)) {
+    if (
+      !/^\d{4}-\d{2}-\d{2}$/.test(q.from) ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(q.to)
+    ) {
       throw new Error("Parámetros 'from' y 'to' deben ser YYYY-MM-DD");
     }
     if (q.from >= q.to) {
-      throw new Error("'from' debe ser menor que 'to'. Usa rango semi-abierto [from, to).");
+      throw new Error(
+        "'from' debe ser menor que 'to'. Usa rango semi-abierto [from, to)."
+      );
     }
     return { from: q.from, to: q.to, mode: "range" };
   }
@@ -750,7 +736,9 @@ function resolveDateRange(q) {
       month = Number(q.month);
       year = q.year ? Number(q.year) : new Date().getFullYear();
     } else {
-      throw new Error("Parámetro 'month' inválido. Usa 'YYYY-MM' o numérico (1..12).");
+      throw new Error(
+        "Parámetro 'month' inválido. Usa 'YYYY-MM' o numérico (1..12)."
+      );
     }
 
     if (month < 1 || month > 12) {
@@ -769,9 +757,6 @@ function resolveDateRange(q) {
   return { from: toISO(fromCurr), to: toISO(toCurr), mode: "current-month" };
 }
 
-
-
-
 module.exports = {
   getSales,
   getSaleArrive,
@@ -782,5 +767,5 @@ module.exports = {
   postQueretaro,
   getInfoOC,
   getObjClient,
-  dataFacturas
+  dataFacturas,
 };

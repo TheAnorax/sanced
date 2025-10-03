@@ -33,20 +33,22 @@ const buscarProducto = async (req, res) => {
   try {
     const [rows] = await pool.query(
       `SELECT 
-              codigo_pro AS codigo,
-              des,
-              um,
-              _pz
-            FROM productos
-            WHERE codigo_pro = ?`,
-      [codigo]
+        codigo_pro AS codigo,
+        des,
+        um,
+        _pz,
+        _inner,
+        _master
+      FROM productos
+      WHERE codigo_pro = ? OR des LIKE CONCAT('%', ?, '%')`,
+      [codigo, codigo] // 👈 usa el mismo valor para ambas
     );
 
     if (rows.length === 0) {
       return res.status(404).json({ message: "Producto no encontrado" });
     }
 
-    res.json(rows[0]);
+    res.json(rows); // 👈 devolver todos, no solo uno
   } catch (error) {
     console.error("Error al buscar el producto:", error);
     res.status(500).json({ message: "Error al buscar el producto" });
@@ -952,7 +954,7 @@ const enviarPendientesEmbarque = async () => {
 };
 
 // 8:00 AM
-cron.schedule("33 9 * * 1-5", async () => {
+cron.schedule("52 9 * * 1-5", async () => {
   console.log(
     "⏰ Ejecutando envío diario de pendientes de embarque (9:00 AM, solo lunes a viernes)..."
   );

@@ -24,6 +24,13 @@ const getUsuarios = async (req, res) => {
       P11: "Pasillo 11",
       P12: "Pasillo 12",
       P13: "Pasillo 13",
+      P14: "Pasillo 14",
+      P15: "Pasillo 15",
+      P16: "Pasillo 16",
+      P17: "Pasillo 17",
+      P18: "Pasillo 18",
+      P19: "Pasillo 19",
+      P20: "Pasillo 20",
     };
 
     const usuariosPorTurno = rows.reduce((acc, usuario) => {

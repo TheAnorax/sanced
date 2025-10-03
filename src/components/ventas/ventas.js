@@ -1354,7 +1354,7 @@ function Tracking() {
           "Tran",
           "Audi",
           "Rep",
-          "AdminTran"
+          "AdminTran",
         ],
       },
       {
@@ -1375,7 +1375,7 @@ function Tracking() {
           "Tran",
           "Audi",
           "Rep",
-          "AdminTran"
+          "AdminTran",
         ],
       },
       {
@@ -1395,7 +1395,7 @@ function Tracking() {
           "Tran",
           "Audi",
           "Rep",
-          "AdminTran"
+          "AdminTran",
         ],
       },
       {
@@ -1415,7 +1415,7 @@ function Tracking() {
           "Tran",
           "Audi",
           "Rep",
-          "AdminTran"
+          "AdminTran",
         ],
       },
       {
@@ -1436,7 +1436,7 @@ function Tracking() {
           "Tran",
           "Audi",
           "Rep",
-          "AdminTran"
+          "AdminTran",
         ],
       },
       {
@@ -1469,7 +1469,7 @@ function Tracking() {
           "Tran",
           "Audi",
           "Rep",
-          "AdminTran"
+          "AdminTran",
         ],
       },
       {
@@ -1490,7 +1490,7 @@ function Tracking() {
           "Tran",
           "Audi",
           "Rep",
-          "AdminTran"
+          "AdminTran",
         ],
       },
       {
@@ -1517,7 +1517,7 @@ function Tracking() {
           "Tran",
           "Audi",
           "Rep",
-          "AdminTran"
+          "AdminTran",
         ],
       },
       {
@@ -1534,7 +1534,7 @@ function Tracking() {
           "Tran",
           "Audi",
           "Rep",
-          "AdminTran"
+          "AdminTran",
         ],
       },
       {
@@ -1550,7 +1550,7 @@ function Tracking() {
           "Tran",
           "Audi",
           "Rep",
-          "AdminTran"
+          "AdminTran",
         ],
       },
       {
@@ -1582,7 +1582,7 @@ function Tracking() {
           "Rep",
           "VENT",
           "VENT3",
-          "AdminTran"
+          "AdminTran",
         ],
       },
       {
@@ -1603,7 +1603,7 @@ function Tracking() {
           "Rep",
           "VENT",
           "VENT3",
-          "AdminTran"
+          "AdminTran",
         ],
       },
       {
@@ -1621,7 +1621,7 @@ function Tracking() {
           "Tran",
           "Audi",
           "Rep",
-          "AdminTran"
+          "AdminTran",
         ],
       },
       {
@@ -1640,7 +1640,7 @@ function Tracking() {
           "Tran",
           "Audi",
           "Rep",
-          "AdminTran"
+          "AdminTran",
         ],
       },
       {
@@ -1674,24 +1674,45 @@ function Tracking() {
           "Tran",
           "Audi",
           "Rep",
-          "AdminTran"
+          "AdminTran",
         ],
       },
       {
         name: "PRORRATEO $ FACTURA LT",
-        role: ["Admin", "Master", "Trans", "Rep","AdminTran"],
+        role: ["Admin", "Master", "Trans", "Rep", "AdminTran"],
       },
       {
         name: "PRORRATEO $ FACTURA PAQUETERIA",
-        role: ["Admin", "Master", "Trans", "Rep","AdminTran"],
+        role: ["Admin", "Master", "Trans", "Rep", "AdminTran"],
       },
-      { name: "GASTOS EXTRAS", role: ["Admin", "Master", "Trans", "Rep","AdminTran"] },
-      { name: "SUMA FLETE", role: ["Admin", "Master", "Trans", "Rep","AdminTran"] },
-      { name: "% ENVIO", role: ["Admin", "Master", "Trans", "Rep","AdminTran"] },
-      { name: "% PAQUETERIA", role: ["Admin", "Master", "Trans", "Rep","AdminTran"] },
-      { name: "SUMA GASTOS EXTRAS", role: ["Admin", "Master", "Trans", "Rep","AdminTran"] },
-      { name: "% GLOBAL", role: ["Admin", "Master", "Trans", "Rep","AdminTran"] },
-      { name: "DIFERENCIA", role: ["Admin", "Master", "Trans", "Rep","AdminTran"] },
+      {
+        name: "GASTOS EXTRAS",
+        role: ["Admin", "Master", "Trans", "Rep", "AdminTran"],
+      },
+      {
+        name: "SUMA FLETE",
+        role: ["Admin", "Master", "Trans", "Rep", "AdminTran"],
+      },
+      {
+        name: "% ENVIO",
+        role: ["Admin", "Master", "Trans", "Rep", "AdminTran"],
+      },
+      {
+        name: "% PAQUETERIA",
+        role: ["Admin", "Master", "Trans", "Rep", "AdminTran"],
+      },
+      {
+        name: "SUMA GASTOS EXTRAS",
+        role: ["Admin", "Master", "Trans", "Rep", "AdminTran"],
+      },
+      {
+        name: "% GLOBAL",
+        role: ["Admin", "Master", "Trans", "Rep", "AdminTran"],
+      },
+      {
+        name: "DIFERENCIA",
+        role: ["Admin", "Master", "Trans", "Rep", "AdminTran"],
+      },
       {
         name: "Acciones",
         role: [
@@ -1709,22 +1730,36 @@ function Tracking() {
           "Tran",
           "Audi",
           "Rep",
-          "AdminTran"
+          "AdminTran",
         ],
       },
       {
         name: "TRANSPORTISTA",
-        role: ["Admin", "Master", "Trans", "Control", "Embar", "Rep","AdminTran"],
+        role: [
+          "Admin",
+          "Master",
+          "Trans",
+          "Control",
+          "Embar",
+          "Rep",
+          "AdminTran",
+        ],
       },
-      { name: "EMPRESA", role: ["Admin", "Master", "Trans", "Control", "Rep","AdminTran"] },
-      { name: "CLAVE", role: ["Admin", "Master", "Trans", "Control", "Rep","AdminTran"] },
+      {
+        name: "EMPRESA",
+        role: ["Admin", "Master", "Trans", "Control", "Rep", "AdminTran"],
+      },
+      {
+        name: "CLAVE",
+        role: ["Admin", "Master", "Trans", "Control", "Rep", "AdminTran"],
+      },
       {
         name: "ACCIONES",
-        role: ["Admin", "Master", "Trans", "Control", "Rep","AdminTran"],
+        role: ["Admin", "Master", "Trans", "Control", "Rep", "AdminTran"],
       },
       {
         name: "REG_ENTRADA",
-        role: ["Admin", "Master", "Trans", "Control", "Rep","AdminTran"],
+        role: ["Admin", "Master", "Trans", "Control", "Rep", "AdminTran"],
       },
     ];
 
@@ -1742,7 +1777,7 @@ function Tracking() {
     );
 
     if (filteredData.length === 0) {
-      alert("No hay datos de tipo 'Directa' para exportar."); 
+      alert("No hay datos de tipo 'Directa' para exportar.");
       return;
     }
 
@@ -3850,8 +3885,8 @@ function Tracking() {
                 <option value="7">Julio</option>
                 <option value="8">Agosto</option>
                 <option value="9">Septiembre</option>
-                {/* <option value="10">Octubre</option>
-                <option value="11">Noviembre</option>
+                <option value="10">Octubre</option>
+                {/*   <option value="11">Noviembre</option>
                 <option value="12">Diciembre</option> */}
               </select>
             </div>
@@ -4195,8 +4230,8 @@ function Tracking() {
                 <option value="7">Julio</option>
                 <option value="8">Agosto</option>
                 <option value="9">Septiembre</option>
-                {/*  <option value="10">Octubre</option>
-                <option value="11">Noviembre</option>
+                <option value="10">Octubre</option>
+                {/* <option value="11">Noviembre</option>
                 <option value="12">Diciembre</option> */}
               </select>
             </div>
@@ -4705,8 +4740,8 @@ function Tracking() {
                 <option value="7">Julio</option>
                 <option value="8">Agosto</option>
                 <option value="9">Septiembre</option>
-                {/*  <option value="10">Octubre</option>
-                <option value="11">Noviembre</option>
+                <option value="10">Octubre</option>
+                {/*   <option value="11">Noviembre</option>
                 <option value="12">Diciembre</option> */}
               </select>
             </div>

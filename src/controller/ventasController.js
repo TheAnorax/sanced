@@ -194,7 +194,7 @@ const obtenerRutasDePaqueteria = async (req, res) => {
              OBSERVACIONES, TOTAL, PARTIDAS, PIEZAS, TARIMAS, TRANSPORTE, 
              PAQUETERIA, GUIA, FECHA_DE_ENTREGA_CLIENTE, DIAS_DE_ENTREGA,
              TIPO, DIRECCION, TELEFONO, TOTAL_FACTURA_LT, ENTREGA_SATISFACTORIA_O_NO_SATISFACTORIA,
-             created_at, MOTIVO, NUMERO_DE_FACTURA_LT, FECHA_DE_ENTREGA_CLIENTE, tipo_original,\`EJECUTIVO VTAS\`
+             created_at, MOTIVO, NUMERO_DE_FACTURA_LT, FECHA_DE_ENTREGA_CLIENTE, tipo_original,totalIva
       FROM paqueteria
       WHERE 1 = 1
     `;
@@ -208,13 +208,20 @@ const obtenerRutasDePaqueteria = async (req, res) => {
         const anioActual = new Date().getFullYear();
         query += " AND MONTH(created_at) = ? AND YEAR(created_at) = ?";
         params.push(mes, anioActual);
+
+        // 👉 Orden ascendente (día 1 al último)
+        query += " ORDER BY created_at ASC LIMIT ? OFFSET ?";
       } else {
         const fechaLimite = new Date();
         fechaLimite.setDate(fechaLimite.getDate() - 3);
         const fechaLimiteStr = fechaLimite.toISOString().slice(0, 10);
         query += " AND created_at >= ?";
         params.push(fechaLimiteStr);
+
+        // 👉 Orden descendente (hoy hacia atrás)
+        query += " ORDER BY created_at DESC LIMIT ? OFFSET ?";
       }
+      params.push(parseInt(limit), parseInt(offset));
     }
 
     if (tipo) {
@@ -227,9 +234,6 @@ const obtenerRutasDePaqueteria = async (req, res) => {
       params.push(guia);
     }
 
-    query += " ORDER BY created_at DESC LIMIT ? OFFSET ?";
-    params.push(parseInt(limit), parseInt(offset));
-
     const [rows] = await pool.query(query, params);
     res.json(rows);
   } catch (error) {
@@ -239,6 +243,8 @@ const obtenerRutasDePaqueteria = async (req, res) => {
       .json({ message: "Error al obtener las rutas de paquetería" });
   }
 };
+
+
 
 const obtenerRutasParaPDF = async (req, res) => {
   try {

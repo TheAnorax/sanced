@@ -55,7 +55,7 @@ function Recibo() {
   const [filterOC, setFilterOC] = useState("");
   const [filterCodigo, setFilterCodigo] = useState("");
   const { user } = useContext(UserContext);
-//  const baseURL = "https://sanced.santulconnect.com:3011"; // servidor estático
+  //  const baseURL = "https://sanced.santulconnect.com:3011"; // servidor estático
 
   const handlePrint = async () => {
     setLoadingDialogOpen(true); // Mostrar el diálogo de carga
@@ -268,7 +268,7 @@ function Recibo() {
           dato: dato,
         }
       );
-  
+
       if (response.data.resultado.error) {
         Swal.fire({
           icon: "info",
@@ -280,11 +280,11 @@ function Recibo() {
         const recibosFiltrados = response.data.resultado.list.filter(
           (recibo) => Number(recibo.cant_recibir) > 0
         );
-  
+
         const recibosOrdenados = recibosFiltrados.sort(
           (a, b) => new Date(a.arribo) - new Date(b.arribo)
         );
-  
+
         setRecibos(recibosOrdenados);
       }
     } catch (error) {
@@ -298,7 +298,7 @@ function Recibo() {
       setLoading(false);
     }
   };
-  
+
   useEffect(() => {
     fetchRecibos("0");
   }, []);
@@ -316,7 +316,7 @@ function Recibo() {
     try {
       const response = await axios.post(
         "http://66.232.105.87:3007/recibo/tarima",
-        { 
+        {
           id_recibo: recibo.id_recibo,
         }
       );
@@ -483,12 +483,33 @@ function Recibo() {
       setModalOpen(true);
     }
   };
+
   const filteredRecibos = recibos.filter((recibo) => {
     return (
       recibo.oc.toLowerCase().includes(filterOC.toLowerCase()) &&
       recibo.codigo.toLowerCase().includes(filterCodigo.toLowerCase())
     );
   });
+
+  // regreso de valores
+
+  const [pendientes, setPendientes] = useState([]);
+  const [modalPendientesOpen, setModalPendientesOpen] = useState(false);
+  const [filterCodigoPendientes, setFilterCodigoPendientes] = useState("");
+
+  const fetchPendientes = async () => {
+    try {
+      //       http://localhost:3007/api/recibo/recibos-pendientes
+      const response = await axios.get(
+        "http://66.232.105.87:3007/api/recibo/recibos-pendientes"
+      );
+      setPendientes(response.data);
+      setModalPendientesOpen(true); // Abrir modal después de cargar
+    } catch (error) {
+      console.error("Error al obtener pendientes:", error);
+      Swal.fire("Error", "No se pudieron obtener los pendientes", "error");
+    }
+  };
 
   return (
     <Box sx={{ p: 3 }}>
@@ -514,12 +535,23 @@ function Recibo() {
       <Typography variant="body1" gutterBottom>
         Mostrar recibos de 15 días adelante
       </Typography>
+
       <Switch
         checked={checked}
         onChange={handleSwitchChange}
         color="primary"
         sx={{ mb: 2 }}
       />
+      <br></br>
+
+      <Button
+        variant="contained"
+        color="primary"
+        sx={{ mb: 2 }}
+        onClick={fetchPendientes}
+      >
+        Revertir Recibos
+      </Button>
 
       {loading ? (
         <CircularProgress />
@@ -585,7 +617,7 @@ function Recibo() {
                   <TableCell>
                     <img
                       src={`../assets/image/img_pz/${recibo.codigo}.jpg`}
-                      alt="Producto" 
+                      alt="Producto"
                       style={{
                         width: "80px",
                         height: "80px",
@@ -619,23 +651,23 @@ function Recibo() {
                     </Typography>
                   </TableCell>
                   {["Admin", "Recibo"].includes(user?.role) && (
-                  <TableCell>
-                    {isToday(new Date(`${recibo.arribo}T00:00:00`)) ? (
-                      <Button
-                        variant="contained"
-                        color="success"
-                        startIcon={<AddIcon />}
-                        onClick={() => handleRecibir(recibo)}
-                        disabled={loading}
-                      >
-                        {loading ? <CircularProgress size={24} /> : "Recibir"}
-                      </Button>
-                    ) : (
-                      <Typography variant="body2" color="textSecondary">
-                        No disponible
-                      </Typography>
-                    )}
-                  </TableCell>
+                    <TableCell>
+                      {isToday(new Date(`${recibo.arribo}T00:00:00`)) ? (
+                        <Button
+                          variant="contained"
+                          color="success"
+                          startIcon={<AddIcon />}
+                          onClick={() => handleRecibir(recibo)}
+                          disabled={loading}
+                        >
+                          {loading ? <CircularProgress size={24} /> : "Recibir"}
+                        </Button>
+                      ) : (
+                        <Typography variant="body2" color="textSecondary">
+                          No disponible
+                        </Typography>
+                      )}
+                    </TableCell>
                   )}
                 </TableRow>
               ))}
@@ -961,6 +993,158 @@ function Recibo() {
                 </Box>
               </Box>
             )}
+          </Box>
+        </Fade>
+      </Modal>
+
+      {/* Modal para regreso  */}
+
+      <Modal
+        open={modalPendientesOpen}
+        onClose={() => setModalPendientesOpen(false)}
+        closeAfterTransition
+        BackdropComponent={Backdrop}
+        BackdropProps={{ timeout: 500 }}
+      >
+        <Fade in={modalPendientesOpen}>
+          <Box
+            sx={{
+              position: "absolute",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              width: 800,
+              bgcolor: "background.paper",
+              p: 4,
+              boxShadow: 24,
+              borderRadius: 2,
+            }}
+          >
+            <Typography variant="h5" gutterBottom>
+              Recibos (Hoy)
+            </Typography>
+
+            <TableContainer component={Paper} sx={{ maxHeight: 400 }}>
+              <Table stickyHeader>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Imagen</TableCell>
+                    <TableCell>O.C</TableCell>
+                    <TableCell>Código</TableCell>
+                    <TableCell>Total</TableCell>
+                    <TableCell>Recibo</TableCell>
+                    <TableCell>Fecha Recibo</TableCell>
+                    <TableCell align="center">Acciones</TableCell>
+                  </TableRow>
+
+                  {/* 🔹 Fila de filtros SOLO para el modal */}
+                  <TableRow>
+                    <TableCell />
+                    <TableCell />
+                    <TableCell>
+                      <TextField
+                        size="small"
+                        label="Buscar código"
+                        variant="outlined"
+                        value={filterCodigoPendientes}
+                        onChange={(e) =>
+                          setFilterCodigoPendientes(e.target.value)
+                        }
+                        fullWidth
+                      />
+                    </TableCell>
+                    <TableCell />
+                    <TableCell />
+                    <TableCell />
+                    <TableCell />
+                  </TableRow>
+                </TableHead>
+
+                <TableBody>
+                  {pendientes
+                    .filter((p) =>
+                      p.codigo
+                        .toString()
+                        .toLowerCase()
+                        .includes(filterCodigoPendientes.toLowerCase())
+                    )
+                    .map((p, index) => (
+                      <TableRow key={index}>
+                        <TableCell>
+                          <img
+                            src={`../assets/image/img_pz/${p.codigo}.jpg`}
+                            alt="Producto"
+                            style={{
+                              width: "80px",
+                              height: "80px",
+                              borderRadius: "8px",
+                              boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+                            }}
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src = "/ruta/a/imagen-default.jpg";
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell>{p.oc}</TableCell>
+                        <TableCell>{p.codigo}</TableCell>
+                        <TableCell>{p.Total}</TableCell>
+                        <TableCell>{p.Recibo}</TableCell>
+                        <TableCell>
+                          {new Date(p.fecha_recibo).toLocaleString("es-MX")}
+                        </TableCell>
+                        <TableCell align="center">
+                          <Button
+                            variant="outlined"
+                            color="error"
+                            onClick={async () => {
+                              try {
+                                await axios.put(
+                                  "http://66.232.105.87:3007/api/recibo/cancelar",
+                                  {
+                                    oc: p.oc,
+                                    codigo: p.codigo,
+                                  }
+                                );
+
+                                // 🔹 Cerrar modal antes de mostrar el SweetAlert
+                                setModalPendientesOpen(false);
+
+                                Swal.fire(
+                                  "Cancelado",
+                                  "El recibo fue Revertido correctamente",
+                                  "success"
+                                ).then(() => {
+                                  fetchPendientes();
+                                });
+                              } catch (error) {
+                                setModalPendientesOpen(false);
+                                Swal.fire(
+                                  "Error",
+                                  "No se pudo Revertir el recibo",
+                                  "error"
+                                );
+                              }
+                            }}
+                          >
+                            Revertir
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+
+            <Box mt={2} textAlign="right">
+              <Button
+                variant="contained"
+                color="secondary"
+                onClick={() => setModalPendientesOpen(false)}
+              >
+                Cerrar
+              </Button>
+            </Box>
           </Box>
         </Fade>
       </Modal>

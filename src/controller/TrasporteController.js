@@ -210,13 +210,20 @@ const obtenerRutasDePaqueteria = async (req, res) => {
         const anioActual = new Date().getFullYear();
         query += " AND MONTH(created_at) = ? AND YEAR(created_at) = ?";
         params.push(mes, anioActual);
+
+        // 👉 Orden ascendente (día 1 al último)
+        query += " ORDER BY created_at ASC LIMIT ? OFFSET ?";
       } else {
         const fechaLimite = new Date();
         fechaLimite.setDate(fechaLimite.getDate() - 3);
         const fechaLimiteStr = fechaLimite.toISOString().slice(0, 10);
         query += " AND created_at >= ?";
         params.push(fechaLimiteStr);
+
+        // 👉 Orden descendente (hoy hacia atrás)
+        query += " ORDER BY created_at DESC LIMIT ? OFFSET ?";
       }
+      params.push(parseInt(limit), parseInt(offset));
     }
 
     if (tipo) {
@@ -229,9 +236,6 @@ const obtenerRutasDePaqueteria = async (req, res) => {
       params.push(guia);
     }
 
-    query += " ORDER BY created_at DESC LIMIT ? OFFSET ?";
-    params.push(parseInt(limit), parseInt(offset));
-
     const [rows] = await pool.query(query, params);
     res.json(rows);
   } catch (error) {
@@ -241,6 +245,8 @@ const obtenerRutasDePaqueteria = async (req, res) => {
       .json({ message: "Error al obtener las rutas de paquetería" });
   }
 };
+
+
 
 const obtenerRutasParaPDF = async (req, res) => {
   try {
@@ -1768,7 +1774,7 @@ const getPedidosDia = async (req, res) => {
         timeZone: "America/Mexico_City",
       }).format(date);
     const selectedDate = fecha || getFormattedDate();
- 
+
     // 1. Pedidos principales
     const [rows] = await pool.query(
       `
@@ -2213,6 +2219,8 @@ const getReferenciasClientes = async (req, res) => {
 const parseNum = (v) =>
   parseFloat(String(v ?? "0").replace(/[^0-9.-]+/g, "")) || 0;
 
+
+
 async function actualizarTotalIvaMasivoDesdeAPI() {
   let conn;
   try {
@@ -2236,15 +2244,16 @@ async function actualizarTotalIvaMasivoDesdeAPI() {
       // Subtotal (sin IVA) y Total con IVA desde la API
       const total = parseNum(pedido.Total); // ej. 1170.31
       const totalIva = parseNum(pedido.TotalConIva); // ej. 1357.56
-      const NO_FACTURA = parseNum(pedido.NoFactura);
 
       if (!noOrden || !tipoOriginal) continue; // datos clave faltantes
 
       const [result] = await conn.execute(
         `UPDATE paqueteria
-           SET total_api = ?, totalIva = ?, NO_FACTURA = ? , FECHA_DE_FACTURA = CURDATE()
-         WHERE \`NO ORDEN\` = ? AND tipo_original = ?`,
-        [total, totalIva, NO_FACTURA, noOrden, tipoOriginal]
+           SET total_api = ?, 
+               totalIva = ?
+         WHERE \`NO ORDEN\` = ? 
+           AND tipo_original = ?`,
+        [total, totalIva, noOrden, tipoOriginal]
       );
 
       if (result.affectedRows > 0) {
@@ -2261,6 +2270,8 @@ async function actualizarTotalIvaMasivoDesdeAPI() {
     if (conn) conn.release();
   }
 }
+
+
 
 actualizarTotalIvaMasivoDesdeAPI();
 
@@ -2310,12 +2321,12 @@ async function getPaqueteriaByMonth(req, res) {
     const params = [range.start, range.end];
 
     let sql = `
-      SELECT
-        \`NO ORDEN\`                AS no_orden,
-        tipo_original,
+        SELECT 
+          \`NO ORDEN\`                AS no_orden,
+          tipo_original,
           TRANSPORTE,
           GUIA,
-          DATE_FORMAT(FECHA_DE_ENTREGA_CLIENTE, '%Y-%m-%d') AS fecha_de_entrega_cliente, -- 👈 alias + formato ISO
+          DATE_FORMAT(FECHA_DE_ENTREGA_CLIENTE, '%Y-%m-%d') AS fecha_de_entrega_cliente,
           TOTAL_FACTURA_LT,
           PRORRATEO_FACTURA_LT,
           SUMA_FLETE,
@@ -2323,9 +2334,11 @@ async function getPaqueteriaByMonth(req, res) {
           TIPO,
           NUMERO_DE_FACTURA_LT,
           PORCENTAJE_PAQUETERIA,
+          PORCENTAJE_GLOBAL,     -- 👈 nuevo
+          SUMA_GASTOS_EXTRAS,    -- 👈 nuevo
           created_at
-      FROM paqueteria
-      WHERE created_at >= ? AND created_at < ?
+        FROM paqueteria
+        WHERE created_at >= ? AND created_at < ?
     `;
 
     if (String(incompletos).toLowerCase() === "true") {
@@ -2362,6 +2375,8 @@ async function updatePaqueteriaUno(req, res) {
       prorrateo_factura_lt,
       suma_flete,
       por_paq,
+      suma_gastos_extras, // 👈 nuevo
+      porcentaje_global, // 👈 nuevo
     } = req.body || {};
 
     if (!no_orden || !tipo_original) {
@@ -2420,6 +2435,17 @@ async function updatePaqueteriaUno(req, res) {
       valores.push(parseTotal(por_paq));
     }
 
+    if (porcentaje_global !== undefined) {
+      campos.push("PORCENTAJE_GLOBAL = ?");
+      valores.push(parseTotal(porcentaje_global));
+    }
+
+    // 👇 NUEVOS CAMPOS
+    if (suma_gastos_extras !== undefined) {
+      campos.push("SUMA_GASTOS_EXTRAS = ?");
+      valores.push(parseTotal(suma_gastos_extras));
+    }
+
     if (campos.length === 0) {
       return res
         .status(400)
@@ -2445,12 +2471,10 @@ async function updatePaqueteriaUno(req, res) {
 async function updatePaqueteriaBatch(req, res) {
   const { rows } = req.body || {};
   if (!Array.isArray(rows) || rows.length === 0) {
-    return res
-      .status(400)
-      .json({
-        ok: false,
-        msg: "El body debe incluir 'rows' (array con al menos 1 elemento).",
-      });
+    return res.status(400).json({
+      ok: false,
+      msg: "El body debe incluir 'rows' (array con al menos 1 elemento).",
+    });
   }
 
   const conn = await pool.getConnection();

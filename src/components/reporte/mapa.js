@@ -55,7 +55,21 @@ const [monthsPayload, setMonthsPayload]   = useState(null);
 const [dense, setDense] = useState(true); // tamaño de fila en la tabla
 const [estadoFiltro, setEstadoFiltro] = useState(""); // vacío = todos
 const estadosDisponibles = Array.from(new Set(fletesClientes.map(c => c.estado))).sort();
+const [yy, mm] = selectedMonth ? selectedMonth.split("-").map(Number) : [];
+const IVA = 0.16; // porcentaje de IVA (16%)
 
+const totalFacturaGlobal = fletesMeta?.total_factura_global ?? 0;
+const totalFleteGlobalBase = fletesMeta?.total_flete_global ?? 0;
+
+// 🔹 Si NO es septiembre, quitamos 16%
+const totalFleteGlobal = (mm !== 9) 
+  ? totalFleteGlobalBase * (1 - IVA) 
+  : totalFleteGlobalBase;
+
+// 🔹 Recalcular % flete
+const pctFleteGlobal = totalFacturaGlobal > 0
+  ? (totalFleteGlobal / totalFacturaGlobal) * 100
+  : 0;
 
 
 const pad2 = (n) => String(n).padStart(2, "0");
@@ -272,7 +286,6 @@ useEffect(() => {
 
 
 const [usarIVA, setUsarIVA] = useState(false);
-const IVA = 0.16; // porcentaje de IVA (16%) 
 
 const applyIVA = (valor) => {
   const n = Number(valor || 0);
@@ -511,37 +524,46 @@ const getHistoricoEstado = (estadoId) => {
             })
             .sort(([a], [b]) => (a > b ? 1 : -1))
             .map(([mes, v], index) => {
-              const facturaBase = Number(v.total_factura_lt || 0);
-              const fleteBase = Number(v.total_flete || 0);
+  const facturaBase = Number(v.total_factura_lt || 0);
+  const fleteBase = Number(v.total_flete || 0);
 
-              const factura = applyIVA(facturaBase);
-              const flete = applyIVA(fleteBase);
+  const [anio, mesNum] = mes.split("-").map(Number);
 
-              // porcentaje (recalculado sobre los montos mostrados)
-              const pctFlete = factura > 0 ? (flete / factura) * 100 : 0;
+  // 🔹 Si es junio (06) o agosto (08) 2025, descuenta el 16% de IVA al flete
+  const fleteAjustado = (anio === 2025 && (mesNum === 6 ||mesNum === 7 || mesNum === 8))
+    ? fleteBase * (1 - IVA) // aplica descuento del 16%
+    : fleteBase;
 
-              return (
-                <TableRow
-                  key={mes}
-                  hover
-                  sx={{
-                    backgroundColor: index % 2 === 0 ? '#fff' : '#fafafa',
-                    transition: 'background 0.2s',
-                  }}
-                >
-                  <TableCell>{getMesNombre(mes)}</TableCell>
-                  <TableCell>{fmtMoney(factura)}</TableCell>
-                  <TableCell>{fmtMoney(flete)}</TableCell>
-                  <TableCell align="center">{fmtPercent(pctFlete, 1)}</TableCell>
-                  <TableCell align="right">{fmtNumber(v.cajas_total ?? v.cajas)}</TableCell>
-                  <TableCell align="right">{fmtNumber(v.tarimas_total ?? v.tarimas)}</TableCell>
-                  <TableCell align="center">
-                    {Number(v.promedio_dias_entrega || 0).toFixed(1)}
-                  </TableCell>
-                  <TableCell align="right">{fmtNumber(v.total_clientes)}</TableCell>
-                </TableRow>
-              );
-            })}
+  // Aplica IVA si el switch está activado
+  const factura = applyIVA(facturaBase);
+  const flete = applyIVA(fleteAjustado);
+
+  // porcentaje recalculado
+  const pctFlete = factura > 0 ? (flete / factura) * 100 : 0;
+
+  return (
+    <TableRow
+      key={mes}
+      hover
+      sx={{
+        backgroundColor: index % 2 === 0 ? '#fff' : '#fafafa',
+        transition: 'background 0.2s',
+      }}
+    >
+      <TableCell>{getMesNombre(mes)}</TableCell>
+      <TableCell>{fmtMoney(factura)}</TableCell>
+      <TableCell>{fmtMoney(flete)}</TableCell>
+      <TableCell align="center">{fmtPercent(pctFlete, 1)}</TableCell>
+      <TableCell align="right">{fmtNumber(v.cajas_total ?? v.cajas)}</TableCell>
+      <TableCell align="right">{fmtNumber(v.tarimas_total ?? v.tarimas)}</TableCell>
+      <TableCell align="center">
+        {Number(v.promedio_dias_entrega || 0).toFixed(1)}
+      </TableCell>
+      <TableCell align="right">{fmtNumber(v.total_clientes)}</TableCell>
+    </TableRow>
+  );
+})
+}
         </TableBody>
       </Table>
     </TableContainer>
@@ -1389,41 +1411,36 @@ const getHistoricoEstado = (estadoId) => {
                 <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
 
                 <StatMini
-                  label="Total Factura"
-                  value={(fletesMeta?.total_factura_global ?? 0).toLocaleString(
-                    "es-MX",
-                    { style: "currency", currency: "MXN" }
-                  )}
-                />
-                <StatMini
-                  label="Total Flete"
-                  value={(fletesMeta?.total_flete_global ?? 0).toLocaleString(
-                    "es-MX",
-                    { style: "currency", currency: "MXN" }
-                  )}
-                />
-                <StatMini
-                  label="% Flete"
-                  value={
-                    <Chip
-                      size="small"
-                      variant="outlined"
-                      color={percentColor(
-                        fletesMeta?.porcentaje_flete_global
-                      )}
-                      label={`${(
-                        fletesMeta?.porcentaje_flete_global ?? 0
-                      ).toFixed(2)}%`}
-                      sx={{ fontWeight: 700, minWidth: 64 }}
-                    />
-                  }
-                />
-                <StatMini
-                  label="Guías"
-                  value={(fletesMeta?.total_guias_global ?? 0).toLocaleString(
-                    "es-MX"
-                  )}
-                />
+  label="Total Factura"
+  value={totalFacturaGlobal.toLocaleString("es-MX", {
+    style: "currency",
+    currency: "MXN"
+  })}
+/>
+<StatMini
+  label="Total Flete"
+  value={totalFleteGlobal.toLocaleString("es-MX", {
+    style: "currency",
+    currency: "MXN"
+  })}
+/>
+<StatMini
+  label="% Flete"
+  value={
+    <Chip
+      size="small"
+      variant="outlined"
+      color={percentColor(pctFleteGlobal)}
+      label={`${pctFleteGlobal.toFixed(2)}%`}
+      sx={{ fontWeight: 700, minWidth: 64 }}
+    />
+  }
+/>
+<StatMini
+  label="Guías"
+  value={(fletesMeta?.total_guias_global ?? 0).toLocaleString("es-MX")}
+/>
+
               </Stack>
             </Paper>
           </Grid>
@@ -1514,43 +1531,65 @@ const getHistoricoEstado = (estadoId) => {
             )}
 
             {fletesFiltrados.map((c, i) => {
-              const pctNum = percentToNum(c.porcentaje_flete);
-              return (
-                <TableRow
-                  key={`${c.num_cliente}-${i}`}
-                  hover
-                  sx={{ "&:nth-of-type(odd)": { backgroundColor: "rgba(0,0,0,0.02)" } }}
-                >
-                  <TableCell>{c.num_cliente}</TableCell>
-                  <TableCell sx={{ maxWidth: 360, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                    {(c.nombre_cliente || "").trim()}
-                  </TableCell>
-                  <TableCell align="right">{currency(c.total_factura)}</TableCell>
-                  <TableCell align="right">{currency(c.total_flete)}</TableCell>
-                  <TableCell align="center" sx={{ minWidth: 160 }}>
-                    <Stack direction="row" spacing={1} alignItems="center">
-                      <Chip
-                        size="small"
-                        color={percentColor(pctNum)}
-                        variant="outlined"
-                        label={percentFmt(pctNum)}
-                        sx={{ fontWeight: 600, minWidth: 72 }}
-                      />
-                      <Box sx={{ flex: 1 }}>
-                        <LinearProgress
-                          variant="determinate"
-                          value={Math.min(Math.max(pctNum, 0), 100)}
-                          sx={{ height: 6, borderRadius: 4, [`& .MuiLinearProgress-bar`]: { borderRadius: 4 } }}
-                        />
-                      </Box>
-                    </Stack>
-                  </TableCell>
-                  <TableCell align="center">
-                    <Chip size="small" label={c.total_guias ?? 0} sx={{ fontWeight: 600 }} />
-                  </TableCell>
-                </TableRow>
-              );
-            })}
+  const [yy, mm] = selectedMonth ? selectedMonth.split("-").map(Number) : [];
+
+  // 🔹 Ajustar flete quitando 16% (excepto septiembre)
+  const fleteBase = Number(c.total_flete || 0);
+  const fleteAjustado = (mm !== 9) ? fleteBase * (1 - IVA) : fleteBase;
+
+  const factura = Number(c.total_factura || 0);
+
+  // 🔹 Recalcular % flete con el flete ajustado
+  const pctNum = factura > 0 ? (fleteAjustado / factura) * 100 : 0;
+
+  return (
+    <TableRow
+      key={`${c.num_cliente}-${i}`}
+      hover
+      sx={{ "&:nth-of-type(odd)": { backgroundColor: "rgba(0,0,0,0.02)" } }}
+    >
+      <TableCell>{c.num_cliente}</TableCell>
+      <TableCell
+        sx={{
+          maxWidth: 360,
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        }}
+      >
+        {(c.nombre_cliente || "").trim()}
+      </TableCell>
+      <TableCell align="right">{currency(factura)}</TableCell>
+      <TableCell align="right">{currency(fleteAjustado)}</TableCell>
+      <TableCell align="center" sx={{ minWidth: 160 }}>
+        <Stack direction="row" spacing={1} alignItems="center">
+          <Chip
+            size="small"
+            color={percentColor(pctNum)}
+            variant="outlined"
+            label={percentFmt(pctNum)}
+            sx={{ fontWeight: 600, minWidth: 72 }}
+          />
+          <Box sx={{ flex: 1 }}>
+            <LinearProgress
+              variant="determinate"
+              value={Math.min(Math.max(pctNum, 0), 100)}
+              sx={{
+                height: 6,
+                borderRadius: 4,
+                [`& .MuiLinearProgress-bar`]: { borderRadius: 4 },
+              }}
+            />
+          </Box>
+        </Stack>
+      </TableCell>
+      <TableCell align="center">
+        <Chip size="small" label={c.total_guias ?? 0} sx={{ fontWeight: 600 }} />
+      </TableCell>
+    </TableRow>
+  );
+})}
+
           </TableBody>
         </Table>
       </TableContainer>

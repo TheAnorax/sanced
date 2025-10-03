@@ -16,7 +16,7 @@ const getEnSurtido = async (req, res) => {
       P.registro_surtido,  
       us.name AS usuario,
       s.des,
-      u.pasillo  
+      u.pasillo   
       FROM pedido_surtido p 
       LEFT JOIN productos s ON p.codigo_ped = s.codigo_pro 
       LEFT JOIN ubicaciones u ON s.codigo_pro = u.code_prod

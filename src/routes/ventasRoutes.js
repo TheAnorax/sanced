@@ -22,6 +22,7 @@ const {
   actualizarFacturasDesdeExcel,
   obtenerRutasParaPDF,
   getReferenciasClientes,
+  obtenerPedidosPorMesEstado
 } = require("../controller/ventasController");
 
 router.post("/clientes/observaciones", getObservacionesPorClientes);
@@ -67,5 +68,7 @@ router.post(
 );
 
 router.get("/referencias", getReferenciasClientes);
+
+router.post("/por-mes", obtenerPedidosPorMesEstado);
 
 module.exports = router;

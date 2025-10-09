@@ -246,7 +246,7 @@ export const mainListItems = (user) => {
     },
 
     {
-      role: ["Admin"],
+      role: ["Admin", "AdminTran"],
       path: "/dashboard/plan",
       icon: <ViewQuiltIcon />,
       text: "EL Plan",

@@ -268,18 +268,18 @@ function Finalizados() {
 
   // Filtrar los pedidos cuando cambia el valor de búsqueda
   useEffect(() => {
-    if (searchQuery) {
-      setFilteredPedidos(
-        pedidos.filter(
-          (pedido) =>
-            String(pedido.pedido)
-              .toLowerCase()
-              .includes(searchQuery.toLowerCase()) // Convertir a cadena antes de aplicar toLowerCase
-        )
-      );
-    } else {
-      setFilteredPedidos(pedidos); // Si no hay búsqueda, muestra todos
-    }
+    const timeout = setTimeout(() => {
+      if (searchQuery.trim() !== "") {
+        const query = searchQuery.toLowerCase();
+        setFilteredPedidos(
+          pedidos.filter((p) => String(p.pedido).toLowerCase().includes(query))
+        );
+      } else {
+        setFilteredPedidos(pedidos);
+      }
+    }, 400);
+
+    return () => clearTimeout(timeout);
   }, [searchQuery, pedidos]);
 
   const handleCloseModal = () => {

@@ -1973,6 +1973,63 @@ const getReferenciasClientes = async (req, res) => {
   }
 };
 
+const obtenerPedidosPorMesEstado = async (req, res) => {
+  try {
+    const { anio, mes } = req.body; // 👈 ahora vienen desde el body
+
+    if (!anio || !mes) {
+      return res.status(400).json({ error: "Debes enviar el año y el mes en el body" });
+    }
+
+    const [rows] = await pool.query(
+      `
+      SELECT 
+          p.TIPO,
+          DATE_FORMAT(p.FECHA, '%Y-%m-%d %H:%i:%s') AS FECHA,
+          p.\`EJECUTIVO VTAS\`,
+          p.\`NO ORDEN\`,
+          p.tipo_original,
+          p.GUIA,
+          p.NO_FACTURA,
+          p.FECHA_DE_FACTURA,
+          p.\`NUM. CLIENTE\`,
+          p.\`NOMBRE DEL CLIENTE\`,
+          p.PAQUETERIA,
+          p.total_api,
+          p.TOTAL_FACTURA_LT,
+          DATE_FORMAT(p.FECHA_DE_ENTREGA_CLIENTE, '%Y-%m-%d %H:%i:%s') AS FECHA_DE_ENTREGA_CLIENTE,
+          p.PARTIDAS,
+          p.PIEZAS,
+          p.ENTREGA_SATISFACTORIA_O_NO_SATISFACTORIA,
+          DATE_FORMAT(p.created_at, '%Y-%m-%d %H:%i:%s') AS created_at,
+          CASE
+              WHEN MAX(pf.pedido IS NOT NULL) THEN 'Finalizado'
+              WHEN MAX(pe.pedido IS NOT NULL) THEN 'Embarque'
+              WHEN MAX(ps.pedido IS NOT NULL) THEN 'Surtiendo'
+              ELSE 'NO ENCONTRADO'
+          END AS tabla_encontrada
+      FROM paqueteria p
+      LEFT JOIN pedido_surtido ps 
+          ON p.\`NO ORDEN\` = ps.pedido
+      LEFT JOIN pedido_embarque pe 
+          ON p.\`NO ORDEN\` = pe.pedido
+      LEFT JOIN pedido_finalizado pf 
+          ON p.\`NO ORDEN\` = pf.pedido
+      WHERE YEAR(p.created_at) = ?
+        AND MONTH(p.created_at) = ?
+      GROUP BY p.\`NO ORDEN\`
+      ORDER BY p.created_at ASC;
+      `,
+      [anio, mes]
+    );
+
+    res.json(rows);
+  } catch (error) {
+    console.error("❌ Error al obtener pedidos por mes:", error);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+};
+
 module.exports = {
   getReferenciasClientes,
   actualizarTipoOriginalDesdeExcel,
@@ -2006,4 +2063,5 @@ module.exports = {
   getPedidosDia,
   obtenerRutasParaPDF,
   actualizarGuiaCompleta,
+  obtenerPedidosPorMesEstado
 };

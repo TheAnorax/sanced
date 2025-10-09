@@ -15,44 +15,104 @@ import {
   TableHead,
   TableRow,
   LinearProgress,
+  Grid,
+  Chip,
 } from "@mui/material";
+import { blueGrey, green, red, orange } from "@mui/material/colors";
 import Swal from "sweetalert2";
-import { blueGrey } from "@mui/material/colors";
+import UpdateIcon from "@mui/icons-material/Update";
+import ScheduleIcon from "@mui/icons-material/Schedule";
+import InventoryIcon from "@mui/icons-material/Inventory";
 
 const Plan = () => {
   const [planResumen, setPlanResumen] = useState([]);
-  const [estados, setEstados] = useState(null); // 👈 para los datos de estados
+  const [detallePlan, setDetallePlan] = useState([]);
+  const [faltantesPlan, setFaltantesPlan] = useState([]); // 👈 Nuevo estado para faltantes
+  const [estados, setEstados] = useState(null);
   const [tabIndex, setTabIndex] = useState(0);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // 📅 Fecha inicial
   const [selectedDate, setSelectedDate] = useState(() =>
     new Date().toLocaleDateString("sv-SE")
   );
 
-  // --- Obtener datos del plan ---
+  const REFRESH_INTERVAL = 300; // 5 minutos
+  const [countdown, setCountdown] = useState(REFRESH_INTERVAL);
+
+  // 🔹 Función para comparar objetos/arreglos y evitar re-render
+  const isEqual = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+
+  // --- Obtener datos del resumen ---
   const fetchPlanResumen = async () => {
     try {
-      setLoading(true);
       const response = await axios.get(
         `http://66.232.105.87:3007/api/plan/plan?fecha=${selectedDate}`
       );
-
-      // 👇 ahora el backend devuelve { rutas, estados }
-      setPlanResumen(response.data.rutas || []);
-      setEstados(response.data.estados || null);
+      if (!isEqual(response.data.rutas || [], planResumen)) {
+        setPlanResumen(response.data.rutas || []);
+      }
+      if (!isEqual(response.data.estados || null, estados)) {
+        setEstados(response.data.estados || null);
+      }
       setLastUpdated(new Date());
+      setCountdown(REFRESH_INTERVAL);
     } catch (error) {
       console.error("Error fetching plan resumen:", error);
-      Swal.fire("Error", "Ocurrió un error al obtener el resumen del plan.", "error");
-    } finally {
-      setLoading(false);
+      Swal.fire(
+        "Error",
+        "Ocurrió un error al obtener el resumen del plan.",
+        "error"
+      );
     }
   };
 
+  // --- Obtener datos del detalle ---
+  const fetchDetallePlan = async () => {
+    try {
+      const response = await axios.get(
+        `http://66.232.105.87:3007/api/plan/datalle-plan?fecha=${selectedDate}`
+      );
+      if (!isEqual(response.data || [], detallePlan)) {
+        setDetallePlan(response.data || []);
+      }
+    } catch (error) {
+      console.error("Error fetching detalle plan:", error);
+    }
+  };
+
+  // --- Obtener datos de faltantes (últimos 15 días) ---
+  const fetchFaltantesPlan = async () => {
+    try {
+      const response = await axios.get(
+        `http://66.232.105.87:3007/api/plan/faltante-plan?dias=15`
+      );
+      setFaltantesPlan(response.data || []);
+    } catch (error) {
+      console.error("Error fetching faltantes plan:", error);
+    }
+  };
+
+  // --- Carga inicial + intervalos ---
   useEffect(() => {
     fetchPlanResumen();
+    fetchDetallePlan();
+    fetchFaltantesPlan();
+
+    const refreshInterval = setInterval(() => {
+      fetchPlanResumen();
+      fetchDetallePlan();
+      fetchFaltantesPlan();
+    }, REFRESH_INTERVAL * 1000);
+
+    const countdownInterval = setInterval(() => {
+      setCountdown((prev) => (prev > 0 ? prev - 1 : REFRESH_INTERVAL));
+    }, 1000);
+
+    return () => {
+      clearInterval(refreshInterval);
+      clearInterval(countdownInterval);
+    };
   }, [selectedDate]);
 
   const handleTabChange = (event, newValue) => setTabIndex(newValue);
@@ -84,47 +144,320 @@ const Plan = () => {
     return "error";
   };
 
+  // 🟦 Tabla Faltantes compacta (para mostrar arriba)
+  const renderFaltantesCompacto = () => {
+    if (faltantesPlan.length === 0) {
+      return (
+        <Alert severity="warning">
+          No se encontraron faltantes en los últimos 15 días.
+        </Alert>
+      );
+    }
+
+    // 🧮 Calcular total general
+    const totalGeneral = faltantesPlan.reduce(
+      (acc, item) => {
+        acc.totalPedidos += item.totalPedidos || 0;
+        acc.noAsignados += item.pedidosNoAsignados || 0;
+        acc.surtido += item.pedidosEnSurtido || 0;
+        acc.embarque += item.pedidosEnEmbarque || 0;
+        acc.finalizados += item.pedidosFinalizados || 0;
+        acc.montoPendientes += item.totalNoAsignados || 0;
+        acc.montoTotalDia += item.totalDia || 0;
+        return acc;
+      },
+      {
+        totalPedidos: 0,
+        noAsignados: 0,
+        surtido: 0,
+        embarque: 0,
+        finalizados: 0,
+        montoPendientes: 0,
+        montoTotalDia: 0,
+      }
+    );
+
+    return (
+      <TableContainer
+        component={Paper}
+        sx={{
+          borderRadius: 2,
+          boxShadow: 1,
+          backgroundColor: blueGrey[50],
+        }}
+      >
+        <Table
+          size="small"
+          sx={{
+            "& th, & td": { py: 0.4, px: 1 }, // 👈 reduce alto de filas
+            "& thead th": { fontSize: "0.8rem" },
+            "& tbody td": { fontSize: "0.8rem" },
+          }}
+        >
+          <TableHead sx={{ bgcolor: blueGrey[100] }}>
+            <TableRow>
+              <TableCell>
+                <strong>Fecha</strong>
+              </TableCell>
+              <TableCell align="right">
+                <strong>Total Pedidos</strong>
+              </TableCell>
+              <TableCell align="right">
+                <strong>No asignados</strong>
+              </TableCell>
+              <TableCell align="right">
+                <strong>En Surtido</strong>
+              </TableCell>
+              <TableCell align="right">
+                <strong>En Embarque</strong>
+              </TableCell>
+              <TableCell align="right">
+                <strong>Finalizados</strong>
+              </TableCell>
+              <TableCell
+                align="right"
+                sx={{ color: "#d32f2f", fontWeight: "bold" }}
+              >
+                💰 Pendientes ($)
+              </TableCell>
+              <TableCell
+                align="right"
+                sx={{ color: "#1976d2", fontWeight: "bold" }}
+              >
+                💰 Total Día ($)
+              </TableCell>
+            </TableRow>
+          </TableHead>
+
+          <TableBody>
+            {faltantesPlan.map((f, idx) => (
+              <TableRow key={idx}>
+                <TableCell>{f.fecha}</TableCell>
+                <TableCell align="right">{f.totalPedidos}</TableCell>
+                <TableCell align="right">{f.pedidosNoAsignados}</TableCell>
+                <TableCell align="right">{f.pedidosEnSurtido}</TableCell>
+                <TableCell align="right">{f.pedidosEnEmbarque}</TableCell>
+                <TableCell align="right">{f.pedidosFinalizados}</TableCell>
+                <TableCell align="right" sx={{ color: "#d32f2f" }}>
+                  {formatCurrency(f.totalNoAsignados)}
+                </TableCell>
+                <TableCell align="right" sx={{ color: "#1976d2" }}>
+                  {formatCurrency(f.totalDia)}
+                </TableCell>
+              </TableRow>
+            ))}
+
+            {/* 🧮 Fila de Total General */}
+            <TableRow sx={{ bgcolor: blueGrey[100], fontWeight: "bold" }}>
+              <TableCell>
+                <strong>Total General</strong>
+              </TableCell>
+              <TableCell align="right">
+                <strong>{totalGeneral.totalPedidos}</strong>
+              </TableCell>
+              <TableCell align="right">
+                <strong>{totalGeneral.noAsignados}</strong>
+              </TableCell>
+              <TableCell align="right">
+                <strong>{totalGeneral.surtido}</strong>
+              </TableCell>
+              <TableCell align="right">
+                <strong>{totalGeneral.embarque}</strong>
+              </TableCell>
+              <TableCell align="right">
+                <strong>{totalGeneral.finalizados}</strong>
+              </TableCell>
+              <TableCell align="right" sx={{ color: "#d32f2f" }}>
+                <strong>{formatCurrency(totalGeneral.montoPendientes)}</strong>
+              </TableCell>
+              <TableCell align="right" sx={{ color: "#1976d2" }}>
+                <strong>{formatCurrency(totalGeneral.montoTotalDia)}</strong>
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+      </TableContainer>
+    );
+  };
+
   return (
     <Box>
-      {/* Encabezado */}
-      <Box mb={3}>
-        <Typography variant="h4" gutterBottom sx={{ fontWeight: "bold" }}>
-          🚚 Resumen del plan del día
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          Fecha seleccionada: <strong>{selectedDate}</strong>
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          Última actualización: <strong>{formatTime(lastUpdated)}</strong>
-        </Typography>
+     {/* 🧭 Encabezado general optimizado */}
+      <Box sx={{ mb: 2 }}>
+        {/* 🔹 Encabezado superior */}
+        <Grid container spacing={2} alignItems="flex-start" justifyContent="space-between">
+          {/* 🕒 Izquierda: actualización, contador y selector */}
+          
+          <Grid item xs={12} md={6}>
+            <Box display="flex" flexDirection="column" gap={1}>
+              <Box display="flex" alignItems="center" flexWrap="wrap" gap={1}>
+                <Chip
+                  icon={<UpdateIcon />}
+                  label={`Última actualización: ${formatTime(lastUpdated)}`}
+                  size="small"
+                  color="default"
+                  variant="outlined"
+                />
+                <Chip
+                  icon={<ScheduleIcon />}
+                  label={`Próxima en ${countdown}s`}
+                  size="small"
+                  color={countdown <= 10 ? "error" : countdown <= 20 ? "warning" : "success"}
+                />
+              </Box>
+              <TextField
+                label="Selecciona fecha"
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+                size="small"
+                sx={{ width: 200 }}
+              />
+            </Box>
+          </Grid>
 
-        {/* 👇 Aquí mostramos el total de pedidos */}
+          {/* 📊 Derecha: tabla resumen compacta */}
+          <Grid item xs={12} md={6}>
+            <Box
+              sx={{
+                backgroundColor: "#f5f7fa",
+                borderRadius: 2,
+                boxShadow: 1,
+                p: 1,
+                overflowX: "auto",
+                maxHeight: 260,
+              }}
+            >
+
+              <TableContainer component={Paper} sx={{ boxShadow: 0 }}>
+                <Table
+                  size="small"
+                  sx={{
+                    "& th, & td": { py: 0.25, px: 0.7 },
+                    "& thead th": {
+                      fontSize: "0.75rem",
+                      bgcolor: blueGrey[50],
+                    },
+                    "& tbody td": { fontSize: "0.75rem" },
+                  }}
+                >
+                  <TableHead>
+                    <TableRow>
+                      <TableCell><strong>Fecha</strong></TableCell>
+                      <TableCell align="right"><strong>Total</strong></TableCell>
+                      <TableCell align="right"><strong>No Asig.</strong></TableCell>
+                      <TableCell align="right"><strong>Surtido</strong></TableCell>
+                      <TableCell align="right"><strong>Embarque</strong></TableCell>
+                      <TableCell align="right"><strong>Finaliz.</strong></TableCell>
+                    </TableRow>
+                  </TableHead>
+
+                  <TableBody>
+                    {faltantesPlan.map((f, idx) => (
+                      <TableRow key={idx}>
+                        <TableCell>{f.fecha}</TableCell>
+                        <TableCell align="right">{f.totalPedidos}</TableCell>
+                        <TableCell align="right">{f.pedidosNoAsignados}</TableCell>
+                        <TableCell align="right">{f.pedidosEnSurtido}</TableCell>
+                        <TableCell align="right">{f.pedidosEnEmbarque}</TableCell>
+                        <TableCell align="right">{f.pedidosFinalizados}</TableCell>
+                      </TableRow>
+                    ))}
+
+                    {/* 🧮 Total general */}
+                    {(() => {
+                      const totalGeneral = faltantesPlan.reduce(
+                        (acc, item) => {
+                          acc.totalPedidos += item.totalPedidos || 0;
+                          acc.noAsignados += item.pedidosNoAsignados || 0;
+                          acc.surtido += item.pedidosEnSurtido || 0;
+                          acc.embarque += item.pedidosEnEmbarque || 0;
+                          acc.finalizados += item.pedidosFinalizados || 0;
+                          return acc;
+                        },
+                        {
+                          totalPedidos: 0,
+                          noAsignados: 0,
+                          surtido: 0,
+                          embarque: 0,
+                          finalizados: 0,
+                        }
+                      );
+
+                      return (
+                        <TableRow sx={{ bgcolor: blueGrey[100] }}>
+                          <TableCell><strong>Total</strong></TableCell>
+                          <TableCell align="right"><strong>{totalGeneral.totalPedidos}</strong></TableCell>
+                          <TableCell align="right"><strong>{totalGeneral.noAsignados}</strong></TableCell>
+                          <TableCell align="right"><strong>{totalGeneral.surtido}</strong></TableCell>
+                          <TableCell align="right"><strong>{totalGeneral.embarque}</strong></TableCell>
+                          <TableCell align="right"><strong>{totalGeneral.finalizados}</strong></TableCell>
+                        </TableRow>
+                      );
+                    })()}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Box>
+          </Grid>
+        </Grid>
+
+        {/* 🧾 Título centrado */}
+        <Box mt={2} mb={1} textAlign="center">
+          <Typography
+            variant="h5"
+            sx={{
+              fontWeight: "bold",
+              color: blueGrey[800],
+            }}
+          >
+            🚚 Resumen del plan del día
+          </Typography>
+        </Box>
+
+        {/* 🔸 Chips de estado (centrados bajo el título) */}
         {estados && (
-          <Box mt={2} p={2} sx={{ bgcolor: blueGrey[50], borderRadius: 2 }}>
-            <Typography variant="h6" sx={{ fontWeight: "bold" }}>
-              📦 Pedidos del plan: {estados.totalPedidosPlan}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              No asignados: {estados.pedidosNoAsignados} | 
-              En Surtido: {estados.pedidosEnSurtido} | 
-              En Embarque: {estados.pedidosEnEmbarque} | 
-              Finalizados: {estados.pedidosFinalizados}
-            </Typography>
-          </Box>
+          <Grid container justifyContent="center" spacing={1.2} sx={{ mb: 2 }}>
+            <Grid item>
+              <Chip
+                label={`Pedidos: ${estados.totalPedidosPlan || 0}`}
+                size="small"
+                color="primary"
+              />
+            </Grid>
+            <Grid item>
+              <Chip
+                label={`No asignados: ${estados.pedidosNoAsignados}`}
+                size="small"
+                sx={{ bgcolor: red[100] }}
+              />
+            </Grid>
+            <Grid item>
+              <Chip
+                label={`En Surtido: ${estados.pedidosEnSurtido}`}
+                size="small"
+                sx={{ bgcolor: orange[100] }}
+              />
+            </Grid>
+            <Grid item>
+              <Chip
+                label={`En Embarque: ${estados.pedidosEnEmbarque}`}
+                size="small"
+                sx={{ bgcolor: blueGrey[100] }}
+              />
+            </Grid>
+            <Grid item>
+              <Chip
+                label={`Finalizados: ${estados.pedidosFinalizados}`}
+                size="small"
+                sx={{ bgcolor: green[100] }}
+              />
+            </Grid>
+          </Grid>
         )}
       </Box>
 
-      {/* 📅 Selector de fecha */}
-      <Box mb={3}>
-        <TextField
-          label="Selecciona fecha"
-          type="date"
-          value={selectedDate}
-          onChange={(e) => setSelectedDate(e.target.value)}
-          InputLabelProps={{ shrink: true }}
-          size="small"
-        />
-      </Box>
 
       {/* Tabs */}
       <Tabs value={tabIndex} onChange={handleTabChange} centered>
@@ -133,25 +466,44 @@ const Plan = () => {
         <Tab label="Faltantes de Plan" />
       </Tabs>
 
-      {/* TAB 1 */}
+      {/* TAB 1 - Resumen */}
       <TabPanel value={tabIndex} index={0}>
         {loading ? (
           <Alert severity="info">Cargando información...</Alert>
         ) : planResumen.length === 0 ? (
           <Alert severity="warning">No hay datos para esta fecha.</Alert>
         ) : (
-          <TableContainer component={Paper} sx={{ borderRadius: 2, boxShadow: 3 }}>
+          <TableContainer
+            component={Paper}
+            sx={{ borderRadius: 2, boxShadow: 3 }}
+          >
             <Table>
               <TableHead sx={{ bgcolor: blueGrey[50] }}>
                 <TableRow>
-                  <TableCell><strong>Ruta</strong></TableCell>
-                  <TableCell align="right"><strong>Total Clientes</strong></TableCell>
-                  <TableCell align="right"><strong>Partidas</strong></TableCell>
-                  <TableCell align="right"><strong>Partidas Surtido</strong></TableCell>
-                  <TableCell align="right"><strong>Total Embarque</strong></TableCell>
-                  <TableCell align="right"><strong>Total Piezas</strong></TableCell>
-                  <TableCell align="right"><strong>Total</strong></TableCell>
-                  <TableCell align="center"><strong>Avance</strong></TableCell>
+                  <TableCell>
+                    <strong>Ruta</strong>
+                  </TableCell>
+                  <TableCell align="right">
+                    <strong>Total Clientes</strong>
+                  </TableCell>
+                  <TableCell align="right">
+                    <strong>Partidas</strong>
+                  </TableCell>
+                  <TableCell align="right">
+                    <strong>Partidas Surtido</strong>
+                  </TableCell>
+                  <TableCell align="right">
+                    <strong>Total Embarque</strong>
+                  </TableCell>
+                  <TableCell align="right">
+                    <strong>Total Piezas</strong>
+                  </TableCell>
+                  <TableCell align="right">
+                    <strong>Total</strong>
+                  </TableCell>
+                  <TableCell align="center">
+                    <strong>Avance</strong>
+                  </TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -161,28 +513,331 @@ const Plan = () => {
                     <TableCell align="right">{ruta.totalClientes}</TableCell>
                     <TableCell align="right">{ruta.totalPartidas}</TableCell>
                     <TableCell align="right">{ruta.partidasSurtidas}</TableCell>
-                    <TableCell align="right">{ruta.partidasEmbarcadas}</TableCell>
+                    <TableCell align="right">
+                      {ruta.partidasEmbarcadas}
+                    </TableCell>
                     <TableCell align="right">{ruta.totalPiezas}</TableCell>
                     <TableCell align="right" sx={{ fontWeight: "bold" }}>
                       {formatCurrency(ruta.total)}
                     </TableCell>
                     <TableCell align="center" sx={{ minWidth: 300 }}>
                       <Box display="flex" justifyContent="space-evenly" mb={1}>
-                        <Typography variant="caption">🟡 {ruta.avanceSurtido}</Typography>
-                        <Typography variant="caption">🔵 {ruta.avanceEmbarque}</Typography>
-                        <Typography variant="caption" sx={{ fontWeight: "bold", color: "#2e7d32" }}>
+                        <Typography variant="caption">
+                          🟡 {ruta.avanceSurtido}
+                        </Typography>
+                        <Typography variant="caption">
+                          🔵 {ruta.avanceEmbarque}
+                        </Typography>
+                        <Typography
+                          variant="caption"
+                          sx={{ fontWeight: "bold", color: "#2e7d32" }}
+                        >
                           🟢 {ruta.avanceFinalizado}
                         </Typography>
                       </Box>
                       <LinearProgress
                         variant="determinate"
-                        value={Number(String(ruta.avanceFinalizado || "0").replace("%", ""))}
-                        color={getProgressColor(Number(String(ruta.avanceFinalizado || "0").replace("%", "")))}
+                        value={Number(
+                          String(ruta.avanceFinalizado || "0").replace("%", "")
+                        )}
+                        color={getProgressColor(
+                          Number(
+                            String(ruta.avanceFinalizado || "0").replace(
+                              "%",
+                              ""
+                            )
+                          )
+                        )}
                         sx={{ width: "100%", height: 10, borderRadius: 5 }}
                       />
                     </TableCell>
                   </TableRow>
                 ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
+      </TabPanel>
+
+      {/* TAB 2 - Detalle */}
+      <TabPanel value={tabIndex} index={1}>
+        {detallePlan.length === 0 ? (
+          <Alert severity="warning">No hay detalle para esta fecha.</Alert>
+        ) : (
+          detallePlan.map((ruta, idx) => (
+            <Box key={idx} mb={5}>
+              {/* 🔹 Encabezado de la ruta */}
+              <Box
+                p={2}
+                mb={2}
+                sx={{
+                  bgcolor: blueGrey[50],
+                  borderRadius: 2,
+                  boxShadow: 1,
+                }}
+              >
+                <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+                  🚛 {ruta.routeName}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Clientes: <strong>{ruta.totalClientes}</strong> | Pedidos:{" "}
+                  <strong>{ruta.pedidos.length}</strong> | Partidas:{" "}
+                  <strong>{ruta.totalPartidas}</strong> | Surtidas:{" "}
+                  <strong>{ruta.partidasSurtidas}</strong> | Embarcadas:{" "}
+                  <strong>{ruta.partidasEmbarcadas}</strong> | Piezas:{" "}
+                  <strong>{ruta.totalPiezas}</strong> | Total:{" "}
+                  <strong>{formatCurrency(ruta.total)}</strong>
+                </Typography>
+              </Box>
+
+              {/* 🔹 Tabla con los pedidos de la ruta */}
+              <TableContainer
+                component={Paper}
+                sx={{ borderRadius: 2, boxShadow: 3 }}
+              >
+                <Table size="small">
+                  <TableHead sx={{ bgcolor: blueGrey[50] }}>
+                    <TableRow>
+                      <TableCell align="center"><strong>#</strong></TableCell>
+                      <TableCell><strong>Pedido</strong></TableCell>
+                      <TableCell><strong>Cliente</strong></TableCell>
+                      <TableCell align="right"><strong>Partidas</strong></TableCell>
+                      <TableCell align="right"><strong>Piezas</strong></TableCell>
+                      <TableCell align="right"><strong>Total</strong></TableCell>
+                      <TableCell align="center"><strong>Estado / Avance</strong></TableCell>
+                    </TableRow>
+                  </TableHead>
+
+                  <TableBody>
+                    {ruta.pedidos.map((pedido, i) => {
+                      const avanceGeneral = Math.max(
+                        Number(pedido.avanceSurtido.replace("%", "")),
+                        Number(pedido.avanceEmbarque.replace("%", "")),
+                        Number(pedido.avanceFinalizado.replace("%", ""))
+                      );
+
+                      // 🎨 Color del estado según su valor
+                      const getEstadoColor = (estado) => {
+                        switch (estado?.toLowerCase()) {
+                          case "surtido":
+                            return blueGrey[900]; // negro
+                          case "embarque":
+                            return orange[700];
+                          case "embarcando":
+                            return "#1565C0"; // azul fuerte
+                          case "finalizado":
+                            return green[700];
+                          case "sin asignar":
+                          default:
+                            return red[700];
+                        }
+                      };
+
+                      return (
+                        <TableRow key={i}>
+                          <TableCell align="center">{i + 1}</TableCell>
+                          <TableCell>{pedido.no_orden}</TableCell>
+                          <TableCell>{pedido.nombre_cliente}</TableCell>
+                          <TableCell align="right">{pedido.PARTIDAS}</TableCell>
+                          <TableCell align="right">{pedido.PIEZAS}</TableCell>
+                          <TableCell align="right" sx={{ fontWeight: "bold" }}>
+                            {formatCurrency(pedido.TOTAL)}
+                          </TableCell>
+
+                          <TableCell align="center" sx={{ minWidth: 260 }}>
+                            {/* 🟦 Estado arriba */}
+                            <Typography
+                              variant="body2"
+                              sx={{
+                                fontWeight: "bold",
+                                color: getEstadoColor(pedido.estado_pedido),
+                                mb: 0.5,
+                              }}
+                            >
+                              {pedido.estado_pedido?.toUpperCase() || "SIN ASIGNAR"}
+                            </Typography>
+
+                            {/* 🔄 Barras de avance */}
+                            <Box display="flex" justifyContent="space-evenly" mb={1}>
+                              <Typography variant="caption">
+                                🟡 {pedido.avanceSurtido}
+                              </Typography>
+                              <Typography variant="caption">
+                                🔵 {pedido.avanceEmbarque}
+                              </Typography>
+                              <Typography
+                                variant="caption"
+                                sx={{ fontWeight: "bold", color: "#2e7d32" }}
+                              >
+                                🟢 {pedido.avanceFinalizado}
+                              </Typography>
+                            </Box>
+
+                            <LinearProgress
+                              variant="determinate"
+                              value={avanceGeneral}
+                              color={getProgressColor(avanceGeneral)}
+                              sx={{ width: "100%", height: 8, borderRadius: 5 }}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Box>
+          ))
+        )}
+      </TabPanel>
+
+
+      {/* TAB 3 - Faltantes */}
+      <TabPanel value={tabIndex} index={2}>
+        {faltantesPlan.length === 0 ? (
+          <Alert severity="warning">
+            No se encontraron faltantes en los últimos 15 días.
+          </Alert>
+        ) : (
+          <TableContainer
+            component={Paper}
+            sx={{
+              borderRadius: 2,
+              boxShadow: 3,
+              mt: 2,
+            }}
+          >
+            <Table size="small">
+              <TableHead sx={{ bgcolor: blueGrey[50] }}>
+                <TableRow>
+                  <TableCell>
+                    <strong>Fecha</strong>
+                  </TableCell>
+                  <TableCell align="right">
+                    <strong>Total Pedidos</strong>
+                  </TableCell>
+                  <TableCell align="right">
+                    <strong>No asignados</strong>
+                  </TableCell>
+                  <TableCell align="right">
+                    <strong>En Surtido</strong>
+                  </TableCell>
+                  <TableCell align="right">
+                    <strong>En Embarque</strong>
+                  </TableCell>
+                  <TableCell align="right">
+                    <strong>Finalizados</strong>
+                  </TableCell>
+                  <TableCell
+                    align="right"
+                    sx={{ color: "#d32f2f", fontWeight: "bold" }}
+                  >
+                    💰 Pendientes ($)
+                  </TableCell>
+                  <TableCell
+                    align="right"
+                    sx={{ color: "#1976d2", fontWeight: "bold" }}
+                  >
+                    💰 Total Día ($)
+                  </TableCell>
+                </TableRow>
+              </TableHead>
+
+              <TableBody>
+                {faltantesPlan.map((f, idx) => (
+                  <TableRow key={idx}>
+                    <TableCell>{f.fecha}</TableCell>
+                    <TableCell align="right">{f.totalPedidos}</TableCell>
+                    <TableCell align="right">{f.pedidosNoAsignados}</TableCell>
+                    <TableCell align="right">{f.pedidosEnSurtido}</TableCell>
+                    <TableCell align="right">{f.pedidosEnEmbarque}</TableCell>
+                    <TableCell align="right">{f.pedidosFinalizados}</TableCell>
+                    <TableCell
+                      align="right"
+                      sx={{ color: "#d32f2f", fontWeight: 500 }}
+                    >
+                      {new Intl.NumberFormat("es-MX", {
+                        style: "currency",
+                        currency: "MXN",
+                      }).format(f.totalNoAsignados || 0)}
+                    </TableCell>
+                    <TableCell
+                      align="right"
+                      sx={{ color: "#1976d2", fontWeight: 500 }}
+                    >
+                      {new Intl.NumberFormat("es-MX", {
+                        style: "currency",
+                        currency: "MXN",
+                      }).format(f.totalDia || 0)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+
+                {/* 🧮 Fila de totales generales */}
+                {(() => {
+                  const totalGeneral = faltantesPlan.reduce(
+                    (acc, item) => {
+                      acc.totalPedidos += item.totalPedidos || 0;
+                      acc.noAsignados += item.pedidosNoAsignados || 0;
+                      acc.surtido += item.pedidosEnSurtido || 0;
+                      acc.embarque += item.pedidosEnEmbarque || 0;
+                      acc.finalizados += item.pedidosFinalizados || 0;
+                      acc.montoPendientes += item.totalNoAsignados || 0;
+                      acc.montoTotalDia += item.totalDia || 0;
+                      return acc;
+                    },
+                    {
+                      totalPedidos: 0,
+                      noAsignados: 0,
+                      surtido: 0,
+                      embarque: 0,
+                      finalizados: 0,
+                      montoPendientes: 0,
+                      montoTotalDia: 0,
+                    }
+                  );
+
+                  return (
+                    <TableRow sx={{ bgcolor: blueGrey[100] }}>
+                      <TableCell>
+                        <strong>Total General</strong>
+                      </TableCell>
+                      <TableCell align="right">
+                        <strong>{totalGeneral.totalPedidos}</strong>
+                      </TableCell>
+                      <TableCell align="right">
+                        <strong>{totalGeneral.noAsignados}</strong>
+                      </TableCell>
+                      <TableCell align="right">
+                        <strong>{totalGeneral.surtido}</strong>
+                      </TableCell>
+                      <TableCell align="right">
+                        <strong>{totalGeneral.embarque}</strong>
+                      </TableCell>
+                      <TableCell align="right">
+                        <strong>{totalGeneral.finalizados}</strong>
+                      </TableCell>
+                      <TableCell
+                        align="right"
+                        sx={{ color: "#d32f2f", fontWeight: "bold" }}
+                      >
+                        {new Intl.NumberFormat("es-MX", {
+                          style: "currency",
+                          currency: "MXN",
+                        }).format(totalGeneral.montoPendientes)}
+                      </TableCell>
+                      <TableCell
+                        align="right"
+                        sx={{ color: "#1976d2", fontWeight: "bold" }}
+                      >
+                        {new Intl.NumberFormat("es-MX", {
+                          style: "currency",
+                          currency: "MXN",
+                        }).format(totalGeneral.montoTotalDia)}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })()}
               </TableBody>
             </Table>
           </TableContainer>

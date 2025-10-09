@@ -246,8 +246,6 @@ const obtenerRutasDePaqueteria = async (req, res) => {
   }
 };
 
-
-
 const obtenerRutasParaPDF = async (req, res) => {
   try {
     const {
@@ -2219,8 +2217,6 @@ const getReferenciasClientes = async (req, res) => {
 const parseNum = (v) =>
   parseFloat(String(v ?? "0").replace(/[^0-9.-]+/g, "")) || 0;
 
-
-
 async function actualizarTotalIvaMasivoDesdeAPI() {
   let conn;
   try {
@@ -2240,6 +2236,7 @@ async function actualizarTotalIvaMasivoDesdeAPI() {
     for (const pedido of pedidos) {
       const noOrden = parseInt(pedido.NoOrden); // ej. "33155"
       const tipoOriginal = String(pedido.TpoOriginal || ""); // ej. "VW"
+      const noFactura = String(pedido.NoFactura || ""); // ej. "440177-F2"
 
       // Subtotal (sin IVA) y Total con IVA desde la API
       const total = parseNum(pedido.Total); // ej. 1170.31
@@ -2250,10 +2247,11 @@ async function actualizarTotalIvaMasivoDesdeAPI() {
       const [result] = await conn.execute(
         `UPDATE paqueteria
            SET total_api = ?, 
-               totalIva = ?
+               totalIva = ?,
+               \`NO_FACTURA\` = ?
          WHERE \`NO ORDEN\` = ? 
            AND tipo_original = ?`,
-        [total, totalIva, noOrden, tipoOriginal]
+        [total, totalIva, noFactura, noOrden, tipoOriginal]
       );
 
       if (result.affectedRows > 0) {
@@ -2270,8 +2268,6 @@ async function actualizarTotalIvaMasivoDesdeAPI() {
     if (conn) conn.release();
   }
 }
-
-
 
 actualizarTotalIvaMasivoDesdeAPI();
 
@@ -2310,12 +2306,10 @@ async function getPaqueteriaByMonth(req, res) {
     const { year, month, incompletos } = req.query;
     const range = monthRange(year, month);
     if (!range) {
-      return res
-        .status(400)
-        .json({
-          ok: false,
-          msg: "Parámetros inválidos. Usa ?year=YYYY&month=1..12",
-        });
+      return res.status(400).json({
+        ok: false,
+        msg: "Parámetros inválidos. Usa ?year=YYYY&month=1..12",
+      });
     }
 
     const params = [range.start, range.end];

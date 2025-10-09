@@ -5338,6 +5338,9 @@ function Transporte() {
   const [porrateoPage, setPorrateoPage] = useState(0);
   const [porrateoRowsPerPage, setPorrateoRowsPerPage] = useState(25);
 
+  const [guiaQuery, setGuiaQuery] = useState("");
+  const [selectedGuia, setSelectedGuia] = useState("");
+
   const [selectedMonthPorrateo, setSelectedMonthPorrateo] = useState(() => {
     const d = new Date();
     const mm = String(d.getMonth() + 1).padStart(2, "0");
@@ -5505,9 +5508,6 @@ function Transporte() {
     const s = String(v ?? "").trim();
     return s === "" ? "SIN_GUIA" : s;
   };
-
-  const [selectedGuia, setSelectedGuia] = useState(""); // chip seleccionada (guía exacta)
-  const [guiaQuery, setGuiaQuery] = useState(""); // texto libre para buscar por guía
 
   // Monto total de la factura del grupo (lo que escribirás)
   const [montoGrupo, setMontoGrupo] = useState("");
@@ -7065,8 +7065,26 @@ function Transporte() {
                       size="small"
                       value={guiaQuery}
                       onChange={(e) => {
-                        setGuiaQuery(e.target.value);
+                        const query = e.target.value.trim();
+                        setGuiaQuery(query);
                         setPorrateoPage(0);
+
+                        const guiasDisponibles = Object.keys(
+                          (porrateoGroups[selectedTransport] || []).reduce(
+                            (acc, r) => {
+                              const g = String(r.GUIA ?? "").trim();
+                              if (g) acc[g] = true;
+                              return acc;
+                            },
+                            {}
+                          )
+                        );
+
+                        if (guiasDisponibles.includes(query)) {
+                          setSelectedGuia(query);
+                        } else {
+                          setSelectedGuia("");
+                        }
                       }}
                     />
                     <Button

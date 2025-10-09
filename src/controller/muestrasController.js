@@ -10,7 +10,7 @@ const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
     user: "j72525264@gmail.com",
-    pass: "cnaa haoa izwh lerm",
+    pass: "nutl negr gzgg pxxp",
   },
 });
 
@@ -954,7 +954,7 @@ const enviarPendientesEmbarque = async () => {
 };
 
 // 8:00 AM
-cron.schedule("52 9 * * 1-5", async () => {
+cron.schedule("15 10 * * 1-5", async () => {
   console.log(
     "⏰ Ejecutando envío diario de pendientes de embarque (9:00 AM, solo lunes a viernes)..."
   );
@@ -1095,6 +1095,40 @@ const marcarSinMaterial = async (req, res) => {
   }
 };
 
+const buscarUsuarios = async (req, res) => {
+  const { nombre } = req.query;
+
+  if (!nombre || nombre.trim() === "") {
+    return res
+      .status(400)
+      .json({ message: "Debe proporcionar un nombre para buscar" });
+  }
+
+  try {
+    const [rows] = await pool.query(
+      `
+      SELECT 
+        name,
+        role,
+        email, 
+        password
+      FROM usuarios
+      WHERE name LIKE ? OR email LIKE ?
+      LIMIT 20;
+      `,
+      [`%${nombre}%`, `%${nombre}%`]
+    );
+
+    res.status(200).json(rows);
+  } catch (error) {
+    console.error("❌ Error al buscar usuarios:", error.message);
+    res.status(500).json({
+      message: "Error en la búsqueda de usuarios",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   Departamentos,
   buscarProducto,
@@ -1112,4 +1146,5 @@ module.exports = {
   obtenerPreciosLista,
   enviarPendientesEmbarque,
   marcarSinMaterial,
+  buscarUsuarios
 };

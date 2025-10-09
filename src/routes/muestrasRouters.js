@@ -16,6 +16,7 @@ const {
   actualizarContadorPDF,
   obtenerPreciosLista,
   marcarSinMaterial,
+  buscarUsuarios
 } = require("../controller/muestrasController");
 
 router.get("/departamentos", Departamentos);
@@ -53,5 +54,7 @@ router.put("/contador-pdf/:folio", actualizarContadorPDF);
 router.post("/precio-lista", obtenerPreciosLista);
 
 router.post("/sin-material/:folio", marcarSinMaterial);
+
+router.get("/Ussuarios", buscarUsuarios);
 
 module.exports = router;

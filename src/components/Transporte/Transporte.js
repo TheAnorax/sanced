@@ -1397,13 +1397,19 @@ function Transporte() {
   const [editingRoute, setEditingRoute] = useState(null);
   const [newRouteName, setNewRouteName] = useState("");
 
-  const openModal = (route) => {
+  const openModal = async (route) => {
     setSelectedRoute(route);
     setModalOpen(true);
 
-    const firstRow = groupedData[route]?.rows?.[0];
-    if (firstRow) {
-      fetchObservacionPorRegistro(firstRow["NUM. CLIENTE"]); // ✅ Corrección
+    // 🔹 Obtiene todos los NUM. CLIENTE de la ruta seleccionada
+    const clientesDeRuta = [
+      ...new Set(
+        groupedData[route]?.rows?.map((r) => r["NUM. CLIENTE"]).filter(Boolean)
+      ),
+    ];
+
+    if (clientesDeRuta.length > 0) {
+      await fetchObservacionPorRegistro(clientesDeRuta);
     }
   };
 
@@ -1528,31 +1534,37 @@ function Transporte() {
     setSnackbarOpen(false);
   };
 
-  const fetchObservacionPorRegistro = async () => {
-    const clientesUnicos = [
-      ...new Set(sentRoutesData.map((route) => route["NUM. CLIENTE"])), // Extraer los clientes únicos
-    ];
-
-    if (clientesUnicos.length === 0) return;
+  const fetchObservacionPorRegistro = async (clientesArray) => {
+    if (!clientesArray || clientesArray.length === 0) return;
 
     try {
       const response = await axios.post(
         "http://66.232.105.87:3007/api/Trasporte/clientes/observaciones",
-        { clientes: clientesUnicos }
+        { clientes: clientesArray }
       );
 
       const observaciones = response.data;
 
-      // Actualizar la tabla con las observaciones recibidas
-      const updatedRoutes = sentRoutesData.map((route) => ({
-        ...route,
-        OBSERVACIONES:
-          observaciones[route["NUM. CLIENTE"]] || "Sin observaciones",
-      }));
+      // 🔹 Actualiza groupedData (donde el modal obtiene los datos)
+      setGroupedData((prev) => {
+        const updated = { ...prev };
 
-      setSentRoutesData(updatedRoutes); // Actualiza el estado
+        Object.keys(updated).forEach((routeName) => {
+          updated[routeName].rows = updated[routeName].rows.map((row) => ({
+            ...row,
+            OBSERVACIONES:
+              observaciones[row["NUM. CLIENTE"]] ||
+              row.OBSERVACIONES ||
+              "Sin observaciones",
+          }));
+        });
+
+        return updated;
+      });
+
+      console.log("✅ Observaciones actualizadas:", observaciones);
     } catch (error) {
-      console.error("Error al obtener observaciones:", error);
+      console.error("❌ Error al obtener observaciones:", error);
     }
   };
 
@@ -3759,7 +3771,9 @@ function Transporte() {
 
     switch (cleanedTransport) {
       case "EXPRESS":
+      case "PAQUETEXPRESS":
         return "https://www.paquetexpress.com.mx/";
+      case "TRES GUERRAS":
       case "TRESGUERRAS":
         return "https://www.tresguerras.com.mx/3G/tracking.php";
       case "FLECHISA":
@@ -4164,8 +4178,9 @@ function Transporte() {
     setPaqueteria,
   }) => {
     const [options, setOptions] = useState([
-      "EXPRESS",
+      "EXPRESS","PAQUETEXPRESS",
       "TRESGUERRAS",
+      "TRES GUERRAS",
       "FLECHISA",
       "FEDEX",
       "PITIC",
@@ -4193,19 +4208,32 @@ function Transporte() {
   };
 
   const handleSaveModalObservation = (clienteId, nuevaObservacion) => {
+    // 🔹 1. Actualiza el estado local del modal
     setModalObservaciones((prev) => {
-      const updatedObservations = { ...prev, [clienteId]: nuevaObservacion };
-
-      // Guardamos en localStorage para persistencia
-      localStorage.setItem(
-        "modalObservaciones",
-        JSON.stringify(updatedObservations)
-      );
-
-      return updatedObservations;
+      const updated = { ...prev, [clienteId]: nuevaObservacion };
+      localStorage.setItem("modalObservaciones", JSON.stringify(updated));
+      return updated;
     });
 
-    // Mantener el campo activo hasta que el usuario haga clic fuera
+    // 🔹 2. Actualiza las observaciones globales
+    setObservacionesPorRegistro((prev) => {
+      const updated = { ...prev, [clienteId]: nuevaObservacion };
+      localStorage.setItem("observacionesPorRegistro", JSON.stringify(updated));
+      return updated;
+    });
+
+    // 🔹 3. Actualiza groupedData (para que se mande al backend)
+    setGroupedData((prev) => {
+      const updatedGrouped = { ...prev };
+      for (const route in updatedGrouped) {
+        updatedGrouped[route].rows = updatedGrouped[route].rows.map((row) =>
+          row["NUM. CLIENTE"] === clienteId
+            ? { ...row, OBSERVACIONES: nuevaObservacion }
+            : row
+        );
+      }
+      return updatedGrouped;
+    });
   };
 
   const handleClearStorage = () => {
@@ -5522,8 +5550,9 @@ function Transporte() {
   // (helper por si lo necesitas)
 
   const paqueterias = [
+    "TRESGUERRAS",
     "TRES GUERRAS",
-    "PAQUETEXPRESS",
+    "EXPRESS",
     "PITIC",
     "FLECHISA",
     "FEDEX",
@@ -6393,156 +6422,202 @@ function Transporte() {
                             <TableCell>ACCIONES</TableCell>
                           </TableRow>
                         </TableHead>
+
                         <TableBody>
-                          {groupedData[selectedRoute].rows.map((row, index) => (
-                            <TableRow
-                              key={row["NO ORDEN"]}
-                              sx={{
-                                bgcolor:
-                                  highlightedRow === row["NO ORDEN"]
-                                    ? "#fff59d"
-                                    : "transparent",
-                              }}
-                            >
-                              <TableCell>
-                                {index !== 0 && (
-                                  <IconButton
-                                    onClick={() =>
-                                      moverPedido(
-                                        selectedRoute,
-                                        index,
-                                        "arriba"
-                                      )
-                                    }
-                                  >
-                                    <ArrowUpwardIcon
-                                      color="primary"
-                                      fontSize="small"
-                                    />
-                                  </IconButton>
-                                )}
-                                {index !==
-                                  groupedData[selectedRoute].rows.length -
-                                    1 && (
-                                  <IconButton
-                                    onClick={() =>
-                                      moverPedido(selectedRoute, index, "abajo")
-                                    }
-                                  >
-                                    <ArrowDownwardIcon
-                                      color="primary"
-                                      fontSize="small"
-                                    />
-                                  </IconButton>
-                                )}
-                              </TableCell>
+                          {(() => {
+                            const rows = groupedData[selectedRoute].rows;
+                            const len = rows.length;
 
-                              <TableCell>{row["FECHA"]}</TableCell>
-                              <TableCell>
-                                {row["NO ORDEN"] || row.no_orden}
-                              </TableCell>
-                              <TableCell>
-                                {row.tipo || row["TIPO ORIGINAL"] || "Sin dato"}
-                              </TableCell>
-                              <TableCell>{row["NO FACTURA"]}</TableCell>
-                              <TableCell>
-                                {row["NUM. CLIENTE"] || row.num_cliente}
-                              </TableCell>
-                              <TableCell>
-                                {row["NOMBRE DEL CLIENTE"] ||
-                                  row.nombre_cliente}
-                              </TableCell>
-                              <TableCell>{row["ZONA"]}</TableCell>
-                              <TableCell>
-                                {row["MUNICIPIO"] || row.municipio}
-                              </TableCell>
-                              <TableCell>
-                                {row["ESTADO"] || row.estado}
-                              </TableCell>
+                            // 1) Clon + index real
+                            const sorted = rows
+                              .map((row, originalIndex) => ({
+                                row,
+                                originalIndex,
+                              }))
+                              .sort((a, b) => {
+                                const nombreA = (
+                                  a.row["NOMBRE DEL CLIENTE"] ||
+                                  a.row.nombre_cliente ||
+                                  ""
+                                ).toUpperCase();
+                                const nombreB = (
+                                  b.row["NOMBRE DEL CLIENTE"] ||
+                                  b.row.nombre_cliente ||
+                                  ""
+                                ).toUpperCase();
+                                return nombreA.localeCompare(nombreB);
+                              });
 
-                              <TableCell>
-                                {editingObservationId ===
-                                row["NUM. CLIENTE"] ? (
-                                  <TextField
-                                    value={
-                                      modalObservaciones[row["NUM. CLIENTE"]] ||
-                                      row["OBSERVACIONES"] ||
-                                      ""
-                                    }
-                                    onChange={(e) =>
-                                      handleSaveModalObservation(
-                                        row["NUM. CLIENTE"],
-                                        e.target.value
-                                      )
-                                    }
-                                    variant="outlined"
-                                    size="small"
-                                    autoFocus
-                                    onKeyDown={(e) =>
-                                      e.key === "Enter" &&
-                                      setEditingObservationId(null)
-                                    }
-                                  />
-                                ) : (
-                                  <span
-                                    onDoubleClick={() =>
-                                      handleEditModalObservation(
-                                        row["NUM. CLIENTE"]
-                                      )
-                                    }
-                                    style={{ cursor: "pointer" }}
-                                  >
-                                    {modalObservaciones[row["NUM. CLIENTE"]] ||
-                                      row["OBSERVACIONES"] ||
-                                      "Sin observaciones"}
-                                  </span>
-                                )}
-                              </TableCell>
-
-                              <TableCell>{formatCurrency(row.TOTAL)}</TableCell>
-                              <TableCell>{row.PARTIDAS}</TableCell>
-                              <TableCell>{row.PIEZAS}</TableCell>
-
-                              <TableCell>
-                                {editRouteIndex === index ? (
-                                  <FormControl fullWidth size="small">
-                                    <InputLabel>Cambiar Ruta</InputLabel>
-                                    <Select
-                                      value={selectedRoute}
-                                      onChange={(e) => {
-                                        assignToRoute(row, e.target.value);
-                                        setEditRouteIndex(null);
-                                      }}
-                                      displayEmpty
-                                    >
-                                      <MenuItem disabled value="">
-                                        Seleccionar Ruta
-                                      </MenuItem>
-                                      {Object.keys(groupedData).map((route) => (
-                                        <MenuItem key={route} value={route}>
-                                          {route}
-                                        </MenuItem>
-                                      ))}
-                                    </Select>
-                                  </FormControl>
-                                ) : (
-                                  <IconButton
-                                    onClick={() => setEditRouteIndex(index)}
-                                  >
-                                    <CompareArrowsIcon />
-                                  </IconButton>
-                                )}
-                                <IconButton
-                                  color="error"
-                                  onClick={() =>
-                                    removeFromRoute(row, selectedRoute)
-                                  }
+                            // 2) Render usando originalIndex en todos los handlers
+                            return sorted.map(
+                              ({ row, originalIndex }, visualIndex) => (
+                                <TableRow
+                                  key={row["NO ORDEN"]}
+                                  sx={{
+                                    bgcolor:
+                                      highlightedRow === row["NO ORDEN"]
+                                        ? "#fff59d"
+                                        : "transparent",
+                                  }}
                                 >
-                                  <DeleteIcon />
-                                </IconButton>
-                              </TableCell>
-                            </TableRow>
-                          ))}
+                                  <TableCell>
+                                    {originalIndex !== 0 && (
+                                      <IconButton
+                                        onClick={() =>
+                                          moverPedido(
+                                            selectedRoute,
+                                            originalIndex,
+                                            "arriba"
+                                          )
+                                        }
+                                      >
+                                        <ArrowUpwardIcon
+                                          color="primary"
+                                          fontSize="small"
+                                        />
+                                      </IconButton>
+                                    )}
+                                    {originalIndex !== len - 1 && (
+                                      <IconButton
+                                        onClick={() =>
+                                          moverPedido(
+                                            selectedRoute,
+                                            originalIndex,
+                                            "abajo"
+                                          )
+                                        }
+                                      >
+                                        <ArrowDownwardIcon
+                                          color="primary"
+                                          fontSize="small"
+                                        />
+                                      </IconButton>
+                                    )}
+                                  </TableCell>
+
+                                  <TableCell>{row["FECHA"]}</TableCell>
+                                  <TableCell>
+                                    {row["NO ORDEN"] || row.no_orden}
+                                  </TableCell>
+                                  <TableCell>
+                                    {row.tipo ||
+                                      row["TIPO ORIGINAL"] ||
+                                      "Sin dato"}
+                                  </TableCell>
+                                  <TableCell>{row["NO FACTURA"]}</TableCell>
+                                  <TableCell>
+                                    {row["NUM. CLIENTE"] || row.num_cliente}
+                                  </TableCell>
+                                  <TableCell>
+                                    {row["NOMBRE DEL CLIENTE"] ||
+                                      row.nombre_cliente}
+                                  </TableCell>
+                                  <TableCell>{row["ZONA"]}</TableCell>
+                                  <TableCell>
+                                    {row["MUNICIPIO"] || row.municipio}
+                                  </TableCell>
+                                  <TableCell>
+                                    {row["ESTADO"] || row.estado}
+                                  </TableCell>
+
+                                  <TableCell>
+                                    {editingObservationId ===
+                                    row["NUM. CLIENTE"] ? (
+                                      <TextField
+                                        value={
+                                          modalObservaciones[
+                                            row["NUM. CLIENTE"]
+                                          ] ||
+                                          row["OBSERVACIONES"] ||
+                                          ""
+                                        }
+                                        onChange={(e) =>
+                                          handleSaveModalObservation(
+                                            row["NUM. CLIENTE"],
+                                            e.target.value
+                                          )
+                                        }
+                                        variant="outlined"
+                                        size="small"
+                                        autoFocus
+                                        onKeyDown={(e) =>
+                                          e.key === "Enter" &&
+                                          setEditingObservationId(null)
+                                        }
+                                      />
+                                    ) : (
+                                      <span
+                                        onDoubleClick={() =>
+                                          handleEditModalObservation(
+                                            row["NUM. CLIENTE"]
+                                          )
+                                        }
+                                        style={{ cursor: "pointer" }}
+                                      >
+                                        {modalObservaciones[
+                                          row["NUM. CLIENTE"]
+                                        ] ||
+                                          row["OBSERVACIONES"] ||
+                                          "Sin observaciones"}
+                                      </span>
+                                    )}
+                                  </TableCell>
+
+                                  <TableCell>
+                                    {formatCurrency(row.TOTAL)}
+                                  </TableCell>
+                                  <TableCell>{row.PARTIDAS}</TableCell>
+                                  <TableCell>{row.PIEZAS}</TableCell>
+
+                                  <TableCell>
+                                    {editRouteIndex === originalIndex ? (
+                                      <FormControl fullWidth size="small">
+                                        <InputLabel>Cambiar Ruta</InputLabel>
+                                        <Select
+                                          value={selectedRoute}
+                                          onChange={(e) => {
+                                            assignToRoute(row, e.target.value);
+                                            setEditRouteIndex(null);
+                                          }}
+                                          displayEmpty
+                                        >
+                                          <MenuItem disabled value="">
+                                            Seleccionar Ruta
+                                          </MenuItem>
+                                          {Object.keys(groupedData).map(
+                                            (route) => (
+                                              <MenuItem
+                                                key={route}
+                                                value={route}
+                                              >
+                                                {route}
+                                              </MenuItem>
+                                            )
+                                          )}
+                                        </Select>
+                                      </FormControl>
+                                    ) : (
+                                      <IconButton
+                                        onClick={() =>
+                                          setEditRouteIndex(originalIndex)
+                                        }
+                                      >
+                                        <CompareArrowsIcon />
+                                      </IconButton>
+                                    )}
+                                    <IconButton
+                                      color="error"
+                                      onClick={() =>
+                                        removeFromRoute(row, selectedRoute)
+                                      }
+                                    >
+                                      <DeleteIcon />
+                                    </IconButton>
+                                  </TableCell>
+                                </TableRow>
+                              )
+                            );
+                          })()}
                         </TableBody>
                       </Table>
                     </TableContainer>
@@ -7263,7 +7338,7 @@ function Transporte() {
                             r.fecha_de_entrega_cliente || "",
                           prorrateo_factura_lt: prCalc, // 👈 cálculo
                           suma_flete: prCalc, // 👈 cálculo
-                          total_factura_lt: isFirst ? totalGrupoEff : null, // 👈 solo primera; demás NULL
+                          total_factura_lt: totalGrupoEff, // 👈 solo primera; demás NULL
                           NUMERO_DE_FACTURA_LT:
                             numeroFacturaGrupo || r.NUMERO_DE_FACTURA_LT,
                           por_paq: (factor * 100).toFixed(2),
@@ -8195,6 +8270,7 @@ function Transporte() {
                   >
                     <MenuItem value="">Todas</MenuItem>
                     <MenuItem value="PITIC">PITIC</MenuItem>
+                    <MenuItem value="FLECHISA">FLECHISA</MenuItem>
                     <MenuItem value="TRESGUERRAS">TRESGUERRAS</MenuItem>
                     <MenuItem value="EXPRESS">EXPRESS</MenuItem>
                   </Select>

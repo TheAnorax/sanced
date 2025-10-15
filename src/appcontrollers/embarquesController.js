@@ -262,7 +262,7 @@ const obtenerEmbarquesNewTest= async (req, res) => {
     LEFT JOIN productos prod ON p.codigo_ped = prod.codigo_pro
     LEFT JOIN usuarios us ON p.id_usuario_paqueteria = us.id_usu
     LEFT JOIN prints prin ON p.id_usuario_paqueteria = prin.id_usu    
-    LEFT JOIN paqueteria pq ON p.pedido = pq.\`NO ORDEN\`
+    LEFT JOIN paqueteria pq ON p.pedido = pq.\`NO ORDEN\` AND p.tipo = pq.\`tipo_original\`
     LEFT JOIN (
       SELECT pedido, MAX(caja) AS ultima_caja, COUNT(DISTINCT caja) AS total_cajas
       FROM pedido_embarque

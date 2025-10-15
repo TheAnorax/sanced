@@ -39,6 +39,7 @@ const {
   getPaqueteriaByMonth,
   updatePaqueteriaUno,
   updatePaqueteriaBatch,
+  getPedidosdeAbril
 } = require("../controller/TrasporteController");
 
 router.get("/getPaqueteriaData", getPaqueteriaData);
@@ -145,5 +146,8 @@ router.get("/Actualizar-Porrateo", getPaqueteriaByMonth);
 router.put("/Paqueteria/actualizarNuevoPorrateo", updatePaqueteriaUno);
 
 router.put("/Paqueteria/actualizar-batch", updatePaqueteriaBatch);
+
+
+router.get("/paqueteria/abril-hoy", getPedidosdeAbril);
 
 module.exports = router;

@@ -2978,7 +2978,7 @@ function Visitantes() {
             }
           }
         });
-        if (id_catv === 12) {
+        if (id_catv === 2) {
           await axios.post(`${api}/send/visita/eviden`, {
             nombre: selectedVisita.nombre,
             apellidos: selectedVisita.apellidos,

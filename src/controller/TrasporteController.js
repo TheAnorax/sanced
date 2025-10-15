@@ -1767,18 +1767,26 @@ const getPaqueteriaData = async (req, res) => {
 const getPedidosDia = async (req, res) => {
   try {
     const { fecha } = req.query;
+
+    // 🕐 Fecha formateada por defecto (zona horaria México)
     const getFormattedDate = (date = new Date()) =>
       new Intl.DateTimeFormat("sv-SE", {
         timeZone: "America/Mexico_City",
       }).format(date);
+
     const selectedDate = fecha || getFormattedDate();
 
-    // 1. Pedidos principales
+    // 1️⃣ Pedidos principales desde tabla paquetería
     const [rows] = await pool.query(
       `
       SELECT 
-        p.id, p.routeName, p.\`NO ORDEN\` AS no_orden, p.\`NUM. CLIENTE\` AS num_cliente,
-        p.\`NOMBRE DEL CLIENTE\` AS nombre_cliente, p.ZONA, p.TOTAL, p.PARTIDAS, p.PIEZAS
+        p.id, 
+        p.routeName, 
+        p.\`NO ORDEN\` AS no_orden, 
+        p.\`NO_FACTURA\` AS factura, 
+        p.\`NUM. CLIENTE\` AS num_cliente,
+        p.\`NOMBRE DEL CLIENTE\` AS nombre_cliente, 
+        p.ZONA, p.TOTAL, p.PARTIDAS, p.PIEZAS
       FROM paqueteria p
       WHERE DATE(p.created_at) = ?
     `,
@@ -1787,10 +1795,10 @@ const getPedidosDia = async (req, res) => {
 
     const pedidosIds = rows.map((p) => String(p.no_orden).trim());
     if (pedidosIds.length === 0) {
-      return res.json([]); // No hay pedidos en paquetería ese día
+      return res.json([]); // No hay pedidos ese día
     }
 
-    // 2. Embarques y Finalizados
+    // 2️⃣ Consultas a tablas de estados
     const [embarques] = await pool.query(
       `SELECT pedido FROM pedido_embarque WHERE pedido IN (?)`,
       [pedidosIds]
@@ -1802,13 +1810,14 @@ const getPedidosDia = async (req, res) => {
     const [surtidos] = await pool.query(
       `
       SELECT pedido, SUM(cant_surti) AS surtido, SUM(cantidad) AS total
-      FROM pedido_surtido WHERE pedido IN (?)
+      FROM pedido_surtido 
+      WHERE pedido IN (?)
       GROUP BY pedido
     `,
       [pedidosIds]
     );
 
-    // 3. Indexamos para lookup rápido
+    // 3️⃣ Estructuras para lookup rápido
     const embarcadoSet = new Set(embarques.map((e) => String(e.pedido).trim()));
     const finalizadoSet = new Set(
       finalizados.map((f) => String(f.pedido).trim())
@@ -1818,32 +1827,32 @@ const getPedidosDia = async (req, res) => {
       const key = String(s.pedido).trim();
       surtidoMap.set(key, s);
     }
-    for (const s of surtidos) surtidoMap.set(s.pedido, s);
 
-    // 4. Procesamiento
+    // 4️⃣ Cálculos globales y por ruta
     const resumenPorRuta = {};
     const clientesGlobales = new Set();
     let partidasGlobal = 0,
       piezasGlobal = 0,
-      totalGlobal = 0;
-    let avanceGlobal = 0,
+      totalGlobal = 0,
+      avanceGlobal = 0,
       totalPedidos = 0;
+
+    // ➕ Generar también lista de pedidos detallados
+    const pedidosDetallados = [];
 
     for (const row of rows) {
       const key = row.routeName || "Sin Ruta";
-      //const id = row.no_orden;
       const id = String(row.no_orden).trim();
 
       let avance = 0;
-
       if (embarcadoSet.has(id) || finalizadoSet.has(id)) {
         avance = 100;
       } else if (surtidoMap.has(id)) {
         const { surtido = 0, total = 0 } = surtidoMap.get(id) || {};
-
         avance = total > 0 ? (surtido / total) * 100 : 0;
       }
 
+      // 📦 Agrupación por ruta
       if (!resumenPorRuta[key]) {
         resumenPorRuta[key] = {
           routeName: key,
@@ -1861,16 +1870,40 @@ const getPedidosDia = async (req, res) => {
       resumenPorRuta[key].totalPiezas += Number(row.PIEZAS) || 0;
       resumenPorRuta[key].totalTotal += Number(row.TOTAL) || 0;
       resumenPorRuta[key].sumaAvance += avance;
-      resumenPorRuta[key].totalPedidos += 1;
+      resumenPorRuta[key].totalPedidos++;
 
+      // 🔢 Globales
       clientesGlobales.add(row.num_cliente);
       partidasGlobal += Number(row.PARTIDAS) || 0;
       piezasGlobal += Number(row.PIEZAS) || 0;
       totalGlobal += Number(row.TOTAL) || 0;
       avanceGlobal += avance;
       totalPedidos++;
+
+      // 🧹 Limpieza del campo de factura
+      let facturaLimpia = row.factura ? String(row.factura).trim() : "";
+      if (
+        facturaLimpia === "" ||
+        facturaLimpia === "0" ||
+        facturaLimpia === "0-" ||
+        facturaLimpia.toUpperCase() === "NULL"
+      ) {
+        facturaLimpia = "—"; // Mostrar guion visual
+      }
+
+      // 📄 Pedido detallado con factura limpia
+      pedidosDetallados.push({
+        pedido: id,
+        factura: facturaLimpia,
+        cliente: row.nombre_cliente,
+        num_cliente: row.num_cliente,
+        ruta: key,
+        total: Number(row.TOTAL) || 0,
+        avance: `${avance.toFixed(0)}%`,
+      });
     }
 
+    // 5️⃣ Resumen por ruta
     const resumenPorRutas = Object.values(resumenPorRuta).map((ruta) => ({
       routeName: ruta.routeName,
       totalClientes: ruta.clientesUnicos.size,
@@ -1880,12 +1913,14 @@ const getPedidosDia = async (req, res) => {
       avance: `${(ruta.sumaAvance / ruta.totalPedidos).toFixed(0)}%`,
     }));
 
+    // Ordenar rutas numéricamente
     resumenPorRutas.sort((a, b) => {
       const numA = parseInt(a.routeName.replace(/\D/g, "")) || 0;
       const numB = parseInt(b.routeName.replace(/\D/g, "")) || 0;
       return numA - numB;
     });
 
+    // 6️⃣ Agregar total general
     const resumenGlobal = {
       routeName: "TOTAL GENERAL",
       totalClientes: clientesGlobales.size,
@@ -1895,9 +1930,14 @@ const getPedidosDia = async (req, res) => {
       avance: `${(avanceGlobal / totalPedidos).toFixed(0)}%`,
     };
 
-    res.json([...resumenPorRutas, resumenGlobal]);
+    // 7️⃣ Respuesta final con ambos niveles
+    res.json({
+      fecha: selectedDate,
+      resumenRutas: [...resumenPorRutas, resumenGlobal],
+      pedidos: pedidosDetallados,
+    });
   } catch (error) {
-    console.error("Error al obtener paquetería dia:", error.message);
+    console.error("❌ Error al obtener paquetería del día:", error.message);
     res.status(500).json({
       message: "Error al obtener datos de paquetería",
       error: error.message,
@@ -2273,7 +2313,7 @@ actualizarTotalIvaMasivoDesdeAPI();
 
 setInterval(() => {
   actualizarTotalIvaMasivoDesdeAPI();
-}, 600000); // 5000 milisegundos = 5 segundos
+}, 60000); // 5000 milisegundos = 5 segundos
 
 // funcion del modal
 
@@ -2526,6 +2566,45 @@ async function updatePaqueteriaBatch(req, res) {
   }
 }
 
+//obtener del dia de 1 de abil al dia
+
+const getPedidosdeAbril = async (req, res) => {
+  try {
+    const fechaInicio = "2025-04-01 00:00:00";
+    const fechaFin = moment().endOf("day").format("YYYY-MM-DD HH:mm:ss");
+
+    const [rows] = await pool.query(
+      `
+      SELECT 
+        \`NO ORDEN\`,
+        tipo_original,
+        NO_FACTURA,
+        FECHA_DE_FACTURA,
+        created_at
+      FROM paqueteria
+      WHERE created_at BETWEEN ? AND ?
+      ORDER BY created_at DESC
+      `,
+      [fechaInicio, fechaFin]
+    );
+
+    const dataFormateada = rows.map((row) => ({
+      ...row,
+      created_at: moment(row.created_at).format("YYYY-MM-DD HH:mm:ss"),
+    }));
+
+    res.status(200).json({
+      desde: fechaInicio,
+      hasta: fechaFin,
+      total: dataFormateada.length,
+      data: dataFormateada,
+    });
+  } catch (error) {
+    console.error("❌ Error al obtener pedidos:", error.message);
+    res.status(500).json({ message: "Error al obtener pedidos" });
+  }
+};
+
 module.exports = {
   getReferenciasClientes,
   actualizarTipoOriginalDesdeExcel,
@@ -2563,4 +2642,5 @@ module.exports = {
   updatePaqueteriaUno,
   updatePaqueteriaBatch,
   getPaqueteriaByMonth,
+  getPedidosdeAbril
 };

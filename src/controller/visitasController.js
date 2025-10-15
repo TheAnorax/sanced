@@ -9,13 +9,14 @@ const nodemailer = require('nodemailer');
 const { el, ar, id } = require('date-fns/locale');
 
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true,
   auth: {
     user: "j72525264@gmail.com",
-    pass: "cnaa haoa izwh lerm",
+    pass: "nutl negr gzgg pxxp",
   },
 });
-
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -2125,8 +2126,8 @@ const sendVisitEmail = async (req, res) => {
 
     await transporter.sendMail({
       from: `"SanCed – Gestor de Accesos" <j72525264@gmail.com>`,
-    //   to: 'rh.cedis@santul.net',
-      to: 'dalya.martinez@santul.net',
+      to: 'rh.cedis@santul.net',
+    //   to: 'dalya.martinez@santul.net',
       subject: "Nueva visita para entrevista",
       html,
       attachments: [

@@ -10,26 +10,33 @@ const getPaqueteria = async (req, res) => {
 
 
 SELECT
-        p.id_pedi,
-        p.tipo,
-        p.pedido,
-        p.id_usuario_paqueteria,
-        p.registro_embarque,
-        pq.TOTAL AS monto,
-        pq.routeName AS ruta,
-        pq.\`NOMBRE DEL CLIENTE\` AS cliente,
-        pq.\`NO_FACTURA\` AS factura,
-        (
-          SELECT COUNT(DISTINCT p2.codigo_ped)
-          FROM pedido_embarque p2 
-          WHERE p2.pedido = p.pedido AND p2.tipo = p.tipo
-        ) AS partidas
-      FROM pedido_embarque p
-      LEFT JOIN paqueteria pq ON p.pedido = pq.\`NO ORDEN\`
-      WHERE p.estado = 'E'
-        AND p.id_usuario_paqueteria IS NULL
-      GROUP BY p.pedido, p.tipo      
-      ORDER BY  p.registro_embarque DESC;
+  p.id_pedi,
+  p.tipo,
+  p.pedido,
+  p.id_usuario_paqueteria,
+  p.registro_embarque,
+  pq.TOTAL AS monto,
+  pq.routeName AS ruta,
+  pq.\`NOMBRE DEL CLIENTE\` AS cliente,
+  pq.\`NO_FACTURA\` AS factura,
+  (
+    SELECT COUNT(DISTINCT p2.codigo_ped)
+    FROM pedido_embarque p2 
+    WHERE p2.pedido = p.pedido 
+      AND p2.tipo = p.tipo
+  ) AS partidas
+FROM pedido_embarque p
+LEFT JOIN paqueteria pq 
+  ON p.pedido = pq.\`NO ORDEN\`
+ AND p.tipo = pq.\`tipo_original\`
+WHERE p.estado = 'E'
+  AND p.id_usuario_paqueteria IS NULL
+  AND pq.\`NO_FACTURA\` IS NOT NULL
+  AND pq.\`NO_FACTURA\` <> ''
+  AND pq.\`NO_FACTURA\` NOT IN ('0', '0-')
+GROUP BY p.pedido, p.tipo
+ORDER BY p.registro_embarque DESC;
+
     `);
 
     const simplifiedPedidos = rows.map((pedido) => {

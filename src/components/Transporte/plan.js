@@ -65,31 +65,64 @@ function Plansurtido() {
     }
   };
 
-  const fetchResumen = async (fecha) => {
+const fetchResumen = async (fecha) => {
+  try {
+    const response = await axios.get(
+      `http://66.232.105.87:3007/api/Trasporte/getPedidosDia?fecha=${fecha}`
+    );
+
+    const data = response.data;
+    console.log("📦 Respuesta completa del backend:", data);
+
+    // 🔹 Guarda tanto las rutas como los pedidos
+    setResumen({
+      rutas: Array.isArray(data.resumenRutas) ? data.resumenRutas : [],
+      pedidos: Array.isArray(data.pedidos) ? data.pedidos : [],
+    });
+  } catch (error) {
+    console.error("❌ Error al obtener resumen del día:", error);
+    setResumen({ rutas: [], pedidos: [] });
+  }
+};
+
+
+
+
+ useEffect(() => {
+  const fetchData = async () => {
+    setLoading(true);
+    const dateStr = selectedDate.format("YYYY-MM-DD");
     try {
-      const response = await axios.get(
-        `http://66.232.105.87:3007/api/Trasporte/getPedidosDia?fecha=${fecha}`
-      );
-      setResumen(response.data);
-    } catch (error) {
-      console.error("Error al obtener resumen del día:", error);
+      await Promise.all([fetchPaqueteria(dateStr), fetchResumen(dateStr)]);
+
+      // 🔹 Esperar a que ambas terminen y luego sincronizar
+      setTimeout(() => {
+  setData((prevData) =>
+    prevData.map((grupo) => ({
+      ...grupo,
+      pedidos: grupo.pedidos.map((pedido) => {
+        const encontrado = resumen?.pedidos?.find(
+          (p) => String(p.pedido) === String(pedido.no_orden)
+        );
+
+        return {
+          ...pedido,
+          factura: encontrado?.factura || "—",
+        };
+      }),
+    }))
+  );
+}, 300);
+
+    } catch (err) {
+      console.error("Error fetching datos:", err);
+    } finally {
+      setLoading(false);
     }
   };
+  fetchData();
+}, [selectedDate]);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      const dateStr = selectedDate.format("YYYY-MM-DD");
-      try {
-        await Promise.all([fetchPaqueteria(dateStr), fetchResumen(dateStr)]);
-      } catch (err) {
-        console.error("Error fetching datos:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, [selectedDate]);
 
   const handleTabChange = (_, newIndex) => {
     setTabIndex(newIndex);
@@ -1283,7 +1316,7 @@ function Plansurtido() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {resumen.map((ruta, idx) => {
+                  {resumen?.rutas?.map((ruta, idx) => {
                     const totalMin =
                       (ruta.totalPartidas / (30 * surtidores)) * 60;
                     const horas = Math.floor(totalMin / 60);
@@ -1396,6 +1429,7 @@ function Plansurtido() {
                         <TableRow>
                           <TableCell>Orden</TableCell>
                           <TableCell>Tipo</TableCell>
+                          <TableCell>Factura</TableCell>
                           <TableCell>Fusionado</TableCell>
                           <TableCell>Cliente</TableCell>
                           <TableCell>Total</TableCell>
@@ -1437,7 +1471,9 @@ function Plansurtido() {
                           return (
                             <TableRow key={pedido.id}>
                               <TableCell>{pedido.no_orden}</TableCell>
-                              <TableCell>{tipoFinal}</TableCell>
+                              <TableCell>{tipoFinal}</TableCell>  
+                              
+                              <TableCell>{pedido.factura}</TableCell>             
                               <TableCell>{pedido.fusion}</TableCell>
                               <TableCell>{pedido.nombre_cliente}</TableCell>
                               <TableCell>

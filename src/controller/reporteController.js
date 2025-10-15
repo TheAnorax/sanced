@@ -1384,7 +1384,7 @@ const getHistorico2025 = async (req, res) => {
       SELECT 
         TRIM(ESTADO) AS estado,
         DATE_FORMAT(FECHA_DE_FACTURA, '%Y-%m') AS mes,
-        SUM(CAST(IFNULL(TOTAL,0) AS DECIMAL(12,2))) AS total_factura_lt,
+        SUM(CAST(IFNULL(total_api,0) AS DECIMAL(12,2))) AS total_factura_lt,
         SUM(CAST(REPLACE(REPLACE(IFNULL(PRORRATEO_FACTURA_LT,'0'),'$',''),',','') AS DECIMAL(12,2))) AS total_flete,
         COUNT(DISTINCT \`NUM. CLIENTE\`) AS total_clientes,
         AVG(DIAS_DE_ENTREGA) AS promedio_dias_entrega

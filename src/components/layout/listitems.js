@@ -246,10 +246,16 @@ export const mainListItems = (user) => {
     },
 
     {
-      role: ["Admin", "AdminTran"],
+      role: ["Admin", "AdminTran", "Trans", "Master","VentAdmin", "Master","AdminAudi", "Control", "Admin", "Master2", "Paquet", "Embar", "AdminTran","Trans", "VentAdmin"  ],
       path: "/dashboard/plan",
       icon: <ViewQuiltIcon />,
       text: "EL Plan",
+    },
+    {
+      role: ["Master","AdminAudi", "Control", "Admin", "Master2", "Paquet", "Embar", "AdminTran","Trans", "VentAdmin" ],
+      path: "/dashboard/Plansurtido",
+      icon: <AodIcon />,
+      text: "Plan",
     },
     {
       role: ["Admin", "Control", "Embar", "Master","AdminAudi", "Paquet", "INV", 
@@ -265,7 +271,7 @@ export const mainListItems = (user) => {
       text: "Ubicaciones",
     },
     {
-      role: ["Admin", "Master","AdminAudi", "Imp", "Nac", "Ins", "Plan", "Recibo", "Nac2", "INV"],
+      role: ["Admin", "Master","AdminAudi", "Imp", "Nac", "Ins", "Plan", "Recibo", "Nac2", "INV","Master", "VentAdmin"],
       path: "/dashboard/compras",
       icon: <LocalGroceryStoreIcon />,
       text: "Compras",
@@ -401,12 +407,7 @@ export const mainListItems = (user) => {
       icon: <AdminPanelSettings />,
       text: "Visitas Reporte",
     },
-    {
-      role: ["Master","AdminAudi", "Control", "Admin", "Master2", "Paquet", "Embar", "AdminTran","Trans" ],
-      path: "/dashboard/Plansurtido",
-      icon: <AodIcon />,
-      text: "Plan",
-    },
+    
     {
       role: ["Master", "Admin", "Master2", "AdminTran","VentAdmin"],
       path: "/dashboard/Mapa",

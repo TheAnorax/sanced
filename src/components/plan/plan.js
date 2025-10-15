@@ -17,6 +17,7 @@ import {
   LinearProgress,
   Grid,
   Chip,
+  Divider
 } from "@mui/material";
 import { blueGrey, green, red, orange } from "@mui/material/colors";
 import Swal from "sweetalert2";
@@ -32,6 +33,8 @@ const Plan = () => {
   const [tabIndex, setTabIndex] = useState(0);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
 
   const [selectedDate, setSelectedDate] = useState(() =>
     new Date().toLocaleDateString("sv-SE")
@@ -120,6 +123,18 @@ const Plan = () => {
   const TabPanel = ({ children, value, index }) => (
     <div role="tabpanel" hidden={value !== index}>
       {value === index && <Box p={2}>{children}</Box>}
+      {/* 🔍 Buscador */}
+<Box mb={2} display="flex" justifyContent="flex-end">
+  <TextField
+    label="Buscar pedido, cliente o ruta"
+    variant="outlined"
+    size="small"
+    value={searchQuery}
+    onChange={(e) => setSearchQuery(e.target.value)}
+    sx={{ width: 300 }}
+  />
+</Box>
+ 
     </div>
   );
 
@@ -317,7 +332,7 @@ const Plan = () => {
             </Box>
           </Grid>
 
-          {/* 📊 Derecha: tabla resumen compacta */}
+          {/* 📊 Derecha: resumen visual compacto sin tabla */}
           <Grid item xs={12} md={6}>
             <Box
               sx={{
@@ -325,82 +340,162 @@ const Plan = () => {
                 borderRadius: 2,
                 boxShadow: 1,
                 p: 1,
-                overflowX: "auto",
-                maxHeight: 260,
+                overflowY: "auto",
+                maxHeight: 240,
               }}
             >
+              <Typography
+                variant="subtitle2"
+                sx={{
+                  fontWeight: "bold",
+                  color: blueGrey[800],
+                  mb: 0.5,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 0.5,
+                }}
+              >
+                📅 Resumen últimos días
+              </Typography>
 
-              <TableContainer component={Paper} sx={{ boxShadow: 0 }}>
-                <Table
-                  size="small"
-                  sx={{
-                    "& th, & td": { py: 0.25, px: 0.7 },
-                    "& thead th": {
-                      fontSize: "0.75rem",
-                      bgcolor: blueGrey[50],
-                    },
-                    "& tbody td": { fontSize: "0.75rem" },
-                  }}
-                >
-                  <TableHead>
-                    <TableRow>
-                      <TableCell><strong>Fecha</strong></TableCell>
-                      <TableCell align="right"><strong>Total</strong></TableCell>
-                      <TableCell align="right"><strong>No Asig.</strong></TableCell>
-                      <TableCell align="right"><strong>Surtido</strong></TableCell>
-                      <TableCell align="right"><strong>Embarque</strong></TableCell>
-                      <TableCell align="right"><strong>Finaliz.</strong></TableCell>
-                    </TableRow>
-                  </TableHead>
+              {faltantesPlan.length === 0 ? (
+                <Alert severity="info" sx={{ mb: 1 }}>
+                  No se encontraron registros recientes.
+                </Alert>
+              ) : (
+                <Box display="flex" flexDirection="column" gap={0.4}>
+                  {/* Encabezado */}
+                  <Box
+                    sx={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr repeat(5, 58px)",
+                      alignItems: "center",
+                      backgroundColor: blueGrey[50],
+                      borderRadius: 1,
+                      px: 1,
+                      py: 0.4,
+                      fontSize: "0.74rem",
+                      fontWeight: "bold",
+                      color: blueGrey[900],
+                    }}
+                  >
+                    <span>Fecha</span>
+                    <span >Total</span>
+                    <span>No Asig.</span>
+                    <span>Surtido</span>
+                    <span>Embarque</span>
+                    <span>Finaliz.</span>
+                  </Box>
 
-                  <TableBody>
-                    {faltantesPlan.map((f, idx) => (
-                      <TableRow key={idx}>
-                        <TableCell>{f.fecha}</TableCell>
-                        <TableCell align="right">{f.totalPedidos}</TableCell>
-                        <TableCell align="right">{f.pedidosNoAsignados}</TableCell>
-                        <TableCell align="right">{f.pedidosEnSurtido}</TableCell>
-                        <TableCell align="right">{f.pedidosEnEmbarque}</TableCell>
-                        <TableCell align="right">{f.pedidosFinalizados}</TableCell>
-                      </TableRow>
-                    ))}
+                  {/* Filas */}
+                  {faltantesPlan.map((f, idx) => (
+                    <Box
+                      key={idx}
+                      sx={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr repeat(5, 58px)",
+                        alignItems: "center",
+                        px: 1,
+                        py: 0.25,
+                        fontSize: "0.74rem",
+                        borderRadius: 1,
+                        bgcolor: idx % 2 === 0 ? "#fff" : blueGrey[50],
+                      }}
+                    >
+                      <Typography variant="body2" sx={{ color: blueGrey[900], fontSize: "0.74rem" }}>
+                        {f.fecha}
+                      </Typography>
+                      <Typography align="right" sx={{ fontSize: "0.74rem" }}>
+                        {f.totalPedidos}
+                      </Typography>
+                      <Typography
+                        align="right"
+                        sx={{ color: red[700], fontWeight: 500, fontSize: "0.74rem" }}
+                      >
+                        {f.pedidosNoAsignados}
+                      </Typography>
+                      <Typography
+                        align="right"
+                        sx={{ color: orange[800], fontWeight: 500, fontSize: "0.74rem" }}
+                      >
+                        {f.pedidosEnSurtido}
+                      </Typography>
+                      <Typography
+                        align="right"
+                        sx={{ color: blueGrey[700], fontWeight: 500, fontSize: "0.74rem" }}
+                      >
+                        {f.pedidosEnEmbarque}
+                      </Typography>
+                      <Typography
+                        align="right"
+                        sx={{ color: green[700], fontWeight: 600, fontSize: "0.74rem" }}
+                      >
+                        {f.pedidosFinalizados}
+                      </Typography>
+                    </Box>
+                  ))}
 
-                    {/* 🧮 Total general */}
-                    {(() => {
-                      const totalGeneral = faltantesPlan.reduce(
-                        (acc, item) => {
-                          acc.totalPedidos += item.totalPedidos || 0;
-                          acc.noAsignados += item.pedidosNoAsignados || 0;
-                          acc.surtido += item.pedidosEnSurtido || 0;
-                          acc.embarque += item.pedidosEnEmbarque || 0;
-                          acc.finalizados += item.pedidosFinalizados || 0;
-                          return acc;
-                        },
-                        {
-                          totalPedidos: 0,
-                          noAsignados: 0,
-                          surtido: 0,
-                          embarque: 0,
-                          finalizados: 0,
-                        }
-                      );
+                  {/* Total general */}
+                  {(() => {
+                    const totalGeneral = faltantesPlan.reduce(
+                      (acc, item) => {
+                        acc.totalPedidos += item.totalPedidos || 0;
+                        acc.noAsignados += item.pedidosNoAsignados || 0;
+                        acc.surtido += item.pedidosEnSurtido || 0;
+                        acc.embarque += item.pedidosEnEmbarque || 0;
+                        acc.finalizados += item.pedidosFinalizados || 0;
+                        return acc;
+                      },
+                      {
+                        totalPedidos: 0,
+                        noAsignados: 0,
+                        surtido: 0,
+                        embarque: 0,
+                        finalizados: 0,
+                      }
+                    );
 
-                      return (
-                        <TableRow sx={{ bgcolor: blueGrey[100] }}>
-                          <TableCell><strong>Total</strong></TableCell>
-                          <TableCell align="right"><strong>{totalGeneral.totalPedidos}</strong></TableCell>
-                          <TableCell align="right"><strong>{totalGeneral.noAsignados}</strong></TableCell>
-                          <TableCell align="right"><strong>{totalGeneral.surtido}</strong></TableCell>
-                          <TableCell align="right"><strong>{totalGeneral.embarque}</strong></TableCell>
-                          <TableCell align="right"><strong>{totalGeneral.finalizados}</strong></TableCell>
-                        </TableRow>
-                      );
-                    })()}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+                    return (
+                      <Box
+                        sx={{
+                          display: "grid",
+                          gridTemplateColumns: "1fr repeat(5, 58px)",
+                          alignItems: "center",
+                          px: 1,
+                          py: 0.4,
+                          fontSize: "0.74rem",
+                          borderRadius: 1,
+                          bgcolor: blueGrey[100],
+                          fontWeight: "bold",
+                        }}
+                      >
+                        <Typography variant="body2" sx={{ fontSize: "0.74rem" }}>
+                          Total
+                        </Typography>
+                        <Typography align="right" sx={{ fontSize: "0.74rem" }}>
+                          {totalGeneral.totalPedidos}
+                        </Typography>
+                        <Typography align="right" sx={{ color: red[700], fontSize: "0.74rem" }}>
+                          {totalGeneral.noAsignados}
+                        </Typography>
+                        <Typography align="right" sx={{ color: orange[800], fontSize: "0.74rem" }}>
+                          {totalGeneral.surtido}
+                        </Typography>
+                        <Typography align="right" sx={{ color: blueGrey[700], fontSize: "0.74rem" }}>
+                          {totalGeneral.embarque}
+                        </Typography>
+                        <Typography align="right" sx={{ color: green[700], fontSize: "0.74rem" }}>
+                          {totalGeneral.finalizados}
+                        </Typography>
+                      </Box>
+                    );
+                  })()}
+                </Box>
+              )}
             </Box>
           </Grid>
+
+
         </Grid>
 
         {/* 🧾 Título centrado */}
@@ -561,9 +656,13 @@ const Plan = () => {
 
       {/* TAB 2 - Detalle */}
       <TabPanel value={tabIndex} index={1}>
+
+        
         {detallePlan.length === 0 ? (
           <Alert severity="warning">No hay detalle para esta fecha.</Alert>
         ) : (
+
+          
           detallePlan.map((ruta, idx) => (
             <Box key={idx} mb={5}>
               {/* 🔹 Encabezado de la ruta */}
@@ -600,6 +699,8 @@ const Plan = () => {
                     <TableRow>
                       <TableCell align="center"><strong>#</strong></TableCell>
                       <TableCell><strong>Pedido</strong></TableCell>
+                      <TableCell><strong>Tipo</strong></TableCell>                      
+                      <TableCell><strong>Factura</strong></TableCell>
                       <TableCell><strong>Cliente</strong></TableCell>
                       <TableCell align="right"><strong>Partidas</strong></TableCell>
                       <TableCell align="right"><strong>Piezas</strong></TableCell>
@@ -610,11 +711,34 @@ const Plan = () => {
 
                   <TableBody>
                     {ruta.pedidos.map((pedido, i) => {
-                      const avanceGeneral = Math.max(
-                        Number(pedido.avanceSurtido.replace("%", "")),
-                        Number(pedido.avanceEmbarque.replace("%", "")),
-                        Number(pedido.avanceFinalizado.replace("%", ""))
-                      );
+                     // --- Avances individuales ---
+const avanceSurtidoNum = Number(pedido.avanceSurtido.replace("%", "")) || 0;
+const avanceEmbarqueNum = Number(pedido.avanceEmbarque.replace("%", "")) || 0;
+const avanceFinalizadoNum = Number(pedido.avanceFinalizado.replace("%", "")) || 0;
+
+let avanceGeneral = 0;
+
+// --- Etapas ponderadas ---
+if (pedido.estado_pedido?.toLowerCase() === "finalizado") {
+  avanceGeneral = 100;
+} else if (
+  pedido.estado_pedido?.toLowerCase() === "embarque" ||
+  pedido.estado_pedido?.toLowerCase() === "embarcando"
+) {
+  // Primera mitad = surtido completo (50%)
+  // Segunda mitad = progreso real del embarque
+  avanceGeneral = 50 + (avanceEmbarqueNum / 2);
+} else if (
+  pedido.estado_pedido?.toLowerCase() === "surtiendo" ||
+  pedido.estado_pedido?.toLowerCase() === "surtido"
+) {
+  // Avance solo del surtido (mitad de la barra)
+  avanceGeneral = avanceSurtidoNum / 2;
+} else {
+  // Sin asignar
+  avanceGeneral = 0;
+}
+
 
                       // 🎨 Color del estado según su valor
                       const getEstadoColor = (estado) => {
@@ -637,6 +761,8 @@ const Plan = () => {
                         <TableRow key={i}>
                           <TableCell align="center">{i + 1}</TableCell>
                           <TableCell>{pedido.no_orden}</TableCell>
+                          <TableCell>{pedido.tipo_original}</TableCell>
+                          <TableCell>{pedido.factura}</TableCell>
                           <TableCell>{pedido.nombre_cliente}</TableCell>
                           <TableCell align="right">{pedido.PARTIDAS}</TableCell>
                           <TableCell align="right">{pedido.PIEZAS}</TableCell>
@@ -674,11 +800,12 @@ const Plan = () => {
                             </Box>
 
                             <LinearProgress
-                              variant="determinate"
-                              value={avanceGeneral}
-                              color={getProgressColor(avanceGeneral)}
-                              sx={{ width: "100%", height: 8, borderRadius: 5 }}
-                            />
+  variant="determinate"
+  value={avanceGeneral}
+  color={getProgressColor(avanceGeneral)}
+  sx={{ width: "100%", height: 8, borderRadius: 5 }}
+/>
+
                           </TableCell>
                         </TableRow>
                       );
@@ -693,156 +820,121 @@ const Plan = () => {
 
 
       {/* TAB 3 - Faltantes */}
-      <TabPanel value={tabIndex} index={2}>
-        {faltantesPlan.length === 0 ? (
-          <Alert severity="warning">
-            No se encontraron faltantes en los últimos 15 días.
-          </Alert>
-        ) : (
-          <TableContainer
-            component={Paper}
-            sx={{
-              borderRadius: 2,
-              boxShadow: 3,
-              mt: 2,
-            }}
-          >
-            <Table size="small">
-              <TableHead sx={{ bgcolor: blueGrey[50] }}>
-                <TableRow>
-                  <TableCell>
-                    <strong>Fecha</strong>
-                  </TableCell>
-                  <TableCell align="right">
-                    <strong>Total Pedidos</strong>
-                  </TableCell>
-                  <TableCell align="right">
-                    <strong>No asignados</strong>
-                  </TableCell>
-                  <TableCell align="right">
-                    <strong>En Surtido</strong>
-                  </TableCell>
-                  <TableCell align="right">
-                    <strong>En Embarque</strong>
-                  </TableCell>
-                  <TableCell align="right">
-                    <strong>Finalizados</strong>
-                  </TableCell>
-                  <TableCell
-                    align="right"
-                    sx={{ color: "#d32f2f", fontWeight: "bold" }}
-                  >
-                    💰 Pendientes ($)
-                  </TableCell>
-                  <TableCell
-                    align="right"
-                    sx={{ color: "#1976d2", fontWeight: "bold" }}
-                  >
-                    💰 Total Día ($)
-                  </TableCell>
-                </TableRow>
-              </TableHead>
+<TabPanel value={tabIndex} index={2}>
+  {faltantesPlan.length === 0 ? (
+    <Alert severity="warning">
+      No se encontraron faltantes en los últimos 15 días.
+    </Alert>
+  ) : (
+    <TableContainer
+      component={Paper}
+      sx={{
+        borderRadius: 2,
+        boxShadow: 3,
+        mt: 2,
+      }}
+    >
+      <Table size="small">
+        <TableHead sx={{ bgcolor: blueGrey[50] }}>
+          <TableRow>
+            <TableCell><strong>Fecha</strong></TableCell>
+            <TableCell align="right"><strong>Total Pedidos</strong></TableCell>
+            <TableCell align="right"><strong>No asignados</strong></TableCell>
+            <TableCell align="right"><strong>En Surtido</strong></TableCell>
+            <TableCell align="right"><strong>En Embarque</strong></TableCell>
+            <TableCell align="right"><strong>Finalizados</strong></TableCell>
+            <TableCell align="right"><strong>Sin Ruta</strong></TableCell>
+            <TableCell align="right" sx={{ color: "#d32f2f", fontWeight: "bold" }}>
+              💰 Pendientes ($)
+            </TableCell>
+            <TableCell align="right" sx={{ color: "#0288d1", fontWeight: "bold" }}>
+              💰 Sin Ruta ($)
+            </TableCell>
+            <TableCell align="right" sx={{ color: "#1976d2", fontWeight: "bold" }}>
+              💰 Total Día ($)
+            </TableCell>
+          </TableRow>
+        </TableHead>
 
-              <TableBody>
-                {faltantesPlan.map((f, idx) => (
-                  <TableRow key={idx}>
-                    <TableCell>{f.fecha}</TableCell>
-                    <TableCell align="right">{f.totalPedidos}</TableCell>
-                    <TableCell align="right">{f.pedidosNoAsignados}</TableCell>
-                    <TableCell align="right">{f.pedidosEnSurtido}</TableCell>
-                    <TableCell align="right">{f.pedidosEnEmbarque}</TableCell>
-                    <TableCell align="right">{f.pedidosFinalizados}</TableCell>
-                    <TableCell
-                      align="right"
-                      sx={{ color: "#d32f2f", fontWeight: 500 }}
-                    >
-                      {new Intl.NumberFormat("es-MX", {
-                        style: "currency",
-                        currency: "MXN",
-                      }).format(f.totalNoAsignados || 0)}
-                    </TableCell>
-                    <TableCell
-                      align="right"
-                      sx={{ color: "#1976d2", fontWeight: 500 }}
-                    >
-                      {new Intl.NumberFormat("es-MX", {
-                        style: "currency",
-                        currency: "MXN",
-                      }).format(f.totalDia || 0)}
-                    </TableCell>
-                  </TableRow>
-                ))}
+        <TableBody>
+          {faltantesPlan.map((f, idx) => (
+            <TableRow key={idx}>
+              <TableCell>{f.fecha}</TableCell>
+              <TableCell align="right">{f.totalPedidos}</TableCell>
+              <TableCell align="right">{f.pedidosNoAsignados}</TableCell>
+              <TableCell align="right">{f.pedidosEnSurtido}</TableCell>
+              <TableCell align="right">{f.pedidosEnEmbarque}</TableCell>
+              <TableCell align="right">{f.pedidosFinalizados}</TableCell>
+              <TableCell align="right">{f.pedidosSinRuta}</TableCell>
 
-                {/* 🧮 Fila de totales generales */}
-                {(() => {
-                  const totalGeneral = faltantesPlan.reduce(
-                    (acc, item) => {
-                      acc.totalPedidos += item.totalPedidos || 0;
-                      acc.noAsignados += item.pedidosNoAsignados || 0;
-                      acc.surtido += item.pedidosEnSurtido || 0;
-                      acc.embarque += item.pedidosEnEmbarque || 0;
-                      acc.finalizados += item.pedidosFinalizados || 0;
-                      acc.montoPendientes += item.totalNoAsignados || 0;
-                      acc.montoTotalDia += item.totalDia || 0;
-                      return acc;
-                    },
-                    {
-                      totalPedidos: 0,
-                      noAsignados: 0,
-                      surtido: 0,
-                      embarque: 0,
-                      finalizados: 0,
-                      montoPendientes: 0,
-                      montoTotalDia: 0,
-                    }
-                  );
+              {/* 💰 Totales por tipo */}
+              <TableCell align="right" sx={{ color: "#d32f2f", fontWeight: 500 }}>
+                {formatCurrency(f.totalNoAsignados)}
+              </TableCell>
+              <TableCell align="right" sx={{ color: "#0288d1", fontWeight: 500 }}>
+                {formatCurrency(f.totalSinRuta)}
+              </TableCell>
+              <TableCell align="right" sx={{ color: "#1976d2", fontWeight: 500 }}>
+                {formatCurrency(f.totalDia)}
+              </TableCell>
+            </TableRow>
+          ))}
 
-                  return (
-                    <TableRow sx={{ bgcolor: blueGrey[100] }}>
-                      <TableCell>
-                        <strong>Total General</strong>
-                      </TableCell>
-                      <TableCell align="right">
-                        <strong>{totalGeneral.totalPedidos}</strong>
-                      </TableCell>
-                      <TableCell align="right">
-                        <strong>{totalGeneral.noAsignados}</strong>
-                      </TableCell>
-                      <TableCell align="right">
-                        <strong>{totalGeneral.surtido}</strong>
-                      </TableCell>
-                      <TableCell align="right">
-                        <strong>{totalGeneral.embarque}</strong>
-                      </TableCell>
-                      <TableCell align="right">
-                        <strong>{totalGeneral.finalizados}</strong>
-                      </TableCell>
-                      <TableCell
-                        align="right"
-                        sx={{ color: "#d32f2f", fontWeight: "bold" }}
-                      >
-                        {new Intl.NumberFormat("es-MX", {
-                          style: "currency",
-                          currency: "MXN",
-                        }).format(totalGeneral.montoPendientes)}
-                      </TableCell>
-                      <TableCell
-                        align="right"
-                        sx={{ color: "#1976d2", fontWeight: "bold" }}
-                      >
-                        {new Intl.NumberFormat("es-MX", {
-                          style: "currency",
-                          currency: "MXN",
-                        }).format(totalGeneral.montoTotalDia)}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })()}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        )}
-      </TabPanel>
+          {/* 🧮 Fila de totales generales */}
+          {(() => {
+            const totalGeneral = faltantesPlan.reduce(
+              (acc, item) => {
+                acc.totalPedidos += item.totalPedidos || 0;
+                acc.noAsignados += item.pedidosNoAsignados || 0;
+                acc.surtido += item.pedidosEnSurtido || 0;
+                acc.embarque += item.pedidosEnEmbarque || 0;
+                acc.finalizados += item.pedidosFinalizados || 0;
+                acc.sinRuta += item.pedidosSinRuta || 0;
+                acc.montoPendientes += item.totalNoAsignados || 0;
+                acc.montoSinRuta += item.totalSinRuta || 0;
+                acc.montoTotalDia += item.totalDia || 0;
+                return acc;
+              },
+              {
+                totalPedidos: 0,
+                noAsignados: 0,
+                surtido: 0,
+                embarque: 0,
+                finalizados: 0,
+                sinRuta: 0,
+                montoPendientes: 0,
+                montoSinRuta: 0,
+                montoTotalDia: 0,
+              }
+            );
+
+            return (
+              <TableRow sx={{ bgcolor: blueGrey[100] }}>
+                <TableCell><strong>Total General</strong></TableCell>
+                <TableCell align="right"><strong>{totalGeneral.totalPedidos}</strong></TableCell>
+                <TableCell align="right"><strong>{totalGeneral.noAsignados}</strong></TableCell>
+                <TableCell align="right"><strong>{totalGeneral.surtido}</strong></TableCell>
+                <TableCell align="right"><strong>{totalGeneral.embarque}</strong></TableCell>
+                <TableCell align="right"><strong>{totalGeneral.finalizados}</strong></TableCell>
+                <TableCell align="right"><strong>{totalGeneral.sinRuta}</strong></TableCell>
+                <TableCell align="right" sx={{ color: "#d32f2f", fontWeight: "bold" }}>
+                  {formatCurrency(totalGeneral.montoPendientes)}
+                </TableCell>
+                <TableCell align="right" sx={{ color: "#0288d1", fontWeight: "bold" }}>
+                  {formatCurrency(totalGeneral.montoSinRuta)}
+                </TableCell>
+                <TableCell align="right" sx={{ color: "#1976d2", fontWeight: "bold" }}>
+                  {formatCurrency(totalGeneral.montoTotalDia)}
+                </TableCell>
+              </TableRow>
+            );
+          })()}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  )}
+</TabPanel>
+
     </Box>
   );
 };

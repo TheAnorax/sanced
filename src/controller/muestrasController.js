@@ -10,7 +10,7 @@ const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
     user: "j72525264@gmail.com",
-    pass: "nutl negr gzgg pxxp",
+    pass: "bzgq ssbm nomh sqtw",
   },
 });
 
@@ -30,27 +30,33 @@ const Departamentos = async (req, res) => {
 
 const buscarProducto = async (req, res) => {
   const { codigo } = req.params;
+
   try {
     const [rows] = await pool.query(
-      `SELECT 
-        codigo_pro AS codigo,
-        des,
-        um,
-        _pz,
-        _inner,
-        _master
-      FROM productos
-      WHERE codigo_pro = ? OR des LIKE CONCAT('%', ?, '%')`,
-      [codigo, codigo] // 👈 usa el mismo valor para ambas
+      `
+      SELECT 
+        p.codigo_pro AS codigo,
+        p.des,
+        p.um,
+        p._pz,
+        p._inner,
+        p._master,
+        pm.PRECIO AS precio
+      FROM productos p
+      LEFT JOIN precios_muestras pm
+        ON CAST(p.codigo_pro AS UNSIGNED) = CAST(pm.CODIGO AS UNSIGNED)
+      WHERE p.codigo_pro = ? OR p.des LIKE CONCAT('%', ?, '%')
+      `,
+      [codigo, codigo]
     );
 
     if (rows.length === 0) {
       return res.status(404).json({ message: "Producto no encontrado" });
     }
 
-    res.json(rows); // 👈 devolver todos, no solo uno
+    res.json(rows);
   } catch (error) {
-    console.error("Error al buscar el producto:", error);
+    console.error("❌ Error al buscar el producto:", error);
     res.status(500).json({ message: "Error al buscar el producto" });
   }
 };
@@ -252,14 +258,40 @@ const actualizarSolicitud = async (req, res) => {
     if (autorizado === 1) {
       console.log("📢 Entrando a envío de correo por AUTORIZACIÓN");
 
-      // Obtener productos para la lista en el correo
+      // 🔹 Obtener productos con su precio desde precios_muestras
       const [productos] = await pool.query(
-        `SELECT * FROM Carrito_muestras WHERE solicitud_id = ?`,
+        `
+    SELECT 
+      c.*, 
+      p.PRECIO
+    FROM Carrito_muestras c
+    LEFT JOIN precios_muestras p 
+      ON CAST(c.codigo AS UNSIGNED) = CAST(p.CODIGO AS UNSIGNED)
+    WHERE c.solicitud_id = ?
+    `,
         [solicitud.id]
       );
 
+      // 🔹 Calcular total por producto (precio × cantidad)
+      const productosConTotal = productos.map((p) => ({
+        ...p,
+        total_producto: p.PRECIO ? (p.PRECIO * p.cantidad).toFixed(2) : 0,
+      }));
+
+      // 🔹 Calcular total general
+      const totalGeneral = productosConTotal.reduce(
+        (sum, p) => sum + (parseFloat(p.total_producto) || 0),
+        0
+      );
+
+      // 🔹 Actualizar el total en la base de datos
+      await pool.query(
+        `UPDATE Solicitudes_muestras SET total = ? WHERE id = ?`,
+        [totalGeneral.toFixed(2), solicitud.id]
+      );
+
       try {
-        // Leer plantilla de autorización
+        // 🔹 Leer plantilla de autorización
         const rutaHTML = path.join(
           __dirname,
           "templates",
@@ -267,15 +299,21 @@ const actualizarSolicitud = async (req, res) => {
         );
         let html = await fs.readFile(rutaHTML, "utf8");
 
-        // Armar lista de productos en <li>
-        const listaHTML = productos
+        // 🔹 Armar lista de productos en HTML
+        const listaHTML = productosConTotal
           .map(
-            (prod) =>
-              `<li>${prod.codigo} - ${prod.descripcion} (x${prod.cantidad})</li>`
+            (prod) => `
+          <li>
+            <strong>${prod.codigo}</strong> - ${prod.descripcion}
+            (x${prod.cantidad}) → 
+            $${(prod.PRECIO || 0).toFixed(2)} c/u = 
+            <strong>$${prod.total_producto}</strong>
+          </li>
+        `
           )
           .join("");
 
-        // Reemplazar marcadores en la plantilla
+        // 🔹 Reemplazar marcadores en la plantilla
         html = html
           .replace(/{{folio}}/g, folio)
           .replace(/{{nombre}}/g, solicitud.nombre)
@@ -285,12 +323,19 @@ const actualizarSolicitud = async (req, res) => {
             /{{fecha}}/g,
             moment().format("D [de] MMMM [de] YYYY, HH:mm [hrs]")
           )
-          .replace(/{{productos}}/g, listaHTML);
+          .replace(/{{productos}}/g, listaHTML)
+          .replace(/{{total_general}}/g, `$${totalGeneral.toFixed(2)}`);
 
-        // Construir arreglo "to" = solicitante + correos fijos
-        const destinatariosAut = [correoDestino, ...correosFijos];
+        // 🔹 Correos fijos y del solicitante
+        const destinatariosAut = [
+          correosPorNombre[solicitud.nombre],
+          "rodrigo.arias@santul.net",
+          "jonathan.alcantara@santul.net",
+          "analista.inventarios2@santul.net",
+          "supervisor.inventarios@santul.net",
+        ].filter(Boolean);
 
-        // Enviar correo de autorización
+        // 🔹 Enviar correo
         await transporter.sendMail({
           from: `"Muestras Sanced" <j72525264@gmail.com>`,
           to: destinatariosAut,
@@ -375,19 +420,50 @@ const actualizarSolicitud = async (req, res) => {
 
 const obtenerSolicitudes = async (req, res) => {
   try {
-    const [rows] = await pool.query(
-      `SELECT * FROM Solicitudes_muestras WHERE autorizado = 0`
-    );
+    // 🔹 1. Obtener solicitudes pendientes de autorización
+    const [rows] = await pool.query(`
+      SELECT * 
+      FROM Solicitudes_muestras 
+      WHERE autorizado = 0
+      ORDER BY created_at DESC
+    `);
+
     for (const row of rows) {
+      // 🔹 2. Obtener productos del carrito con JOIN a precios_muestras
       const [productos] = await pool.query(
-        `SELECT * FROM Carrito_muestras WHERE solicitud_id = ?`,
+        `
+        SELECT 
+          c.*, 
+          p.PRECIO
+        FROM Carrito_muestras c
+        LEFT JOIN precios_muestras p 
+          ON CAST(c.codigo AS UNSIGNED) = CAST(p.CODIGO AS UNSIGNED)
+        WHERE c.solicitud_id = ?
+        `,
         [row.id]
       );
-      row.carrito = productos;
+
+      // 🔹 3. Calcular total por producto (precio × cantidad)
+      const productosConTotal = productos.map((p) => ({
+        ...p,
+        total_producto: p.PRECIO ? (p.PRECIO * p.cantidad).toFixed(2) : null,
+      }));
+
+      // 🔹 4. Calcular total general de toda la solicitud
+      const totalGeneral = productosConTotal.reduce(
+        (sum, p) => sum + (parseFloat(p.total_producto) || 0),
+        0
+      );
+
+      // 🔹 5. Agregar los productos y el total al objeto de la solicitud
+      row.carrito = productosConTotal;
+      row.total_general = totalGeneral.toFixed(2);
     }
+
+    // 🔹 6. Enviar la respuesta completa
     res.json(rows);
   } catch (error) {
-    console.error("Error al obtener solicitudes:", error);
+    console.error("❌ Error al obtener solicitudes:", error);
     res.status(500).json({ message: "Error al obtener solicitudes" });
   }
 };
@@ -398,20 +474,42 @@ const obtenerAutorizadas = async (req, res) => {
       SELECT * 
       FROM Solicitudes_muestras 
       WHERE autorizado IN (1, 2)
-      ORDER BY created_at DESC 
+      ORDER BY created_at DESC
     `);
 
     for (const row of rows) {
+      // 🔹 Obtener productos con su precio (JOIN con tabla de precios)
       const [productos] = await pool.query(
-        `SELECT * FROM Carrito_muestras WHERE solicitud_id = ?`,
+        `
+        SELECT 
+          c.*, 
+          p.PRECIO
+        FROM Carrito_muestras c
+        LEFT JOIN precios_muestras p 
+          ON CAST(c.codigo AS UNSIGNED) = CAST(p.CODIGO AS UNSIGNED)
+        WHERE c.solicitud_id = ?
+        `,
         [row.id]
       );
-      row.carrito = productos;
+
+      // 🔹 Calcular total por producto (precio × cantidad)
+      const productosConTotal = productos.map((p) => ({
+        ...p,
+        total_producto: p.PRECIO ? (p.PRECIO * p.cantidad).toFixed(2) : null,
+      }));
+
+      // 🔹 Calcular total global de toda la solicitud
+      const totalGeneral = productosConTotal.reduce((sum, p) => {
+        return sum + (parseFloat(p.total_producto) || 0);
+      }, 0);
+
+      row.carrito = productosConTotal;
+      row.total_general = totalGeneral.toFixed(2); // ✅ nuevo campo
     }
 
     res.json(rows);
   } catch (error) {
-    console.error("Error al obtener autorizadas:", error);
+    console.error("❌ Error al obtener autorizadas:", error);
     res
       .status(500)
       .json({ message: "Error al obtener solicitudes autorizadas" });
@@ -802,6 +900,7 @@ const correosPorNombre = {
   "Flor Guerrero": "rh.cedis@santul.net",
   "Michel Escobar Jimenez": "michel.escobar@santul.net",
   "Sergio Regalado Alvarez": "sergio.regalado@santul.net",
+  "Lizette Martinez": "lizette.martinez@santul.net",
   "Juan Pablo": "gerente.almacen@santul.net",
   "Elias Sandler": "elias.sandler@santul.net",
   "Eduardo Sandler": "eduardo.sandler@santul.net",
@@ -954,7 +1053,7 @@ const enviarPendientesEmbarque = async () => {
 };
 
 // 8:00 AM
-cron.schedule("15 10 * * 1-5", async () => {
+cron.schedule("45 11 * * 1-5", async () => {
   console.log(
     "⏰ Ejecutando envío diario de pendientes de embarque (9:00 AM, solo lunes a viernes)..."
   );
@@ -1146,5 +1245,5 @@ module.exports = {
   obtenerPreciosLista,
   enviarPendientesEmbarque,
   marcarSinMaterial,
-  buscarUsuarios
+  buscarUsuarios,
 };

@@ -32,6 +32,7 @@ import {
   DialogTitle,
   Tooltip,
   TablePagination,
+  TableFooter,
 } from "@mui/material";
 
 import { pdfTemplate } from "./pdfTemplate";
@@ -395,6 +396,12 @@ function Muestras() {
         ...solicitudesAutorizadas,
         solicitudAutorizada,
       ]);
+      Swal.fire({
+        title: "✅ Muestra Autorizada",
+        text: "La solicitud fue autorizada correctamente.",
+        icon: "success",
+        confirmButtonColor: "#198754",
+      });
     } catch (error) {
       console.error("❌ Error al autorizar solicitud:", error);
       setAlerta(true);
@@ -530,7 +537,10 @@ function Muestras() {
   const guardarAutorizadas = async (arr) => {
     setSolicitudesAutorizadas(arr);
     try {
-      await axios.post("http://66.232.105.87:3007/api/muestras/solicitudes", arr);
+      await axios.post(
+        "http://66.232.105.87:3007/api/muestras/solicitudes",
+        arr
+      );
     } catch (error) {
       console.error("Error al guardar autorizadas:", error);
       setAlerta(true);
@@ -753,7 +763,10 @@ function Muestras() {
         })),
       };
 
-      await axios.post("http://66.232.105.87:3007/api/muestras/surtido", payload);
+      await axios.post(
+        "http://66.232.105.87:3007/api/muestras/surtido",
+        payload
+      );
 
       setSolicitudesAutorizadas((prev) =>
         prev.map((sol) =>
@@ -834,9 +847,12 @@ function Muestras() {
 
       if (!confirmarSalida.isConfirmed) return;
 
-      await axios.patch(`http://66.232.105.87:3007/api/muestras/salida/${folio}`, {
-        salida_por: user.name,
-      });
+      await axios.patch(
+        `http://66.232.105.87:3007/api/muestras/salida/${folio}`,
+        {
+          salida_por: user.name,
+        }
+      );
 
       Swal.fire("✅ Listo", "Salida registrada correctamente", "success");
       await obtenerSolicitudesAutorizadas();
@@ -904,6 +920,7 @@ function Muestras() {
         "Waldos",
         "Central Detallista",
         "Merco",
+        "S-MART",
       ],
       motivos: {
         Walmart: [],
@@ -1066,6 +1083,7 @@ function Muestras() {
     "Mariana Lucero Ramirez Me": "Recursos Humanos",
     "Michel Escobar Jimenez": "E-COMMERCE",
     "Sergio Regalado Alvarez": "TALLER POP",
+    "Lizette Martinez": "TALLER POP",
     "Enrrique Saavedra": "Cedis",
     "Elias Sandler": "Direccion",
     "Eduardo Sandler": "Direccion",
@@ -1225,7 +1243,7 @@ function Muestras() {
 
   const [paginaAutorizadas, setPaginaAutorizadas] = useState(1);
   const [paginaCanceladas, setPaginaCanceladas] = useState(1);
-  const registrosPorPagina = 4;
+  // const registrosPorPagina = 4;
 
   useEffect(() => {
     setPaginaAutorizadas(1);
@@ -1246,23 +1264,23 @@ function Muestras() {
         sol.departamento?.toLowerCase() === departamentoFiltrado.toLowerCase())
   );
 
-  const totalPaginasAutorizadas = Math.ceil(
-    autorizadasFiltradas.length / registrosPorPagina
-  );
+  // const totalPaginasAutorizadas = Math.ceil(
+  //   autorizadasFiltradas.length / registrosPorPagina
+  // );
 
-  const totalPaginasCanceladas = Math.ceil(
-    canceladasFiltradas.length / registrosPorPagina
-  );
+  // const totalPaginasCanceladas = Math.ceil(
+  //   canceladasFiltradas.length / registrosPorPagina
+  // );
 
-  const autorizadasPaginadas = autorizadasFiltradas.slice(
-    (paginaAutorizadas - 1) * registrosPorPagina,
-    paginaAutorizadas * registrosPorPagina
-  );
+  // const autorizadasPaginadas = autorizadasFiltradas.slice(
+  //   (paginaAutorizadas - 1) * registrosPorPagina,
+  //   paginaAutorizadas * registrosPorPagina
+  // );
 
-  const canceladasPaginadas = canceladasFiltradas.slice(
-    (paginaCanceladas - 1) * registrosPorPagina,
-    paginaCanceladas * registrosPorPagina
-  );
+  // const canceladasPaginadas = canceladasFiltradas.slice(
+  //   (paginaCanceladas - 1) * registrosPorPagina,
+  //   paginaCanceladas * registrosPorPagina
+  // );
 
   // Dentro de tu componente Muestras, justo donde defines las funciones:
   const exportarExcel = () => {
@@ -1458,6 +1476,97 @@ function Muestras() {
     "&:hover": { backgroundColor: "#00cc12" }, // Hover
   };
 
+  // 🔹 Calcular total general del departamento filtrado
+  // Mes seleccionado (YYYY-MM). Si no hay, usa el mes actual.
+  const [selectedMonth, setSelectedMonth] = useState(
+    moment().format("YYYY-MM")
+  );
+
+  const mesActual = selectedMonth || moment().format("YYYY-MM");
+
+  // 🔹 Filtra AUTORIZADAS por departamento y por mes seleccionado
+  const autorizadasFiltradasPorMes = solicitudesAutorizadas
+    .filter((sol) => sol.autorizado === 1)
+    .filter(
+      (sol) =>
+        (departamentoFiltrado === "" ||
+          sol.departamento?.toLowerCase() ===
+            departamentoFiltrado.toLowerCase()) &&
+        moment(sol.created_at).format("YYYY-MM") === mesActual
+    )
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+  // 🔹 Filtra CANCELADAS por departamento y por mes seleccionado
+  const canceladasFiltradasPorMes = solicitudesAutorizadas
+    .filter((sol) => sol.autorizado === 2)
+    .filter(
+      (sol) =>
+        (departamentoFiltrado === "" ||
+          sol.departamento?.toLowerCase() ===
+            departamentoFiltrado.toLowerCase()) &&
+        moment(sol.created_at).format("YYYY-MM") === mesActual
+    )
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+  /* -------------------------
+     Totales y “código top”
+     (SOLO del mes+depto filtrados)
+  -------------------------- */
+
+  // ✅ Total general del departamento en el MES
+  const totalGeneralDepartamento = autorizadasFiltradasPorMes.reduce(
+    (sum, sol) => sum + (parseFloat(sol.total_general) || 0),
+    0
+  );
+
+  // ✅ Código más usado por NÚMERO DE SOLICITUDES (no por cantidad)
+  //    – cuenta 1 por solicitud si el código aparece en su carrito
+  const conteoCodigos = {};
+  autorizadasFiltradasPorMes.forEach((sol) => {
+    const codigosUnicos = new Set(sol.carrito?.map((p) => p.codigo));
+    codigosUnicos.forEach((codigo) => {
+      conteoCodigos[codigo] = (conteoCodigos[codigo] || 0) + 1;
+    });
+  });
+
+  const codigoMasSolicitado =
+    Object.keys(conteoCodigos).length > 0
+      ? Object.entries(conteoCodigos).reduce((a, b) => (a[1] > b[1] ? a : b))
+      : ["—", 0];
+
+  const [codigoTop, vecesUsado] = codigoMasSolicitado;
+
+  /* -------------------------
+     Paginación (5 por vista)
+  -------------------------- */
+
+  const registrosPorPagina = 5;
+
+  const totalPaginasAutorizadas = Math.ceil(
+    autorizadasFiltradasPorMes.length / registrosPorPagina
+  );
+
+  const totalPaginasCanceladas = Math.ceil(
+    canceladasFiltradasPorMes.length / registrosPorPagina
+  );
+
+  // Lo que se mostrará en la tabla (5x5)
+  const autorizadasPaginadas = autorizadasFiltradasPorMes.slice(
+    (paginaAutorizadas - 1) * registrosPorPagina,
+    paginaAutorizadas * registrosPorPagina
+  );
+
+  const canceladasPaginadas = canceladasFiltradasPorMes.slice(
+    (paginaCanceladas - 1) * registrosPorPagina,
+    paginaCanceladas * registrosPorPagina
+  );
+
+  // Cuando cambie mes o departamento, vuelve a la página 1
+  useEffect(() => {
+    setPaginaAutorizadas(1);
+    setPaginaCanceladas(1);
+  }, [mesActual, departamentoFiltrado]);
+
   return (
     <Container component="main" maxWidth="auto">
       <Tabs value={currentTab} onChange={handleTabChange} centered>
@@ -1473,7 +1582,8 @@ function Muestras() {
             user?.role !== "Audi" &&
             user?.role !== "Nac2" &&
             user?.role !== "Ins" &&
-            user?.role !== "Nac"
+            user?.role !== "Nac" &&
+            user?.role !== "AdminAudi"
           }
         />
         {/* Solo Admin y Master pueden ver "Autorizar" */}
@@ -1493,7 +1603,8 @@ function Muestras() {
             user?.role !== "Nac2" &&
             user?.role !== "Ins" &&
             user?.role !== "Mues" &&
-            user?.role !== "Nac"
+            user?.role !== "Nac" &&
+            user?.role !== "AdminAudi"
           }
         />
       </Tabs>
@@ -1834,6 +1945,7 @@ function Muestras() {
                             <TableCell>Imagen</TableCell>
                             <TableCell>Código</TableCell>
                             <TableCell>Descripción</TableCell>
+                            <TableCell>Costo</TableCell>
                             <TableCell>Solicitar</TableCell>
                           </TableRow>
                         </TableHead>
@@ -1842,22 +1954,26 @@ function Muestras() {
                             <TableRow key={prod.codigo}>
                               <TableCell>
                                 <img
-                                  src={`https://sanced.santulconnect.com:3011/imagenes/img_pz/${prod.codigo}.jpg`}
-                                  onError={(e) => {
-                                    e.target.onerror = null;
-                                    e.target.src =
-                                      "https://sanced.santulconnect.com:3011/imagenes/img_pz/noimage.png";
-                                  }}
+                                  src={`${
+                                    process.env.PUBLIC_URL
+                                  }/assets/image/img_pz/${String(
+                                    prod.codigo
+                                  ).trim()}.jpg`}
                                   alt="Producto"
+                                  onError={(e) => {
+                                    e.target.src = `${process.env.PUBLIC_URL}/assets/image/img_pz/noimage.png`;
+                                  }}
                                   style={{
-                                    width: "50px",
-                                    height: "50px",
+                                    width: "60px",
+                                    height: "60px",
                                     objectFit: "cover",
+                                    borderRadius: "6px",
                                   }}
                                 />
                               </TableCell>
                               <TableCell>{prod.codigo}</TableCell>
                               <TableCell>{prod.des}</TableCell>
+                              <TableCell>${prod.precio}</TableCell>
                               <TableCell>
                                 <Button
                                   sx={{
@@ -1921,17 +2037,20 @@ function Muestras() {
                                   <TableCell>{item.codigo}</TableCell>
                                   <TableCell>
                                     <img
-                                      src={`https://sanced.santulconnect.com:3011/imagenes/img_pz/${item.codigo}.jpg`}
-                                      onError={(e) => {
-                                        e.target.onerror = null;
-                                        e.target.src =
-                                          "https://sanced.santulconnect.com:3011/imagenes/img_pz/noimage.png";
-                                      }}
+                                      src={`${
+                                        process.env.PUBLIC_URL
+                                      }/assets/image/img_pz/${String(
+                                        item.codigo
+                                      ).trim()}.jpg`}
                                       alt="Producto"
+                                      onError={(e) => {
+                                        e.target.src = `${process.env.PUBLIC_URL}/assets/image/img_pz/noimage.png`;
+                                      }}
                                       style={{
-                                        width: "50px",
-                                        height: "50px",
+                                        width: "60px",
+                                        height: "60px",
                                         objectFit: "cover",
+                                        borderRadius: "6px",
                                       }}
                                     />
                                   </TableCell>
@@ -1984,17 +2103,20 @@ function Muestras() {
                     <Box display="flex" justifyContent="center" mb={2}>
                       {producto ? (
                         <img
-                          src={`https://sanced.santulconnect.com:3011/imagenes/img_pz/${producto.codigo}.jpg`}
-                          onError={(e) => {
-                            e.target.onerror = null;
-                            e.target.src =
-                              "https://sanced.santulconnect.com:3011/imagenes/img_pz/noimage.png";
-                          }}
+                          src={`${
+                            process.env.PUBLIC_URL
+                          }/assets/image/img_pz/${String(
+                            producto.codigo
+                          ).trim()}.jpg`}
                           alt="Producto"
+                          onError={(e) => {
+                            e.target.src = `${process.env.PUBLIC_URL}/assets/image/img_pz/noimage.png`;
+                          }}
                           style={{
-                            width: "300px",
-                            height: "300px",
+                            width: "60px",
+                            height: "60px",
                             objectFit: "cover",
+                            borderRadius: "6px",
                           }}
                         />
                       ) : (
@@ -2266,7 +2388,7 @@ function Muestras() {
                         <TableCell>Informacion de entrega o de Envio</TableCell>
                         <TableCell>Observaciones</TableCell>
                         <TableCell>Artículos</TableCell>
-                        <TableCell>Autorizado</TableCell>
+                        <TableCell>Costo</TableCell>
                         <TableCell>Acciones</TableCell>
                       </TableRow>
                     </TableHead>
@@ -2297,7 +2419,14 @@ function Muestras() {
                             <TableCell>{sol.observaciones || "N/A"}</TableCell>
                             <TableCell>{sol.carrito?.length || 0}</TableCell>
                             <TableCell>
-                              {sol.autorizado ? "Sí" : "No"}
+                              {sol.total_general
+                                ? `$${parseFloat(
+                                    sol.total_general
+                                  ).toLocaleString("es-MX", {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2,
+                                  })}`
+                                : "$0.00"}{" "}
                             </TableCell>
 
                             <TableCell>
@@ -2359,13 +2488,35 @@ function Muestras() {
               Imprimir Solicitudes
             </Typography>
 
-            <FormControl sx={{ width: 300, mb: 2 }}>
+            {/* 🔹 Selector de mes */}
+            <FormControl sx={{ width: 200, mb: 2 }}>
+              <InputLabel>Seleccionar mes</InputLabel>
+              <Select
+                value={selectedMonth || moment().format("YYYY-MM")}
+                label="Seleccionar mes"
+                onChange={(e) => setSelectedMonth(e.target.value)}
+              >
+                {Array.from({ length: 12 }, (_, i) => {
+                  const mes = moment().month(i).format("MM");
+                  const year = moment().format("YYYY");
+                  const value = `${year}-${mes}`;
+                  return (
+                    <MenuItem key={value} value={value}>
+                      {moment(value).format("MMMM YYYY")}
+                    </MenuItem>
+                  );
+                })}
+              </Select>
+            </FormControl>
+
+            {/* 🔹 Filtro de Departamento */}
+            <FormControl sx={{ width: 300, mb: 2, ml: 2 }}>
               <InputLabel>Filtrar por Departamento</InputLabel>
               <Select
                 value={departamentoFiltrado}
                 label="Filtrar por Departamento"
                 onChange={(e) => setDepartamentoFiltrado(e.target.value)}
-                disabled={departamentoBloqueado} // bloqueado si departamento es fijo
+                disabled={departamentoBloqueado}
               >
                 {departamentoBloqueado ? (
                   <MenuItem value={departamentoFiltrado}>
@@ -2386,312 +2537,495 @@ function Muestras() {
               </Select>
             </FormControl>
 
-            {/* AUTORIZADAS */}
-            <Typography variant="h6" gutterBottom>
-              Solicitudes Autorizadas
-            </Typography>
-
-            <Button
-              variant="outlined"
-              color="success"
-              startIcon={<DownloadIcon />}
-              onClick={exportarExcel}
+            {/* 🔹 Resumen */}
+            <Box
               sx={{
                 mb: 2,
-                px: 4,
-                py: 1,
-                textTransform: "none",
+                p: 1.5,
+                backgroundColor: "#f5f5f5",
+                borderRadius: "8px",
+                width: 350,
+                textAlign: "center",
+                boxShadow: 1,
               }}
             >
-              Exportar a Excel
-            </Button>
+              <Typography variant="subtitle1" sx={{ fontWeight: "bold" }}>
+                Total General del Departamento:
+              </Typography>
+              <Typography variant="h6" color="success.main">
+                {`$${totalGeneralDepartamento.toLocaleString("es-MX", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}`}
+              </Typography>
 
-            {autorizadasFiltradas.length > 0 ? (
-              <>
-                <TableContainer
-                  component={Paper}
-                  style={{ marginBottom: "10px" }}
-                >
-                  <Table>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>#. IT</TableCell>
-                        <TableCell>Fecha</TableCell>
-                        <TableCell>Folio</TableCell>
-                        <TableCell>Nombre</TableCell>
-                        <TableCell>Departamento</TableCell>
-                        <TableCell>Motivo</TableCell>
-                        <TableCell>Fecha Devolución</TableCell>
-                        <TableCell>Detalles de Envio</TableCell>
-                        <TableCell>Observaciones</TableCell>
-                        <TableCell>Artículos</TableCell>
-                        <TableCell>Autorizado por</TableCell>
-                        <TableCell>Embarcado</TableCell>
-                        <TableCell>Autorizo Salida</TableCell>
-                        <TableCell>Acciones</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {autorizadasPaginadas.map((sol) => (
-                        <TableRow key={sol.folio}>
-                          <TableCell>{sol.IT}</TableCell>
-                          <TableCell>
-                            {moment(sol.created_at).format("DD/MM/YYYY")}
-                          </TableCell>
-                          <TableCell>{sol.folio}</TableCell>
-                          <TableCell>{sol.nombre}</TableCell>
-                          <TableCell>{sol.departamento}</TableCell>
-                          <TableCell>{sol.motivo}</TableCell>
-                          <TableCell>
-                            {sol.fecha
-                              ? new Date(sol.fecha).toLocaleDateString("es-MX")
-                              : "N/A"}
-                          </TableCell>
-                          <TableCell>{sol.detalleEnvio || "N/A"}</TableCell>
-                          <TableCell>{sol.observaciones || "N/A"}</TableCell>
-                          <TableCell>{sol.carrito?.length || 0}</TableCell>
-                          <TableCell>{sol.autorizado_por || "N/A"}</TableCell>
-                          <TableCell>
-                            {sol.fin_embarcado_por
-                              ? `${sol.fin_embarcado_por} - ${new Date(
-                                  sol.fin_embarcado_at
-                                ).toLocaleTimeString("es-MX")}`
-                              : "Pendiente"}
-                          </TableCell>
-                          <TableCell>{sol.salida_por || "Pendiente"}</TableCell>
+              <Typography variant="h6" color="primary.main">
+                {codigoTop} ({vecesUsado} solicitudes)
+              </Typography>
 
-                          <TableCell>
-                            <Box
-                              display="flex"
-                              alignItems="center"
-                              justifyContent="center"
-                              gap={1} // espacio entre íconos
-                            >
-                              <IconButton
-                                onClick={() => handleOpenSurtidoModal(sol)}
-                                color="info"
-                                title="Ver productos"
-                              >
-                                <VisibilityIcon />
-                              </IconButton>
+              <Typography
+                variant="subtitle2"
+                align="center"
+                color="textSecondary"
+                sx={{ mt: 1 }}
+              >
+                Mostrando solicitudes del mes:{" "}
+                {moment(selectedMonth).format("MMMM YYYY")}
+              </Typography>
+            </Box>
 
-                              {sol.sin_material ? (
-                                <Tooltip title="Sin material disponible">
-                                  <CancelIcon color="error" fontSize="medium" />
-                                </Tooltip>
-                              ) : sol.salida_por ? (
-                                <Tooltip title="Solicitud finalizada">
-                                  <CheckCircleIcon
-                                    color="success"
-                                    fontSize="medium"
-                                  />
-                                </Tooltip>
-                              ) : (
-                                <>
-                                  <Tooltip
-                                    title={`Generar PDF (${sol.pdf_generado}/2)`}
+            {(() => {
+              const mesActual = selectedMonth || moment().format("YYYY-MM");
+
+              // 🔹 Filtra por mes actual o seleccionado
+              const autorizadasDelMes = autorizadasFiltradas
+                .filter(
+                  (sol) =>
+                    moment(sol.created_at).format("YYYY-MM") === mesActual
+                )
+                .sort(
+                  (a, b) => new Date(b.created_at) - new Date(a.created_at)
+                );
+
+              const canceladasDelMes = canceladasFiltradas
+                .filter(
+                  (sol) =>
+                    moment(sol.created_at).format("YYYY-MM") === mesActual
+                )
+                .sort(
+                  (a, b) => new Date(b.created_at) - new Date(a.created_at)
+                );
+
+              // 🔹 Configura paginación de 5 en 5
+              const registrosPorPagina = 5;
+              const totalPaginasAutorizadas = Math.ceil(
+                autorizadasDelMes.length / registrosPorPagina
+              );
+              const totalPaginasCanceladas = Math.ceil(
+                canceladasDelMes.length / registrosPorPagina
+              );
+
+              const autorizadasPaginadas = autorizadasDelMes.slice(
+                (paginaAutorizadas - 1) * registrosPorPagina,
+                paginaAutorizadas * registrosPorPagina
+              );
+
+              const canceladasPaginadas = canceladasDelMes.slice(
+                (paginaCanceladas - 1) * registrosPorPagina,
+                paginaCanceladas * registrosPorPagina
+              );
+
+              return (
+                <>
+                  {/* AUTORIZADAS */}
+                  <Typography variant="h6" gutterBottom>
+                    Solicitudes Autorizadas (paginadas 5 por vista)
+                  </Typography>
+
+                  <Button
+                    variant="outlined"
+                    color="success"
+                    startIcon={<DownloadIcon />}
+                    onClick={exportarExcel}
+                    sx={{
+                      mb: 2,
+                      px: 4,
+                      py: 1,
+                      textTransform: "none",
+                    }}
+                  >
+                    Exportar a Excel
+                  </Button>
+
+                  {autorizadasDelMes.length > 0 ? (
+                    <>
+                      <TableContainer component={Paper}>
+                        <Table>
+                          <TableHead>
+                            <TableRow>
+                              <TableCell>#. IT</TableCell>
+                              <TableCell>Total General</TableCell>
+                              <TableCell>Fecha</TableCell>
+                              <TableCell>Folio</TableCell>
+                              <TableCell>Nombre</TableCell>
+                              <TableCell>Departamento</TableCell>
+                              <TableCell>Motivo</TableCell>
+                              <TableCell>Fecha Devolución</TableCell>
+                              <TableCell>Detalles Envío</TableCell>
+                              <TableCell>Observaciones</TableCell>
+                              <TableCell>Artículos</TableCell>
+                              <TableCell>Autorizado por</TableCell>
+                              <TableCell>Embarcado</TableCell>
+                              <TableCell>Autorizo Salida</TableCell>
+                              <TableCell>Acciones</TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {autorizadasPaginadas.map((sol) => (
+                              <TableRow key={sol.folio}>
+                                <TableCell>{sol.IT}</TableCell>
+                                <TableCell>
+                                  {sol.total_general
+                                    ? `$${parseFloat(
+                                        sol.total_general
+                                      ).toLocaleString("es-MX", {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2,
+                                      })}`
+                                    : "—"}
+                                </TableCell>
+                                <TableCell>
+                                  {moment(sol.created_at).format("DD/MM/YYYY")}
+                                </TableCell>
+                                <TableCell>{sol.folio}</TableCell>
+                                <TableCell>{sol.nombre}</TableCell>
+                                <TableCell>{sol.departamento}</TableCell>
+                                <TableCell>{sol.motivo}</TableCell>
+                                <TableCell>
+                                  {sol.fecha
+                                    ? new Date(sol.fecha).toLocaleDateString(
+                                        "es-MX"
+                                      )
+                                    : "N/A"}
+                                </TableCell>
+                                <TableCell>
+                                  {sol.detalleEnvio || "N/A"}
+                                </TableCell>
+                                <TableCell>
+                                  {sol.observaciones || "N/A"}
+                                </TableCell>
+                                <TableCell>
+                                  {sol.carrito?.length || 0}
+                                </TableCell>
+                                <TableCell>
+                                  {sol.autorizado_por || "N/A"}
+                                </TableCell>
+                                <TableCell>
+                                  {sol.fin_embarcado_por
+                                    ? `${sol.fin_embarcado_por} - ${new Date(
+                                        sol.fin_embarcado_at
+                                      ).toLocaleTimeString("es-MX")}`
+                                    : "Pendiente"}
+                                </TableCell>
+                                <TableCell>
+                                  {sol.salida_por || "Pendiente"}
+                                </TableCell>
+                                <TableCell>
+                                  <Box
+                                    display="flex"
+                                    alignItems="center"
+                                    justifyContent="center"
+                                    gap={1} // espacio entre íconos
                                   >
-                                    <span>
-                                      {(user?.role === "Admin" ||
-                                        user?.role === "INV") &&
-                                        sol.pdf_generado < 2 && (
+                                    <IconButton
+                                      onClick={() =>
+                                        handleOpenSurtidoModal(sol)
+                                      }
+                                      color="info"
+                                      title="Ver productos"
+                                    >
+                                      <VisibilityIcon />
+                                    </IconButton>
+
+                                    {sol.sin_material ? (
+                                      <Tooltip title="Sin material disponible">
+                                        <CancelIcon
+                                          color="error"
+                                          fontSize="medium"
+                                        />
+                                      </Tooltip>
+                                    ) : sol.salida_por ? (
+                                      <Tooltip title="Solicitud finalizada">
+                                        <CheckCircleIcon
+                                          color="success"
+                                          fontSize="medium"
+                                        />
+                                      </Tooltip>
+                                    ) : (
+                                      <>
+                                        <Tooltip
+                                          title={`Generar PDF (${sol.pdf_generado}/2)`}
+                                        >
+                                          <span>
+                                            {(user?.role === "Admin" ||
+                                              user?.role === "INV") &&
+                                              sol.pdf_generado < 2 && (
+                                                <IconButton
+                                                  onClick={() =>
+                                                    handleGenerarPDF(sol)
+                                                  }
+                                                  title="Generar PDF"
+                                                >
+                                                  <LocalPrintshopIcon />
+                                                </IconButton>
+                                              )}
+                                          </span>
+                                        </Tooltip>
+
+                                        {(user?.role === "INV" ||
+                                          user?.role === "Admin" ||
+                                          user?.role === "Master") && (
                                           <IconButton
                                             onClick={() =>
-                                              handleGenerarPDF(sol)
+                                              registrarSalida(sol.folio)
                                             }
-                                            title="Generar PDF"
+                                            color="success"
+                                            title={
+                                              !sol.fin_embarcado_at
+                                                ? "Registrar fin de embarque"
+                                                : "Registrar salida"
+                                            }
                                           >
-                                            <LocalPrintshopIcon />
+                                            <ExitToAppIcon />
                                           </IconButton>
                                         )}
-                                    </span>
-                                  </Tooltip>
 
-                                  {(user?.role === "INV" ||
-                                    user?.role === "Admin" ||
-                                    user?.role === "Master") && (
-                                    <IconButton
-                                      onClick={() => registrarSalida(sol.folio)}
-                                      color="success"
-                                      title={
-                                        !sol.fin_embarcado_at
-                                          ? "Registrar fin de embarque"
-                                          : "Registrar salida"
-                                      }
-                                    >
-                                      <ExitToAppIcon />
-                                    </IconButton>
-                                  )}
+                                        {(user?.role === "INV" ||
+                                          user?.role === "Admin") && (
+                                          <Tooltip title="Marcar como SIN MATERIAL">
+                                            <IconButton
+                                              color="primary"
+                                              size="medium"
+                                              disabled={marcandoSinMaterial}
+                                              onClick={() =>
+                                                Swal.fire({
+                                                  title:
+                                                    "¿Marcar como SIN MATERIAL?",
+                                                  text: "Esto notificará al solicitante que NO hay material disponible.",
+                                                  icon: "warning",
+                                                  showCancelButton: true,
+                                                  confirmButtonText:
+                                                    "Sí, marcar",
+                                                  cancelButtonText: "Cancelar",
+                                                }).then((result) => {
+                                                  if (result.isConfirmed)
+                                                    marcarSinMaterial(
+                                                      sol.folio
+                                                    );
+                                                })
+                                              }
+                                            >
+                                              <DoNotDisturbIcon />
+                                            </IconButton>
+                                          </Tooltip>
+                                        )}
+                                      </>
+                                    )}
+                                  </Box>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
 
-                                  {(user?.role === "INV" ||
-                                    user?.role === "Admin") && (
-                                    <Tooltip title="Marcar como SIN MATERIAL">
-                                      <IconButton
-                                        color="primary"
-                                        size="medium"
-                                        disabled={marcandoSinMaterial}
-                                        onClick={() =>
-                                          Swal.fire({
-                                            title: "¿Marcar como SIN MATERIAL?",
-                                            text: "Esto notificará al solicitante que NO hay material disponible.",
-                                            icon: "warning",
-                                            showCancelButton: true,
-                                            confirmButtonText: "Sí, marcar",
-                                            cancelButtonText: "Cancelar",
-                                          }).then((result) => {
-                                            if (result.isConfirmed)
-                                              marcarSinMaterial(sol.folio);
-                                          })
-                                        }
-                                      >
-                                        <DoNotDisturbIcon />
-                                      </IconButton>
-                                    </Tooltip>
-                                  )}
-                                </>
-                              )}
-                            </Box>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
+                      {/* 🔹 Paginador */}
+                      <Box display="flex" justifyContent="center" mt={2}>
+                        <Pagination
+                          count={totalPaginasAutorizadas}
+                          page={paginaAutorizadas}
+                          onChange={(event, value) =>
+                            setPaginaAutorizadas(value)
+                          }
+                          color="primary"
+                        />
+                      </Box>
+                    </>
+                  ) : (
+                    <Typography>No hay solicitudes autorizadas.</Typography>
+                  )}
 
-                <Box display="flex" justifyContent="center" mt={2}>
-                  <Pagination
-                    count={totalPaginasAutorizadas}
-                    page={paginaAutorizadas}
-                    onChange={(event, value) => setPaginaAutorizadas(value)}
-                    color="primary"
-                  />
-                </Box>
-              </>
-            ) : (
-              <Typography>No hay solicitudes autorizadas.</Typography>
-            )}
+                  {/* CANCELADAS */}
+                  <Typography
+                    variant="h6"
+                    align="center"
+                    gutterBottom
+                    sx={{ mt: 4 }}
+                  >
+                    Solicitudes Canceladas (paginadas 5 por vista)
+                  </Typography>
 
-            {/* CANCELADAS */}
-            <Typography variant="h5" align="center" gutterBottom>
-              Solicitudes Canceladas
-            </Typography>
+                  {canceladasDelMes.length > 0 ? (
+                    <>
+                      <TableContainer component={Paper}>
+                        <Table>
+                          <TableHead>
+                            <TableRow>
+                              <TableCell>Fecha</TableCell>
+                              <TableCell>Folio</TableCell>
+                              <TableCell>Nombre</TableCell>
+                              <TableCell>Departamento</TableCell>
+                              <TableCell>Motivo</TableCell>
+                              <TableCell>Fecha Devolución</TableCell>
+                              <TableCell>Detalles Envío</TableCell>
+                              <TableCell>Artículos</TableCell>
+                              <TableCell>Cancelado por</TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {canceladasPaginadas.map((sol) => (
+                              <TableRow key={sol.folio}>
+                                <TableCell>
+                                  {moment(sol.created_at).format("DD/MM/YYYY")}
+                                </TableCell>
+                                <TableCell>{sol.folio}</TableCell>
+                                <TableCell>{sol.nombre}</TableCell>
+                                <TableCell>{sol.departamento}</TableCell>
+                                <TableCell>{sol.motivo}</TableCell>
+                                <TableCell>
+                                  {sol.fecha
+                                    ? new Date(sol.fecha).toLocaleDateString(
+                                        "es-MX"
+                                      )
+                                    : "N/A"}
+                                </TableCell>
+                                <TableCell>
+                                  {sol.detalleEnvio || "N/A"}
+                                </TableCell>
+                                <TableCell>
+                                  {sol.carrito?.length || 0}
+                                </TableCell>
+                                <TableCell>
+                                  {sol.autorizado_por || "N/A"}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
 
-            {canceladasFiltradas.length > 0 ? (
-              <>
-                <TableContainer component={Paper}>
-                  <Table>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Fecha</TableCell>
-                        <TableCell>Folio</TableCell>
-                        <TableCell>Nombre</TableCell>
-                        <TableCell>Departamento</TableCell>
-                        <TableCell>Motivo</TableCell>
-                        <TableCell>Fecha Devolución</TableCell>
-                        <TableCell>Detalles Envío</TableCell>
-                        <TableCell>Artículos</TableCell>
-                        <TableCell>Cancelado por</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {canceladasPaginadas.map((sol) => (
-                        <TableRow
-                          key={sol.folio}
-                          sx={{ backgroundColor: "#f2f2f2" }}
-                        >
-                          <TableCell>
-                            {moment(sol.created_at).format("DD/MM/YYYY")}
-                          </TableCell>
-                          <TableCell>{sol.folio}</TableCell>
-                          <TableCell>{sol.nombre}</TableCell>
-                          <TableCell>{sol.departamento}</TableCell>
-                          <TableCell>{sol.motivo}</TableCell>
-                          <TableCell>
-                            {sol.fecha
-                              ? new Date(sol.fecha).toLocaleDateString("es-MX")
-                              : "N/A"}
-                          </TableCell>
-                          <TableCell>{sol.detalleEnvio || "N/A"}</TableCell>
-                          <TableCell>{sol.carrito?.length || 0}</TableCell>
-                          <TableCell>{sol.autorizado_por || "N/A"}</TableCell>
-                          {/* <TableCell>
-                            {["Admin", "Master", "Master2", "Master3"].includes(user?.role) && (
-                              <IconButton
-                                onClick={() => borrarSolicitud(sol.folio)}
-                                color="error"
-                              >
-                                <DeleteIcon />
-                              </IconButton>
-                            )}
-                          </TableCell> */}
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-
-                <Box display="flex" justifyContent="center" mt={2}>
-                  <Pagination
-                    count={totalPaginasCanceladas}
-                    page={paginaCanceladas}
-                    onChange={(event, value) => setPaginaCanceladas(value)}
-                    color="primary"
-                  />
-                </Box>
-              </>
-            ) : (
-              <Typography>No hay solicitudes canceladas.</Typography>
-            )}
+                      <Box display="flex" justifyContent="center" mt={2}>
+                        <Pagination
+                          count={totalPaginasCanceladas}
+                          page={paginaCanceladas}
+                          onChange={(event, value) =>
+                            setPaginaCanceladas(value)
+                          }
+                          color="primary"
+                        />
+                      </Box>
+                    </>
+                  ) : (
+                    <Typography>No hay solicitudes canceladas.</Typography>
+                  )}
+                </>
+              );
+            })()}
           </Paper>
         )}
 
         {/* modal de productos solicitados  */}
-        <Dialog open={openModal} onClose={handleCloseModal}>
-          <DialogTitle>Productos de la Solicitud</DialogTitle>
-          <DialogContent>
-            <Table>
+        <Dialog
+          open={openModal}
+          onClose={handleCloseModal}
+          maxWidth="md"
+          fullWidth
+        >
+          <DialogTitle sx={{ fontWeight: "bold", textAlign: "center" }}>
+            Productos de la Solicitud
+          </DialogTitle>
+
+          <DialogContent dividers>
+            <Table size="small">
               <TableHead>
-                <TableRow>
-                  <TableCell>Imagen</TableCell>
-                  <TableCell>Código</TableCell>
-                  <TableCell>Descripción</TableCell>
-                  <TableCell>Cantidad (UM)</TableCell>
-                  <TableCell>Total Piezas</TableCell>
-                  <TableCell>Acciones</TableCell>
+                <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
+                  <TableCell align="center" sx={{ fontWeight: "bold" }}>
+                    Imagen
+                  </TableCell>
+                  <TableCell align="center" sx={{ fontWeight: "bold" }}>
+                    Código
+                  </TableCell>
+                  <TableCell align="center" sx={{ fontWeight: "bold" }}>
+                    Descripción
+                  </TableCell>
+                  <TableCell align="center" sx={{ fontWeight: "bold" }}>
+                    Cantidad (UM)
+                  </TableCell>
+                  <TableCell align="center" sx={{ fontWeight: "bold" }}>
+                    Total Piezas
+                  </TableCell>
+                  <TableCell align="center" sx={{ fontWeight: "bold" }}>
+                    Precio Unitario
+                  </TableCell>
+                  <TableCell align="center" sx={{ fontWeight: "bold" }}>
+                    Acciones
+                  </TableCell>
                 </TableRow>
               </TableHead>
+
               <TableBody>
                 {productosModal.map((item, index) => (
-                  <TableRow key={index}>
-                    <TableCell>
+                  <TableRow key={index} hover>
+                    {/* Imagen */}
+                    <TableCell align="center">
                       <img
-                        src={`https://sanced.santulconnect.com:3011/imagenes/img_pz/${item.codigo}.jpg`}
-                        onError={(e) => {
-                          e.target.onerror = null;
-                          e.target.src =
-                            "https://sanced.santulconnect.com:3011/imagenes/img_pz/noimage.png";
-                        }}
+                        src={`${
+                          process.env.PUBLIC_URL
+                        }/assets/image/img_pz/${String(
+                          item.codigo
+                        ).trim()}.jpg`}
                         alt="Producto"
+                        onError={(e) => {
+                          e.target.src = `${process.env.PUBLIC_URL}/assets/image/img_pz/noimage.png`;
+                        }}
                         style={{
-                          width: "50px",
-                          height: "50px",
+                          width: "60px",
+                          height: "60px",
                           objectFit: "cover",
+                          borderRadius: "6px",
                         }}
                       />
                     </TableCell>
-                    <TableCell>{item.codigo}</TableCell>
-                    <TableCell>
+
+                    {/* Código */}
+                    <TableCell align="center">{item.codigo}</TableCell>
+
+                    {/* Descripción */}
+                    <TableCell align="left">
                       {item.descripcion || item.des || "Sin descripción"}
                     </TableCell>
-                    <TableCell>{item.cantidad}</TableCell>
-                    <TableCell>{item.ubi || item.ubicacion}</TableCell>
 
-                    <TableCell>
+                    {/* Cantidad */}
+                    <TableCell align="center">
+                      {item.cantidad}{" "}
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        display="block"
+                      >
+                        {item.um || ""}
+                      </Typography>
+                    </TableCell>
+
+                    {/* Total Piezas */}
+                    <TableCell align="center">
+                      {item.ubi || item.ubicacion || 0}
+                    </TableCell>
+
+                    {/* Precio Unitario */}
+                    <TableCell
+                      align="right"
+                      sx={{ fontWeight: "bold", color: "#2e7d32" }}
+                    >
+                      {item.total_producto
+                        ? `$${parseFloat(item.total_producto).toLocaleString(
+                            "es-MX",
+                            {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            }
+                          )}`
+                        : "$0.00"}
+                    </TableCell>
+
+                    {/* Acciones */}
+                    <TableCell align="center">
                       <IconButton
                         color="error"
                         onClick={() =>
                           removeProduct(item.codigo, solicitudModalFolio)
                         }
+                        size="small"
                       >
                         <DeleteIcon />
                       </IconButton>
@@ -2701,8 +3035,14 @@ function Muestras() {
               </TableBody>
             </Table>
           </DialogContent>
-          <DialogActions>
-            <Button onClick={handleCloseModal} color="primary">
+
+          <DialogActions sx={{ justifyContent: "center", mt: 1 }}>
+            <Button
+              onClick={handleCloseModal}
+              color="error"
+              variant="text"
+              sx={{ textTransform: "uppercase", fontWeight: "bold" }}
+            >
               Cerrar
             </Button>
           </DialogActions>
@@ -2777,6 +3117,7 @@ function Muestras() {
                     <TableCell>Cantidad Solicitada</TableCell>
                     <TableCell>Total Piezas</TableCell>
                     <TableCell>Cantidad Surtida</TableCell>
+                    <TableCell>Total de Producto</TableCell>
                   </TableRow>
                 </TableHead>
 
@@ -2792,17 +3133,20 @@ function Muestras() {
                       <TableRow key={index}>
                         <TableCell>
                           <img
-                            src={`https://sanced.santulconnect.com:3011/imagenes/img_pz/${item.codigo}.jpg`}
-                            onError={(e) => {
-                              e.target.onerror = null;
-                              e.target.src =
-                                "https://sanced.santulconnect.com:3011/imagenes/img_pz/noimage.png";
-                            }}
+                            src={`${
+                              process.env.PUBLIC_URL
+                            }/assets/image/img_pz/${String(
+                              item.codigo
+                            ).trim()}.jpg`}
                             alt="Producto"
+                            onError={(e) => {
+                              e.target.src = `${process.env.PUBLIC_URL}/assets/image/img_pz/noimage.png`;
+                            }}
                             style={{
-                              width: "50px",
-                              height: "50px",
+                              width: "60px",
+                              height: "60px",
                               objectFit: "cover",
+                              borderRadius: "6px",
                             }}
                           />
                         </TableCell>
@@ -2873,6 +3217,17 @@ function Muestras() {
                             inputProps={{ min: 0, max: solicitada }}
                             style={{ width: "80px" }}
                           />
+                        </TableCell>
+
+                        <TableCell>
+                          {item.total_producto
+                            ? `$${parseFloat(
+                                item.total_producto
+                              ).toLocaleString("es-MX", {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })}`
+                            : "—"}
                         </TableCell>
                       </TableRow>
                     );

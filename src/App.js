@@ -47,6 +47,8 @@ import ResetPassword from './Acces/ResetPassword';
 import Departamental from "./components/departamental/departamental";
 import Mercado from "./components/Libre/Mercado_Libre";
 import Traspasos from "./components/traspaso/traspaso";
+import Check  from "./components/Check_equipo/check_list";
+
 
 
 function App() {
@@ -98,6 +100,7 @@ function App() {
             <Route path="departamental" element={<ProtectedRoute><Departamental /></ProtectedRoute>} />
             <Route path="Mercado-libre" element={<ProtectedRoute><Mercado /></ProtectedRoute>} />
             <Route path="Traspasos" element={<ProtectedRoute><Traspasos /></ProtectedRoute>} />
+            <Route path="Check" element={<ProtectedRoute><Check /></ProtectedRoute>} />
 
 
           </Route>

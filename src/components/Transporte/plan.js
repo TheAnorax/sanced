@@ -20,6 +20,9 @@ import {
   CircularProgress,
   Button,
 } from "@mui/material";
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
+
 
 import { LocalizationProvider, DatePicker } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
@@ -31,7 +34,6 @@ import barraFooter from "./BARRA.jpg";
 import IconButton from "@mui/material/IconButton";
 import ArticleIcon from "@mui/icons-material/Article";
 import Swal from "sweetalert2";
-import { saveAs } from "file-saver";
 
 import * as JSZip from "jszip";
 
@@ -50,6 +52,88 @@ function Plansurtido() {
   const [surtidores, setSurtidores] = useState(8); // Valor inicial
 
   const [loadingZIP, setLoadingZIP] = useState(false);
+
+
+  // ==========================
+// 🔰 EXPORTAR PLAN DEL DÍA
+// ==========================
+const exportPlanDiaToExcel = () => {
+  try {
+    if (!resumen?.rutas?.length) {
+      Swal.fire("Sin datos", "No hay rutas para exportar.", "info");
+      return;
+    }
+
+    const dataExcel = resumen.rutas.map((r) => ({
+      Ruta: r.routeName,
+      "Total Clientes": r.totalClientes,
+      "Total Partidas": r.totalPartidas,
+      "Total Piezas": r.totalPiezas,
+      Total: r.total,
+      Avance: r.avance,
+      "Tiempo Estimado": `${((r.totalPartidas / (30 * surtidores)) * 60).toFixed(1)} min`,
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(dataExcel);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Plan del Día");
+
+    const fechaStr = selectedDate.format("YYYY-MM-DD");
+    const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    saveAs(
+      new Blob([excelBuffer], { type: "application/octet-stream" }),
+      `PlanDelDia_${fechaStr}.xlsx`
+    );
+  } catch (error) {
+    console.error("❌ Error exportando Plan del Día:", error);
+    Swal.fire("Error", "Hubo un problema exportando el archivo.", "error");
+  }
+};
+
+// ==========================
+// 🔰 EXPORTAR PLAN DE SURTIDO
+// ==========================
+const exportPlanSurtidoToExcel = () => {
+  try {
+    if (!data?.length) {
+      Swal.fire("Sin datos", "No hay datos de surtido para exportar.", "info");
+      return;
+    }
+
+    // Flatten los pedidos de todas las rutas
+    const pedidos = data.flatMap((grupo) =>
+      grupo.pedidos.map((p) => ({
+        Ruta: grupo.routeName,
+        Orden: p.no_orden,
+        Tipo: p.tipo_encontrado || p.tipo_original,
+        Factura: p.factura,
+        Fusionado: p.fusion || "",
+        Cliente: p.nombre_cliente,
+        Total: p.TOTAL,
+        Partidas: p.PARTIDAS,
+        Piezas: p.PIEZAS,
+        Estado: p.ESTADO,
+        Porcentaje: p.avance,
+        Status: p.tablaOrigen || "No Asignado",
+      }))
+    );
+
+    const ws = XLSX.utils.json_to_sheet(pedidos);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Plan de Surtido");
+
+    const fechaStr = selectedDate.format("YYYY-MM-DD");
+    const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    saveAs(
+      new Blob([excelBuffer], { type: "application/octet-stream" }),
+      `PlanSurtido_${fechaStr}.xlsx`
+    );
+  } catch (error) {
+    console.error("❌ Error exportando Plan de Surtido:", error);
+    Swal.fire("Error", "Hubo un problema exportando el archivo.", "error");
+  }
+};
+
 
   const fetchPaqueteria = async (fecha) => {
     setLoading(true);
@@ -299,7 +383,7 @@ const fetchResumen = async (fecha) => {
 
   // 🔹 Dentro de generatePDF
 
-  const generatePDF = async (pedido, tipo_original, rutas, pedidosExternos) => {
+    const generatePDF = async (pedido, tipo_original, rutas, pedidosExternos) => {
     try {
       console.time("⏳ Tiempo total PDF");
       let numero = "";
@@ -348,7 +432,7 @@ const fetchResumen = async (fecha) => {
 
       rawTotal =
         parseFloat(
-          String(route?.["TOTAL"] || pedidoEncontrado?.Total || "0").replace(
+          String(route?.["total_api"] || pedidoEncontrado?.Total || "0").replace(
             /[^0-9.-]+/g,
             ""
           )
@@ -1279,6 +1363,17 @@ const fetchResumen = async (fecha) => {
             Resumen del plan del día
           </Typography>
 
+          <Button
+  variant="contained"
+  color="success"
+  size="small"
+  sx={{ mb: 2 }}
+  onClick={exportPlanDiaToExcel}
+>
+  Descargar Excel (Plan del Día)
+</Button>
+
+
           {loading ? (
             <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
               <CircularProgress />
@@ -1380,6 +1475,17 @@ const fetchResumen = async (fecha) => {
                 <Typography variant="h6">
                   Resumen de Pedidos por Estado
                 </Typography>
+<Button
+  variant="contained"
+  color="success"
+  size="small"
+  sx={{ mb: 2 }}
+  onClick={exportPlanSurtidoToExcel}
+>
+  Descargar Excel (Plan de Surtido)
+</Button>
+
+
                 {(() => {
                   const resumenStatus = obtenerResumenPorStatus();
                   return (

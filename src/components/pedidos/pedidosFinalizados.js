@@ -835,8 +835,6 @@ function Finalizados() {
     fetchData();
   }, []);
 
-  // 🔹 Dentro de generatePDF
-
   const generatePDF = async (pedido, tipo_original, rutas, pedidosExternos) => {
     try {
       console.time("⏳ Tiempo total PDF");
@@ -886,7 +884,7 @@ function Finalizados() {
 
       rawTotal =
         parseFloat(
-          String(route?.["TOTAL"] || pedidoEncontrado?.Total || "0").replace(
+          String(route?.["total_api"] || pedidoEncontrado?.Total || "0").replace(
             /[^0-9.-]+/g,
             ""
           )
@@ -1749,6 +1747,8 @@ function Finalizados() {
       alert("Hubo un error al generar el PDF.");
     }
   };
+
+  // 🔹 Dentro de generatePDF
 
   const [mes, setMes] = useState("");
   const [anio, setAnio] = useState(new Date().getFullYear().toString());

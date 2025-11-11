@@ -191,7 +191,7 @@
       const fetchUsuarios = async () => {
         try {
           const response = await axios.get(
-            "http://66.232.105.87:3007/api/usuarios/usuarios"
+            "http://66.232.105.87:3007/api/usuarios/usuarios" 
           );
           let usuariosFiltrados = response.data;
 

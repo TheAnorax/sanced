@@ -26,6 +26,7 @@ import Barcode from "react-barcode";
 import CancelIcon from "@mui/icons-material/Cancel";
 import { UserContext } from "../context/UserContext";
 
+
 const styleModal = {
   position: "absolute",
   top: "50%",
@@ -42,6 +43,7 @@ const styleModal = {
 };
 
 const unidades = ["Pieza", "Inner", "Master"];
+
 
 function Catalogo() {
 
@@ -67,6 +69,60 @@ function Catalogo() {
   const [detalleOriginal, setDetalleOriginal] = useState(null);
   const isSmallScreen = useMediaQuery("(max-width:600px)");
   const [imagenZoom, setImagenZoom] = useState(null);
+  const isMobile = useMediaQuery("(max-width:600px)");
+
+  const columnasDesktop = [
+  {
+    field: "image",
+    headerName: "Img",
+    width: 80,
+    renderCell: (params) => (
+      <img
+        src={`${baseURL}/imagenes/img_pz/${params.row.codigo_pro}.jpg`}
+        style={{ width: 45, height: 45, objectFit: "cover", borderRadius: 4 }}
+        onError={(e) => (e.target.src = `${baseURL}/imagenes/img_pz/noimage.png`)}
+      />
+    ),
+  },
+  { field: "codigo_pro", headerName: "Código", width: 80 },
+  { field: "clave", headerName: "Clave", width: 90 },
+  { field: "des", headerName: "Descripción", width: 280 },
+  { field: "_pz", headerName: "PZ", width: 70 },
+  { field: "_inner", headerName: "Inner", width: 70 },
+  { field: "_master", headerName: "Master", width: 80 },
+  { field: "ubi", headerName: "Ubicación", width: 150 },
+  { field: "stock_almacen", headerName: "Almacen", width: 100 },
+  { field: "stock_picking", headerName: "Pick", width: 100 },
+  { field: "stock_total", headerName: "Total", width: 80 },
+  { field: "cant_santul", headerName: "Santul", width: 100 },
+  {
+    field: "acciones",
+    headerName: "Ver",
+    width: 110,
+    renderCell: (params) => (
+      <Button size="small" onClick={() => handleOpen(params.row)}>
+        Detalle
+      </Button>
+    ),
+  },
+];
+
+
+const columnasMobile = [
+  { field: "codigo_pro", headerName: "Código", width: 80 },
+  { field: "ubi", headerName: "Ubicación", width: 120 },
+  { field: "des", headerName: "Descripción", width: 280 },
+  {
+    field: "acciones",
+    headerName: "",
+    width: 70,
+    renderCell: (params) => (
+      <Button variant="contained" size="small" onClick={() => handleOpen(params.row)}>
+        👁
+      </Button>
+    ),
+  },
+];
 
   // ---------- Tabs ----------
   const [tab, setTab] = useState(0);
@@ -558,8 +614,8 @@ function Catalogo() {
 
 
   return (
-    <Box p={3}>
-      <Card elevation={3} sx={{ borderRadius: 3 }}>
+    <Box p={isMobile ? 0.5 : 3}>
+      <Card elevation={isMobile ? 0 : 3}  sx={{    borderRadius: isMobile ? 0 : 3,    boxShadow: isMobile ? "none" : undefined,  }}>
         <CardContent>
           <Typography variant="h4" gutterBottom fontWeight="bold" mb={2}>
             Catálogo de Productos
@@ -580,26 +636,27 @@ function Catalogo() {
           <Box sx={{ height: "auto", width: "100%", overflowX: "auto" }}>
             {!open && (
               <DataGrid
-                rows={search ? filteredProductos : productos}
-                columns={columnas}
-                autoHeight
-                pageSize={20}
-                rowsPerPageOptions={[10, 20, 50]}
-                disableSelectionOnClick
-                sx={{
-                  minWidth: 1000,
-                  borderRadius: 2,
-                  rowSpacing: 2,
-                  "& .MuiDataGrid-columnHeaders": {
-                    backgroundColor: "#f0f2f5",
-                    fontWeight: "bold",
-                    fontSize: "16px",
-                    color: "#333",
-                  },
-                  "& .MuiDataGrid-cell": { fontSize: "14px" },
-                  "& .MuiDataGrid-row:hover": { backgroundColor: "#f9f9f9" },
-                }}
-              />
+  rows={search ? filteredProductos : productos}
+  columns={isMobile ? columnasMobile : columnasDesktop}
+  autoHeight
+  pageSize={isMobile ? 10 : 20}
+  rowsPerPageOptions={[10, 20, 50]}
+  sx={{
+    width: "100% !important",
+    minWidth: isMobile ? "100%" : 1000,
+    "& .MuiDataGrid-columnHeaders": {
+      backgroundColor: "#f0f2f5",
+      fontWeight: "bold",
+      fontSize: isMobile ? "12px" : "16px",
+    },
+    "& .MuiDataGrid-cell": {
+      fontSize: isMobile ? "12px" : "14px",
+      padding: isMobile ? "4px" : "8px",
+    },
+  }}
+/>
+
+
             )}
           </Box>
 

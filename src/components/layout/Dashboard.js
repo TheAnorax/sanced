@@ -178,6 +178,8 @@ const getTitle = (pathname) => {
       return "Mercado-Libre";
     case "/dashboard/Traspasos":
       return "Traspasos";
+    case "/dashboard/Check":
+      return "Check";
     default:
       return "Dashboard";
   }

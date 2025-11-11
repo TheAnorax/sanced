@@ -464,45 +464,60 @@ function ProductoCRUD() {
     setEditing(true);
   };
 
-  const handleDownloadReport = () => {
-    const ws = XLSX.utils.json_to_sheet(
-      productos.map((producto, index) => ({
-        Número: index + 1,
-        Código: producto.codigo_pro,
-        Descripción: producto.des,
-        "UM": producto.um,
-        "Minimo": producto.minimo,
-        "Código de PIEZA": producto.code_pz,
-        "Cantidad en PIEZA": producto._pz,
-        "Código de PAQUETE": producto.code_pq,
-        "Cantidad en PAQUETE": producto._pq,
-        "Código de INNER": producto.code_inner,
-        "Cantidad en INNER": producto._inner,
-        "Código de MASTER": producto.code_master,
-        "Cantidad en MASTER": producto._master,
-        "Largo PZ": producto.largo_pz,
-        "Largo INNER": producto.largo_inner,
-        "Largo MASTER": producto.largo_master,
-        "Ancho PZ": producto.ancho_pz,
-        "Ancho INNER": producto.ancho_inner,
-        "Ancho MASTER": producto.ancho_master,
-        "Alto PZ": producto.alto_pz,
-        "Alto INNER": producto.alto_inner,
-        "Alto MASTER": producto.alto_master,
-        "Peso PZ": producto.peso_pz,
-        "Peso INNER": producto.peso_inner,
-        "Peso MASTER": producto.peso_master,
-      }))
-    );
+ const handleDownloadReport = () => {
+  const ws = XLSX.utils.json_to_sheet(
+    productos.map((producto, index) => ({
+      // 🧩 Datos generaless
+      "Número": index + 1,
+      "Clave": producto.clave || "",
+      "Código": producto.codigo_pro || "",
+      "Descripción": producto.des || "",
+      "UM primaria": producto.um || "",
+      "UM secundaria": producto.um_sec || "",
+      "Mínimo de venta": producto.minimo || "",
 
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Productos");
-    const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+      // 🧱 Datos PIEZA
+      "Código PIEZA": producto.code_pz || "",
+      "Cantidad PIEZA": producto._pz || "",
+      "Largo PIEZA": producto.largo_pz || "",
+      "Ancho PIEZA": producto.ancho_pz || "",
+      "Alto PIEZA": producto.alto_pz || "",
+      "Peso PIEZA": producto.peso_pz || "",
 
-    const fecha = moment().format("YYYYMMDD-HHmmss");
-    const blob = new Blob([excelBuffer], { type: "application/octet-stream" });
-    saveAs(blob, `Productos-Santul-${fecha}.xlsx`);
-  };
+      // 📦 Datos INNER
+      "Código INNER": producto.code_inner || "",
+      "Cantidad INNER": producto._inner || "",
+      "Largo INNER": producto.largo_inner || "",
+      "Ancho INNER": producto.ancho_inner || "",
+      "Alto INNER": producto.alto_inner || "",
+      "Peso INNER": producto.peso_inner || "",
+
+      // 🧰 Datos MASTER
+      "Código MASTER": producto.code_master || "",
+      "Cantidad MASTER": producto._master || "",
+      "Largo MASTER": producto.largo_master || "",
+      "Ancho MASTER": producto.ancho_master || "",
+      "Alto MASTER": producto.alto_master || "",
+      "Peso MASTER": producto.peso_master || "",
+
+      // 📊 Datos de volumetría
+      "Cajas por Cama": producto.cajas_cama || "",
+      "Piezas por Caja": producto.pieza_caja || "",
+      "Cajas por Tarima": producto.cajas_tarima || "",
+      "Camas por Tarima": producto.camas_tarima || "",
+      "Piezas por Tarima": producto.pieza_tarima || "",
+    }))
+  );
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Productos");
+
+  const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+  const fecha = moment().format("YYYYMMDD-HHmmss");
+  const blob = new Blob([excelBuffer], { type: "application/octet-stream" });
+  saveAs(blob, `Productos-Santul-${fecha}.xlsx`);
+};
+
 
   const formatNumber = (number) => {
     if (number === null || number === undefined) return "0";

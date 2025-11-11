@@ -1,4 +1,4 @@
-// server.js
+// server.js 
 const express = require('express');
 const cors = require('cors');
 const authRoutes = require('./src/routes/authRoutes');
@@ -36,6 +36,7 @@ const planeacion = require('./src/routes/pleneacionRoutes')
 const repo_prob = require('./src/routes/repo_prob_routes')
 const Departamental = require('./src/routes/departamentalRoutes')
 const Mercado = require('./src/routes/MercadoRoutes')
+const Check = require('./src/routes/checkRoutes')
 
 const {inicializarAlertas} = require('./src/controller/alertasController')
 
@@ -109,6 +110,8 @@ app.use('/api/planeacion', planeacion)
 app.use('/api/repo_prob', repo_prob)
 app.use('/api/departamental', Departamental)
 app.use('/api/mercado-libre', Mercado)
+app.use('/api/Check-List',Check)
+
 
 inicializarAlertas(io);
 

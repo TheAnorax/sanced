@@ -20,4 +20,4 @@
     router.get('/getHistorico2025', getHistorico2025);
     router.get('/getHistorico2025Paqueterias', getHistorico2025Transportes);
     router.get('/getFletesClientes', getFletesClientes);
-    module.exports = router;
+    module.exports = router; 

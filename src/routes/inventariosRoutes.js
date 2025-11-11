@@ -16,6 +16,11 @@ const {
   deletepickUnbi,
   getProductsWithoutLocation,
   modificacionesRoutes,
+  obtenerInventario,
+  obtenerUbicacion,
+  actualizarInventario,
+  crearUbicacion,
+  obtenerProgresoPorPasillo
 } = require("../controller/inventariosController");
 
 router.get("/inventarios", getInventarios);
@@ -35,5 +40,17 @@ router.post("/inventarios/borrarPick", deletepickUnbi);
 router.get("/inventarios/sinubicacion", getProductsWithoutLocation);
 
 router.use("/modificaciones", modificacionesRoutes);
+
+router.get("/obtenerInventario/", obtenerInventario);
+router.get("/obtenerUbicacion/:id_ubi", obtenerUbicacion);
+router.put("/actualizarInventario/:id_ubi", actualizarInventario);
+
+// ======== 🧾 NUEVA API ALMACENAMIENTO ======== //
+router.get("/obtenerInventario", obtenerInventario);
+router.get("/obtenerUbicacion/:id_ubi", obtenerUbicacion);
+router.put("/actualizarInventario/:id_ubi", actualizarInventario);
+
+router.post("/crear-ubicacion", crearUbicacion);
+router.get("/progreso-pasillo", obtenerProgresoPorPasillo);
 
 module.exports = router;

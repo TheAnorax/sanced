@@ -17,6 +17,7 @@ import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import moment from "moment";
 import dayjs from "dayjs";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
+import Swal from "sweetalert2";
 
 import { NumerosALetras } from "numero-a-letras";
 
@@ -1749,59 +1750,91 @@ function Transporte() {
 
   const actualizarGuia = async () => {
     if (!selectedId || !guia) {
-      console.error("❌ Error: Faltan datos para actualizar.");
-      alert("Error: Falta la guía o el ID del registro.");
+      Swal.fire("❌", "Faltan datos para actualizar.", "error");
       return;
     }
 
     try {
-      const url = `http://66.232.105.87:3007/api/Trasporte/paqueteria/actualizar-guia/${selectedId}`;
+      const response = await fetch(
+        `http://66.232.105.87:3007/api/Trasporte/paqueteria/actualizar-guia/${selectedId}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            guia,
+            paqueteria,
+            transporte: paqueteria,
+            fechaEntregaCliente,
+            diasEntrega,
+            entregaSatisfactoria,
+            motivo,
+            totalFacturaLT,
+            diferencia,
+            noFactura,
+            fechaFactura,
+            tarimas,
+            numeroFacturaLT,
+            observaciones,
+            tipo,
+          }),
+        }
+      );
 
-      const response = await fetch(url, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          guia,
-          paqueteria,
-          transporte: paqueteria,
-          fechaEntregaCliente,
-          diasEntrega,
-          entregaSatisfactoria,
-          motivo,
-          totalFacturaLT,
-          prorateoFacturaLT,
-          prorateoFacturaPaqueteria,
-          gastosExtras,
-          sumaFlete,
-          porcentajeEnvio,
-          porcentajePaqueteria,
-          sumaGastosExtras,
-          porcentajeGlobal,
-          diferencia,
-          noFactura,
-          fechaFactura,
-          tarimas,
-          numeroFacturaLT,
-          observaciones,
-          tipo,
-        }),
-      });
+      const data = await response.json();
 
       if (response.ok) {
-        alert("✅ Información actualizada correctamente.");
+        Swal.fire("✅", data.message, "success");
         setDirectaModalOpen(false);
-
-        const mesActual =
-          selectedMonth || localStorage.getItem("mesSeleccionado") || "";
-        fetchPaqueteriaRoutes({ mes: mesActual });
+        fetchPaqueteriaRoutes({
+          mes: selectedMonth || localStorage.getItem("mesSeleccionado") || "",
+        });
       } else {
-        const errorData = await response.json();
-        console.error("❌ Error al actualizar:", errorData);
-        alert("❌ Error al actualizar la guía: " + errorData.message);
+        Swal.fire("⚠", data.message || "Error al actualizar", "warning");
       }
     } catch (error) {
       console.error("❌ Error en la actualización:", error);
-      alert("❌ Error en la actualización de la guía.");
+      Swal.fire("❌", "Error al actualizar la guía.", "error");
+    }
+  };
+
+  const handleReenrutar = async () => {
+    if (!selectedId || !paqueteria) {
+      Swal.fire(
+        "❌",
+        "Debes seleccionar una paquetería para reenrutar.",
+        "error"
+      );
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `http://66.232.105.87:3007/api/Trasporte/paqueteria/actualizar-guia/${selectedId}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            paqueteria,
+            transporte: paqueteria,
+            reenrutar: true, // 👈 activa el modo reenruteo
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok) {
+        Swal.fire("🚚", data.message, "success");
+        setDirectaModalOpen(false);
+        fetchPaqueteriaRoutes({
+          mes: selectedMonth || localStorage.getItem("mesSeleccionado") || "",
+        });
+      } else {
+        Swal.fire("⚠", data.message || "Error al reenrutar", "warning");
+      }
+    } catch (error) {
+      console.error("❌ Error al reenrutar:", error);
+      Swal.fire("❌", "Error al reenrutar la guía.", "error");
     }
   };
 
@@ -4014,6 +4047,10 @@ function Transporte() {
   };
 
   const paqueteriaFiltrada = useMemo(() => {
+    // Normalizador: quita espacios y pone mayúsculas
+    const normalizar = (texto) =>
+      texto ? texto.toString().replace(/\s+/g, "").toUpperCase() : "";
+
     return paqueteriaData.filter((routeData) => {
       const coincideGeneral =
         !filtroGeneral ||
@@ -4027,9 +4064,23 @@ function Transporte() {
         !filtroEstado ||
         routeData.ESTADO?.toLowerCase().includes(filtroEstado.toLowerCase());
 
+      // 🔹 Filtro de paquetería mejorado
+      const paq = normalizar(
+        routeData.PAQUETERIA ||
+          routeData.paqueteria ||
+          routeData.TRANSPORTE ||
+          routeData.transporte
+      );
+      const filtroPaq = normalizar(paqueteriaSeleccionada);
+
       const coincidePaqueteria =
         !paqueteriaSeleccionada ||
-        routeData.PAQUETERIA === paqueteriaSeleccionada;
+        paq.includes(filtroPaq) ||
+        // Casos especiales
+        (filtroPaq === "EXPRESS" &&
+          (paq.includes("PAQUETEXPRESS") || paq.includes("EXPRESS"))) ||
+        ((filtroPaq === "TRESGUERRAS" || filtroPaq === "TRES GUERRAS") &&
+          paq.includes("TRESGUERRAS"));
 
       const coincideEstatus =
         !estatusSeleccionado || routeData.statusText === estatusSeleccionado;
@@ -4060,7 +4111,7 @@ function Transporte() {
     paqueteriaSeleccionada,
     estatusSeleccionado,
     mostrarSinGuia,
-    filterFactura, // ¡Aquí lo agregas!
+    filterFactura,
   ]);
 
   const [facturaSeleccionada, setFacturaSeleccionada] = useState(""); // Filtro por factura
@@ -4178,7 +4229,8 @@ function Transporte() {
     setPaqueteria,
   }) => {
     const [options, setOptions] = useState([
-      "EXPRESS","PAQUETEXPRESS",
+      "EXPRESS",
+      "PAQUETEXPRESS",
       "TRESGUERRAS",
       "TRES GUERRAS",
       "FLECHISA",
@@ -5550,9 +5602,8 @@ function Transporte() {
   // (helper por si lo necesitas)
 
   const paqueterias = [
-    "TRESGUERRAS",
     "TRES GUERRAS",
-    "EXPRESS",
+    "PAQUETEXPRESS",
     "PITIC",
     "FLECHISA",
     "FEDEX",
@@ -7066,9 +7117,9 @@ function Transporte() {
               <option value="7">Julio</option>
               <option value="8">Agosto</option>
               <option value="9">Septiembre</option>
-              <option value="10">Octubre</option>
-              {/*    <option value="11">Noviembre</option>
-                <option value="12">Diciembre</option> */}
+              <option value="10">c</option>
+              <option value="11">Noviembre</option>
+              {/*    <option value="12">Diciembre</option> */}
             </select>
 
             {/* ===== Modal: Porrateo por Transporte ===== */}
@@ -8400,7 +8451,7 @@ function Transporte() {
                         <TableCell>Acciones</TableCell>
                       )}
                     </TableRow>
-                    {paqueteriaData.length === 0 ? (
+                    {paqueteriaFiltrada.length === 0 ? (
                       <TableRow>
                         <TableCell
                           colSpan={visibleColumns.length}
@@ -9747,6 +9798,17 @@ function Transporte() {
                 style={{ marginTop: "20px" }}
               >
                 Actualizar
+              </Button>
+            </Grid>
+
+            <Grid item xs={12}>
+              <Button
+                onClick={handleReenrutar}
+                variant="contained"
+                color="warning"
+                fullWidth
+              >
+                Volver a Reenrutar
               </Button>
             </Grid>
 

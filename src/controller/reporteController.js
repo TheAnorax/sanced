@@ -1679,190 +1679,95 @@ const getFletesClientes = async (req, res) => {
 
 const getHistorico2025Transportes = async (req, res) => {
   try {
-    // 1) Datos base por ESTADO/TRANSPORTE/FECHA desde paqueteria
     const [rows] = await pool.query(`
       SELECT
-        routeName,
-        TRANSPORTE,
-        TRIM(ESTADO) AS ESTADO,
-        FECHA,
-        CAST(IFNULL(TOTAL,0) AS DECIMAL(12,2))       AS TOTAL_FACTURA_LT,
-        CAST(IFNULL(TOTAL_FACTURA_LT,0) AS DECIMAL(12,2))  AS SUMA_FLETE,
-        CAST(IFNULL(DIAS_DE_ENTREGA,0) AS UNSIGNED)  AS DIAS_DE_ENTREGA,
-        \`NUM. CLIENTE\` AS NUM_CLIENTE,
-        \`NO ORDEN\`     AS NO_ORDEN,
-        GUIA
+        DATE_FORMAT(STR_TO_DATE(FECHA_DE_FACTURA, '%Y-%m-%d'), '%Y-%m') AS mes,
+        UPPER(TRIM(TRANSPORTE)) AS transporte,
+        SUM(CAST(REPLACE(REPLACE(TOTAL, '$', ''), ',', '') AS DECIMAL(12,2))) AS total_pedidos,
+        SUM(CAST(REPLACE(REPLACE(PRORRATEO_FACTURA_LT, '$', ''), ',', '') AS DECIMAL(12,2))) AS total_flete,
+        ROUND(
+          (SUM(CAST(REPLACE(REPLACE(PRORRATEO_FACTURA_LT, '$', ''), ',', '') AS DECIMAL(12,2))) /
+          NULLIF(SUM(CAST(REPLACE(REPLACE(TOTAL, '$', ''), ',', '') AS DECIMAL(12,2))), 0)
+          ) * 100, 2
+        ) AS porcentaje_flete
       FROM paqueteria
-      WHERE ESTADO IS NOT NULL AND ESTADO <> ''
+      WHERE 
+        FECHA_DE_FACTURA IS NOT NULL
+        AND TRANSPORTE IS NOT NULL
+        AND TRANSPORTE <> ''
+        AND STR_TO_DATE(FECHA_DE_FACTURA, '%Y-%m-%d') >= DATE_FORMAT(CONCAT(YEAR(CURDATE()), '-06-01'), '%Y-%m-%d')
+      GROUP BY mes, transporte
+      ORDER BY mes ASC, transporte ASC
     `);
 
     if (!rows || rows.length === 0) {
-      return res.status(404).json({ message: "No hay datos disponibles." });
+      return res.status(404).json({ message: "No hay datos disponibles desde junio." });
     }
 
-    // Estructuras
-    const resultado = {};     // { [estado]: { [transporte]: { [mes]: { ... } } } }
-    const totalGeneral = {};  // { [mes]: { sumas globales del mes } }
+    // --- Reestructurar datos por transporte ---
+    const transportesMap = {}; // { transporte: [ { mes, total_pedidos, total_flete, porcentaje_flete } ] }
 
-    const globalAgg = {
-      total_factura_lt: 0,
-      total_flete: 0,
-      total_dias_entrega: 0,
-      total_registros: 0,
-      clientes: new Set(),
-      tarimas_total: 0,
-      cajas_total: 0,
-    };
-
-    const seenEstadoMesGuia = new Set();
-    const seenMesGuia = new Set();
-    const seenGlobalGuia = new Set();
-
-    // 2) Agregado base por estado/transporte/mes
     for (const row of rows) {
-      const estado = row.ESTADO;
-      const transporte = row.TRANSPORTE || "SIN_TRANSPORTE";
-      const fecha = new Date(row.FECHA);
-      if (isNaN(fecha.getTime())) continue;
-
-      const mes = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, "0")}`;
-      const guia = (row.GUIA || '').trim();
-      const totalLt = Number(row.TOTAL_FACTURA_LT || 0);
-      const flete   = Number(row.SUMA_FLETE || 0);
-      const dias    = Number(row.DIAS_DE_ENTREGA || 0);
-
-      // Bucket estado → transporte → mes
-      if (!resultado[estado]) resultado[estado] = {};
-      if (!resultado[estado][transporte]) resultado[estado][transporte] = {};
-      if (!resultado[estado][transporte][mes]) {
-        resultado[estado][transporte][mes] = {
-          total_factura_lt: 0,
-          total_flete: 0,
-          total_dias_entrega: 0,
-          total_registros: 0,
-          clientes: new Set(),
-          tarimas: 0,
-          cajas: 0,
-        };
+      const transporte = row.transporte || "SIN_TRANSPORTE";
+      if (!transportesMap[transporte]) {
+        transportesMap[transporte] = [];
       }
-      const g = resultado[estado][transporte][mes];
-
-      // Bucket global por mes (para todos los transportes)
-      if (!totalGeneral[mes]) {
-        totalGeneral[mes] = {
-          total_factura_lt: 0,
-          total_flete: 0,
-          total_dias_entrega: 0,
-          total_registros: 0,
-          clientes: new Set(),
-          tarimas_total: 0,
-          cajas_total: 0,
-        };
-      }
-      const tg = totalGeneral[mes];
-
-      // Ventas, días, clientes
-      g.total_factura_lt += totalLt;
-      g.total_dias_entrega += dias;
-      g.total_registros += 1;
-      if (row.NUM_CLIENTE) g.clientes.add(row.NUM_CLIENTE);
-
-      tg.total_factura_lt += totalLt;
-      tg.total_dias_entrega += dias;
-      tg.total_registros += 1;
-      if (row.NUM_CLIENTE) tg.clientes.add(row.NUM_CLIENTE);
-
-      globalAgg.total_factura_lt += totalLt;
-      globalAgg.total_dias_entrega += dias;
-      globalAgg.total_registros += 1;
-      if (row.NUM_CLIENTE) globalAgg.clientes.add(row.NUM_CLIENTE);
-
-      // ⚠️ FLETE (único por GUIA)
-      if (guia && flete > 0) {
-        const kETMG = `${estado}|${transporte}|${mes}|${guia}`;
-        const kMG   = `${mes}|${guia}`;
-
-        if (!seenEstadoMesGuia.has(kETMG)) {
-          g.total_flete += flete;
-          seenEstadoMesGuia.add(kETMG);
-        }
-        if (!seenMesGuia.has(kMG)) {
-          tg.total_flete += flete;
-          seenMesGuia.add(kMG);
-        }
-        if (!seenGlobalGuia.has(guia)) {
-          globalAgg.total_flete += flete;
-          seenGlobalGuia.add(guia);
-        }
-      } else {
-        g.total_flete += flete;
-        tg.total_flete += flete;
-        globalAgg.total_flete += flete;
-      }
+      transportesMap[transporte].push({
+        mes: row.mes,
+        total_pedidos: Number(row.total_pedidos || 0),
+        total_flete: Number(row.total_flete || 0),
+        porcentaje_flete: Number(row.porcentaje_flete || 0),
+      });
     }
 
-    // 3) Formateo final de cada bucket
-    for (const estado in resultado) {
-      for (const transporte in resultado[estado]) {
-        for (const mes in resultado[estado][transporte]) {
-          const g = resultado[estado][transporte][mes];
+    // --- Convertir el mapa en un array ordenado ---
+    const resultado = Object.entries(transportesMap)
+      .map(([transporte, datos]) => ({
+        transporte,
+        datos: datos.sort((a, b) => a.mes.localeCompare(b.mes)), // asegurar orden de meses
+      }))
+      .sort((a, b) => a.transporte.localeCompare(b.transporte)); // ordenar transportes alfabéticamente
 
-          g.promedio_dias_entrega = Number(
-            ((g.total_dias_entrega || 0) / (g.total_registros || 1)).toFixed(1)
-          );
-          g.total_clientes = g.clientes.size;
-          g.porcentaje_flete = Number(
-            (((g.total_flete || 0) / (g.total_factura_lt || 1)) * 100).toFixed(1)
-          );
-
-          delete g.clientes;
-          delete g.total_dias_entrega;
-          delete g.total_registros;
-        }
-      }
-    }
-
-    // 4) Resumen por mes (global)
+    // --- Calcular totales globales por mes ---
     const resumenPorMes = {};
-    for (const mes in totalGeneral) {
-      const m = totalGeneral[mes];
-      resumenPorMes[mes] = {
-        total_factura_lt: m.total_factura_lt,
-        total_flete: m.total_flete,
-        promedio_dias_entrega: Number(
-          ((m.total_dias_entrega || 0) / (m.total_registros || 1)).toFixed(1)
-        ),
-        total_clientes: m.clientes.size,
-        porcentaje_flete: Number(
-          (((m.total_flete || 0) / (m.total_factura_lt || 1)) * 100).toFixed(1)
-        ),
-        tarimas: m.tarimas_total || 0,
-        cajas: m.cajas_total || 0,
-      };
+    for (const row of rows) {
+      const mes = row.mes;
+      if (!resumenPorMes[mes]) {
+        resumenPorMes[mes] = {
+          total_pedidos: 0,
+          total_flete: 0,
+          porcentaje_flete_promedio: 0,
+          transportes: 0,
+        };
+      }
+
+      resumenPorMes[mes].total_pedidos += Number(row.total_pedidos || 0);
+      resumenPorMes[mes].total_flete += Number(row.total_flete || 0);
+      resumenPorMes[mes].porcentaje_flete_promedio += Number(row.porcentaje_flete || 0);
+      resumenPorMes[mes].transportes += 1;
     }
 
-    // 5) Global
-    const totalGlobal = {
-      total_factura_lt: globalAgg.total_factura_lt,
-      total_flete: globalAgg.total_flete,
-      promedio_dias_entrega: Number(
-        ((globalAgg.total_dias_entrega || 0) / (globalAgg.total_registros || 1)).toFixed(1)
-      ),
-      total_clientes: globalAgg.clientes.size,
-      porcentaje_flete: Number(
-        (((globalAgg.total_flete || 0) / (globalAgg.total_factura_lt || 1)) * 100).toFixed(1)
-      ),
-      tarimas_total: globalAgg.tarimas_total || 0,
-      cajas_total: globalAgg.cajas_total || 0,
-    };
+    // Promediar porcentaje por mes
+    for (const mes in resumenPorMes) {
+      const m = resumenPorMes[mes];
+      m.porcentaje_flete_promedio = Number(
+        (m.porcentaje_flete_promedio / (m.transportes || 1)).toFixed(2)
+      );
+      delete m.transportes;
+    }
 
-    // 6) Respuesta final
+    // --- Ordenar meses ---
+    const resumenMesesOrdenado = Object.keys(resumenPorMes)
+      .sort((a, b) => a.localeCompare(b))
+      .map((mes) => ({
+        mes,
+        ...resumenPorMes[mes],
+      }));
+
+    // --- Estructura final del JSON ---
     const payload = {
-      ...resultado,  // agrupado por estado → transporte → mes
-      total_general: {
-        por_mes: resumenPorMes,
-        global: totalGlobal,
-      },
+      resumen_mensual: resumenMesesOrdenado, // Totales por mes
+      transportes: resultado,                // Array con cada transporte y sus datos por mes
     };
 
     res.status(200).json(payload);
@@ -1871,6 +1776,7 @@ const getHistorico2025Transportes = async (req, res) => {
     res.status(500).json({ message: "Error en el servidor", error: error.message });
   }
 };
+
 
 // GET /api/kpi/getFletesClientes?from=2025-06-01&to=2025-07-01
 

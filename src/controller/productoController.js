@@ -27,92 +27,115 @@ const storage = multer.diskStorage({
 
 
 
-
+ 
 const upload = multer({ storage });
 
 
+// 📦 Controlador: productosController.js
 const getAllProducts = async (req, res) => {
   try {
-    const [rows] = await pool.query(`SELECT 
-  p.id_prod,              
-  p.codigo_pro,                 
-  p.des,                      
-  p.code_pz,               
-  p.code_pq,               
-  p.code_master,           
-  p.code_inner,             
-  p.code_palet,            
-  p._pz,                     
-  p._pq,                     
-  p._inner,                  
-  p._master,                 
-  p._palet,                  
-  p.um,                       
-  p.largo_pz,              
-  p.largo_inner,           
-  p.largo_master,          
-  p.ancho_pz,              
-  p.ancho_inner,           
-  p.ancho_master,          
-  p.alto_pz,               
-  p.alto_inner,            
-  p.alto_master,           
-  p.peso_pz,               
-  p.peso_inner,            
-  p.peso_master,
-  p.img_pz,
+    const [rows] = await pool.query(`
+      SELECT 
+        p.id_prod,              
+        p.clave,                 -- ✅ Nuevo campo agregado
+        p.codigo_pro,                 
+        p.des,                      
+        p.code_pz,               
+        p.code_pq,               
+        p.code_master,           
+        p.code_inner,             
+        p.code_palet,            
+        p._pz,                     
+        p._pq,                     
+        p._inner,                  
+        p._master,                 
+        p._palet,                  
+        p.um,                       
+        p.largo_pz,              
+        p.largo_inner,           
+        p.largo_master,          
+        p.ancho_pz,              
+        p.ancho_inner,           
+        p.ancho_master,          
+        p.alto_pz,               
+        p.alto_inner,            
+        p.alto_master,           
+        p.peso_pz,               
+        p.peso_inner,            
+        p.peso_master,
+        p.img_pz,
 
-  -- Concatenar ubicaciones de picking
-  COALESCE(u.ubi, 'SIN UBICACIÓN') AS ubicaciones,
+        -- 🔹 Campos de Volumetría
+        COALESCE(v.cajas_cama, 0)       AS cajas_cama,
+        COALESCE(v.pieza_caja, 0)       AS pieza_caja,
+        COALESCE(v.cajas_tarima, 0)     AS cajas_tarima,
+        COALESCE(v.camas_tarima, 0)     AS camas_tarima,
+        COALESCE(v.pieza_tarima, 0)     AS pieza_tarima,
 
-  -- Stock en almacenamiento
-  COALESCE(ua.cant_stock, 0) AS stock_almacen,
+        -- 🔹 Concatenar ubicaciones de picking
+        COALESCE(u.ubi, 'SIN UBICACIÓN') AS ubicaciones,
 
-  -- Stock en picking
-  COALESCE(up.cant_stock_real, 0) AS stock_picking,
+        -- 🔹 Stock en almacenamiento
+        COALESCE(ua.cant_stock, 0) AS stock_almacen,
 
-  -- Stock total
-  COALESCE(ua.cant_stock, 0) + COALESCE(up.cant_stock_real, 0) AS stock_total
+        -- 🔹 Stock en picking
+        COALESCE(up.cant_stock_real, 0) AS stock_picking,
 
-FROM productos p
+        -- 🔹 Stock total
+        COALESCE(ua.cant_stock, 0) + COALESCE(up.cant_stock_real, 0) AS stock_total
 
--- Unión con almacenamiento
-LEFT JOIN (
-  SELECT 
-    code_prod, 
-    SUM(CAST(cant_stock AS SIGNED)) AS cant_stock
-  FROM ubi_alma
-  GROUP BY code_prod
-) ua ON p.codigo_pro = ua.code_prod
+      FROM productos p
 
--- Unión con picking (stock)
-LEFT JOIN (
-  SELECT 
-    code_prod, 
-    SUM(cant_stock_real) AS cant_stock_real
-  FROM ubicaciones
-  GROUP BY code_prod
-) up ON p.codigo_pro = up.code_prod
+      -- 🔸 Unión con almacenamiento
+      LEFT JOIN (
+        SELECT 
+          code_prod, 
+          SUM(CAST(cant_stock AS SIGNED)) AS cant_stock
+        FROM ubi_alma
+        GROUP BY code_prod
+      ) ua ON p.codigo_pro = ua.code_prod
 
--- Unión para obtener las ubicaciones (concatenadas)
-LEFT JOIN (
-  SELECT 
-    code_prod, 
-    GROUP_CONCAT(ubi SEPARATOR ', ') AS ubi
-  FROM ubicaciones
-  GROUP BY code_prod
-) u ON p.codigo_pro = u.code_prod
+      -- 🔸 Unión con picking (stock)
+      LEFT JOIN (
+        SELECT 
+          code_prod, 
+          SUM(cant_stock_real) AS cant_stock_real
+        FROM ubicaciones
+        GROUP BY code_prod
+      ) up ON p.codigo_pro = up.code_prod
 
--- Agrupar por producto
-GROUP BY 
-  p.id_prod, p.codigo_pro;
+      -- 🔸 Unión para obtener las ubicaciones (concatenadas)
+      LEFT JOIN (
+        SELECT 
+          code_prod, 
+          GROUP_CONCAT(ubi SEPARATOR ', ') AS ubi
+        FROM ubicaciones
+        GROUP BY code_prod
+      ) u ON p.codigo_pro = u.code_prod
 
-`);
+      -- 🔸 Unión con volumetría
+      LEFT JOIN volumetria v ON p.codigo_pro = v.codigo
+
+      -- 🔸 Agrupar por producto
+      GROUP BY 
+        p.id_prod, 
+        p.codigo_pro, 
+        p.clave
+    `);
+
     res.json(rows);
+
   } catch (error) {
-    res.status(500).json({ message: 'Error al obtener los productos', error: error.message });
+    console.error("Error al obtener productos:", error);
+    res.status(500).json({ 
+      message: "Error al obtener los productos", 
+      error: error.message 
+    });
   }
 };
+
+
+
 
 const getVoluProducts = async (req, res) => {
   const { codigo_pro } = req.query; // Obtener el código desde query params

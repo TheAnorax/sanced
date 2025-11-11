@@ -33,7 +33,7 @@ const Plan = () => {
   const [tabIndex, setTabIndex] = useState(0);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [sinRuta, setSinRuta] = useState([]); // 👈 Nuevo estado para pedidos sin ruta
 
 
   const [selectedDate, setSelectedDate] = useState(() =>
@@ -96,16 +96,33 @@ const Plan = () => {
     }
   };
 
+  // --- Obtener detalle de pedidos sin ruta ---
+const fetchSinRuta = async () => {
+  try {
+    const response = await axios.get(
+      `http://66.232.105.87:3007/api/plan/detalleSinRuta`
+    );
+    setSinRuta(response.data?.dias || []);
+  } catch (error) {
+    console.error("Error fetching pedidos sin ruta:", error);
+  }
+};
+
+
   // --- Carga inicial + intervalos ---
   useEffect(() => {
     fetchPlanResumen();
     fetchDetallePlan();
     fetchFaltantesPlan();
+    fetchSinRuta();
+
 
     const refreshInterval = setInterval(() => {
       fetchPlanResumen();
       fetchDetallePlan();
       fetchFaltantesPlan();
+      fetchSinRuta();
+
     }, REFRESH_INTERVAL * 1000);
 
     const countdownInterval = setInterval(() => {
@@ -123,18 +140,6 @@ const Plan = () => {
   const TabPanel = ({ children, value, index }) => (
     <div role="tabpanel" hidden={value !== index}>
       {value === index && <Box p={2}>{children}</Box>}
-      {/* 🔍 Buscador */}
-<Box mb={2} display="flex" justifyContent="flex-end">
-  <TextField
-    label="Buscar pedido, cliente o ruta"
-    variant="outlined"
-    size="small"
-    value={searchQuery}
-    onChange={(e) => setSearchQuery(e.target.value)}
-    sx={{ width: 300 }}
-  />
-</Box>
- 
     </div>
   );
 
@@ -559,6 +564,7 @@ const Plan = () => {
         <Tab label="Plan (Resumen)" />
         <Tab label="Detalle de Plan" />
         <Tab label="Faltantes de Plan" />
+        <Tab label="Pedidos Sin Ruta" />
       </Tabs>
 
       {/* TAB 1 - Resumen */}
@@ -656,13 +662,9 @@ const Plan = () => {
 
       {/* TAB 2 - Detalle */}
       <TabPanel value={tabIndex} index={1}>
-
-        
         {detallePlan.length === 0 ? (
           <Alert severity="warning">No hay detalle para esta fecha.</Alert>
         ) : (
-
-          
           detallePlan.map((ruta, idx) => (
             <Box key={idx} mb={5}>
               {/* 🔹 Encabezado de la ruta */}
@@ -820,121 +822,211 @@ if (pedido.estado_pedido?.toLowerCase() === "finalizado") {
 
 
       {/* TAB 3 - Faltantes */}
-<TabPanel value={tabIndex} index={2}>
-  {faltantesPlan.length === 0 ? (
-    <Alert severity="warning">
-      No se encontraron faltantes en los últimos 15 días.
-    </Alert>
-  ) : (
-    <TableContainer
-      component={Paper}
-      sx={{
-        borderRadius: 2,
-        boxShadow: 3,
-        mt: 2,
-      }}
-    >
-      <Table size="small">
-        <TableHead sx={{ bgcolor: blueGrey[50] }}>
-          <TableRow>
-            <TableCell><strong>Fecha</strong></TableCell>
-            <TableCell align="right"><strong>Total Pedidos</strong></TableCell>
-            <TableCell align="right"><strong>No asignados</strong></TableCell>
-            <TableCell align="right"><strong>En Surtido</strong></TableCell>
-            <TableCell align="right"><strong>En Embarque</strong></TableCell>
-            <TableCell align="right"><strong>Finalizados</strong></TableCell>
-            <TableCell align="right"><strong>Sin Ruta</strong></TableCell>
-            <TableCell align="right" sx={{ color: "#d32f2f", fontWeight: "bold" }}>
-              💰 Pendientes ($)
-            </TableCell>
-            <TableCell align="right" sx={{ color: "#0288d1", fontWeight: "bold" }}>
-              💰 Sin Ruta ($)
-            </TableCell>
-            <TableCell align="right" sx={{ color: "#1976d2", fontWeight: "bold" }}>
-              💰 Total Día ($)
-            </TableCell>
-          </TableRow>
-        </TableHead>
+        <TabPanel value={tabIndex} index={2}>
+          {faltantesPlan.length === 0 ? (
+            <Alert severity="warning">
+              No se encontraron faltantes en los últimos 15 días.
+            </Alert>
+          ) : (
+            <TableContainer
+              component={Paper}
+              sx={{
+                borderRadius: 2,
+                boxShadow: 3,
+                mt: 2,
+              }}
+            >
+              <Table size="small">
+                <TableHead sx={{ bgcolor: blueGrey[50] }}>
+                  <TableRow>
+                    <TableCell><strong>Fecha</strong></TableCell>
+                    <TableCell align="right"><strong>Total Pedidos</strong></TableCell>
+                    <TableCell align="right"><strong>No asignados</strong></TableCell>
+                    <TableCell align="right"><strong>En Surtido</strong></TableCell>
+                    <TableCell align="right"><strong>En Embarque</strong></TableCell>
+                    <TableCell align="right"><strong>Finalizados</strong></TableCell>
+                    <TableCell align="right"><strong>Sin Ruta</strong></TableCell>
+                    <TableCell align="right" sx={{ color: "#d32f2f", fontWeight: "bold" }}>
+                      💰 Pendientes ($)
+                    </TableCell>
+                    <TableCell align="right" sx={{ color: "#0288d1", fontWeight: "bold" }}>
+                      💰 Sin Ruta ($)
+                    </TableCell>
+                    <TableCell align="right" sx={{ color: "#1976d2", fontWeight: "bold" }}>
+                      💰 Total Día ($)
+                    </TableCell>
+                  </TableRow>
+                </TableHead>
 
-        <TableBody>
-          {faltantesPlan.map((f, idx) => (
-            <TableRow key={idx}>
-              <TableCell>{f.fecha}</TableCell>
-              <TableCell align="right">{f.totalPedidos}</TableCell>
-              <TableCell align="right">{f.pedidosNoAsignados}</TableCell>
-              <TableCell align="right">{f.pedidosEnSurtido}</TableCell>
-              <TableCell align="right">{f.pedidosEnEmbarque}</TableCell>
-              <TableCell align="right">{f.pedidosFinalizados}</TableCell>
-              <TableCell align="right">{f.pedidosSinRuta}</TableCell>
+                <TableBody>
+                  {faltantesPlan.map((f, idx) => (
+                    <TableRow key={idx}>
+                      <TableCell>{f.fecha}</TableCell>
+                      <TableCell align="right">{f.totalPedidos}</TableCell>
+                      <TableCell align="right">{f.pedidosNoAsignados}</TableCell>
+                      <TableCell align="right">{f.pedidosEnSurtido}</TableCell>
+                      <TableCell align="right">{f.pedidosEnEmbarque}</TableCell>
+                      <TableCell align="right">{f.pedidosFinalizados}</TableCell>
+                      <TableCell align="right">{f.pedidosSinRuta}</TableCell>
 
-              {/* 💰 Totales por tipo */}
-              <TableCell align="right" sx={{ color: "#d32f2f", fontWeight: 500 }}>
-                {formatCurrency(f.totalNoAsignados)}
-              </TableCell>
-              <TableCell align="right" sx={{ color: "#0288d1", fontWeight: 500 }}>
-                {formatCurrency(f.totalSinRuta)}
-              </TableCell>
-              <TableCell align="right" sx={{ color: "#1976d2", fontWeight: 500 }}>
-                {formatCurrency(f.totalDia)}
-              </TableCell>
-            </TableRow>
-          ))}
+                      {/* 💰 Totales por tipo */}
+                      <TableCell align="right" sx={{ color: "#d32f2f", fontWeight: 500 }}>
+                        {formatCurrency(f.totalNoAsignados)}
+                      </TableCell>
+                      <TableCell align="right" sx={{ color: "#0288d1", fontWeight: 500 }}>
+                        {formatCurrency(f.totalSinRuta)}
+                      </TableCell>
+                      <TableCell align="right" sx={{ color: "#1976d2", fontWeight: 500 }}>
+                        {formatCurrency(f.totalDia)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
 
-          {/* 🧮 Fila de totales generales */}
-          {(() => {
-            const totalGeneral = faltantesPlan.reduce(
-              (acc, item) => {
-                acc.totalPedidos += item.totalPedidos || 0;
-                acc.noAsignados += item.pedidosNoAsignados || 0;
-                acc.surtido += item.pedidosEnSurtido || 0;
-                acc.embarque += item.pedidosEnEmbarque || 0;
-                acc.finalizados += item.pedidosFinalizados || 0;
-                acc.sinRuta += item.pedidosSinRuta || 0;
-                acc.montoPendientes += item.totalNoAsignados || 0;
-                acc.montoSinRuta += item.totalSinRuta || 0;
-                acc.montoTotalDia += item.totalDia || 0;
-                return acc;
-              },
-              {
-                totalPedidos: 0,
-                noAsignados: 0,
-                surtido: 0,
-                embarque: 0,
-                finalizados: 0,
-                sinRuta: 0,
-                montoPendientes: 0,
-                montoSinRuta: 0,
-                montoTotalDia: 0,
-              }
-            );
+                  {/* 🧮 Fila de totales generales */}
+                  {(() => {
+                    const totalGeneral = faltantesPlan.reduce(
+                      (acc, item) => {
+                        acc.totalPedidos += item.totalPedidos || 0;
+                        acc.noAsignados += item.pedidosNoAsignados || 0;
+                        acc.surtido += item.pedidosEnSurtido || 0;
+                        acc.embarque += item.pedidosEnEmbarque || 0;
+                        acc.finalizados += item.pedidosFinalizados || 0;
+                        acc.sinRuta += item.pedidosSinRuta || 0;
+                        acc.montoPendientes += item.totalNoAsignados || 0;
+                        acc.montoSinRuta += item.totalSinRuta || 0;
+                        acc.montoTotalDia += item.totalDia || 0;
+                        return acc;
+                      },
+                      {
+                        totalPedidos: 0,
+                        noAsignados: 0,
+                        surtido: 0,
+                        embarque: 0,
+                        finalizados: 0,
+                        sinRuta: 0,
+                        montoPendientes: 0,
+                        montoSinRuta: 0,
+                        montoTotalDia: 0,
+                      }
+                    );
 
-            return (
-              <TableRow sx={{ bgcolor: blueGrey[100] }}>
-                <TableCell><strong>Total General</strong></TableCell>
-                <TableCell align="right"><strong>{totalGeneral.totalPedidos}</strong></TableCell>
-                <TableCell align="right"><strong>{totalGeneral.noAsignados}</strong></TableCell>
-                <TableCell align="right"><strong>{totalGeneral.surtido}</strong></TableCell>
-                <TableCell align="right"><strong>{totalGeneral.embarque}</strong></TableCell>
-                <TableCell align="right"><strong>{totalGeneral.finalizados}</strong></TableCell>
-                <TableCell align="right"><strong>{totalGeneral.sinRuta}</strong></TableCell>
-                <TableCell align="right" sx={{ color: "#d32f2f", fontWeight: "bold" }}>
-                  {formatCurrency(totalGeneral.montoPendientes)}
-                </TableCell>
-                <TableCell align="right" sx={{ color: "#0288d1", fontWeight: "bold" }}>
-                  {formatCurrency(totalGeneral.montoSinRuta)}
-                </TableCell>
-                <TableCell align="right" sx={{ color: "#1976d2", fontWeight: "bold" }}>
-                  {formatCurrency(totalGeneral.montoTotalDia)}
-                </TableCell>
-              </TableRow>
-            );
-          })()}
-        </TableBody>
-      </Table>
-    </TableContainer>
-  )}
-</TabPanel>
+                    return (
+                      <TableRow sx={{ bgcolor: blueGrey[100] }}>
+                        <TableCell><strong>Total General</strong></TableCell>
+                        <TableCell align="right"><strong>{totalGeneral.totalPedidos}</strong></TableCell>
+                        <TableCell align="right"><strong>{totalGeneral.noAsignados}</strong></TableCell>
+                        <TableCell align="right"><strong>{totalGeneral.surtido}</strong></TableCell>
+                        <TableCell align="right"><strong>{totalGeneral.embarque}</strong></TableCell>
+                        <TableCell align="right"><strong>{totalGeneral.finalizados}</strong></TableCell>
+                        <TableCell align="right"><strong>{totalGeneral.sinRuta}</strong></TableCell>
+                        <TableCell align="right" sx={{ color: "#d32f2f", fontWeight: "bold" }}>
+                          {formatCurrency(totalGeneral.montoPendientes)}
+                        </TableCell>
+                        <TableCell align="right" sx={{ color: "#0288d1", fontWeight: "bold" }}>
+                          {formatCurrency(totalGeneral.montoSinRuta)}
+                        </TableCell>
+                        <TableCell align="right" sx={{ color: "#1976d2", fontWeight: "bold" }}>
+                          {formatCurrency(totalGeneral.montoTotalDia)}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })()}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </TabPanel>
+        {/* TAB 4 - Pedidos Sin Ruta */}
+        <TabPanel value={tabIndex} index={3}>
+          {sinRuta.length === 0 ? (
+            <Alert severity="info">
+              No se encontraron pedidos sin ruta en los últimos 15 días.
+            </Alert>
+          ) : (
+            sinRuta.map((dia, idx) => (
+              <Box key={idx} mb={4}>
+                {/* 🔹 Encabezado por día */}
+                <Box
+                  sx={{
+                    bgcolor: blueGrey[50],
+                    borderRadius: 2,
+                    p: 1.5,
+                    mb: 1.5,
+                    boxShadow: 1,
+                  }}
+                >
+                  <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+                    📅 {dia.fecha}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Total pedidos: <strong>{dia.totalPedidos}</strong> | Monto total:{" "}
+                    <strong>{formatCurrency(dia.totalMonto)}</strong>
+                  </Typography>
+                </Box>
 
+                {/* 🔹 Tabla con pedidos sin ruta */}
+                <TableContainer
+                  component={Paper}
+                  sx={{ borderRadius: 2, boxShadow: 2 }}
+                >
+                  <Table size="small">
+                    <TableHead sx={{ bgcolor: blueGrey[50] }}>
+                      <TableRow>
+                        <TableCell align="center"><strong>#</strong></TableCell>
+                        <TableCell><strong>Pedido</strong></TableCell>
+                        <TableCell><strong>Tipo</strong></TableCell>
+                        <TableCell><strong>Cliente</strong></TableCell>
+                        <TableCell><strong>Municipio</strong></TableCell>
+                        <TableCell><strong>Estado</strong></TableCell>
+                        <TableCell align="right"><strong>Partidas</strong></TableCell>
+                        <TableCell align="right"><strong>Piezas</strong></TableCell>
+                        <TableCell align="right"><strong>Total</strong></TableCell>
+                        <TableCell><strong>Observaciones</strong></TableCell>
+                      </TableRow>
+                    </TableHead>
+
+                    <TableBody>
+                      {dia.pedidos.map((p, i) => (
+                        <TableRow key={i}>
+                          <TableCell align="center">{i + 1}</TableCell>
+                          <TableCell>{p.no_orden}</TableCell>
+                          <TableCell>{p.tipo}</TableCell>
+                          <TableCell>{p.nombre_cliente}</TableCell>
+                          <TableCell>{p.municipio}</TableCell>
+                          <TableCell>{p.estado}</TableCell>
+                          <TableCell align="right">{p.partidas}</TableCell>
+                          <TableCell align="right">{p.piezas}</TableCell>
+                          <TableCell align="right" sx={{ fontWeight: "bold" }}>
+                            {formatCurrency(p.total)}
+                          </TableCell>
+                          <TableCell>{p.observaciones || "-"}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+
+                {/* 🧾 Totales del día */}
+                <Box
+                  display="flex"
+                  justifyContent="flex-end"
+                  mt={1}
+                  pr={1}
+                  sx={{ color: blueGrey[800] }}
+                >
+                  <Typography variant="subtitle2">
+                    Total del día:{" "}
+                    <strong style={{ color: "#1976d2" }}>
+                      {formatCurrency(dia.totalMonto)}
+                    </strong>
+                  </Typography>
+                </Box>
+
+                <Divider sx={{ my: 2 }} />
+              </Box>
+            ))
+          )}
+        </TabPanel>
     </Box>
   );
 };

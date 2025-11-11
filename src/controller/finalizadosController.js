@@ -24,7 +24,7 @@ FROM (
       ps.registro_surtido,
       NULL AS registro_embarque
     FROM pedido_surtido ps
-    WHERE ps.registro >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH)
+    WHERE ps.registro >= DATE_SUB(CURDATE(), INTERVAL 2 MONTH)
 
     UNION ALL
 
@@ -38,7 +38,7 @@ FROM (
       pe.registro_surtido,
       pe.registro_embarque
     FROM pedido_embarque pe
-    WHERE pe.registro >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH)
+    WHERE pe.registro >= DATE_SUB(CURDATE(), INTERVAL 2 MONTH)
 
     UNION ALL
 
@@ -52,7 +52,7 @@ FROM (
       pf.registro_surtido,
       NULL AS registro_embarque
     FROM pedido_finalizado pf
-    WHERE pf.registro >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH)
+    WHERE pf.registro >= DATE_SUB(CURDATE(), INTERVAL 2 MONTH)
 ) AS pedidos
 GROUP BY pedido, tipo, origen, ubi_bahia
 ORDER BY pedido DESC;
@@ -207,6 +207,7 @@ const getMotivos = async (req, res) => {
   try {
     let { desde, hasta } = req.query;
 
+    // 🗓️ Si no se mandan fechas, toma desde inicio del mes hasta hoy
     if (!desde || !hasta) {
       const inicioMes = moment().startOf("month").format("YYYY-MM-DD");
       const finHoy = moment().endOf("day").format("YYYY-MM-DD");
@@ -216,47 +217,48 @@ const getMotivos = async (req, res) => {
 
     const [rows] = await pool.query(
       `
-     SELECT 
-  'embarque' AS origen,
-  pe.pedido,
-  pe.tipo,
-  pe.codigo_ped,
-  prod.des AS descripcion,
-  pe.motivo,
-  pe.inicio_surtido,
-  pe.cantidad,        
-  pe.cant_surti,          
-  pe.cant_no_env
-FROM pedido_embarque pe
-LEFT JOIN productos prod ON pe.codigo_ped = prod.codigo_pro
-WHERE pe.motivo IS NOT NULL 
-  AND UPPER(TRIM(pe.motivo)) != 'NULL' 
-  AND DATE(pe.inicio_surtido) BETWEEN ? AND ?
+      SELECT 
+        'embarque' AS origen,
+        pe.pedido,
+        pe.tipo,
+        pe.codigo_ped,
+        prod.des AS descripcion, 
+        pe.motivo,
+        pe.inicio_surtido,
+        pe.cantidad,        
+        pe.cant_surti,          
+        pe.cant_no_env
+      FROM pedido_embarque pe
+      LEFT JOIN productos prod ON pe.codigo_ped = prod.codigo_pro
+      WHERE pe.motivo IS NOT NULL 
+        AND UPPER(TRIM(pe.motivo)) != 'NULL' 
+        AND pe.cant_no_env > 0
+        AND DATE(pe.inicio_surtido) BETWEEN ? AND ?
 
-UNION ALL
+      UNION ALL
 
-SELECT 
-  'finalizado' AS origen,
-  pf.pedido,
-  pf.tipo,
-  pf.codigo_ped,
-  prod.des AS descripcion,
-  pf.motivo,
-  pf.inicio_surtido,
-  pf.cantidad,        
-  pf.cant_surti,          
-  pf.cant_no_env
-FROM pedido_finalizado pf
-LEFT JOIN productos prod ON pf.codigo_ped = prod.codigo_pro
-WHERE pf.motivo IS NOT NULL 
-  AND UPPER(TRIM(pf.motivo)) != 'NULL' 
-  AND DATE(pf.inicio_surtido) BETWEEN ? AND ?
-
+      SELECT 
+        'finalizado' AS origen,
+        pf.pedido,
+        pf.tipo,
+        pf.codigo_ped,
+        prod.des AS descripcion,
+        pf.motivo,
+        pf.inicio_surtido,
+        pf.cantidad,        
+        pf.cant_surti,          
+        pf.cant_no_env
+      FROM pedido_finalizado pf
+      LEFT JOIN productos prod ON pf.codigo_ped = prod.codigo_pro
+      WHERE pf.motivo IS NOT NULL 
+        AND UPPER(TRIM(pf.motivo)) != 'NULL' 
+        AND pf.cant_no_env > 0
+        AND DATE(pf.inicio_surtido) BETWEEN ? AND ?
       `,
       [desde, hasta, desde, hasta]
     );
 
-    // 🔢 Contar motivos únicos
+    // 🔢 Contar motivos únicos y su frecuencia
     const motivoContador = {};
     for (const row of rows) {
       const motivoLimpio = row.motivo.trim().toUpperCase();
@@ -269,14 +271,15 @@ WHERE pf.motivo IS NOT NULL
       hasta,
       total: rows.length,
       motivos_unicos: Object.keys(motivoContador).length,
-      motivos_contador: motivoContador, // 👈 Puedes quitar esto si no quieres el detalle
+      motivos_contador: motivoContador,
       resultados: rows,
     });
   } catch (error) {
     console.error("Error al obtener motivos:", error);
-    res
-      .status(500)
-      .json({ message: "Error al obtener motivos", error: error.message });
+    res.status(500).json({ 
+      message: "Error al obtener motivos", 
+      error: error.message 
+    });
   }
 };
 

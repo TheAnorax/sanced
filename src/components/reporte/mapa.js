@@ -61,6 +61,12 @@ const IVA = 0.16; // porcentaje de IVA (16%)
 const totalFacturaGlobal = fletesMeta?.total_factura_global ?? 0;
 const totalFleteGlobalBase = fletesMeta?.total_flete_global ?? 0;
 
+// 🔹 Estados para el nuevo tab "Fletes por Transporte"
+const [fletesTransporte, setFletesTransporte] = useState([]);
+const [resumenFletesTransporte, setResumenFletesTransporte] = useState([]);
+const [loadingFletesTransporte, setLoadingFletesTransporte] = useState(true);
+
+
 // 🔹 Si NO es septiembre, quitamos 16%
 const totalFleteGlobal = (mm !== 9) 
   ? totalFleteGlobalBase * (1 - IVA) 
@@ -283,6 +289,24 @@ useEffect(() => {
     setFletesMeta(j.meta || null);
   })();
 }, [selectedMonth]); 
+
+
+useEffect(() => {
+  if (tabIndex !== 4) return; // Solo carga cuando se entra al tab
+  const fetchFletesTransporte = async () => {
+    try {
+      setLoadingFletesTransporte(true);
+      const res = await axios.get("http://66.232.105.87:3007/api/kpi/getHistorico2025Paqueterias");
+      setFletesTransporte(res.data.transportes || []);
+      setResumenFletesTransporte(res.data.resumen_mensual || []);
+    } catch (error) {
+      console.error("Error al cargar fletes por transporte:", error);
+    } finally {
+      setLoadingFletesTransporte(false);
+    }
+  };
+  fetchFletesTransporte();
+}, [tabIndex]);
 
 
 const [usarIVA, setUsarIVA] = useState(false);
@@ -593,6 +617,7 @@ const getHistoricoEstado = (estadoId) => {
         <Tab label="Histórico de Ventas 2024" />
         <Tab label="Top 10 Productos Más Vendidos" />
         <Tab label="Fletes por Cliente" />
+        <Tab label="Fletes por Transporte" />
       </Tabs>
         {tabIndex === 0 && (
         <Box>
@@ -952,650 +977,758 @@ const getHistoricoEstado = (estadoId) => {
       </Box>  
           </Box>
         </Box>
-      )}
-      {tabIndex === 1 && (
-        <>
-          <Typography variant="h5" gutterBottom fontWeight="bold">
-            📍 Selecciona un estado para ver sus datos:
-          </Typography>
+        )}
+        {tabIndex === 1 && (
+          <>
+            <Typography variant="h5" gutterBottom fontWeight="bold">
+              📍 Selecciona un estado para ver sus datos:
+            </Typography>
 
-          {estadosOrdenados.map(([estado, dataEstado]) => (
-            <Box key={estado} mt={4}>
-              <Typography
-                variant="h6"
-                onClick={() => handleSeleccionarEstado(estado)}
-                sx={{
-                  cursor: "pointer",
-                  color:
-                    estadoSeleccionado === estado
-                      ? "primary.main"
-                      : "text.primary",
-                  fontWeight: "bold",
-                  "&:hover": { textDecoration: "underline" },
-                }}
-              >
-                ▶ {nombresEstados[estado] || estado}
-              </Typography>
+            {estadosOrdenados.map(([estado, dataEstado]) => (
+              <Box key={estado} mt={4}>
+                <Typography
+                  variant="h6"
+                  onClick={() => handleSeleccionarEstado(estado)}
+                  sx={{
+                    cursor: "pointer",
+                    color:
+                      estadoSeleccionado === estado
+                        ? "primary.main"
+                        : "text.primary",
+                    fontWeight: "bold",
+                    "&:hover": { textDecoration: "underline" },
+                  }}
+                >
+                  ▶ {nombresEstados[estado] || estado}
+                </Typography>
 
-              {estadoSeleccionado === estado && (
-                <Box mt={2} display="flex" gap={2} flexWrap="wrap">
-                  <Box flex={3} minWidth={400}>
-                    <TableContainer
-                      component={Paper}
-                      elevation={3}
-                      sx={{
-                        borderRadius: 3,
-                        overflowX: "auto",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      <Table size="small" stickyHeader>
-                        <TableHead>
-                          <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
-                            <TableCell align="left">
-                              <strong>MES</strong>
-                            </TableCell>
-                            <TableCell align="left">
-                              <strong>FACTURADO</strong>
-                            </TableCell>
-                            <TableCell align="left">
-                              <strong>FLETE</strong>
-                            </TableCell>
-                            <TableCell align="center">
-                              <strong>%</strong>
-                            </TableCell>
-                            <TableCell align="center">
-                              <strong>CAJAS</strong>
-                            </TableCell>
-                            <TableCell align="center">
-                              <strong>TARIMAS</strong>
-                            </TableCell>
-                            <TableCell align="center">
-                              <strong>⏱ DÍAS ENTREGA</strong>
-                            </TableCell>
-                            <TableCell align="center">
-                              <strong>CLIENTES</strong>
-                            </TableCell>
-                          </TableRow>
-                        </TableHead>
-                        <TableBody>
-                          {mesesOrdenados.map((mes) => {
-                            const datos = dataEstado[mes];
-                            if (!datos) return null;
-                            const facturado = datos.total_factura_lt || 0;
-                            const flete = datos.total_flete || 0;
-                            const porcentaje = facturado
-                              ? ((flete / facturado) * 100).toFixed(2)
-                              : "0.";
-                            return (
-                              <TableRow key={mes} hover>
-                                <TableCell align="left">
-                                  {nombresMeses[mes]}
-                                </TableCell>
-                                <TableCell align="left">
-                                  $
-                                  {Number(facturado).toLocaleString("es-MX", {
-                                    maximumFractionDigits: 0,
-                                  })}
-                                </TableCell>
-                                <TableCell align="left">
-                                  $
-                                  {Number(flete).toLocaleString("es-MX", {
-                                    maximumFractionDigits: 0,
-                                  })}
-                                </TableCell>
-                                <TableCell align="center">
-                                  {porcentaje}%
-                                </TableCell>
-                                <TableCell align="center">
-                                  {Number(
-                                    datos.total_cajas || 0
-                                  ).toLocaleString("es-MX")}
-                                </TableCell>
-                                <TableCell align="center">
-                                  {Number(
-                                    datos.total_tarimas || 0
-                                  ).toLocaleString("es-MX")}
-                                </TableCell>
-                                <TableCell align="center">
-                                  {Number(
-                                    datos.promedio_dias_entrega || 0
-                                  ).toFixed(1)}
-                                </TableCell>
-                                <TableCell align="center">
-                                  {Number(
-                                    datos.total_clientes || 0
-                                  ).toLocaleString("es-MX")}
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  </Box>
-
-                  {topProductosPorEstado[estado] && (
-                    <Box flex={1} minWidth={400}>
-                      <Typography
-                        variant="subtitle1"
-                        fontWeight="bold"
-                        gutterBottom
-                      >
-                        🧾 Top 10 Productos Más Vendidos en{" "}
-                        {nombresEstados[estado] || estado}
-                      </Typography>
+                {estadoSeleccionado === estado && (
+                  <Box mt={2} display="flex" gap={2} flexWrap="wrap">
+                    <Box flex={3} minWidth={400}>
                       <TableContainer
                         component={Paper}
-                        elevation={2}
-                        sx={{ borderRadius: 2 }}
+                        elevation={3}
+                        sx={{
+                          borderRadius: 3,
+                          overflowX: "auto",
+                          whiteSpace: "nowrap",
+                        }}
                       >
-                        <Table size="small">
+                        <Table size="small" stickyHeader>
                           <TableHead>
-                            <TableRow>
-                              <TableCell>
-                                <strong>CÓDIGO</strong>
+                            <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
+                              <TableCell align="left">
+                                <strong>MES</strong>
                               </TableCell>
                               <TableCell align="left">
-                                <strong>DECRIPCION</strong>
+                                <strong>FACTURADO</strong>
                               </TableCell>
-                              <TableCell align="right">
-                                <strong>VENDIDO</strong>
+                              <TableCell align="left">
+                                <strong>FLETE</strong>
+                              </TableCell>
+                              <TableCell align="center">
+                                <strong>%</strong>
+                              </TableCell>
+                              <TableCell align="center">
+                                <strong>CAJAS</strong>
+                              </TableCell>
+                              <TableCell align="center">
+                                <strong>TARIMAS</strong>
+                              </TableCell>
+                              <TableCell align="center">
+                                <strong>⏱ DÍAS ENTREGA</strong>
+                              </TableCell>
+                              <TableCell align="center">
+                                <strong>CLIENTES</strong>
                               </TableCell>
                             </TableRow>
                           </TableHead>
                           <TableBody>
-                            {topProductosPorEstado[estado].map((item, i) => (
-                              <TableRow key={i} hover>
-                                <TableCell>{item.codigo_ped}</TableCell>
-                                <TableCell align="left">
-                                  {item.descripcion?.slice(0, 20) || ""}
-                                </TableCell>
-                                <TableCell align="right">
-                                  {item.total_vendido}
-                                </TableCell>
-                              </TableRow>
-                            ))}
+                            {mesesOrdenados.map((mes) => {
+                              const datos = dataEstado[mes];
+                              if (!datos) return null;
+                              const facturado = datos.total_factura_lt || 0;
+                              const flete = datos.total_flete || 0;
+                              const porcentaje = facturado
+                                ? ((flete / facturado) * 100).toFixed(2)
+                                : "0.";
+                              return (
+                                <TableRow key={mes} hover>
+                                  <TableCell align="left">
+                                    {nombresMeses[mes]}
+                                  </TableCell>
+                                  <TableCell align="left">
+                                    $
+                                    {Number(facturado).toLocaleString("es-MX", {
+                                      maximumFractionDigits: 0,
+                                    })}
+                                  </TableCell>
+                                  <TableCell align="left">
+                                    $
+                                    {Number(flete).toLocaleString("es-MX", {
+                                      maximumFractionDigits: 0,
+                                    })}
+                                  </TableCell>
+                                  <TableCell align="center">
+                                    {porcentaje}%
+                                  </TableCell>
+                                  <TableCell align="center">
+                                    {Number(
+                                      datos.total_cajas || 0
+                                    ).toLocaleString("es-MX")}
+                                  </TableCell>
+                                  <TableCell align="center">
+                                    {Number(
+                                      datos.total_tarimas || 0
+                                    ).toLocaleString("es-MX")}
+                                  </TableCell>
+                                  <TableCell align="center">
+                                    {Number(
+                                      datos.promedio_dias_entrega || 0
+                                    ).toFixed(1)}
+                                  </TableCell>
+                                  <TableCell align="center">
+                                    {Number(
+                                      datos.total_clientes || 0
+                                    ).toLocaleString("es-MX")}
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
                           </TableBody>
                         </Table>
                       </TableContainer>
                     </Box>
-                  )}
-                </Box>
-              )}
-              <Divider sx={{ my: 2 }} />
+
+                    {topProductosPorEstado[estado] && (
+                      <Box flex={1} minWidth={400}>
+                        <Typography
+                          variant="subtitle1"
+                          fontWeight="bold"
+                          gutterBottom
+                        >
+                          🧾 Top 10 Productos Más Vendidos en{" "}
+                          {nombresEstados[estado] || estado}
+                        </Typography>
+                        <TableContainer
+                          component={Paper}
+                          elevation={2}
+                          sx={{ borderRadius: 2 }}
+                        >
+                          <Table size="small">
+                            <TableHead>
+                              <TableRow>
+                                <TableCell>
+                                  <strong>CÓDIGO</strong>
+                                </TableCell>
+                                <TableCell align="left">
+                                  <strong>DECRIPCION</strong>
+                                </TableCell>
+                                <TableCell align="right">
+                                  <strong>VENDIDO</strong>
+                                </TableCell>
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              {topProductosPorEstado[estado].map((item, i) => (
+                                <TableRow key={i} hover>
+                                  <TableCell>{item.codigo_ped}</TableCell>
+                                  <TableCell align="left">
+                                    {item.descripcion?.slice(0, 20) || ""}
+                                  </TableCell>
+                                  <TableCell align="right">
+                                    {item.total_vendido}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </TableContainer>
+                      </Box>
+                    )}
+                  </Box>
+                )}
+                <Divider sx={{ my: 2 }} />
+              </Box>
+            ))}
+          </>
+        )}
+        {tabIndex === 2 && (
+          <Box>
+            <Typography variant="h6" fontWeight="bold" gutterBottom>
+              🏆 Top 10 Productos Más Vendidos 2024 vs 2025
+            </Typography>
+
+            <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
+              <Box flex={1} minWidth={300}>
+                <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+                  📊 Año 2024
+                </Typography>
+                <TableContainer
+                  component={Paper}
+                  elevation={3}
+                  sx={{ borderRadius: 3 }}
+                >
+                  <Table size="small" stickyHeader>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>
+                          <strong>CÓDIGO</strong>
+                        </TableCell>
+                        <TableCell>
+                          <strong>DESCRIPCIÓN</strong>
+                        </TableCell>
+                        <TableCell align="right">
+                          <strong>PIEZAS VENDIDAS</strong>
+                        </TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {top10.map((item, index) => (
+                        <TableRow key={index} hover>
+                          <TableCell>{item.codigo_ped}</TableCell>
+                          <TableCell>{item.descripcion}</TableCell>
+                          <TableCell align="right">
+                            {item.total_vendido}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Box>
+
+              <Box flex={1} minWidth={300}>
+                <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+                  📊 Año 2025
+                </Typography>
+                <TableContainer
+                  component={Paper}
+                  elevation={3}
+                  sx={{ borderRadius: 3 }}
+                >
+                  <Table size="small" stickyHeader>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>
+                          <strong>CÓDIGO</strong>
+                        </TableCell>
+                        <TableCell>
+                          <strong>DESCRIPCIÓN</strong>
+                        </TableCell>
+                        <TableCell align="right">
+                          <strong>PIEZAS VENDIDAS</strong>
+                        </TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {top10_2025.map((item, index) => (
+                        <TableRow key={index} hover>
+                          <TableCell>{item.codigo_ped}</TableCell>
+                          <TableCell>{item.descripcion}</TableCell>
+                          <TableCell align="right">
+                            {item.total_vendido}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Box>
             </Box>
-          ))}
-        </>
-      )}
-      {tabIndex === 2 && (
+          </Box>
+        )}
+        {tabIndex === 3 && (
         <Box>
           <Typography variant="h6" fontWeight="bold" gutterBottom>
-            🏆 Top 10 Productos Más Vendidos 2024 vs 2025
+            🚛 Fletes por Cliente
           </Typography>
 
-          <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
-            <Box flex={1} minWidth={300}>
-              <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-                📊 Año 2024
-              </Typography>
-              <TableContainer
-                component={Paper}
-                elevation={3}
-                sx={{ borderRadius: 3 }}
-              >
-                <Table size="small" stickyHeader>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>
-                        <strong>CÓDIGO</strong>
-                      </TableCell>
-                      <TableCell>
-                        <strong>DESCRIPCIÓN</strong>
-                      </TableCell>
-                      <TableCell align="right">
-                        <strong>PIEZAS VENDIDAS</strong>
-                      </TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {top10.map((item, index) => (
-                      <TableRow key={index} hover>
-                        <TableCell>{item.codigo_ped}</TableCell>
-                        <TableCell>{item.descripcion}</TableCell>
-                        <TableCell align="right">
-                          {item.total_vendido}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Box>
-
-            <Box flex={1} minWidth={300}>
-              <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-                📊 Año 2025
-              </Typography>
-              <TableContainer
-                component={Paper}
-                elevation={3}
-                sx={{ borderRadius: 3 }}
-              >
-                <Table size="small" stickyHeader>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>
-                        <strong>CÓDIGO</strong>
-                      </TableCell>
-                      <TableCell>
-                        <strong>DESCRIPCIÓN</strong>
-                      </TableCell>
-                      <TableCell align="right">
-                        <strong>PIEZAS VENDIDAS</strong>
-                      </TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {top10_2025.map((item, index) => (
-                      <TableRow key={index} hover>
-                        <TableCell>{item.codigo_ped}</TableCell>
-                        <TableCell>{item.descripcion}</TableCell>
-                        <TableCell align="right">
-                          {item.total_vendido}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Box>
-          </Box>
-        </Box>
-      )}
-  {tabIndex === 3 && (
-  <Box>
-    <Typography variant="h6" fontWeight="bold" gutterBottom>
-      🚛 Fletes por Cliente
-    </Typography>
-
-    {/* =====================  FILTROS  ===================== */}
-    <Paper
-      elevation={0}
-      sx={{
-        border: "1px solid",
-        borderColor: "divider",
-        borderRadius: 2,
-        p: 2,
-        mb: 2,
-        position: "sticky",
-        top: 64, // ajusta según tu appbar
-        zIndex: 5,
-        bgcolor: "background.paper",
-      }}
-    >
-      <Grid container spacing={2} alignItems="center">
-        {/* Izquierda: búsqueda + Top */}
-        <Grid item xs={12} md={4}>
-          <Stack direction="row" spacing={2} alignItems="center">
-            <TextField
-              size="small"
-              fullWidth
-              placeholder="Buscar cliente o # cliente…"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon fontSize="small" />
-                  </InputAdornment>
-                ),
-              }}
-            />
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <Typography variant="body2" color="text.secondary">
-                Top
-              </Typography>
-              <Select
-                size="small"
-                value={topN}
-                onChange={(e) => setTopN(Number(e.target.value))}
-                sx={{ minWidth: 88 }}
-              >
-                {[10, 20, 50, 100, 500, 4000].map((n) => (
-                  <MenuItem key={n} value={n}>
-                    {n}
-                  </MenuItem>
-                ))}
-              </Select>
-            </Box>
-          </Stack>
-        </Grid>
-
-        {/* Centro: selector de Mes (exclusivo) */}
-        <Grid item xs={12} md={5}>
-          <Box
+          {/* =====================  FILTROS  ===================== */}
+          <Paper
+            elevation={0}
             sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 1,
-              overflowX: "auto",
-              pb: 0.5,
+              border: "1px solid",
+              borderColor: "divider",
+              borderRadius: 2,
+              p: 2,
+              mb: 2,
+              position: "sticky",
+              top: 64, // ajusta según tu appbar
+              zIndex: 5,
+              bgcolor: "background.paper",
             }}
           >
-            <Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>
-              Mes
-            </Typography>
-            <ToggleButtonGroup
-              size="small"
-              exclusive
-              value={selectedMonth}
-              onChange={(_, val) => val && setSelectedMonth(val)}
-            >
-              {availableMonths.map((ym) => (
-                <ToggleButton key={ym} value={ym} disableRipple>
-                  {ymLabel(ym)}
-                </ToggleButton>
-              ))}
-            </ToggleButtonGroup>
-            {!availableMonths.length && (
-              <Chip size="small" label="Sin meses disponibles" />
-            )}
-          </Box>
-        </Grid>
-
-        {/* Derecha: acciones */}
-        <Grid item xs={12} md={3}>
-          <Stack
-            direction="row"
-            spacing={1}
-            alignItems="center"
-            justifyContent="flex-end"
-          >
-            <FormControlLabel
-              sx={{ mr: 1 }}
-              control={
-                <Switch
-                  size="small"
-                  checked={dense}
-                  onChange={(e) => setDense(e.target.checked)}
-                />
-              }
-              label="Denso"
-            />
-            <Button
-              size="small"
-              variant="outlined"
-              startIcon={<DownloadIcon />}
-              onClick={() => exportCSV(fletesFiltrados)}
-              disabled={fletesFiltrados.length === 0}
-            >
-              Exportar CSV
-            </Button>
-          </Stack>
-        </Grid>
-      </Grid>
-    </Paper>
-
-    <Grid item xs={12} md={3}>
-  <Stack direction="row" spacing={1} alignItems="center">
-    <Typography variant="body2" color="text.secondary">
-      Estado
-    </Typography>
-    <Select
-      size="small"
-      value={estadoFiltro}
-      onChange={(e) => setEstadoFiltro(e.target.value)}
-      displayEmpty
-      sx={{ minWidth: 120 }}
-    >
-      <MenuItem value="">Todos</MenuItem>
-      {estadosDisponibles.map((e) => (
-        <MenuItem key={e} value={e}>
-          {e}
-        </MenuItem>
-      ))}
-    </Select>
-  </Stack>
-</Grid>
-
-
-    {/* =====================  KPIs  ===================== */}
-    <Box sx={{ mb: 2 }}>
-      <Stack
-        direction="row"
-        alignItems="center"
-        justifyContent="flex-end"
-        spacing={2}
-        sx={{ mb: 1 }}
-      >
-        <FormControlLabel
-          control={
-            <Switch
-              checked={showPeriodo}
-              onChange={(e) => setShowPeriodo(e.target.checked)}
-            />
-          }
-          label="Totales del período"
-        />
-        <FormControlLabel
-          control={
-            <Switch
-              checked={showVista}
-              onChange={(e) => setShowVista(e.target.checked)}
-            />
-          }
-          label="Totales de la vista"
-        />
-      </Stack>
-
-      <Grid container spacing={1.5}>
-        {showPeriodo && (
-          <Grid item xs={12}>
-            <Paper variant="outlined" sx={{ p: 1.25, borderRadius: 2 }}>
-              <Stack
-                direction="row"
-                spacing={1}
-                useFlexGap
-                alignItems="center"
-                sx={{ overflowX: "auto", whiteSpace: "nowrap" }}
-              >
-                <CalendarMonthIcon color="primary" fontSize="small" />
-                <Typography variant="subtitle2" fontWeight={700}>
-                  Totales del período
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {(fletesMeta?.from ?? "") + " → " + (fletesMeta?.to ?? "")}
-                </Typography>
-
-                <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
-
-                <StatMini
-  label="Total Factura"
-  value={totalFacturaGlobal.toLocaleString("es-MX", {
-    style: "currency",
-    currency: "MXN"
-  })}
-/>
-<StatMini
-  label="Total Flete"
-  value={totalFleteGlobal.toLocaleString("es-MX", {
-    style: "currency",
-    currency: "MXN"
-  })}
-/>
-<StatMini
-  label="% Flete"
-  value={
-    <Chip
-      size="small"
-      variant="outlined"
-      color={percentColor(pctFleteGlobal)}
-      label={`${pctFleteGlobal.toFixed(2)}%`}
-      sx={{ fontWeight: 700, minWidth: 64 }}
-    />
-  }
-/>
-<StatMini
-  label="Guías"
-  value={(fletesMeta?.total_guias_global ?? 0).toLocaleString("es-MX")}
-/>
-
-              </Stack>
-            </Paper>
-          </Grid>
-        )}
-
-        {showVista && (
-          <Grid item xs={12}>
-            <Paper variant="outlined" sx={{ p: 1.25, borderRadius: 2 }}>
-              <Stack
-                direction="row"
-                spacing={1}
-                useFlexGap
-                alignItems="center"
-                sx={{ overflowX: "auto", whiteSpace: "nowrap" }}
-              >
-                <VisibilityIcon color="primary" fontSize="small" />
-                <Typography variant="subtitle2" fontWeight={700}>
-                  Totales (vista actual)
-                </Typography>
-                <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
-                <StatMini label="Total Factura" value={currency(totalesVista.tfact)} />
-                <StatMini label="Total Flete" value={currency(totalesVista.tflet)} />
-                <StatMini
-                  label="% Flete"
-                  value={
-                    <Chip
+            <Grid container spacing={2} alignItems="center">
+              {/* Izquierda: búsqueda + Top */}
+              <Grid item xs={12} md={4}>
+                <Stack direction="row" spacing={2} alignItems="center">
+                  <TextField
+                    size="small"
+                    fullWidth
+                    placeholder="Buscar cliente o # cliente…"
+                    value={q}
+                    onChange={(e) => setQ(e.target.value)}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <SearchIcon fontSize="small" />
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      Top
+                    </Typography>
+                    <Select
                       size="small"
-                      variant="outlined"
-                      color={percentColor(totalesVista.pct)}
-                      label={percentFmt(totalesVista.pct)}
-                      sx={{ fontWeight: 700, minWidth: 64 }}
-                    />
-                  }
-                />
-                <StatMini
-                  label="Guías"
-                  value={Number(totalesVista.tgui || 0).toLocaleString("es-MX")}
-                />
-              </Stack>
-            </Paper>
-          </Grid>
-        )}
-      </Grid>
-    </Box>
+                      value={topN}
+                      onChange={(e) => setTopN(Number(e.target.value))}
+                      sx={{ minWidth: 88 }}
+                    >
+                      {[10, 20, 50, 100, 500, 4000].map((n) => (
+                        <MenuItem key={n} value={n}>
+                          {n}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </Box>
+                </Stack>
+              </Grid>
 
-    {/* =====================  TABLA  ===================== */}
-    <Paper elevation={0} sx={{ border: "1px solid", borderColor: "divider", borderRadius: 2 }}>
-      <TableContainer sx={{ maxHeight: 520 }}>
-        <Table size={dense ? "small" : "medium"} stickyHeader>
-          <TableHead>
-            <TableRow sx={{ "& th": { backgroundColor: "#f7f7f7" } }}>
-              {[
-                { id: "num_cliente", label: "# Cliente", align: "left" },
-                { id: "nombre_cliente", label: "Nombre Cliente", align: "left" },
-                { id: "total_factura", label: "Total Factura", align: "right" },
-                { id: "total_flete", label: "Total Flete", align: "right" },
-                { id: "porcentaje_flete", label: "% Flete", align: "center" },
-                { id: "total_guias", label: "Total Guías", align: "center" },
-              ].map((col) => (
-                <TableCell key={col.id} align={col.align}>
-                  <TableSortLabel
-                    active={orderBy === col.id}
-                    direction={orderBy === col.id ? order : "asc"}
-                    onClick={() => handleSort(col.id)}
+              {/* Centro: selector de Mes (exclusivo) */}
+              <Grid item xs={12} md={5}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1,
+                    overflowX: "auto",
+                    pb: 0.5,
+                  }}
+                >
+                  <Typography variant="body2" color="text.secondary" sx={{ mr: 1 }}>
+                    Mes
+                  </Typography>
+                  <ToggleButtonGroup
+                    size="small"
+                    exclusive
+                    value={selectedMonth}
+                    onChange={(_, val) => val && setSelectedMonth(val)}
                   >
-                    <strong>{col.label}</strong>
-                  </TableSortLabel>
-                </TableCell>
-              ))}
-            </TableRow>
-          </TableHead>
+                    {availableMonths.map((ym) => (
+                      <ToggleButton key={ym} value={ym} disableRipple>
+                        {ymLabel(ym)}
+                      </ToggleButton>
+                    ))}
+                  </ToggleButtonGroup>
+                  {!availableMonths.length && (
+                    <Chip size="small" label="Sin meses disponibles" />
+                  )}
+                </Box>
+              </Grid>
 
-          <TableBody>
-            {!fletesClientes.length && (
-              <TableRow>
-                <TableCell colSpan={6} sx={{ p: 0 }}>
-                  <LinearProgress />
-                </TableCell>
-              </TableRow>
-            )}
+              {/* Derecha: acciones */}
+              <Grid item xs={12} md={3}>
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  alignItems="center"
+                  justifyContent="flex-end"
+                >
+                  <FormControlLabel
+                    sx={{ mr: 1 }}
+                    control={
+                      <Switch
+                        size="small"
+                        checked={dense}
+                        onChange={(e) => setDense(e.target.checked)}
+                      />
+                    }
+                    label="Denso"
+                  />
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    startIcon={<DownloadIcon />}
+                    onClick={() => exportCSV(fletesFiltrados)}
+                    disabled={fletesFiltrados.length === 0}
+                  >
+                    Exportar CSV
+                  </Button>
+                </Stack>
+              </Grid>
+            </Grid>
+          </Paper>
 
-            {fletesFiltrados.length === 0 && fletesClientes.length > 0 && (
-              <TableRow>
-                <TableCell colSpan={6} align="center" sx={{ py: 6, color: "text.secondary" }}>
-                  No hay datos para mostrar.
-                </TableCell>
-              </TableRow>
-            )}
-
-            {fletesFiltrados.map((c, i) => {
-  const [yy, mm] = selectedMonth ? selectedMonth.split("-").map(Number) : [];
-
-  // 🔹 Ajustar flete quitando 16% (excepto septiembre)
-  const fleteBase = Number(c.total_flete || 0);
-  const fleteAjustado = (mm !== 9) ? fleteBase * (1 - IVA) : fleteBase;
-
-  const factura = Number(c.total_factura || 0);
-
-  // 🔹 Recalcular % flete con el flete ajustado
-  const pctNum = factura > 0 ? (fleteAjustado / factura) * 100 : 0;
-
-  return (
-    <TableRow
-      key={`${c.num_cliente}-${i}`}
-      hover
-      sx={{ "&:nth-of-type(odd)": { backgroundColor: "rgba(0,0,0,0.02)" } }}
-    >
-      <TableCell>{c.num_cliente}</TableCell>
-      <TableCell
-        sx={{
-          maxWidth: 360,
-          whiteSpace: "nowrap",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-        }}
-      >
-        {(c.nombre_cliente || "").trim()}
-      </TableCell>
-      <TableCell align="right">{currency(factura)}</TableCell>
-      <TableCell align="right">{currency(fleteAjustado)}</TableCell>
-      <TableCell align="center" sx={{ minWidth: 160 }}>
+          <Grid item xs={12} md={3}>
         <Stack direction="row" spacing={1} alignItems="center">
+          <Typography variant="body2" color="text.secondary">
+            Estado
+          </Typography>
+          <Select
+            size="small"
+            value={estadoFiltro}
+            onChange={(e) => setEstadoFiltro(e.target.value)}
+            displayEmpty
+            sx={{ minWidth: 120 }}
+          >
+            <MenuItem value="">Todos</MenuItem>
+            {estadosDisponibles.map((e) => (
+              <MenuItem key={e} value={e}>
+                {e}
+              </MenuItem>
+            ))}
+          </Select>
+        </Stack>
+      </Grid>
+
+
+          {/* =====================  KPIs  ===================== */}
+          <Box sx={{ mb: 2 }}>
+            <Stack
+              direction="row"
+              alignItems="center"
+              justifyContent="flex-end"
+              spacing={2}
+              sx={{ mb: 1 }}
+            >
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={showPeriodo}
+                    onChange={(e) => setShowPeriodo(e.target.checked)}
+                  />
+                }
+                label="Totales del período"
+              />
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={showVista}
+                    onChange={(e) => setShowVista(e.target.checked)}
+                  />
+                }
+                label="Totales de la vista"
+              />
+            </Stack>
+
+            <Grid container spacing={1.5}>
+              {showPeriodo && (
+                <Grid item xs={12}>
+                  <Paper variant="outlined" sx={{ p: 1.25, borderRadius: 2 }}>
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      useFlexGap
+                      alignItems="center"
+                      sx={{ overflowX: "auto", whiteSpace: "nowrap" }}
+                    >
+                      <CalendarMonthIcon color="primary" fontSize="small" />
+                      <Typography variant="subtitle2" fontWeight={700}>
+                        Totales del período
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {(fletesMeta?.from ?? "") + " → " + (fletesMeta?.to ?? "")}
+                      </Typography>
+
+                      <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
+
+                      <StatMini
+        label="Total Factura"
+        value={totalFacturaGlobal.toLocaleString("es-MX", {
+          style: "currency",
+          currency: "MXN"
+        })}
+      />
+      <StatMini
+        label="Total Flete"
+        value={totalFleteGlobal.toLocaleString("es-MX", {
+          style: "currency",
+          currency: "MXN"
+        })}
+      />
+      <StatMini
+        label="% Flete"
+        value={
           <Chip
             size="small"
-            color={percentColor(pctNum)}
             variant="outlined"
-            label={percentFmt(pctNum)}
-            sx={{ fontWeight: 600, minWidth: 72 }}
+            color={percentColor(pctFleteGlobal)}
+            label={`${pctFleteGlobal.toFixed(2)}%`}
+            sx={{ fontWeight: 700, minWidth: 64 }}
           />
-          <Box sx={{ flex: 1 }}>
-            <LinearProgress
-              variant="determinate"
-              value={Math.min(Math.max(pctNum, 0), 100)}
-              sx={{
-                height: 6,
-                borderRadius: 4,
-                [`& .MuiLinearProgress-bar`]: { borderRadius: 4 },
-              }}
-            />
-          </Box>
-        </Stack>
-      </TableCell>
-      <TableCell align="center">
-        <Chip size="small" label={c.total_guias ?? 0} sx={{ fontWeight: 600 }} />
-      </TableCell>
-    </TableRow>
-  );
-})}
+        }
+      />
+      <StatMini
+        label="Guías"
+        value={(fletesMeta?.total_guias_global ?? 0).toLocaleString("es-MX")}
+      />
 
-          </TableBody>
-        </Table>
-      </TableContainer>
-    </Paper>
-  </Box>
-)}
+                    </Stack>
+                  </Paper>
+                </Grid>
+              )}
+
+              {showVista && (
+                <Grid item xs={12}>
+                  <Paper variant="outlined" sx={{ p: 1.25, borderRadius: 2 }}>
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      useFlexGap
+                      alignItems="center"
+                      sx={{ overflowX: "auto", whiteSpace: "nowrap" }}
+                    >
+                      <VisibilityIcon color="primary" fontSize="small" />
+                      <Typography variant="subtitle2" fontWeight={700}>
+                        Totales (vista actual)
+                      </Typography>
+                      <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
+                      <StatMini label="Total Factura" value={currency(totalesVista.tfact)} />
+                      <StatMini label="Total Flete" value={currency(totalesVista.tflet)} />
+                      <StatMini
+                        label="% Flete"
+                        value={
+                          <Chip
+                            size="small"
+                            variant="outlined"
+                            color={percentColor(totalesVista.pct)}
+                            label={percentFmt(totalesVista.pct)}
+                            sx={{ fontWeight: 700, minWidth: 64 }}
+                          />
+                        }
+                      />
+                      <StatMini
+                        label="Guías"
+                        value={Number(totalesVista.tgui || 0).toLocaleString("es-MX")}
+                      />
+                    </Stack>
+                  </Paper>
+                </Grid>
+              )}
+            </Grid>
+          </Box>
+
+          {/* =====================  TABLA  ===================== */}
+          <Paper elevation={0} sx={{ border: "1px solid", borderColor: "divider", borderRadius: 2 }}>
+            <TableContainer sx={{ maxHeight: 520 }}>
+              <Table size={dense ? "small" : "medium"} stickyHeader>
+                <TableHead>
+                  <TableRow sx={{ "& th": { backgroundColor: "#f7f7f7" } }}>
+                    {[
+                      { id: "num_cliente", label: "# Cliente", align: "left" },
+                      { id: "nombre_cliente", label: "Nombre Cliente", align: "left" },
+                      { id: "total_factura", label: "Total Factura", align: "right" },
+                      { id: "total_flete", label: "Total Flete", align: "right" },
+                      { id: "porcentaje_flete", label: "% Flete", align: "center" },
+                      { id: "total_guias", label: "Total Guías", align: "center" },
+                    ].map((col) => (
+                      <TableCell key={col.id} align={col.align}>
+                        <TableSortLabel
+                          active={orderBy === col.id}
+                          direction={orderBy === col.id ? order : "asc"}
+                          onClick={() => handleSort(col.id)}
+                        >
+                          <strong>{col.label}</strong>
+                        </TableSortLabel>
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                </TableHead>
+
+                <TableBody>
+                  {!fletesClientes.length && (
+                    <TableRow>
+                      <TableCell colSpan={6} sx={{ p: 0 }}>
+                        <LinearProgress />
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {fletesFiltrados.length === 0 && fletesClientes.length > 0 && (
+                    <TableRow>
+                      <TableCell colSpan={6} align="center" sx={{ py: 6, color: "text.secondary" }}>
+                        No hay datos para mostrar.
+                      </TableCell>
+                    </TableRow>
+                  )}
+
+                  {fletesFiltrados.map((c, i) => {
+        const [yy, mm] = selectedMonth ? selectedMonth.split("-").map(Number) : [];
+
+        // 🔹 Ajustar flete quitando 16% (excepto septiembre)
+        const fleteBase = Number(c.total_flete || 0);
+        const fleteAjustado = (mm !== 9) ? fleteBase * (1 - IVA) : fleteBase;
+
+        const factura = Number(c.total_factura || 0);
+
+        // 🔹 Recalcular % flete con el flete ajustado
+        const pctNum = factura > 0 ? (fleteAjustado / factura) * 100 : 0;
+
+        return (
+          <TableRow
+            key={`${c.num_cliente}-${i}`}
+            hover
+            sx={{ "&:nth-of-type(odd)": { backgroundColor: "rgba(0,0,0,0.02)" } }}
+          >
+            <TableCell>{c.num_cliente}</TableCell>
+            <TableCell
+              sx={{
+                maxWidth: 360,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {(c.nombre_cliente || "").trim()}
+            </TableCell>
+            <TableCell align="right">{currency(factura)}</TableCell>
+            <TableCell align="right">{currency(fleteAjustado)}</TableCell>
+            <TableCell align="center" sx={{ minWidth: 160 }}>
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Chip
+                  size="small"
+                  color={percentColor(pctNum)}
+                  variant="outlined"
+                  label={percentFmt(pctNum)}
+                  sx={{ fontWeight: 600, minWidth: 72 }}
+                />
+                <Box sx={{ flex: 1 }}>
+                  <LinearProgress
+                    variant="determinate"
+                    value={Math.min(Math.max(pctNum, 0), 100)}
+                    sx={{
+                      height: 6,
+                      borderRadius: 4,
+                      [`& .MuiLinearProgress-bar`]: { borderRadius: 4 },
+                    }}
+                  />
+                </Box>
+              </Stack>
+            </TableCell>
+            <TableCell align="center">
+              <Chip size="small" label={c.total_guias ?? 0} sx={{ fontWeight: 600 }} />
+            </TableCell>
+          </TableRow>
+        );
+      })}
+
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Paper>
+        </Box>
+        )}
+        {tabIndex === 4 && (
+          <Box>
+            <Typography variant="h6" fontWeight="bold" gutterBottom>
+              🚚 Fletes por Transporte (Histórico 2025 desde Junio)
+            </Typography>
+
+            {loadingFletesTransporte && <LinearProgress sx={{ my: 2 }} />}
+
+          
+
+            {/* Tabla principal por transporte */}
+            {!loadingFletesTransporte && fletesTransporte.length > 0 && (
+              <Box>
+                <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+                  🚛 Detalle por Línea de Transporte
+                </Typography>
+
+                {fletesTransporte.map((t, idx) => {
+                  // Calculamos totales generales del transporte
+                  const totalPedidos = t.datos.reduce((acc, d) => acc + Number(d.total_pedidos || 0), 0);
+                  const totalFlete = t.datos.reduce((acc, d) => acc + Number(d.total_flete || 0), 0);
+                  const pctFleteProm = totalPedidos > 0 ? (totalFlete / totalPedidos) * 100 : 0;
+
+                  return (
+                    <Paper
+                      key={t.transporte}
+                      sx={{
+                        p: 2,
+                        mb: 3,
+                        borderRadius: 2,
+                        boxShadow: 2,
+                        border: "1px solid",
+                        borderColor: "divider",
+                      }}
+                    >
+                      {/* Encabezado de transporte con totales */}
+                      <Box
+                        sx={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 0.5,
+                          mb: 1.5,
+                        }}
+                      >
+                        <Typography variant="h6" fontWeight="bold" color="primary">
+                          🚛 {t.transporte}
+                        </Typography>
+
+                        <Stack direction="row" spacing={3} alignItems="center" flexWrap="wrap">
+                          <Typography variant="body2">
+                            <strong>Total Pedidos:</strong> {currency(totalPedidos)}
+                          </Typography>
+                          <Typography variant="body2">
+                            <strong>Total Flete:</strong> {currency(totalFlete)}
+                          </Typography>
+                          <Typography variant="body2">
+                            <strong>% Flete Promedio:</strong>{" "}
+                            <Chip
+                              size="small"
+                              label={`${pctFleteProm.toFixed(2)}%`}
+                              color={percentColor(pctFleteProm)}
+                              variant="outlined"
+                              sx={{ fontWeight: 700 }}
+                            />
+                          </Typography>
+                        </Stack>
+                      </Box>
+
+                      {/* Desglose mensual */}
+                      <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
+                        <Table size="small" stickyHeader>
+                          <TableHead>
+                            <TableRow sx={{ "& th": { bgcolor: "#f5f5f5", fontWeight: "bold" } }}>
+                              <TableCell>Mes</TableCell>
+                              <TableCell align="right">Total Pedidos</TableCell>
+                              <TableCell align="right">Total Flete</TableCell>
+                              <TableCell align="center">% Flete</TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {t.datos
+                              .sort((a, b) => a.mes.localeCompare(b.mes))
+                              .map((d, i) => (
+                                <TableRow key={`${t.transporte}-${d.mes}-${i}`} hover>
+                                  <TableCell>{ymLabel(d.mes)}</TableCell>
+                                  <TableCell align="right">{currency(d.total_pedidos)}</TableCell>
+                                  <TableCell align="right">{currency(d.total_flete)}</TableCell>
+                                  <TableCell align="center">
+                                    <Chip
+                                      label={`${d.porcentaje_flete.toFixed(2)}%`}
+                                      size="small"
+                                      color={percentColor(d.porcentaje_flete)}
+                                    />
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    </Paper>
+                  );
+                })}
+              </Box>
+            )}
+
+          </Box>
+        )}
+
 
 
 

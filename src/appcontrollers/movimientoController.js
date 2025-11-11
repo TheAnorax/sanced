@@ -151,8 +151,8 @@ const realizarMovimiento = async (req, res) => {
       } else {
         // Si no existe, insertar nuevo registro
         await connection.query(
-          "INSERT INTO ubicaciones (ubi, code_prod, cant_stock_real, pasillo, lote, almacen, ingreso) VALUES (?, ?, ?, ?, ?, ?, NOW())",
-          [ubicacion_final, codigo_producto, mitadStock, pasillo, lote, codigo_almacen]
+          "INSERT INTO ubicaciones (ubi, code_prod, cant_stock_real,  lote, almacen, ingreso) VALUES (?, ?, ?, ?, ?, ?, NOW())",
+          [ubicacion_final, codigo_producto, mitadStock,  lote, codigo_almacen]
         );
       }
 
@@ -169,81 +169,110 @@ const realizarMovimiento = async (req, res) => {
     }
 
     if (codigo_almacen === '7050') {
-      console.log("Iniciando operación para almacén 7050...");
-    
-      // Buscar la ubicación en la tabla ubicaciones
-      console.log("Buscando ubicación final:", ubicacion_final);
-      let [ubicacionExistente] = await connection.query(
-        "SELECT id_ubi, cant_stock_real FROM ubicaciones WHERE TRIM(ubi) = ?",
-        [ubicacion_final.trim()]
-      );
-      console.log("Resultado de búsqueda:", ubicacionExistente);
-    
-      if (ubicacionExistente.length > 0) {
-        const { id_ubi: idUbiExistente, cant_stock_real: cantStockActual } = ubicacionExistente[0];
-    
-        // Validar que cantidad_stock es válida
-        if (cantidad_stock == null || isNaN(Number(cantidad_stock))) {
-          console.error("Error: cantidad_stock no es válido:", cantidad_stock);
-          return res.status(400).json({ error: "La cantidad de stock no es válida" });
-        }
-    
-        console.log("Preparando actualización con los siguientes datos:", {
-          idUbiExistente,
-          cantStockActual,
-          cantidad_stock,
-          nuevaCantidad: cantStockActual ? cantStockActual + cantidad_stock : cantidad_stock,
-          codigo_producto,
-          lote,
-          codigo_almacen,
-        });
-    
-        // Actualizar la cantidad en la tabla ubicaciones, manejando NULL correctamente
-        const [updateResult] = await connection.query(
-          "UPDATE ubicaciones SET cant_stock_real = IFNULL(cant_stock_real, 0) + ?, code_prod = ?, lote = ?, almacen = ? WHERE code_prod = ?",
-          [cantidad_stock, codigo_producto, lote, codigo_almacen, codigo_producto]
-        );
-        console.log("Resultado de actualización (affectedRows):", updateResult.affectedRows);
-    
-        if (updateResult.affectedRows === 0) {
-          console.warn("Advertencia: No se actualizó ninguna fila. Verifica los datos enviados.");
-        }
-      } else {
-        console.log("Ubicación no encontrada, buscando por código de producto:", codigo_producto);
-        const [codigoUbicacion] = await connection.query(
-          "SELECT id_ubi FROM ubicaciones WHERE code_prod = ?",
-          [codigo_producto]
-        );
-        console.log("Resultado de búsqueda por código de producto:", codigoUbicacion);
-    
-        if (codigoUbicacion.length > 0) {
-          const { id_ubi: idUbiEncontrado } = codigoUbicacion[0];
-    
-          console.log("Actualizando ubicación por código de producto:", {
-            idUbiEncontrado,
-            cantidad_stock,
-            codigo_producto,
-            lote,
-            codigo_almacen,
-          });
-    
-          const [updateResult] = await connection.query(
-            "UPDATE ubicaciones SET cant_stock_real = IFNULL(cant_stock_real, 0) + ?, code_prod = ?, lote = ?, almacen = ? WHERE code_prod = ?",
-            [cantidad_stock, codigo_producto, lote, codigo_almacen, codigo_producto]
-          );
-          console.log("Resultado de actualización por código (affectedRows):", updateResult.affectedRows);
-        } else {
-          console.log("No se encontró la ubicación ni el código. Insertando nueva ubicación...");
-    
-          const [insertResult] = await connection.query(
-            "INSERT INTO ubicaciones (ubi, code_prod, cant_stock_real, pasillo, lote, almacen) VALUES (?, ?, ?, ?, ?, ?)",
-            [ubicacion_final, codigo_producto, cantidad_stock, pasillo, lote, codigo_almacen]
-          );
-          console.log("Resultado de inserción (insertId):", insertResult.insertId);
-        }
-      }
-    }
-    
+  console.log("🔁 Movimiento desde ubi_alma hacia ubicaciones (almacén 7050)...");
+
+  // 1️⃣ Obtener todos los datos del registro origen en ubi_alma
+  const [origenData] = await connection.query(
+    `SELECT code_prod, cant_stock, lote, orden_compra, pasillo, caducidad, almacen, ubi 
+     FROM ubi_alma WHERE id_ubi = ?`,
+    [id_ubi]
+  );
+
+  if (origenData.length === 0) {
+    throw new Error("No se encontró la ubicación de origen en ubi_alma.");
+  }
+
+  const origen = origenData[0];
+
+  // 2️⃣ Verificar si la ubicación destino ya existe en 'ubicaciones'
+  const [destinoData] = await connection.query(
+    "SELECT id_ubi, cant_stock_real FROM ubicaciones WHERE ubi = ?",
+    [ubicacion_final]
+  );
+
+  if (destinoData.length > 0) {
+    // 3️⃣ Si existe → actualiza y suma stock
+    await connection.query(
+      `UPDATE ubicaciones 
+       SET 
+         code_prod = ?, 
+         cant_stock_real = IFNULL(cant_stock_real, 0) + ?, 
+         lote = ?, 
+         orden_compra = ?, 
+         caducidad = ?, 
+         almacen = ?, 
+         ingreso = NOW()
+       WHERE ubi = ?`,
+      [
+        origen.code_prod,
+        origen.cant_stock,
+        origen.lote,
+        origen.orden_compra,
+        origen.caducidad,
+        codigo_almacen,
+        ubicacion_final,
+      ]
+    );
+    console.log("✅ Ubicación existente en 'ubicaciones' actualizada correctamente.");
+  } else {
+    // 4️⃣ Si no existe → crea una nueva ubicación con toda la información
+    await connection.query(
+      `INSERT INTO ubicaciones 
+        (ubi, code_prod, cant_stock_real, lote, orden_compra,  caducidad, almacen, ingreso)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+      [
+        ubicacion_final,
+        origen.code_prod,
+        origen.cant_stock,
+        origen.lote,
+        origen.orden_compra,
+        origen.caducidad,
+        codigo_almacen,
+      ]
+    );
+    console.log("✅ Nueva ubicación insertada correctamente en 'ubicaciones'.");
+  }
+
+  // 5️⃣ Registrar el movimiento en historial
+  await connection.query(
+    `INSERT INTO historial_movimientos 
+      (ubi_origen, ubi_destino, code_prod, cant_stock, lote, orden_compra, almacen_origen, almacen_destino, fecha_movimiento, usuario)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)`,
+    [
+      origen.ubi,
+      ubicacion_final,
+      origen.code_prod,
+      origen.cant_stock,
+      origen.lote,
+      origen.orden_compra,
+      origen.almacen,
+      codigo_almacen,
+      id_usuario,
+    ]
+  );
+
+  // 6️⃣ Limpiar la ubicación origen en ubi_alma
+  await connection.query(
+    `UPDATE ubi_alma 
+     SET 
+       code_prod = NULL, 
+       cant_stock = NULL, 
+       lote = NULL, 
+       orden_compra = NULL, 
+       caducidad = NULL, 
+       almacen = NULL
+     WHERE id_ubi = ?`,
+    [id_ubi]
+  );
+
+  await connection.commit();
+
+  console.log("✅ Movimiento desde ubi_alma hacia ubicaciones completado correctamente.");
+  return res.status(200).json({
+    message: "Movimiento desde almacenamiento hacia picking completado correctamente.",
+  });
+}
+
      else if (codigo_almacen === '7238') {
       // Caso para el almacén 7238: Insertar en la tabla maquila_interna
       await connection.query(
@@ -259,16 +288,115 @@ const realizarMovimiento = async (req, res) => {
         [ubicacion_final, code_prod, cantidad_stock, pasillo, lote, codigo_almacen]
       );
     } else if (codigo_almacen === '7150') {
-      // Caso para el almacén 7150: Movimiento dentro de ubi_alma
-      const [updateResult] = await connection.query(
-        "UPDATE ubi_alma SET code_prod = ?, cant_stock = ?, lote = ?, almacen = ?, ingreso = NOW() WHERE ubi = ?",
-        [code_prod, cant_stock, lote, codigo_almacen, ubicacion_final]
-      );
+  console.log("🔁 Movimiento interno dentro de ubi_alma → ubi_alma...");
 
-      if (updateResult.affectedRows === 0) {
-        throw new Error("No se encontró la ubicación final para actualizar en ubi_alma.");
-      }
-    } else {
+  // 1️⃣ Obtener los datos del registro original (origen)
+  const [origenData] = await connection.query(
+    `SELECT code_prod, cant_stock, lote, orden_compra, caducidad, almacen, ubi, pasillo 
+     FROM ubi_alma WHERE id_ubi = ?`,
+    [id_ubi]
+  );
+
+  if (origenData.length === 0) {
+    throw new Error("No se encontró la ubicación de origen en ubi_alma.");
+  }
+
+  const origen = origenData[0];
+
+  // 2️⃣ Buscar si la ubicación destino existe
+  const [destinoData] = await connection.query(
+    "SELECT id_ubi, cant_stock, lote, code_prod FROM ubi_alma WHERE ubi = ?",
+    [ubicacion_final]
+  );
+
+  if (destinoData.length === 0) {
+    // Si la ubicación destino no existe, se aborta (no se crea una nueva)
+    throw new Error(`La ubicación destino '${ubicacion_final}' no existe en ubi_alma.`);
+  }
+
+  const destino = destinoData[0];
+
+  // ⚠️ Verificación opcional: no mezclar productos distintos
+  if (destino.code_prod && destino.code_prod !== origen.code_prod) {
+    throw new Error(
+      `No se puede mover el producto ${origen.code_prod} a ${ubicacion_final}, ya tiene ${destino.code_prod}.`
+    );
+  }
+
+  // ⚠️ Verificación opcional: no mezclar lotes diferentes
+  if (destino.lote && destino.lote !== origen.lote) {
+    throw new Error(
+      `No se puede mover lote ${origen.lote} a ${ubicacion_final}, ya contiene lote ${destino.lote}.`
+    );
+  }
+
+  // 3️⃣ Actualizar ubicación destino (sumar stock y mantener datos clave)
+  await connection.query(
+    `UPDATE ubi_alma 
+     SET 
+       code_prod = ?, 
+       cant_stock = IFNULL(cant_stock, 0) + ?, 
+       lote = ?, 
+       orden_compra = ?, 
+       caducidad = ?, 
+       almacen = ?, 
+       ingreso = NOW(), 
+       ultima_modificacion = NOW()
+     WHERE ubi = ?`,
+    [
+      origen.code_prod,
+      origen.cant_stock,
+      origen.lote,
+      origen.orden_compra,
+      origen.caducidad,
+      codigo_almacen,
+      ubicacion_final,
+    ]
+  );
+
+  console.log(`✅ Ubicación destino '${ubicacion_final}' actualizada correctamente.`);
+
+  // 4️⃣ Registrar el movimiento en historial_movimientos
+  await connection.query(
+    `INSERT INTO historial_movimientos 
+      (ubi_origen, ubi_destino, code_prod, cant_stock, lote, orden_compra, almacen_origen, almacen_destino, fecha_movimiento, usuario)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)`,
+    [
+      origen.ubi,
+      ubicacion_final,
+      origen.code_prod,
+      origen.cant_stock,
+      origen.lote,
+      origen.orden_compra,
+      origen.almacen,
+      codigo_almacen,
+      id_usuario,
+    ]
+  );
+
+  // 5️⃣ Limpiar la ubicación origen
+  await connection.query(
+    `UPDATE ubi_alma 
+     SET 
+       code_prod = NULL, 
+       cant_stock = NULL, 
+       lote = NULL, 
+       orden_compra = NULL, 
+       caducidad = NULL, 
+       almacen = NULL, 
+       ultima_modificacion = NOW()
+     WHERE id_ubi = ?`,
+    [id_ubi]
+  );
+
+  await connection.commit();
+
+  console.log("✅ Movimiento interno dentro de ubi_alma completado correctamente.");
+  return res.status(200).json({
+    message: `Movimiento interno completado: datos transferidos de '${origen.ubi}' a '${ubicacion_final}'.`,
+  });
+}
+else {
       // Otros casos: Movimiento genérico en ubi_alma
       const [updateResult] = await connection.query(
         "UPDATE ubi_alma SET code_prod = ?, cant_stock = ?, lote = ?, almacen = ? WHERE ubi = ?",

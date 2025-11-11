@@ -14,7 +14,7 @@ const transporter = nodemailer.createTransport({
   secure: true,
   auth: {
     user: "j72525264@gmail.com",
-    pass: "nutl negr gzgg pxxp",
+    pass: "bzgq ssbm nomh sqtw",
   },
 });
 
@@ -2157,8 +2157,8 @@ const sendEmailEviden = async (req, res) => {
 
     await transporter.sendMail({
       from: `"SanCed – Gestor de Accesos" <j72525264@gmail.com>`,
-    //   to: 'rh.cedis@santul.net',
-      to: 'dalya.martinez@santul.net',
+      to: 'evidencias@santul.net',
+    //   to: 'dalya.martinez@santul.net',
       subject: "Nueva visita para entrega de evidencias",
       html,
       attachments: [
@@ -2168,7 +2168,7 @@ const sendEmailEviden = async (req, res) => {
           cid: "logo_sanced"
         }
       ]
-    });
+    });  
 
     res.json({ message: "Correo de visita enviado" });
   } catch (err) {

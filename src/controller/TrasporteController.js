@@ -265,7 +265,7 @@ const obtenerRutasParaPDF = async (req, res) => {
              OBSERVACIONES, TOTAL, PARTIDAS, PIEZAS, TARIMAS, TRANSPORTE, 
              PAQUETERIA, GUIA, FECHA_DE_ENTREGA_CLIENTE, DIAS_DE_ENTREGA,
              TIPO, DIRECCION, TELEFONO, TOTAL_FACTURA_LT, ENTREGA_SATISFACTORIA_O_NO_SATISFACTORIA,
-             created_at, MOTIVO, NUMERO_DE_FACTURA_LT, FECHA_DE_ENTREGA_CLIENTE, tipo_original,totalIva
+             created_at, MOTIVO, NUMERO_DE_FACTURA_LT, FECHA_DE_ENTREGA_CLIENTE, tipo_original,totalIva,total_api
       FROM paqueteria
       WHERE 1 = 1
     `;
@@ -376,21 +376,20 @@ const actualizarGuia = async (req, res) => {
     numeroFacturaLT,
     observaciones,
     tipo,
+    reenrutar, // 👈 bandera opcional para identificar si es reenruteo
   } = req.body;
 
   const id = req.params.id || null;
 
-  if (!id || !guia || guia.trim() === "") {
-    return res
-      .status(400)
-      .json({ message: "❌ Faltan datos: ID o GUIA no son válidos." });
+  if (!id) {
+    return res.status(400).json({ message: "❌ Faltan datos: ID inválido." });
   }
 
-  // Normaliza fechas si vienen como dd/mm/yyyy (opcional)
+  // 🔹 Normaliza fechas si vienen como dd/mm/yyyy
   const toMySQLDate = (s) => {
-    if (!s) return null; // queda NULL -> conserva
+    if (!s) return null;
     const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(s));
-    return m ? `${m[3]}-${m[2]}-${m[1]}` : s; // si no cumple, se manda tal cual
+    return m ? `${m[3]}-${m[2]}-${m[1]}` : s;
   };
 
   try {
@@ -404,11 +403,35 @@ const actualizarGuia = async (req, res) => {
         .json({ message: "❌ No se encontró el pedido con ese ID." });
     }
 
+    // 🔸 Caso 1: REENRUTAR
+    if (reenrutar) {
+      const [result] = await pool.query(
+        `
+        UPDATE paqueteria SET
+          PAQUETERIA = ?,
+          TRANSPORTE = ?,
+          routeName  = ?,
+          created_at = NOW()
+        WHERE id = ?;
+        `,
+        [paqueteria, transporte || paqueteria, paqueteria, id]
+      );
+
+      return res.status(200).json({
+        message:
+          result.affectedRows > 0
+            ? "🚚 Pedido reenrutado correctamente."
+            : "⚠ No se modificó el registro (ya tenía esos valores).",
+      });
+    }
+
+    // 🔸 Caso 2: ACTUALIZACIÓN NORMAL
     const query = `
       UPDATE paqueteria SET
         GUIA                                   = COALESCE(NULLIF(?, ''), GUIA),
         PAQUETERIA                             = COALESCE(NULLIF(?, ''), PAQUETERIA),
         TRANSPORTE                             = COALESCE(NULLIF(?, ''), TRANSPORTE),
+        routeName                              = COALESCE(NULLIF(?, ''), routeName),
         FECHA_DE_ENTREGA_CLIENTE               = COALESCE(NULLIF(?, ''), FECHA_DE_ENTREGA_CLIENTE),
         DIAS_DE_ENTREGA                        = COALESCE(NULLIF(?, ''), DIAS_DE_ENTREGA),
         ENTREGA_SATISFACTORIA_O_NO_SATISFACTORIA = COALESCE(NULLIF(?, ''), ENTREGA_SATISFACTORIA_O_NO_SATISFACTORIA),
@@ -428,6 +451,7 @@ const actualizarGuia = async (req, res) => {
       guia ?? null,
       paqueteria ?? null,
       transporte ?? null,
+      paqueteria ?? null, // también actualiza routeName si cambió
       toMySQLDate(fechaEntregaCliente) ?? null,
       diasEntrega ?? null,
       entregaSatisfactoria ?? null,
@@ -444,6 +468,7 @@ const actualizarGuia = async (req, res) => {
     ];
 
     const [resultado] = await pool.query(query, valores);
+
     return res.status(resultado.affectedRows > 0 ? 200 : 304).json({
       message:
         resultado.affectedRows > 0
@@ -1763,7 +1788,7 @@ const getPaqueteriaData = async (req, res) => {
     });
   }
 };
-
+ 
 const getPedidosDia = async (req, res) => {
   try {
     const { fecha } = req.query;
@@ -2267,40 +2292,58 @@ async function actualizarTotalIvaMasivoDesdeAPI() {
 
     console.log(`📦 Se recibieron ${pedidos.length} pedidos desde la API`);
 
-    // Trabajamos en transacción para consistencia
     conn = await pool.getConnection();
     await conn.beginTransaction();
 
     let actualizados = 0;
 
     for (const pedido of pedidos) {
-      const noOrden = parseInt(pedido.NoOrden); // ej. "33155"
-      const tipoOriginal = String(pedido.TpoOriginal || ""); // ej. "VW"
-      const noFactura = String(pedido.NoFactura || ""); // ej. "440177-F2"
+      const noOrden = parseInt(pedido.NoOrden);
+      const tipoOriginal = String(pedido.TpoOriginal || "");
+      const noFactura = String(pedido.NoFactura || "");
 
-      // Subtotal (sin IVA) y Total con IVA desde la API
-      const total = parseNum(pedido.Total); // ej. 1170.31
-      const totalIva = parseNum(pedido.TotalConIva); // ej. 1357.56
+      // Valores del WS
+      const wsTotal = parseNum(pedido.Total);
+      const wsTotalIva = parseNum(pedido.TotalConIva);
 
-      if (!noOrden || !tipoOriginal) continue; // datos clave faltantes
+      if (!noOrden || !tipoOriginal) continue;
 
+      // Traemos valores actuales de BD
+      const [rows] = await conn.execute(
+        `SELECT total_api, totalIva 
+         FROM paqueteria 
+         WHERE \`NO ORDEN\` = ? AND tipo_original = ? LIMIT 1`,
+        [noOrden, tipoOriginal]
+      );
+
+      if (!rows.length) continue;
+
+      const bdTotal = parseFloat(rows[0].total_api) || 0;
+      const bdTotalIva = parseFloat(rows[0].totalIva) || 0;
+
+      // Si total_api o totalIva ya tienen valor distinto de 0, NO actualizar
+      if (bdTotal !== 0 || bdTotalIva !== 0) {
+        // console.log(`⛔ Saltado ${noOrden} ${tipoOriginal} (ya tiene valores)`);
+        continue;
+      }
+
+      // Hacer update solo cuando BD = 0
       const [result] = await conn.execute(
         `UPDATE paqueteria
-           SET total_api = ?, 
-               totalIva = ?,
-               \`NO_FACTURA\` = ?
-         WHERE \`NO ORDEN\` = ? 
-           AND tipo_original = ?`,
-        [total, totalIva, noFactura, noOrden, tipoOriginal]
+           SET total_api = ?, totalIva = ?, \`NO_FACTURA\` = ?
+         WHERE \`NO ORDEN\` = ? AND tipo_original = ?`,
+        [wsTotal, wsTotalIva, noFactura, noOrden, tipoOriginal]
       );
 
       if (result.affectedRows > 0) {
         actualizados++;
+      // console.log(`✅ Actualizado ${noOrden} ${tipoOriginal}: total_api=${wsTotal}, totalIva=${wsTotalIva}`);
       }
     }
 
     await conn.commit();
-    console.log(`✅ Proceso completado. Filas actualizadas: ${actualizados}`);
+    console.log(`🎯 Proceso completado. Filas actualizadas: ${actualizados}`);
+
   } catch (error) {
     if (conn) await conn.rollback();
     console.error("❌ Error al actualizar pedidos:", error.message);
@@ -2308,6 +2351,7 @@ async function actualizarTotalIvaMasivoDesdeAPI() {
     if (conn) conn.release();
   }
 }
+
 
 actualizarTotalIvaMasivoDesdeAPI();
 
@@ -2570,7 +2614,7 @@ async function updatePaqueteriaBatch(req, res) {
 
 const getPedidosdeAbril = async (req, res) => {
   try {
-    const fechaInicio = "2025-04-01 00:00:00";
+    const fechaInicio = "2025-10-01 00:00:00";
     const fechaFin = moment().endOf("day").format("YYYY-MM-DD HH:mm:ss");
 
     const [rows] = await pool.query(
@@ -2583,15 +2627,28 @@ const getPedidosdeAbril = async (req, res) => {
         created_at
       FROM paqueteria
       WHERE created_at BETWEEN ? AND ?
+        AND NO_FACTURA IS NOT NULL
+        AND TRIM(NO_FACTURA) <> ''
+        AND NO_FACTURA <> '0-'
       ORDER BY created_at DESC
       `,
       [fechaInicio, fechaFin]
     );
 
-    const dataFormateada = rows.map((row) => ({
-      ...row,
-      created_at: moment(row.created_at).format("YYYY-MM-DD HH:mm:ss"),
-    }));
+    const dataFormateada = rows.map((row) => {
+      // Separa la factura en número y tipo (por el guion)
+      let noFactura = row.NO_FACTURA || "";
+      let partes = noFactura.split("-");
+      let numeroFactura = partes[0] || "";
+      let tipoFactura = partes[1] || "";
+
+      return {
+        ...row,
+        NO_FACTURA: numeroFactura, // Ej: "442969"
+        tipo_factura: tipoFactura, // Ej: "F2"
+        created_at: moment(row.created_at).format("YYYY-MM-DD HH:mm:ss"),
+      };
+    });
 
     res.status(200).json({
       desde: fechaInicio,
@@ -2604,6 +2661,7 @@ const getPedidosdeAbril = async (req, res) => {
     res.status(500).json({ message: "Error al obtener pedidos" });
   }
 };
+
 
 module.exports = {
   getReferenciasClientes,
@@ -2642,5 +2700,5 @@ module.exports = {
   updatePaqueteriaUno,
   updatePaqueteriaBatch,
   getPaqueteriaByMonth,
-  getPedidosdeAbril
+  getPedidosdeAbril,
 };

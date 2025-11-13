@@ -88,7 +88,7 @@ const PapeletaTarima = ({ tarimaData, recibo, cantidadRecibidaTarimas, fecha, cu
         },
         headermodel: {
             fontWeight: 'bold',
-            fontSize: '160px',
+            fontSize: '130px',
             lineHeight: '1',  // Ajustar la altura del texto
         },
         headermodel2: {

@@ -379,6 +379,7 @@ export const mainListItems = (user) => {
         "ECOMERCE",
         "Dep",
         "Recibo",
+        "Volu"        
       ],
       path: "/dashboard/inventarios",
       icon: <InventoryIcon />,

@@ -130,7 +130,8 @@ const NewUbiModal = ({ open, onClose, newUbi, setNewUbi, handleCreateUbi }) => (
 
 
 function InventarioAdmin() {
-  const [section, setSection] = useState(0); // Controla la sección activa
+ const [section, setSection] = useState("almacenamiento");
+// Controla la sección activa
   const [datosInventarios, setDatosInventarios] = useState([]);
   const [datosPicking, setDatosPicking] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
@@ -1758,7 +1759,7 @@ if (data.success) {
       width: 150,
       renderCell: (params) => (
         <Box sx={{ display: "flex", justifyContent: "center" }}>
-          {["Admin", "INV"].includes(user?.role) && (
+          {["Admin", "INV", "Volu" ].includes(user?.role) && (
             <IconButton
               onClick={() => handleOpenUpdateModal(params.row)}
               color="primary"
@@ -1875,26 +1876,27 @@ if (data.success) {
   );
 
   // Renderizado de las secciones
-  const renderSection = () => {
-    switch (section) {
-      case 0:
-        return Almacenamiento("Almacenamiento");
-      case 1:
-        return Departamental("Departamental");
-      case 2:
-        return Picking("Picking");
-      case 3:
-        return SnUbi("Sin Ubicacion");
-      case 4:
-        return Mod("Modificaciones");
-      case 5:
-        return InventarioApiNuevo();
-      case 6:
-       return ProgresoPasillos();
-      default:
-        return Almacenamiento();
-    }
-  };
+ const renderSection = () => {
+  switch (section) {
+    case "almacenamiento":
+      return Almacenamiento();
+    case "departamental":
+      return Departamental();
+    case "picking":
+      return Picking();
+    case "sinUbicacion":
+      return SnUbi();
+    case "modificaciones":
+      return Mod();
+    case "inventarioApi":
+      return InventarioApiNuevo();
+    case "progresoPasillos":
+      return ProgresoPasillos();
+    default:
+      return Almacenamiento();
+  }
+};
+
 
   const Picking = (titulo) => (
     <div style={{ padding: "20px" }}>
@@ -2810,31 +2812,26 @@ if (data.success) {
     <div style={{ flexGrow: 1, display: "flex", flexDirection: "column" }}>
       {/* Menú de pestañas */}
       <Tabs
-        value={section}
-        onChange={handleSectionChange}
-        style={{ alignSelf: "flex-start", marginLeft: "20px" }}
-      >
-        <Tab label="Almacenamiento" icon={<Dashboard />} />
-        <Tab label="Departamental" icon={<Dashboard />} />
-        <Tab label="Picking" icon={<Dashboard />} />
-        {["Admin", "INV", "Master"].includes(user?.role) && (
-          <Tab label="Codigos Sin Ubicacion" icon={<Dashboard />} />
-        )}
-        {["Admin", "INV", "Master"].includes(user?.role) && (
-          <Tab label="Modificaciones" icon={<Dashboard />} />
-        )}
+          value={section}
+          onChange={(event, newValue) => setSection(newValue)}
+        >
+          <Tab label="Almacenamiento" value="almacenamiento" />
+          <Tab label="Departamental" value="departamental" />
+          <Tab label="Picking" value="picking" />
+          {["Admin","INV","Master"].includes(user?.role) && (
+            <Tab label="Codigos Sin Ubicacion" value="sinUbicacion" />
+          )}
+          {["Admin","INV","Master"].includes(user?.role) && (
+            <Tab label="Modificaciones" value="modificaciones" />
+          )}
+          {["Admin","INV","Master","AdminAudi"].includes(user?.role) && (
+            <Tab label="Inventario Almacenamiento" value="inventarioApi" />
+          )}
+          {["Admin","INV","Master","AdminAudi"].includes(user?.role) && (
+            <Tab label="Progreso Pasillos" value="progresoPasillos" />
+          )}
+        </Tabs>
 
-        {["Admin", "INV", "Master", "AdminAudi"].includes(user?.role) && (
-          <Tab label="Inventario Almacenamiento" icon={<Dashboard />} />
-        )}
-
-        {["Admin", "INV", "Master", "AdminAudi"].includes(user?.role) && (
-  <Tab label="Progreso Pasillos" icon={<Dashboard />} />
-)}
-
-
-        
-      </Tabs>
 
       {/* Contenido según la sección seleccionada */}
       <main style={{ padding: "20px" }}>{renderSection()}</main>

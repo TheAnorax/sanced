@@ -1,35 +1,36 @@
 const pool = require('../config/database'); // Importar conexión a la base de datos
 
-// Controlador para obtener el historial de movimientos
 const getHistorial = async (req, res) => {
   try {
+    // 🔹 Solo obtener registros de los últimos 3 meses
     const [rows] = await pool.query(`
       SELECT 
-	h.ubi_origen, 
-	h.ubi_destino, 
-	h.code_prod, 
-	h.cant_stock, 
-	h.fecha_movimiento,
-	us.name 
-    FROM historial_movimientos h      
-	LEFT JOIN usuarios us ON h.usuario = us.id_usu
+        h.ubi_origen, 
+        h.ubi_destino, 
+        h.code_prod, 
+        h.cant_stock, 
+        h.fecha_movimiento,
+        us.name 
+      FROM historial_movimientos h      
+      LEFT JOIN usuarios us ON h.usuario = us.id_usu
+      WHERE h.fecha_movimiento >= DATE_SUB(CURDATE(), INTERVAL 3 MONTH)
       ORDER BY h.fecha_movimiento DESC
+      LIMIT 10000; -- 👈 límite opcional de registros para mejorar rendimiento
     `);
 
-    // Modificar el valor de code_prod si es igual a '9999'
+    // 🔄 Modificar ubi_origen si vale '9999'
     const modifiedRows = rows.map(row => {
-      if (row.ubi_origen === '9999') {
-        row.ubi_origen = 'RECIBO';
-      }
+      if (row.ubi_origen === '9999') row.ubi_origen = 'RECIBO';
       return row;
     });
 
     res.status(200).json(modifiedRows);
   } catch (error) {
-    console.error('Error al obtener el historial de movimientos:', error.message);
+    console.error('❌ Error al obtener el historial de movimientos:', error.message);
     res.status(500).json({ error: 'Error al obtener el historial de movimientos' });
   }
 };
+
 
 const almacenamiento = async (req, res) => {
   try {

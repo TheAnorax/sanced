@@ -19,13 +19,40 @@ const realizarMovimiento = async (req, res) => {
 
 
     if (id_ubi === 9999) {
+
+
+
+      console.log("⚙️ Caso especial: id_ubi = 9999");
+
+        // 1️⃣ Intentar obtener OC y Pedimento desde recibo_compras
+        let ordenCompra = null;
+        let pedimento = null;
+
+        const [reciboMatch] = await connection.query(
+          `SELECT oc, pedimento
+          FROM recibo_compras
+          WHERE codigo = ?
+            AND arribo BETWEEN DATE_SUB(CURDATE(), INTERVAL 5 DAY) AND CURDATE()
+          ORDER BY arribo DESC
+          LIMIT 1`,
+          [codigo_producto]
+        );
+
+        if (reciboMatch.length > 0) {
+          ordenCompra = reciboMatch[0].oc;
+          pedimento = reciboMatch[0].pedimento;
+          console.log(`✅ OC y pedimento encontrados: OC=${ordenCompra}, PED=${pedimento}`);
+        } else {
+          console.log("⚠️ No se encontró registro en recibo_compras en los últimos 5 días.");
+        }
+
       if (codigo_almacen === '7150') {
         console.log("Caso especial: id_ubi = 9999 y almacén = 7150");
     
         // Ejecutar la consulta para actualizar ubi_alma
         const [updateResult] = await connection.query(
-          "UPDATE ubi_alma SET code_prod = ?, cant_stock = ?, almacen = ?, ingreso = NOW() WHERE ubi = ?",
-          [codigo_producto, cantidad_stock, codigo_almacen, ubicacion_final]
+          "UPDATE ubi_alma SET code_prod = ?, cant_stock = ?, almacen = ?, ingreso = NOW(),  orden_compra = ?, lote = ?, caducidad = caducidad, ultima_modificacion = NOW(), lote = ?  WHERE ubi = ?",
+           [codigo_producto, cantidad_stock, codigo_almacen, ordenCompra, null, pedimento, ubicacion_final]
         );
     
         if (updateResult.affectedRows === 0) {
@@ -39,6 +66,7 @@ const realizarMovimiento = async (req, res) => {
            VALUES (?, ?, ?, ?, NULL, ?, ?, NOW(), ?)`,
           [id_ubi, ubicacion_final, codigo_producto, cantidad_stock, codigo_almacen, codigo_almacen, id_usuario]
         );
+        console.log("✅ Movimiento registrado y OC/pedimento actualizados en ubi_alma.");
       }
     
       // Separar la condición para código_almacen === '7050'
@@ -47,8 +75,8 @@ const realizarMovimiento = async (req, res) => {
     
         // Ejecutar la consulta adicional para ubicaciones
         const [ubicacionesUpdateResult] = await connection.query(
-          "UPDATE ubicaciones SET code_prod = ?, cant_stock_real = ?, almacen = ? WHERE code_prod = ?",
-          [codigo_producto, cantidad_stock, codigo_almacen, codigo_producto]
+          "UPDATE ubicaciones SET code_prod = ?, cant_stock_real = ?, almacen = ?,  orden_compra = ?,  lote = ?,  ingreso = NOW() WHERE code_prod = ?",
+          [codigo_producto, cantidad_stock, codigo_almacen, ordenCompra, pedimento, codigo_producto]
         );
     
         if (ubicacionesUpdateResult.affectedRows === 0) {
@@ -62,6 +90,7 @@ const realizarMovimiento = async (req, res) => {
            VALUES (?, ?, ?, ?, NULL, ?, ?, NOW(), ?)`,
           [id_ubi, ubicacion_final, codigo_producto, cantidad_stock, codigo_almacen, codigo_almacen, id_usuario]
         );
+        console.log("✅ Movimiento registrado y OC/pedimento actualizados en ubicaciones.");
       }
     
       await connection.commit();

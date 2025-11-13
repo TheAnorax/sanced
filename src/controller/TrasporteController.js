@@ -83,7 +83,15 @@ const insertarRutas = async (req, res) => {
   try {
     await connection.beginTransaction();
 
-    for (let ruta of rutas) {
+    console.log("📦 --- INICIO DE INSERCIÓN DE RUTAS ---");
+    console.log(`📋 Total de rutas recibidas: ${rutas.length}\n`);
+
+    let contadorInsertados = 0;
+    let contadorDuplicados = 0;
+
+    for (let i = 0; i < rutas.length; i++) {
+      const ruta = rutas[i];
+
       const {
         routeName,
         FECHA,
@@ -109,17 +117,59 @@ const insertarRutas = async (req, res) => {
 
       const formattedDate = moment(FECHA, "DD/MM/YYYY").format("YYYY-MM-DD");
 
+      // 🔍 Verificar duplicado
       const [existe] = await connection.query(
         `SELECT 1 FROM paqueteria WHERE \`NO ORDEN\` = ? AND tipo_original = ? LIMIT 1`,
         [noOrden, tipo_original || null]
       );
 
       if (existe.length > 0) {
+        contadorDuplicados++;
         console.log(
-          `⏭️ Ya existe NO ORDEN ${noOrden} con tipo_original ${tipo_original}, no se insertará.`
+          `⏭️ [${i + 1}/${rutas.length}] Pedido duplicado -> NO ORDEN: ${noOrden}, tipo_original: ${tipo_original}`
         );
-        continue;
+        continue; // Saltar duplicados
       }
+
+      // 🔹 Valores a insertar
+      const values = [
+        routeName,
+        formattedDate,
+        noOrden,
+        noFactura,
+        numCliente,
+        nombreCliente,
+        ZONA,
+        MUNICIPIO,
+        ESTADO,
+        OBSERVACIONES,
+        TOTAL,
+        PARTIDAS,
+        PIEZAS,
+        routeName,
+        routeName,
+        TIPO,
+        DIRECCION,
+        TELEFONO,
+        CORREO,
+        ejecutivoVtas,
+        GUIA,
+        tipo_original || null,
+      ];
+
+      // 🧾 Log de lo que se va a insertar
+      console.log("🟢 Insertando registro:", {
+        index: i + 1,
+        NO_ORDEN: noOrden,
+        CLIENTE: nombreCliente,
+        TOTAL,
+        PARTIDAS,
+        PIEZAS,
+        TIPO,
+        RUTA: routeName,
+        GUIA,
+        tipo_original,
+      });
 
       const insertQuery = `
         INSERT INTO paqueteria (
@@ -131,40 +181,19 @@ const insertarRutas = async (req, res) => {
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
 
-      const clean = (v) => (typeof v === "string" ? v.trim() : v);
-
-      const values = [
-        clean(routeName),
-        formattedDate,
-        noOrden,
-        clean(noFactura),
-        clean(numCliente),
-        clean(nombreCliente),
-        clean(ZONA),
-        clean(MUNICIPIO),
-        clean(ESTADO),
-        clean(OBSERVACIONES),
-        TOTAL,
-        PARTIDAS,
-        PIEZAS,
-        clean(routeName),
-        clean(routeName),
-        clean(TIPO),
-        clean(DIRECCION),
-        clean(TELEFONO),
-        clean(CORREO),
-        clean(ejecutivoVtas),
-        clean(GUIA),
-        clean(tipo_original) || null,
-      ];
-
       await connection.query(insertQuery, values);
+      contadorInsertados++;
     }
 
     await connection.commit();
+
+    console.log(`\n✅ Inserciones completadas.`);
+    console.log(`📦 Total insertados: ${contadorInsertados}`);
+    console.log(`⚠️ Duplicados ignorados: ${contadorDuplicados}`);
+    console.log("📦 --- FIN DE INSERCIÓN DE RUTAS ---\n");
+
     res.status(200).json({
-      message:
-        "✅ Rutas insertadas correctamente (sin duplicados por NO ORDEN y tipo_original).",
+      message: `✅ Se insertaron ${contadorInsertados} rutas correctamente (se ignoraron ${contadorDuplicados} duplicados).`,
     });
   } catch (error) {
     await connection.rollback();
@@ -174,6 +203,7 @@ const insertarRutas = async (req, res) => {
     connection.release();
   }
 };
+
 
 // Controlador: obtenerRutasDePaqueteria
 const obtenerRutasDePaqueteria = async (req, res) => {

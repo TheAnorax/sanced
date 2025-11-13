@@ -24,6 +24,8 @@ const updateInventoryUbi = require('./src/approutes/inventoryRoutes')
 const getInventoryByPasillo = require ('./src/approutes/inventoryRoutes')
 const update_inventory = require('./src/approutes/inventoryRoutes')
 const actualizarBahiaEmbarque = require('./src/approutes/embarquesRoutes'); 
+const disponibilidad = require('./src/approutes/movimientosRoutes');
+const disponibilidadPick = require('./src/approutes/movimientosRoutes');
 
 router.use('/api/pedidos', pedidosRoutes); // Rutas para pedidos
 router.use('/bahias', bahiasRoutes); // Rutas para bahias
@@ -41,6 +43,8 @@ router.use('/actualizarProducto', productoRoutes);
 router.use('/actualizarEmbarque', embarqueRoutes);
 router.use('/consultaUbicaciones', ubicacionesRoutes);
 router.use('/movimientosUbicacion', movimientosRoutes);
+router.use('/disponibilidad', disponibilidad);
+router.use('/disponibilidadPick', disponibilidadPick);
 router.use('/realizarMovimiento', movimientoRoutes);
 router.use('/inventory', inventoryRoutes);
 router.use('/getproductinventory', productInventoryRoutes);

@@ -35,7 +35,7 @@ function Historial() {
       try {
         const response = await axios.get('http://66.232.105.87:3007/api/historial/histo');
         const modifiedData = response.data.map(movimiento => ({
-          ...movimiento,
+          ...movimiento, 
           ubi_origen: (movimiento.ubi_origen === 9999) ? 'recibido' : movimiento.ubi_origen
         }));
         setMovimientos(modifiedData);

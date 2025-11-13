@@ -558,7 +558,8 @@ function Transporte() {
   }, [data, groupedData, sentRoutesData]);
 
   useEffect(() => {
-    fetchPaqueteriaRoutes(); // Llama a la API para cargar las rutas de paquetería
+    const mesActual = new Date().getMonth() + 1;
+    fetchPaqueteriaRoutes({ mes: mesActual });
   }, []);
 
   useEffect(() => {
@@ -695,79 +696,13 @@ function Transporte() {
 
   const [modoCarga, setModoCarga] = useState("api"); // o "excel"
 
-  const fetchPedidosDesdeAPI = async () => {
-    try {
-      // 1. Consultar pedidos ya registrados desde el backend
-      const registradosRes = await axios.get(
-        "http://66.232.105.87:3007/api/Trasporte/pedidosRegistrados"
-      );
-      const pedidosRegistradosDB = new Set(
-        registradosRes.data.map(
-          (r) =>
-            `${String(r.no_orden).trim()}_${String(r.tipo_original)
-              .trim()
-              .toUpperCase()}`
-        )
-      );
+  const [mesSeleccionado, setMesSeleccionado] = useState(() => {
+    const mes = new Date().getMonth() + 1;
+    return mes.toString();
+  });
 
-      // 2. Consultar pedidos nuevos
-      const response = await axios.post(
-        "http://66.232.105.87:3007/api/Trasporte/obtenerPedidos"
-      );
-      const datos = response.data;
 
-      // 3. Calcular últimos 3 días hábiles
-      const diasValidos = getLastBusinessDays(4); // esto debe devolver fechas tipo "2025-07-01"
-
-      // 4. Filtrar y mapear
-      let datosMapeados = datos
-        .filter((row) => {
-          const fechaTexto = row.Fecha?.split("T")[0];
-          const clave = `${String(row.NoOrden).trim()}_${String(
-            row.TpoOriginal || ""
-          )
-            .trim()
-            .toUpperCase()}`;
-          return (
-            diasValidos.includes(fechaTexto) && !pedidosRegistradosDB.has(clave)
-          );
-        })
-        .map((row) => ({
-          rawDate: row.Fecha?.split("T")[0], // guardamos fecha original para ordenamiento
-          RUTA: "Sin Ruta",
-          FECHA: dayjs(row.Fecha).format("DD/MM/YYYY"),
-          "NO ORDEN": row.NoOrden,
-          "NO FACTURA": row.NoFactura,
-          "NUM. CLIENTE": row.NumConsigna,
-          "NOMBRE DEL CLIENTE": row.Nombre_Cliente,
-          Codigo_Postal: row.Postal,
-          ZONA: row.Zona,
-          MUNICIPIO: row.Municipio,
-          ESTADO: row.Estado,
-          OBSERVACIONES: row.Observaciones || "",
-          TOTAL: parseFloat(String(row.Total || "0").replace(",", "")),
-          PARTIDAS: Number(row.Partidas || 0),
-          PIEZAS: Number(row.Piezas || 0),
-          DIRECCION: row.Direccion || "",
-          CORREO: row.Correo || "",
-          TELEFONO: row.Telefono || "",
-          "EJECUTIVO VTAS": row.Ejecutivo || "",
-          "TIPO ORIGINAL": row.TpoOriginal || "",
-        }));
-
-      // 5. Ordenar por fecha descendente (de hoy hacia atrás)
-      datosMapeados.sort(
-        (a, b) => dayjs(b.rawDate).unix() - dayjs(a.rawDate).unix()
-      );
-
-      // 6. Eliminar rawDate antes de guardar
-      const datosFinales = datosMapeados.map(({ rawDate, ...rest }) => rest);
-
-      setData(datosFinales);
-    } catch (error) {
-      console.error("Error al obtener los pedidos:", error);
-    }
-  };
+  
 
   const mapColumns = (row) => ({
     RUTA: "Sin Ruta",
@@ -1628,14 +1563,14 @@ function Transporte() {
             }
 
             newSentRoutesData.push({
-              ...row, // Mantener todos los detalles de la fila
-              routeName: route, // Mantener el nombre de la ruta
+              ...row,
+              routeName: route,
               OBSERVACIONES:
-                row.OBSERVACIONES ||
                 observacionesPorRegistro[row["NUM. CLIENTE"]] ||
+                row.OBSERVACIONES ||
                 "Sin observaciones disponibles",
-              TIPO: tipoRutaActual, // ✅ Asegurar que se inserta el tipo correcto
-              GUIA: guiaEnviar, // ✅ Asignar "NA" si es Directa o Venta Empleado
+              TIPO: tipoRutaActual,
+              GUIA: guiaEnviar,
               tipo_original:
                 row["TIPO ORIGINAL"] ||
                 row.tipo ||
@@ -1645,9 +1580,12 @@ function Transporte() {
             });
           });
         } else {
-          // console.warn(`⚠ Ruta ${route} no tiene datos o filas definidas.`);
+          console.warn(`⚠ Ruta ${route} no tiene datos o filas definidas.`);
         }
       });
+
+      // 👀 Aquí verás exactamente qué se va a insertar
+      console.log("🚀 Datos listos para insertar:", newSentRoutesData);
 
       try {
         const response = await fetch(
@@ -1661,8 +1599,15 @@ function Transporte() {
           }
         );
 
+        console.log("📩 Enviando a backend:", {
+          url: "http://66.232.105.87:3007/api/Trasporte/insertarRutas",
+          body: { rutas: newSentRoutesData },
+        });
+
         if (response.ok) {
           const result = await response.json();
+          console.log("✅ Respuesta del servidor:", result);
+
           handleSnackbarOpen("Rutas enviadas con éxito y registradas.");
 
           setSentRoutesData((prevData) => [...prevData, ...newSentRoutesData]);
@@ -1679,6 +1624,10 @@ function Transporte() {
           setTotalPedidos((prev) => -selectedRoutes.length);
           setTotalGeneral((prev) => -selectedRoutes.length);
         } else {
+          console.error(
+            "⚠ Error en la respuesta del backend:",
+            response.status
+          );
           handleSnackbarOpen("⚠ Hubo un error al registrar las rutas.");
         }
       } catch (error) {
@@ -5099,12 +5048,6 @@ function Transporte() {
 
   //filtar por mes
 
-  const [mesSeleccionado, setMesSeleccionado] = useState("");
-
-  useEffect(() => {
-    fetchPaqueteriaRoutes(); // Al inicio carga últimos 3 días por defecto
-  }, []);
-
   const handleChangeMes = (e) => {
     const nuevoMes = e.target.value;
     setMesSeleccionado(nuevoMes);
@@ -5611,6 +5554,66 @@ function Transporte() {
 
   const [showExtras, setShowExtras] = useState(false);
 
+  //Quitar por el momento de la base
+
+  // 🔍 Elimina de la tabla los pedidos que ya existen en la base de datos
+  const filtrarPedidosExistentes = async () => {
+    try {
+      // 1️⃣ Consultar pedidos ya registrados en la BD
+      const response = await axios.get(
+        "http://66.232.105.87:3007/api/Trasporte/pedidosRegistrados"
+      );
+
+      // 2️⃣ Crear set con las claves únicas de la BD (NO ORDEN + TIPO ORIGINAL)
+      const pedidosRegistradosDB = new Set(
+        response.data.map(
+          (r) =>
+            `${String(r.no_orden).trim()}_${String(r.tipo_original)
+              .trim()
+              .toUpperCase()}`
+        )
+      );
+
+      // 3️⃣ Contar antes de filtrar
+      const totalAntes = data.length;
+
+      // 4️⃣ Filtrar los que NO están en la BD
+      const nuevosPedidos = data.filter((pedido) => {
+        const clave = `${String(pedido["NO ORDEN"]).trim()}_${String(
+          pedido["TIPO ORIGINAL"] || ""
+        )
+          .trim()
+          .toUpperCase()}`;
+        return !pedidosRegistradosDB.has(clave);
+      });
+
+      // 5️⃣ Calcular cuántos fueron quitados
+      const eliminados = totalAntes - nuevosPedidos.length;
+
+      // 6️⃣ Actualizar la tabla (solo frontend)
+      setData(nuevosPedidos);
+
+      // 7️⃣ Mostrar alerta bonita con SweetAlert
+      Swal.fire({
+        icon: eliminados > 0 ? "success" : "info",
+        title: eliminados > 0 ? "Filtrado exitoso" : "Sin coincidencias",
+        html:
+          eliminados > 0
+            ? `Se eliminaron <b>${eliminados}</b> pedidos que ya estaban registrados en la base de datos.`
+            : "No se encontró ningún pedido duplicado en la base de datos.",
+        timer: 4000,
+        showConfirmButton: false,
+      });
+    } catch (error) {
+      console.error("❌ Error al filtrar pedidos existentes:", error);
+      Swal.fire({
+        icon: "error",
+        title: "Error al validar pedidos",
+        text: "No se pudo verificar contra la base de datos.",
+      });
+    }
+  };
+
   return (
     <Paper elevation={3} style={{ padding: "20px" }}>
       {/* Pestañas */}
@@ -5723,23 +5726,6 @@ function Transporte() {
                     />
                   </Button>
 
-                  {/* Cargar JDI */}
-                  <Button
-                    size="small"
-                    variant="contained"
-                    startIcon={<CloudDownloadIcon />}
-                    onClick={() => {
-                      setModoCarga("api");
-                      fetchPedidosDesdeAPI();
-                    }}
-                    sx={{
-                      textTransform: "none",
-                      bgcolor: "#e53935",
-                      "&:hover": { bgcolor: "#c62828" },
-                    }}
-                  >
-                    CARGAR DESDE JDI
-                  </Button>
                 </Stack>
 
                 {/* DERECHA — BUSCAR + ACCIONES (empujado a la derecha) */}
@@ -6775,6 +6761,18 @@ function Transporte() {
                 sx={{ px: 2 }}
               />
 
+              {(user?.role === "Trans" || user?.role === "Admin") && (
+                <Button
+                  variant="contained"
+                  color="warning"
+                  onClick={filtrarPedidosExistentes}
+                  startIcon={<DeleteSweepIcon />}
+                  style={{ marginLeft: "10px" }}
+                >
+                  Limpiar pedidos registrados
+                </Button>
+              )}
+
               <Table size="small">
                 <TableHead>
                   <TableRow>
@@ -7107,7 +7105,6 @@ function Transporte() {
               onChange={handleChangeMes}
               className="form-select"
             >
-              <option value="">Últimos 3 días</option>
               <option value="1">Enero</option>
               <option value="2">Febrero</option>
               <option value="3">Marzo</option>
@@ -7117,9 +7114,9 @@ function Transporte() {
               <option value="7">Julio</option>
               <option value="8">Agosto</option>
               <option value="9">Septiembre</option>
-              <option value="10">c</option>
+              <option value="10">Octubre</option>
               <option value="11">Noviembre</option>
-              {/*    <option value="12">Diciembre</option> */}
+              {/*  <option value="12">Diciembre</option>*/}
             </select>
 
             {/* ===== Modal: Porrateo por Transporte ===== */}
@@ -9468,9 +9465,11 @@ function Transporte() {
                                 }
                               </TableCell>
                             )}
+
                             {visibleColumns.includes("MOTIVO") && (
                               <TableCell>{routeData.MOTIVO}</TableCell>
                             )}
+
                             {visibleColumns.includes("DIFERENCIA") && (
                               <TableCell>{routeData.DIFERENCIA}</TableCell>
                             )}
@@ -9600,8 +9599,8 @@ function Transporte() {
               <Grid item xs={12} sm={6}>
                 <TextField
                   label="Total"
-                  value={total} // Asegúrate de que el valor de total esté correctamente vinculado aquí
-                  onChange={(e) => setTotal(e.target.value)} // Si deseas cambiar el valor
+                  value={total}
+                  onChange={(e) => setTotal(e.target.value)}
                   variant="outlined"
                   fullWidth
                 />

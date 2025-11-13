@@ -650,7 +650,7 @@ function Recibo() {
                       {recibo.estado ?? "Pendiente"}
                     </Typography>
                   </TableCell>
-                  {["Admin", "Recibo"].includes(user?.role) && (
+                  {["Admin", "Recibo", "INV"].includes(user?.role) && (
                     <TableCell>
                       {isToday(new Date(`${recibo.arribo}T00:00:00`)) ? (
                         <Button

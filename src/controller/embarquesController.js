@@ -4,7 +4,6 @@ const getEmbarques = async (req, res) => {
   try {
     const [rows] = await pool.query(` 
       
-
 SELECT
   p.id_pedi,
   p.tipo,
@@ -26,9 +25,9 @@ LEFT JOIN paqueteria pq
   ON p.pedido = pq.\`NO ORDEN\`
  AND p.tipo = pq.\`tipo_original\`
 WHERE p.estado = 'E'
-  AND p.id_usuario_paqueteria IS NUL
+  AND p.id_usuario_paqueteria IS NULL
 GROUP BY p.pedido, p.tipo
-ORDER BY p.registro_embarque DESC;
+ORDER BY p.registro_embarque DESC; 
 
     `);
 

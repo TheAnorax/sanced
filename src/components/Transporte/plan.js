@@ -23,7 +23,6 @@ import {
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 
-
 import { LocalizationProvider, DatePicker } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { NumerosALetras } from "numero-a-letras";
@@ -53,87 +52,92 @@ function Plansurtido() {
 
   const [loadingZIP, setLoadingZIP] = useState(false);
 
+  // ==========================
+  // 🔰 EXPORTAR PLAN DEL DÍA
+  // ==========================
+  const exportPlanDiaToExcel = () => {
+    try {
+      if (!resumen?.rutas?.length) {
+        Swal.fire("Sin datos", "No hay rutas para exportar.", "info");
+        return;
+      }
+
+      const dataExcel = resumen.rutas.map((r) => ({
+        Ruta: r.routeName,
+        "Total Clientes": r.totalClientes,
+        "Total Partidas": r.totalPartidas,
+        "Total Piezas": r.totalPiezas,
+        Total: r.total,
+        Avance: r.avance,
+        "Tiempo Estimado": `${(
+          (r.totalPartidas / (30 * surtidores)) *
+          60
+        ).toFixed(1)} min`,
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(dataExcel);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Plan del Día");
+
+      const fechaStr = selectedDate.format("YYYY-MM-DD");
+      const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+      saveAs(
+        new Blob([excelBuffer], { type: "application/octet-stream" }),
+        `PlanDelDia_${fechaStr}.xlsx`
+      );
+    } catch (error) {
+      console.error("❌ Error exportando Plan del Día:", error);
+      Swal.fire("Error", "Hubo un problema exportando el archivo.", "error");
+    }
+  };
 
   // ==========================
-// 🔰 EXPORTAR PLAN DEL DÍA
-// ==========================
-const exportPlanDiaToExcel = () => {
-  try {
-    if (!resumen?.rutas?.length) {
-      Swal.fire("Sin datos", "No hay rutas para exportar.", "info");
-      return;
+  // 🔰 EXPORTAR PLAN DE SURTIDO
+  // ==========================
+  const exportPlanSurtidoToExcel = () => {
+    try {
+      if (!data?.length) {
+        Swal.fire(
+          "Sin datos",
+          "No hay datos de surtido para exportar.",
+          "info"
+        );
+        return;
+      }
+
+      // Flatten los pedidos de todas las rutas
+      const pedidos = data.flatMap((grupo) =>
+        grupo.pedidos.map((p) => ({
+          Ruta: grupo.routeName,
+          Orden: p.no_orden,
+          Tipo: p.tipo_encontrado || p.tipo_original,
+          Factura: p.factura,
+          Fusionado: p.fusion || "",
+          Cliente: p.nombre_cliente,
+          Total: p.TOTAL,
+          Partidas: p.PARTIDAS,
+          Piezas: p.PIEZAS,
+          Estado: p.ESTADO,
+          Porcentaje: p.avance,
+          Status: p.tablaOrigen || "No Asignado",
+        }))
+      );
+
+      const ws = XLSX.utils.json_to_sheet(pedidos);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Plan de Surtido");
+
+      const fechaStr = selectedDate.format("YYYY-MM-DD");
+      const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+      saveAs(
+        new Blob([excelBuffer], { type: "application/octet-stream" }),
+        `PlanSurtido_${fechaStr}.xlsx`
+      );
+    } catch (error) {
+      console.error("❌ Error exportando Plan de Surtido:", error);
+      Swal.fire("Error", "Hubo un problema exportando el archivo.", "error");
     }
-
-    const dataExcel = resumen.rutas.map((r) => ({
-      Ruta: r.routeName,
-      "Total Clientes": r.totalClientes,
-      "Total Partidas": r.totalPartidas,
-      "Total Piezas": r.totalPiezas,
-      Total: r.total,
-      Avance: r.avance,
-      "Tiempo Estimado": `${((r.totalPartidas / (30 * surtidores)) * 60).toFixed(1)} min`,
-    }));
-
-    const ws = XLSX.utils.json_to_sheet(dataExcel);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Plan del Día");
-
-    const fechaStr = selectedDate.format("YYYY-MM-DD");
-    const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-    saveAs(
-      new Blob([excelBuffer], { type: "application/octet-stream" }),
-      `PlanDelDia_${fechaStr}.xlsx`
-    );
-  } catch (error) {
-    console.error("❌ Error exportando Plan del Día:", error);
-    Swal.fire("Error", "Hubo un problema exportando el archivo.", "error");
-  }
-};
-
-// ==========================
-// 🔰 EXPORTAR PLAN DE SURTIDO
-// ==========================
-const exportPlanSurtidoToExcel = () => {
-  try {
-    if (!data?.length) {
-      Swal.fire("Sin datos", "No hay datos de surtido para exportar.", "info");
-      return;
-    }
-
-    // Flatten los pedidos de todas las rutas
-    const pedidos = data.flatMap((grupo) =>
-      grupo.pedidos.map((p) => ({
-        Ruta: grupo.routeName,
-        Orden: p.no_orden,
-        Tipo: p.tipo_encontrado || p.tipo_original,
-        Factura: p.factura,
-        Fusionado: p.fusion || "",
-        Cliente: p.nombre_cliente,
-        Total: p.TOTAL,
-        Partidas: p.PARTIDAS,
-        Piezas: p.PIEZAS,
-        Estado: p.ESTADO,
-        Porcentaje: p.avance,
-        Status: p.tablaOrigen || "No Asignado",
-      }))
-    );
-
-    const ws = XLSX.utils.json_to_sheet(pedidos);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Plan de Surtido");
-
-    const fechaStr = selectedDate.format("YYYY-MM-DD");
-    const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-    saveAs(
-      new Blob([excelBuffer], { type: "application/octet-stream" }),
-      `PlanSurtido_${fechaStr}.xlsx`
-    );
-  } catch (error) {
-    console.error("❌ Error exportando Plan de Surtido:", error);
-    Swal.fire("Error", "Hubo un problema exportando el archivo.", "error");
-  }
-};
-
+  };
 
   const fetchPaqueteria = async (fecha) => {
     setLoading(true);
@@ -149,64 +153,59 @@ const exportPlanSurtidoToExcel = () => {
     }
   };
 
-const fetchResumen = async (fecha) => {
-  try {
-    const response = await axios.get(
-      `http://66.232.105.87:3007/api/Trasporte/getPedidosDia?fecha=${fecha}`
-    );
-
-    const data = response.data;
-    console.log("📦 Respuesta completa del backend:", data);
-
-    // 🔹 Guarda tanto las rutas como los pedidos
-    setResumen({
-      rutas: Array.isArray(data.resumenRutas) ? data.resumenRutas : [],
-      pedidos: Array.isArray(data.pedidos) ? data.pedidos : [],
-    });
-  } catch (error) {
-    console.error("❌ Error al obtener resumen del día:", error);
-    setResumen({ rutas: [], pedidos: [] });
-  }
-};
-
-
-
-
- useEffect(() => {
-  const fetchData = async () => {
-    setLoading(true);
-    const dateStr = selectedDate.format("YYYY-MM-DD");
+  const fetchResumen = async (fecha) => {
     try {
-      await Promise.all([fetchPaqueteria(dateStr), fetchResumen(dateStr)]);
+      const response = await axios.get(
+        `http://66.232.105.87:3007/api/Trasporte/getPedidosDia?fecha=${fecha}`
+      );
 
-      // 🔹 Esperar a que ambas terminen y luego sincronizar
-      setTimeout(() => {
-  setData((prevData) =>
-    prevData.map((grupo) => ({
-      ...grupo,
-      pedidos: grupo.pedidos.map((pedido) => {
-        const encontrado = resumen?.pedidos?.find(
-          (p) => String(p.pedido) === String(pedido.no_orden)
-        );
+      const data = response.data;
+      console.log("📦 Respuesta completa del backend:", data);
 
-        return {
-          ...pedido,
-          factura: encontrado?.factura || "—",
-        };
-      }),
-    }))
-  );
-}, 300);
-
-    } catch (err) {
-      console.error("Error fetching datos:", err);
-    } finally {
-      setLoading(false);
+      // 🔹 Guarda tanto las rutas como los pedidos
+      setResumen({
+        rutas: Array.isArray(data.resumenRutas) ? data.resumenRutas : [],
+        pedidos: Array.isArray(data.pedidos) ? data.pedidos : [],
+      });
+    } catch (error) {
+      console.error("❌ Error al obtener resumen del día:", error);
+      setResumen({ rutas: [], pedidos: [] });
     }
   };
-  fetchData();
-}, [selectedDate]);
 
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      const dateStr = selectedDate.format("YYYY-MM-DD");
+      try {
+        await Promise.all([fetchPaqueteria(dateStr), fetchResumen(dateStr)]);
+
+        // 🔹 Esperar a que ambas terminen y luego sincronizar
+        setTimeout(() => {
+          setData((prevData) =>
+            prevData.map((grupo) => ({
+              ...grupo,
+              pedidos: grupo.pedidos.map((pedido) => {
+                const encontrado = resumen?.pedidos?.find(
+                  (p) => String(p.pedido) === String(pedido.no_orden)
+                );
+
+                return {
+                  ...pedido,
+                  factura: encontrado?.factura || "—",
+                };
+              }),
+            }))
+          );
+        }, 300);
+      } catch (err) {
+        console.error("Error fetching datos:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [selectedDate]);
 
   const handleTabChange = (_, newIndex) => {
     setTabIndex(newIndex);
@@ -383,7 +382,7 @@ const fetchResumen = async (fecha) => {
 
   // 🔹 Dentro de generatePDF
 
-    const generatePDF = async (pedido, tipo_original, rutas, pedidosExternos) => {
+  const generatePDF = async (pedido, tipo_original, rutas, pedidosExternos) => {
     try {
       console.time("⏳ Tiempo total PDF");
       let numero = "";
@@ -432,10 +431,9 @@ const fetchResumen = async (fecha) => {
 
       rawTotal =
         parseFloat(
-          String(route?.["total_api"] || pedidoEncontrado?.Total || "0").replace(
-            /[^0-9.-]+/g,
-            ""
-          )
+          String(
+            route?.["total_api"] || pedidoEncontrado?.Total || "0"
+          ).replace(/[^0-9.-]+/g, "")
         ) || 0;
 
       const totalIvaAPI = pedidoEncontrado?.TotalConIva
@@ -461,45 +459,60 @@ const fetchResumen = async (fecha) => {
       const { isConfirmed: aceptaTotales } = await Swal.fire({
         title: `Pedido ${pedido}-${tipo_original}`,
         html: `
-        <div style="font-size:14px; line-height:1.7; text-align:left">
-          <h2><div><b>Subtotal (sin IVA):</b> $${(
-            Number(rawTotal) || 0
-          ).toFixed(2)}</div></h2>
-          <h2><div><b>Total factura (con IVA):</b> $${(
-            Number(totalConIva) || 0
-          ).toFixed(2)}</div></h2>
-        </div>
-        <h2><div style="margin-top:6px; color:#666; font-size:12px;">
-          ¿Está de acuerdo con estos totales?
-        </div></h2>
-      `,
+    <div style="font-size:14px; line-height:1.7; text-align:left">
+      <h2><div><b>Subtotal (sin IVA):</b> $${(Number(rawTotal) || 0).toFixed(
+        2
+      )}</div></h2>
+      <h2><div><b>Total factura (con IVA):</b> $${(
+        Number(totalConIva) || 0
+      ).toFixed(2)}</div></h2>
+    </div>
+    <h2><div style="margin-top:6px; color:#666; font-size:12px;">
+      ¿Está de acuerdo con estos totales?
+    </div></h2>
+  `,
         icon: "question",
         showCancelButton: true,
         confirmButtonText: "Sí, continuar",
         cancelButtonText: "No, modificar",
+
+        // 🔴 DESHABILITA EL BOTÓN "CONTINUAR" SI ALGUNO ES 0
+        didOpen: () => {
+          const btnConfirm = Swal.getConfirmButton();
+
+          if (
+            (Number(rawTotal) || 0) === 0 ||
+            (Number(totalConIva) || 0) === 0
+          ) {
+            btnConfirm.disabled = true;
+            btnConfirm.style.opacity = "0.4";
+            btnConfirm.style.cursor = "not-allowed";
+          }
+        },
       });
 
       if (!aceptaTotales) {
         const { value: nuevos, isConfirmed } = await Swal.fire({
           title: "Modificar totales",
           html: `
-          <div style="text-align:left">
-            <label style="font-size:12px;">Subtotal (sin IVA)</label>
-            <input id="swal-subtotal" type="number" step="0.01" min="0"
-                   inputmode="decimal"
-                   value="${(Number(rawTotal) || 0).toFixed(2)}"
-                   class="swal2-input" style="width:100%;margin:6px 0 10px;">
-            <label style="font-size:12px;">Total factura (con IVA)</label>
-            <input id="swal-total" type="number" step="0.01" min="0"
-                   inputmode="decimal"
-                   value="${(Number(totalConIva) || 0).toFixed(2)}"
-                   class="swal2-input" style="width:100%;margin:6px 0 10px;">
-          </div>
-        `,
+      <div style="text-align:left">
+        <label style="font-size:12px;">Subtotal (sin IVA)</label>
+        <input id="swal-subtotal" type="number" step="0.01" min="0"
+               inputmode="decimal"
+               value="${(Number(rawTotal) || 0).toFixed(2)}"
+               class="swal2-input" style="width:100%;margin:6px 0 10px;">
+        <label style="font-size:12px;">Total factura (con IVA)</label>
+        <input id="swal-total" type="number" step="0.01" min="0"
+               inputmode="decimal"
+               value="${(Number(totalConIva) || 0).toFixed(2)}"
+               class="swal2-input" style="width:100%;margin:6px 0 10px;">
+      </div>
+    `,
           focusConfirm: false,
           showCancelButton: true,
           confirmButtonText: "Usar estos totales",
           cancelButtonText: "Cancelar",
+
           preConfirm: () => {
             const s = parseFloat(
               String(document.getElementById("swal-subtotal").value).replace(
@@ -513,18 +526,30 @@ const fetchResumen = async (fecha) => {
                 "."
               )
             );
+
+            // ❌ Validación: deben ser números
             if (!isFinite(s) || !isFinite(t)) {
               Swal.showValidationMessage(
                 "Ambos totales son requeridos y deben ser números."
               );
               return false;
             }
+
+            // ❌ Validación: no permitir negativos
             if (s < 0 || t < 0) {
               Swal.showValidationMessage(
                 "Los totales no pueden ser negativos."
               );
               return false;
             }
+
+            // ❌ Validación: no permitir CERO
+            if (s === 0 || t === 0) {
+              Swal.showValidationMessage("Los totales deben ser mayores a 0.");
+              return false;
+            }
+
+            // ✔️ Totales válidos
             return { subtotal: s, total: t };
           },
         });
@@ -1364,15 +1389,14 @@ const fetchResumen = async (fecha) => {
           </Typography>
 
           <Button
-  variant="contained"
-  color="success"
-  size="small"
-  sx={{ mb: 2 }}
-  onClick={exportPlanDiaToExcel}
->
-  Descargar Excel (Plan del Día)
-</Button>
-
+            variant="contained"
+            color="success"
+            size="small"
+            sx={{ mb: 2 }}
+            onClick={exportPlanDiaToExcel}
+          >
+            Descargar Excel (Plan del Día)
+          </Button>
 
           {loading ? (
             <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
@@ -1475,16 +1499,15 @@ const fetchResumen = async (fecha) => {
                 <Typography variant="h6">
                   Resumen de Pedidos por Estado
                 </Typography>
-<Button
-  variant="contained"
-  color="success"
-  size="small"
-  sx={{ mb: 2 }}
-  onClick={exportPlanSurtidoToExcel}
->
-  Descargar Excel (Plan de Surtido)
-</Button>
-
+                <Button
+                  variant="contained"
+                  color="success"
+                  size="small"
+                  sx={{ mb: 2 }}
+                  onClick={exportPlanSurtidoToExcel}
+                >
+                  Descargar Excel (Plan de Surtido)
+                </Button>
 
                 {(() => {
                   const resumenStatus = obtenerResumenPorStatus();
@@ -1577,9 +1600,9 @@ const fetchResumen = async (fecha) => {
                           return (
                             <TableRow key={pedido.id}>
                               <TableCell>{pedido.no_orden}</TableCell>
-                              <TableCell>{tipoFinal}</TableCell>  
-                              
-                              <TableCell>{pedido.factura}</TableCell>             
+                              <TableCell>{tipoFinal}</TableCell>
+
+                              <TableCell>{pedido.factura}</TableCell>
                               <TableCell>{pedido.fusion}</TableCell>
                               <TableCell>{pedido.nombre_cliente}</TableCell>
                               <TableCell>

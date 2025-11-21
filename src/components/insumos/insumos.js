@@ -26,6 +26,7 @@ import {
   Table,
   TableBody,
   Grid,
+  Autocomplete,
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import VisibilityIcon from "@mui/icons-material/Visibility";
@@ -42,6 +43,7 @@ import { jsPDF } from "jspdf";
 import "jspdf-autotable";
 import logo from "./logob.png";
 import { UserContext } from "../context/UserContext";
+import Swal from "sweetalert2";
 
 const theme = createTheme({
   palette: {
@@ -148,7 +150,9 @@ function Insumos() {
 
   const fetchInsumos = async () => {
     try {
-      const response = await axios.get("http://66.232.105.87:3007/insumo/lista");
+      const response = await axios.get(
+        "http://66.232.105.87:3007/insumo/lista"
+      );
       const data = response.data.resultado.list;
 
       const updatedData = data.map((insumo) => {
@@ -333,14 +337,16 @@ function Insumos() {
                                         </tr>
                                         <tr>
                                             <td colspan="2">Usuario y Correo</td>
-                                            <td colspan="4">${user.name} - ${user.email
-      }</td>
+                                            <td colspan="4">${user.name} - ${
+      user.email
+    }</td>
                                         </tr>
                                         <tr>
                                             <td colspan="2">Observaciones</td>
-                                            <td colspan="4">${observationText ||
-      "Sin Observaciones"
-      }</td>
+                                            <td colspan="4">${
+                                              observationText ||
+                                              "Sin Observaciones"
+                                            }</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -357,8 +363,8 @@ function Insumos() {
                                             <th>Dónde se utilizará</th>
                                         </tr>
                                         ${lowInventoryByConsumption
-        .map(
-          (producto) => `
+                                          .map(
+                                            (producto) => `
                                             <tr>
                                                 <td>${producto.id_codigo}</td>
                                                 <td>${producto.requerimiento}</td>
@@ -367,8 +373,8 @@ function Insumos() {
                                                 <td>CEDIS</td>
                                             </tr>
                                         `
-        )
-        .join("")}
+                                          )
+                                          .join("")}
                                     </tbody>
                                 </table>
                             </div> 
@@ -399,8 +405,9 @@ function Insumos() {
       // Mensaje para WhatsApp
       const message = `
                         Hola, se ha generado un informe de inventario bajo en Insumos. 
-                        Observaciones: ${observationText || "Sin Observaciones"
-        }.
+                        Observaciones: ${
+                          observationText || "Sin Observaciones"
+                        }.
                         Fecha: ${new Date().toLocaleDateString()}.
                     `;
       const phoneNumber = "5524433962"; // Número de teléfono destino
@@ -813,7 +820,11 @@ function Insumos() {
     { field: "desc", headerName: "Descripción", width: 300 },
     { field: "car", headerName: "Medidas/Características", width: 300 },
     { field: "inv", headerName: "Inventario", width: 100 },
-    { field: "fecha_entrega", headerName: "Fecha estimada de Entrega", width: 150 },
+    {
+      field: "fecha_entrega",
+      headerName: "Fecha estimada de Entrega",
+      width: 150,
+    },
     { field: "consumo_mensual", headerName: "Consumo Mensual", width: 150 },
     { field: "um", headerName: "Unidad de Medida", width: 150 },
     { field: "inventariomin", headerName: "Inventario Minimo", width: 150 },
@@ -827,28 +838,189 @@ function Insumos() {
         <Box display="flex" gap={1}>
           {(user?.role === "Admin" ||
             user?.role === "Master" ||
-            user?.role === "INV" || user?.role === "Dep") && (
-              <IconButton
-                sx={{ color: "#51acf8" }}
-                onClick={() => handleView(params.row)}
-              >
-                <EditIcon />
-              </IconButton>
-            )}
+            user?.role === "INV" ||
+            user?.role === "Dep" ||
+            user?.role === "Ins") && (
+            <IconButton
+              sx={{ color: "#51acf8" }}
+              onClick={() => handleView(params.row)}
+            >
+              <EditIcon />
+            </IconButton>
+          )}
 
           {(user?.role === "Admin" ||
-            user?.role === "Master" || user?.role === "INV" || user?.role === "Recibo" || user?.role === "Eti" || user?.role === "Dep") && (
-              <IconButton
-                sx={{ color: "black" }}
-                onClick={() => handleConsumeFormOpen(params.row)}
-              >
-                <ExposureIcon />
-              </IconButton>
-            )}
+            user?.role === "Master" ||
+            user?.role === "INV" ||
+            user?.role === "Recibo" ||
+            user?.role === "Eti" ||
+            user?.role === "Dep") && (
+            <IconButton
+              sx={{ color: "black" }}
+              onClick={() => handleConsumeFormOpen(params.row)}
+            >
+              <ExposureIcon />
+            </IconButton>
+          )}
         </Box>
       ),
     },
   ];
+
+  //solicitud de materia antes de tiempo
+
+  const [openSolicitudGeneral, setOpenSolicitudGeneral] = useState(false);
+
+  const [solicitudGeneral, setSolicitudGeneral] = useState({
+    codigo: "",
+    descripcion: "",
+    cantidad: "",
+    fechaRequerida: "",
+  });
+
+  const cerrarModalSolicitud = () => {
+    setOpenSolicitudGeneral(false);
+
+    setSolicitudGeneral({
+      codigo: "",
+      descripcion: "",
+      cantidad: "",
+      fechaRequerida: "",
+    });
+  };
+
+  const enviarSolicitudGeneral = async () => {
+    if (!solicitudGeneral.descripcion || !solicitudGeneral.cantidad) {
+      Swal.fire("Error", "Por favor llena los campos obligatorios", "error");
+      return;
+    }
+
+    try {
+      await axios.post("http://66.232.105.87:3007/insumo/solicitar-insumo", {
+        codigo: solicitudGeneral.codigo || "No especificado",
+        descripcion: solicitudGeneral.descripcion,
+        cantidad: solicitudGeneral.cantidad,
+        fechaRequerida: solicitudGeneral.fechaRequerida || "No especificada",
+        solicitante: user?.name || "Usuario desconocido",
+      });
+
+      // 1️⃣ CERRAR MODAL PRIMERO
+      setOpenSolicitudGeneral(false);
+
+      // 2️⃣ ESPERAR A QUE TERMINE LA ANIMACIÓN DEL MODAL
+      setTimeout(() => {
+        Swal.fire(
+          "Solicitud enviada",
+          "Se ha enviado correctamente",
+          "success"
+        );
+      }, 250); // 250 ms funciona perfecto en MUI
+    } catch (error) {
+      setOpenSolicitudGeneral(false);
+      setTimeout(() => {
+        Swal.fire("Error", "No se pudo enviar la solicitud", "error");
+      }, 250);
+    }
+  };
+
+  const handleCodigoChange = (e) => {
+    const codigo = e.target.value;
+
+    // actualizar el estado
+    setSolicitudGeneral((prev) => ({
+      ...prev,
+      codigo: codigo,
+    }));
+
+    // buscar descripción automáticamente
+    const encontrado = insumos.find(
+      (item) => item.id_codigo.toLowerCase() === codigo.toLowerCase()
+    );
+
+    if (encontrado) {
+      setSolicitudGeneral((prev) => ({
+        ...prev,
+        descripcion: encontrado.desc, // SE ACTUALIZA AUTOMÁTICO
+      }));
+    } else {
+      // si no existe, limpiar descripción
+      setSolicitudGeneral((prev) => ({
+        ...prev,
+        descripcion: "",
+      }));
+    }
+  };
+
+  const [modalSolicitudes, setModalSolicitudes] = useState(false);
+  const [solicitudes, setSolicitudes] = useState([]);
+
+  const [fechas, setFechas] = useState({});
+
+  const cargarSolicitudes = async () => {
+    try {
+      const res = await axios.get(
+        "http://66.232.105.87:3007/insumo/solicitudes"
+      );
+      setSolicitudes(res.data.list);
+      setModalSolicitudes(true);
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
+  const marcarComoSurtido = async (id) => {
+    const fecha = fechas[id]; // fecha independiente por fila
+
+    if (!fecha || fecha.trim() === "") {
+      // 🔥 Cerrar modal ANTES del Swal (esto no lo hacías)
+      setModalSolicitudes(false);
+
+      setTimeout(() => {
+        Swal.fire("Error", "Debes ingresar la fecha de llegada", "error");
+      }, 250);
+      return;
+    }
+
+    try {
+      await axios.put(`http://66.232.105.87:3007/insumo/marcar-surtido/${id}`, {
+        fecha_llegada: fecha,
+      });
+
+      // 🔴 Cerrar modal
+      setModalSolicitudes(false);
+
+      // 🟢 Mostrar Swal DESPUÉS de la animación
+      setTimeout(() => {
+        Swal.fire("Perfecto", "La solicitud fue Contestada", "success");
+      }, 250);
+
+      // Limpiar solo la fecha usada
+      setFechas((prev) => ({
+        ...prev,
+        [id]: "",
+      }));
+    } catch (error) {
+      // 🔴 Cerrar modal ANTES del Swal de error
+      setModalSolicitudes(false);
+
+      setTimeout(() => {
+        Swal.fire("Error", "No se pudo marcar como surtido", "error");
+      }, 250);
+    }
+  };
+
+  const [catalogoInsumos, setCatalogoInsumos] = useState([]);
+
+  useEffect(() => {
+    const cargarCatalogo = async () => {
+      const res = await axios.get("http://66.232.105.87:3007/insumo/lista");
+
+      // 👇 ESTA ES LA PARTE QUE ARREGLA EL ERROR
+      setCatalogoInsumos(res.data.resultado.list);
+    };
+
+    cargarCatalogo();
+  }, []);
 
   return (
     <ThemeProvider theme={theme}>
@@ -862,6 +1034,25 @@ function Insumos() {
       >
         {/* Grupo de botones alineados */}
         <Box display="flex" gap={2} alignItems="center" flexWrap="wrap">
+          <>
+            <Button
+              variant="contained"
+              color="secondary"
+              sx={{ background: "#B71C1C" }}
+              onClick={() => setOpenSolicitudGeneral(true)}
+            >
+              Solicitar Material
+            </Button>
+
+            <Button
+              variant="contained"
+              sx={{ background: "#F57C00" }}
+              onClick={() => cargarSolicitudes()}
+            >
+              Historial de Solicitado
+            </Button>
+          </>
+
           <Button
             variant="contained"
             color="primary"
@@ -873,15 +1064,16 @@ function Insumos() {
 
           {(user?.role === "Admin" ||
             user?.role === "Master" ||
-            user?.role === "INV" || user?.role === "Dep") && (
-              <Button
-                variant="contained"
-                sx={{ background: "green" }}
-                onClick={handleShowInsumo}
-              >
-                Informacion de Insumo
-              </Button>
-            )}
+            user?.role === "INV" ||
+            user?.role === "Dep") && (
+            <Button
+              variant="contained"
+              sx={{ background: "green" }}
+              onClick={handleShowInsumo}
+            >
+              Informacion de Insumo
+            </Button>
+          )}
 
           <Button
             variant="contained"
@@ -898,10 +1090,10 @@ function Insumos() {
               {(user?.role === "Admin" ||
                 user?.role === "Master" ||
                 user?.role === "INV") && (
-                  <IconButton onClick={handleFilterToggle} color="primary">
-                    <NotificationsIcon />
-                  </IconButton>
-                )}
+                <IconButton onClick={handleFilterToggle} color="primary">
+                  <NotificationsIcon />
+                </IconButton>
+              )}
             </Tooltip>
 
             {/* Contenedor de insumos con scroll habilitado al aplicar el filtro */}
@@ -952,6 +1144,179 @@ function Insumos() {
                   Generar Reporte
                 </Button>
               )}
+            </DialogActions>
+          </Dialog>
+
+          {/* modal de solicitud de material */}
+          <Dialog open={openSolicitudGeneral} onClose={cerrarModalSolicitud}>
+            <DialogTitle>Solicitud General de Material</DialogTitle>
+
+            <DialogContent>
+              {/* AUTOCOMPLETE DE CÓDIGO */}
+              <Autocomplete
+                options={catalogoInsumos}
+                getOptionLabel={(op) => op.id_codigo} // 👈 SOLO mostrar el código
+                onChange={(event, value) => {
+                  if (value) {
+                    setSolicitudGeneral({
+                      ...solicitudGeneral,
+                      codigo: value.id_codigo,
+                      descripcion: value.desc, // 👈 descripción se pone automáticamente
+                    });
+                  }
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Código"
+                    margin="dense"
+                    fullWidth
+                  />
+                )}
+              />
+
+              {/* DESCRIPCIÓN AUTOMÁTICA */}
+              <TextField
+                label="Descripción del material"
+                fullWidth
+                required
+                margin="dense"
+                name="descripcion"
+                disabled
+                value={solicitudGeneral.descripcion}
+                onChange={(e) =>
+                  setSolicitudGeneral({
+                    ...solicitudGeneral,
+                    descripcion: e.target.value,
+                  })
+                }
+              />
+
+              {/* RESTO IGUAL */}
+              <TextField
+                label="Cantidad solicitada"
+                type="number"
+                fullWidth
+                required
+                margin="dense"
+                name="cantidad"
+                value={solicitudGeneral.cantidad}
+                onChange={(e) =>
+                  setSolicitudGeneral({
+                    ...solicitudGeneral,
+                    cantidad: e.target.value,
+                  })
+                }
+              />
+
+              <TextField
+                label="Fecha requerida"
+                type="date"
+                fullWidth
+                margin="dense"
+                InputLabelProps={{ shrink: true }}
+                name="fechaRequerida"
+                value={solicitudGeneral.fechaRequerida}
+                onChange={(e) =>
+                  setSolicitudGeneral({
+                    ...solicitudGeneral,
+                    fechaRequerida: e.target.value,
+                  })
+                }
+              />
+            </DialogContent>
+
+            <DialogActions>
+              <Button onClick={cerrarModalSolicitud}>Cancelar</Button>
+              <Button variant="contained" onClick={enviarSolicitudGeneral}>
+                Enviar Solicitud
+              </Button>
+            </DialogActions>
+          </Dialog>
+
+          {/* marca como ya pedido los insumos */}
+
+          <Dialog open={modalSolicitudes} onClose={null} maxWidth fullWidth>
+            <DialogTitle>Solicitudes de Material</DialogTitle>
+
+            <DialogContent>
+              <TableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Código</TableCell>
+                      <TableCell>Descripción</TableCell>
+                      <TableCell>Cantidad</TableCell>
+                      <TableCell>Fecha Req</TableCell>
+                      <TableCell>Solicitante</TableCell>
+                      <TableCell>Estado</TableCell>
+                      <TableCell>Fecha de LLegada</TableCell>
+                      <TableCell>Acciones</TableCell>
+                    </TableRow>
+                  </TableHead>
+
+                  <TableBody>
+                    {solicitudes.map((s) => (
+                      <TableRow
+                        key={s.id}
+                        style={{
+                          backgroundColor: s.solicitado ? "#d0ffd0" : "#ffd0d0",
+                        }}
+                      >
+                        <TableCell>{s.codigo}</TableCell>
+                        <TableCell>{s.descripcion}</TableCell>
+                        <TableCell>{s.cantidad}</TableCell>
+                        <TableCell>{s.fecha}</TableCell>
+                        <TableCell>{s.solicitante_nombre}</TableCell>
+
+                        <TableCell>
+                          {s.solicitado ? (
+                            <span
+                              style={{ color: "green", fontWeight: "bold" }}
+                            >
+                              SOLICITADO
+                            </span>
+                          ) : (
+                            <span style={{ color: "red", fontWeight: "bold" }}>
+                              PENDIENTE
+                            </span>
+                          )}
+                        </TableCell>
+
+                        <TableCell>
+                          <TextField
+                            type="date"
+                            value={fechas[s.id] || ""}
+                            onChange={(e) =>
+                              setFechas({ ...fechas, [s.id]: e.target.value })
+                            }
+                            InputLabelProps={{ shrink: true }}
+                          />
+                        </TableCell>
+                        {(user?.role === "Admin" ||
+                          user?.role === "Master" ||
+                          user?.role === "Ins") && (
+                          <TableCell>
+                            {!s.solicitado && (
+                              <Button
+                                variant="contained"
+                                color="success"
+                                onClick={() => marcarComoSurtido(s.id)}
+                              >
+                                Solicitado
+                              </Button>
+                            )}
+                          </TableCell>
+                        )}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </DialogContent>
+
+            <DialogActions>
+              <Button onClick={() => setModalSolicitudes(false)}>Cerrar</Button>
             </DialogActions>
           </Dialog>
         </Box>
@@ -1062,8 +1427,6 @@ function Insumos() {
                     InputLabelProps={{ shrink: true }}
                   />
                 </Grid>
-
-
 
                 {/* Tercera fila */}
                 <Grid item xs={12}>

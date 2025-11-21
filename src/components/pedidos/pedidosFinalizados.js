@@ -884,10 +884,9 @@ function Finalizados() {
 
       rawTotal =
         parseFloat(
-          String(route?.["total_api"] || pedidoEncontrado?.Total || "0").replace(
-            /[^0-9.-]+/g,
-            ""
-          )
+          String(
+            route?.["total_api"] || pedidoEncontrado?.Total || "0"
+          ).replace(/[^0-9.-]+/g, "")
         ) || 0;
 
       const totalIvaAPI = pedidoEncontrado?.TotalConIva
@@ -913,45 +912,59 @@ function Finalizados() {
       const { isConfirmed: aceptaTotales } = await Swal.fire({
         title: `Pedido ${pedido}-${tipo_original}`,
         html: `
-        <div style="font-size:14px; line-height:1.7; text-align:left">
-          <h2><div><b>Subtotal (sin IVA):</b> $${(
-            Number(rawTotal) || 0
-          ).toFixed(2)}</div></h2>
-          <h2><div><b>Total factura (con IVA):</b> $${(
-            Number(totalConIva) || 0
-          ).toFixed(2)}</div></h2>
-        </div>
-        <h2><div style="margin-top:6px; color:#666; font-size:12px;">
-          ¿Está de acuerdo con estos totales?
-        </div></h2>
-      `,
+    <div style="font-size:14px; line-height:1.7; text-align:left">
+      <h2><div><b>Subtotal (sin IVA):</b> $${(Number(rawTotal) || 0).toFixed(
+        2
+      )}</div></h2>
+      <h2><div><b>Total factura (con IVA):</b> $${(
+        Number(totalConIva) || 0
+      ).toFixed(2)}</div></h2>
+    </div>
+    <h2><div style="margin-top:6px; color:#666; font-size:12px;">
+      ¿Está de acuerdo con estos totales?
+    </div></h2>
+  `,
         icon: "question",
         showCancelButton: true,
         confirmButtonText: "Sí, continuar",
         cancelButtonText: "No, modificar",
+
+        // 🔴 Aquí deshabilitamos el botón "continuar" cuando hay un cero
+        didOpen: () => {
+          const btnConfirm = Swal.getConfirmButton();
+
+          if (
+            (Number(rawTotal) || 0) === 0 ||
+            (Number(totalConIva) || 0) === 0
+          ) {
+            btnConfirm.disabled = true; // ❌ No puede continuar
+            btnConfirm.title = "Los totales no pueden ser 0"; // Tooltip
+          }
+        },
       });
 
       if (!aceptaTotales) {
         const { value: nuevos, isConfirmed } = await Swal.fire({
           title: "Modificar totales",
           html: `
-          <div style="text-align:left">
-            <label style="font-size:12px;">Subtotal (sin IVA)</label>
-            <input id="swal-subtotal" type="number" step="0.01" min="0"
-                   inputmode="decimal"
-                   value="${(Number(rawTotal) || 0).toFixed(2)}"
-                   class="swal2-input" style="width:100%;margin:6px 0 10px;">
-            <label style="font-size:12px;">Total factura (con IVA)</label>
-            <input id="swal-total" type="number" step="0.01" min="0"
-                   inputmode="decimal"
-                   value="${(Number(totalConIva) || 0).toFixed(2)}"
-                   class="swal2-input" style="width:100%;margin:6px 0 10px;">
-          </div>
-        `,
+      <div style="text-align:left">
+        <label style="font-size:12px;">Subtotal (sin IVA)</label>
+        <input id="swal-subtotal" type="number" step="0.01" min="0"
+               inputmode="decimal"
+               value="${(Number(rawTotal) || 0).toFixed(2)}"
+               class="swal2-input" style="width:100%;margin:6px 0 10px;">
+        <label style="font-size:12px;">Total factura (con IVA)</label>
+        <input id="swal-total" type="number" step="0.01" min="0"
+               inputmode="decimal"
+               value="${(Number(totalConIva) || 0).toFixed(2)}"
+               class="swal2-input" style="width:100%;margin:6px 0 10px;">
+      </div>
+    `,
           focusConfirm: false,
           showCancelButton: true,
           confirmButtonText: "Usar estos totales",
           cancelButtonText: "Cancelar",
+
           preConfirm: () => {
             const s = parseFloat(
               String(document.getElementById("swal-subtotal").value).replace(
@@ -965,18 +978,31 @@ function Finalizados() {
                 "."
               )
             );
+
+            // ❌ SI NO ES NÚMERO
             if (!isFinite(s) || !isFinite(t)) {
               Swal.showValidationMessage(
                 "Ambos totales son requeridos y deben ser números."
               );
               return false;
             }
+
+            // ❌ SI ES NEGATIVO
             if (s < 0 || t < 0) {
               Swal.showValidationMessage(
                 "Los totales no pueden ser negativos."
               );
               return false;
             }
+
+            // ❌ SI ES CERO
+            if (s === 0 || t === 0) {
+              Swal.showValidationMessage(
+                "Los totales no pueden ser 0. Debes ingresar un valor mayor."
+              );
+              return false;
+            }
+
             return { subtotal: s, total: t };
           },
         });

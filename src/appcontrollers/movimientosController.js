@@ -309,7 +309,7 @@ const getUbiMonta = async (req, res) => {
         ubi,
         code_prod
       FROM ubicaciones
-      WHERE code_prod = 3312
+      WHERE code_prod = ?
       ORDER BY ubi ASC
       `,
       [code_prod]

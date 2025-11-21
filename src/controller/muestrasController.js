@@ -1034,6 +1034,7 @@ const enviarPendientesEmbarque = async () => {
         "jonathan.alcantara@santul.net",
         "analista.inventarios2@santul.net",
         "supervisor.inventarios@santul.net",
+        "gerardo.rodriguez@santul.net",
       ],
       subject: "⚠️ Solicitudes PENDIENTES de embarque",
       html,
@@ -1053,9 +1054,9 @@ const enviarPendientesEmbarque = async () => {
 };
 
 // 8:00 AM
-cron.schedule("45 11 * * 1-5", async () => {
+cron.schedule("00 10 * * 1-5", async () => {
   console.log(
-    "⏰ Ejecutando envío diario de pendientes de embarque (9:00 AM, solo lunes a viernes)..."
+    "⏰ Ejecutando envío diario de pendientes de embarque (10:00 AM, solo lunes a viernes)..."
   );
   await enviarPendientesEmbarque();
 });

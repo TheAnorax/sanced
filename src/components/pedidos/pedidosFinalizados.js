@@ -1038,6 +1038,8 @@ function Finalizados() {
       let numeroOC = "";
       if (
         nombreCliente === "IMPULSORA INDUSTRIAL MONTERREY" ||
+        nombreCliente === "IMPULSORA INDUSTRIAL MONTERREY          " ||
+        nombreCliente === "IMPULSORA INDUSTRIAL GUADALAJARA        " ||
         nombreCliente === "IMPULSORA INDUSTRIAL GUADALAJARA"
       ) {
         try {

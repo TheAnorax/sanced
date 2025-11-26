@@ -180,6 +180,8 @@ const getTitle = (pathname) => {
       return "Traspasos";
     case "/dashboard/Check":
       return "Check";
+    case "/dashboard/Departamental":
+      return "Departamental";
     default:
       return "Dashboard";
   }

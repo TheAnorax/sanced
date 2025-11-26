@@ -46,29 +46,129 @@ const realizarMovimiento = async (req, res) => {
           console.log("⚠️ No se encontró registro en recibo_compras en los últimos 5 días.");
         }
 
-      if (codigo_almacen === '7150') {
-        console.log("Caso especial: id_ubi = 9999 y almacén = 7150");
+      // if (codigo_almacen === '7150') {
+      //   console.log("Caso especial: id_ubi = 9999 y almacén = 7150");
     
-        // Ejecutar la consulta para actualizar ubi_alma
-        const [updateResult] = await connection.query(
-          "UPDATE ubi_alma SET code_prod = ?, cant_stock = ?, almacen = ?, ingreso = NOW(),  orden_compra = ?, lote = ?, caducidad = caducidad, ultima_modificacion = NOW(), lote = ?  WHERE ubi = ?",
-           [codigo_producto, cantidad_stock, codigo_almacen, ordenCompra, null, pedimento, ubicacion_final]
-        );
+      //   // Ejecutar la consulta para actualizar ubi_alma
+      //   const [updateResult] = await connection.query(
+      //     "UPDATE ubi_alma SET code_prod = ?, cant_stock = ?, almacen = ?, ingreso = NOW(),  orden_compra = ?, lote = ?, caducidad = caducidad, ultima_modificacion = NOW(), lote = ?  WHERE ubi = ?",
+      //      [codigo_producto, cantidad_stock, codigo_almacen, ordenCompra, null, pedimento, ubicacion_final]
+      //   );
     
-        if (updateResult.affectedRows === 0) {
-          throw new Error("No se encontró la ubicación final para actualizar en ubi_alma.");
-        }
+      //   if (updateResult.affectedRows === 0) {
+      //     throw new Error("No se encontró la ubicación final para actualizar en ubi_alma.");
+      //   }
     
-        // Registrar movimiento en el historial
-        await connection.query(
-          `INSERT INTO historial_movimientos 
-            (ubi_origen, ubi_destino, code_prod, cant_stock, lote, almacen_origen, almacen_destino, fecha_movimiento, usuario) 
-           VALUES (?, ?, ?, ?, NULL, ?, ?, NOW(), ?)`,
-          [id_ubi, ubicacion_final, codigo_producto, cantidad_stock, codigo_almacen, codigo_almacen, id_usuario]
-        );
-        console.log("✅ Movimiento registrado y OC/pedimento actualizados en ubi_alma.");
-      }
+      //   // Registrar movimiento en el historial
+      //   await connection.query(
+      //     `INSERT INTO historial_movimientos 
+      //       (ubi_origen, ubi_destino, code_prod, cant_stock, lote, almacen_origen, almacen_destino, fecha_movimiento, usuario) 
+      //      VALUES (?, ?, ?, ?, NULL, ?, ?, NOW(), ?)`,
+      //     [id_ubi, ubicacion_final, codigo_producto, cantidad_stock, codigo_almacen, codigo_almacen, id_usuario]
+      //   );
+      //   console.log("✅ Movimiento registrado y OC/pedimento actualizados en ubi_alma.");
+      // }
     
+
+      if (id_ubi === 9999 && codigo_almacen === "7150") {
+        console.log("🛠 Caso especial 9999 → 7150 (almacenamiento)");
+
+       let ordenCompra = null;
+       let pedimento = null;
+
+    const [reciboMatch] = await connection.query(
+      `
+      SELECT oc, pedimento
+      FROM recibo_compras
+      WHERE codigo = ?
+        AND arribo BETWEEN DATE_SUB(CURDATE(), INTERVAL 5 DAY) AND CURDATE()
+      ORDER BY arribo DESC
+      LIMIT 1
+      `,
+      [codigo_producto]
+    );
+
+    if (reciboMatch.length > 0) {
+      ordenCompra = reciboMatch[0].oc || null;
+      pedimento   = reciboMatch[0].pedimento || null;
+      console.log(`📦 Datos recibidos → OC=${ordenCompra} PED=${pedimento}`);
+    } else {
+      console.log("⚠️ Sin OC/PEDIMENTO recientes → se guardará NULL");
+    }
+
+    /**
+     * 🔍 Verificar que la ubicación final exista
+     */
+    const [destinoMatch] = await connection.query(
+      `SELECT id_ubi FROM ubi_alma WHERE ubi = ? LIMIT 1`,
+      [ubicacion_final]
+    );
+
+    if (destinoMatch.length === 0) {
+      throw new Error(`🚫 Ubicación destino '${ubicacion_final}' no existe en ubi_alma.`);
+    }
+
+    /**
+     * 🧰 Actualizar destino ubicacion
+     */
+    const [updateDest] = await connection.query(
+      `
+      UPDATE ubi_alma
+      SET 
+        code_prod = ?,
+        cant_stock = ?,
+        almacen = ?,
+        ingreso = NOW(),
+        orden_compra = ?,
+        lote = ?,
+        caducidad = NULL,
+        ultima_modificacion = NOW()
+      WHERE ubi = ?
+      `,
+      [
+        codigo_producto,
+        cantidad_stock,
+        codigo_almacen,
+        ordenCompra,
+        pedimento,
+        ubicacion_final
+      ]
+    );
+
+    if (updateDest.affectedRows === 0) {
+      throw new Error("❌ No se pudo actualizar ubicacion destino.");
+    }
+
+    /**
+     * 🧾 Registrar movimiento
+     */
+    await connection.query(
+      `
+      INSERT INTO historial_movimientos
+      (ubi_origen, ubi_destino, code_prod, cant_stock, lote, orden_compra,
+       almacen_origen, almacen_destino, fecha_movimiento, usuario)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?)
+      `,
+      [
+        id_ubi,
+        ubicacion_final,
+        codigo_producto,
+        cantidad_stock,
+        pedimento,
+        ordenCompra,
+        "9999",
+        codigo_almacen,
+        id_usuario
+      ]
+    );
+
+    await connection.commit();
+
+    return res.status(200).json({
+      message: "Movimiento 9999 → 7150 almacenado correctamente."
+    });
+}
+
       // Separar la condición para código_almacen === '7050'
       if (codigo_almacen === '7050') {
         console.log("Caso especial adicional: id_ubi = 9999 y almacén = 7050");

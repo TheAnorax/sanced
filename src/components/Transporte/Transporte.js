@@ -8319,8 +8319,8 @@ function Transporte() {
                     <MenuItem value="">Todas</MenuItem>
                     <MenuItem value="PITIC">PITIC</MenuItem>
                     <MenuItem value="FLECHISA">FLECHISA</MenuItem>
-                    <MenuItem value="TRESGUERRAS">TRESGUERRAS</MenuItem>
-                    <MenuItem value="EXPRESS">EXPRESS</MenuItem>
+                    <MenuItem value="TRESGUERRAS">TRES GUERRAS</MenuItem>
+                    <MenuItem value="PAQUETEXPRESS">PAQUETEXPRESS</MenuItem>
                   </Select>
                 </FormControl>
 

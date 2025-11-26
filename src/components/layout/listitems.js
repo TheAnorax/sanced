@@ -97,6 +97,7 @@ export const mainListItems = (user) => {
         "CALI",
         "Recibo",
         "ECOMERCE",
+        "VENT2",
       ],
       path: "/dashboard/productos",
       icon: <HandymanIcon />,
@@ -170,7 +171,7 @@ export const mainListItems = (user) => {
       text: "Tracking",
     },
     {
-      role: ["Control", "Admin", "Master", ],
+      role: ["Control", "Admin", "Master"],
       path: "/dashboard/pedidos",
       icon: <AssignmentIcon />,
       text: "Pedidos Pendientes",
@@ -239,7 +240,7 @@ export const mainListItems = (user) => {
       text: "Finalizados",
     },
     {
-      role: ["Paquet", "Admin", "Master", "AdminAudi"],
+      role: ["Paquet", "Admin", "Master", "AdminAudi", "Embar"],
       path: "/dashboard/paqueteria",
       icon: <LocalShippingIcon />,
       text: "Paqueteria",
@@ -379,7 +380,7 @@ export const mainListItems = (user) => {
         "ECOMERCE",
         "Dep",
         "Recibo",
-        "Volu"        
+        "Volu",
       ],
       path: "/dashboard/inventarios",
       icon: <InventoryIcon />,
@@ -526,6 +527,12 @@ export const mainListItems = (user) => {
       path: "/dashboard/Check",
       icon: <FileUploadIcon />,
       text: "Check",
+    },
+    {
+      role: ["Admin"],
+      path: "/dashboard/Departamental",
+      icon: <FileUploadIcon />,
+      text: "Departamental",
     },
   ];
 

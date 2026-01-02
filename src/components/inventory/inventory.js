@@ -26,6 +26,10 @@ import Select from "@mui/material/Select";
 import FormControl from "@mui/material/FormControl";
 import InputLabel from "@mui/material/InputLabel";
 import TextField from "@mui/material/TextField"; // ✅ Importa desde Material-UI
+import Modal from "@mui/material/Modal";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import QRCode from "qrcode.react";
 
 ChartJS.register(
   CategoryScale,
@@ -51,9 +55,23 @@ function Inventory() {
   const [selectedPasillo, setSelectedPasillo] = useState(""); // Pasillo seleccionado
   const [selectedTipo, setSelectedTipo] = useState(""); // Tipo PAR/IMPAR seleccionado
   const [excelData, setExcelData] = useState([]);
+  const [usuariosInv, setUsuariosInv] = useState([]);
+  const [loadingUsuariosInv, setLoadingUsuariosInv] = useState(false);
+  const [openQrModal, setOpenQrModal] = useState(false);
+  const [selectedUserQr, setSelectedUserQr] = useState(null);
 
   const [editRowId, setEditRowId] = useState(null);
   const [editValues, setEditValues] = useState({});
+
+  const handleOpenQrModal = (user) => {
+    setSelectedUserQr(user);
+    setOpenQrModal(true);
+  };
+
+  const handleCloseQrModal = () => {
+    setOpenQrModal(false);
+    setSelectedUserQr(null);
+  };
 
   useEffect(() => {
     let isMounted = true; // Control para evitar actualizaciones después del desmontaje
@@ -73,7 +91,9 @@ function Inventory() {
           axios.get("http://66.232.105.87:3007/api/inventory/ubicaciones"),
           axios.get("http://66.232.105.87:3007/api/inventory/persona"),
           axios.get("http://66.232.105.87:3007/api/inventory/Manuealsi"),
-          axios.get("http://66.232.105.87:3007/api/inventory/obtenerinventario"),
+          axios.get(
+            "http://66.232.105.87:3007/api/inventory/obtenerinventario"
+          ),
         ]);
 
         if (isMounted) {
@@ -132,9 +152,8 @@ function Inventory() {
     applyFilters(pasillo, selectedTipo);
   };
 
-
-   // Función para obtener los datos de la API y exportarlos a Excel
-   const handleDownloadDistribucionInventario = async () => {
+  // Función para obtener los datos de la API y exportarlos a Excel
+  const handleDownloadDistribucionInventario = async () => {
     try {
       setLoading(true);
 
@@ -146,7 +165,9 @@ function Inventory() {
       const data = response.data;
 
       if (!data || data.length === 0) {
-        console.error("No hay datos de distribución de inventario para exportar.");
+        console.error(
+          "No hay datos de distribución de inventario para exportar."
+        );
         return;
       }
 
@@ -157,18 +178,18 @@ function Inventory() {
 
       // Crear el archivo Excel
       const excelBuffer = write(workbook, { bookType: "xlsx", type: "array" });
-      const blob = new Blob([excelBuffer], { type: "application/octet-stream" });
+      const blob = new Blob([excelBuffer], {
+        type: "application/octet-stream",
+      });
 
       // Descargar el archivo
       saveAs(blob, "Distribucion_Inventario.xlsx");
-
     } catch (error) {
       console.error("Error al descargar la distribución de inventario:", error);
     } finally {
       setLoading(false);
     }
   };
-
 
   // Manejar cambio en el filtro de tipo
   const handleTipoChange = (event) => {
@@ -182,7 +203,9 @@ function Inventory() {
     let filtered = inventoryReport;
 
     if (pasillo) {
-      filtered = filtered.filter((item) => item.pasillo === pasillo);
+      filtered = filtered.filter(
+        (item) => Number(item.pasillo) === Number(pasillo)
+      );
     }
 
     if (tipo) {
@@ -546,6 +569,60 @@ function Inventory() {
     }
   };
 
+  useEffect(() => {
+    if (selectedTab === 5 && usuariosInv.length === 0) {
+      const fetchUsuariosInv = async () => {
+        try {
+          setLoadingUsuariosInv(true);
+
+          const response = await axios.get(
+            "http://66.232.105.87:3007/api/inventory/obtenerusuarios"
+          );
+
+          setUsuariosInv(response.data.data || []);
+        } catch (error) {
+          console.error("Error al cargar usuarios de inventario:", error);
+        } finally {
+          setLoadingUsuariosInv(false);
+        }
+      };
+
+      fetchUsuariosInv();
+    }
+  }, [selectedTab]);
+
+  const usuariosInvColumns = [
+    {
+      field: "NAME",
+      headerName: "Nombre",
+      flex: 1,
+    },
+    {
+      field: "email",
+      headerName: "Correo",
+      flex: 1,
+    },
+    {
+      field: "role",
+      headerName: "Rol",
+      width: 120,
+    },
+    {
+      field: "qr",
+      headerName: "QR",
+      width: 120,
+      renderCell: (params) => (
+        <Button
+          variant="contained"
+          size="small"
+          onClick={() => handleOpenQrModal(params.row)}
+        >
+          Ver QR
+        </Button>
+      ),
+    },
+  ];
+
   return (
     <Box width="100%" textAlign="center" marginTop={4}>
       <Tabs value={selectedTab} onChange={handleTabChange} centered>
@@ -554,6 +631,7 @@ function Inventory() {
         <Tab label="Avance por Persona" />
         <Tab label="Manual" />
         <Tab label="Reporte de Inventario" />
+        <Tab label="Usuarios Inventario" />
       </Tabs>
 
       {/* Tab 0: Progreso General */}
@@ -572,17 +650,17 @@ function Inventory() {
               {loading ? "Cargando..." : "Descargar Excel"}
             </Button>
 
-
-
             <Button
-        variant="contained"
-        color="primary"
-        onClick={handleDownloadDistribucionInventario}
-        disabled={loading}
-        sx={{ marginBottom: 4 }}
-      >
-        {loading ? "Descargando..." : "Descargar Distribución de Inventario"}
-      </Button>
+              variant="contained"
+              color="primary"
+              onClick={handleDownloadDistribucionInventario}
+              disabled={loading}
+              sx={{ marginBottom: 4 }}
+            >
+              {loading
+                ? "Descargando..."
+                : "Descargar Distribución de Inventario"}
+            </Button>
             <br></br>
             <Box
               display="flex"
@@ -903,6 +981,110 @@ function Inventory() {
               No hay datos disponibles para el reporte de inventario.
             </Typography>
           )}
+        </Box>
+      )}
+
+      {/* Tab 5: Usuarios Inventario */}
+      {selectedTab === 5 && (
+        <Box marginTop={4}>
+          <Typography variant="h5" gutterBottom>
+            Usuarios de Inventario
+          </Typography>
+
+          {loadingUsuariosInv ? (
+            <CircularProgress />
+          ) : usuariosInv.length > 0 ? (
+            <Box sx={{ height: 500, width: "100%" }}>
+              <DataGrid
+                rows={usuariosInv}
+                columns={usuariosInvColumns}
+                getRowId={(row, index) => `${row.email}-${index}`}
+                pageSize={10}
+                rowsPerPageOptions={[5, 10, 20]}
+                disableSelectionOnClick
+              />
+            </Box>
+          ) : (
+            <Typography variant="body2" color="textSecondary">
+              No hay usuarios de inventario registrados.
+            </Typography>
+          )}
+
+          <Modal
+            open={openQrModal}
+            onClose={handleCloseQrModal}
+            aria-labelledby="qr-modal-title"
+            aria-describedby="qr-modal-description"
+          >
+            <Box
+              sx={{
+                position: "absolute",
+                top: "50%",
+                left: "50%",
+                transform: "translate(-50%, -50%)",
+                width: 380,
+                bgcolor: "background.paper",
+                boxShadow: 24,
+                borderRadius: 3,
+                p: 2,
+              }}
+            >
+              {selectedUserQr && (
+                <Card>
+                  <CardContent sx={{ textAlign: "center" }}>
+                    <Typography variant="h6" gutterBottom>
+                      Credenciales de Inventario
+                    </Typography>
+
+                    {/* ===== CORREO ===== */}
+                    <Typography variant="body2" sx={{ mt: 1, mb: 1 }}>
+                      <strong>Usuario (Correo)</strong>
+                    </Typography>
+
+                    <Typography
+                      variant="caption"
+                      sx={{ display: "block", mb: 1 }}
+                    >
+                      {selectedUserQr.email}
+                    </Typography>
+
+                    <QRCode value={selectedUserQr.email} size={160} />
+
+                    {/* ===== CONTRASEÑA ===== */}
+                    <Typography variant="body2" sx={{ mt: 3, mb: 1 }}>
+                      <strong>Contraseña</strong>
+                    </Typography>
+
+                    <Typography
+                      variant="caption"
+                      sx={{ display: "block", mb: 1 }}
+                    >
+                      {selectedUserQr.password || "******"}
+                    </Typography>
+
+                    <QRCode value={selectedUserQr.password || ""} size={160} />
+
+                    <Typography
+                      variant="caption"
+                      color="textSecondary"
+                      sx={{ display: "block", mt: 2 }}
+                    >
+                      Escanea primero el usuario y después la contraseña
+                    </Typography>
+
+                    <Button
+                      variant="outlined"
+                      fullWidth
+                      sx={{ mt: 2 }}
+                      onClick={handleCloseQrModal}
+                    >
+                      Cerrar
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+            </Box>
+          </Modal>
         </Box>
       )}
     </Box>

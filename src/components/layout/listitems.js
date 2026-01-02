@@ -53,7 +53,7 @@ const CustomTooltip = styled(({ className, ...props }) => (
 export const mainListItems = (user) => {
   const items = [
     {
-      role: ["Master", "AdminAudi", "Control", "Paquet", "Admin", "Master2"],
+      role: ["Master", "AdminAudi", "Control", "Paquet", "Admin", "MASTER", "Master2"],
       path: "/dashboard",
       icon: <SsidChartIcon />,
       text: "Dashboard",
@@ -70,7 +70,7 @@ export const mainListItems = (user) => {
         "AdminAudi",
         "Control",
         "Paquet",
-        "Admin",
+        "Admin", "MASTER",
         "Rep",
         "Master2",
         "INV",
@@ -85,6 +85,7 @@ export const mainListItems = (user) => {
         "Vent",
         "VentAdmin",
         "VENT",
+        "VENTN",
         "Tran",
         "AdminTran",
         "Rep",
@@ -98,20 +99,21 @@ export const mainListItems = (user) => {
         "Recibo",
         "ECOMERCE",
         "VENT2",
+        "Trans",
       ],
       path: "/dashboard/productos",
       icon: <HandymanIcon />,
       text: "Productos",
     },
     {
-      role: ["Master", "AdminAudi", "Admin", "INV"],
+      role: ["Master", "AdminAudi", "Admin",  "INV"],
       path: "/dashboard/Catalogo",
       icon: <AodIcon />,
       text: "Catalogo",
     },
     {
       role: [
-        "Admin",
+        "Admin", "MASTER",
         "Nac",
         "Nac2",
         "Imp",
@@ -122,7 +124,8 @@ export const mainListItems = (user) => {
         "VEN",
         "VENT2",
         "VENT3",
-        "VentAdmin",
+        "VentAdmin",      
+        "VENTN",
       ], // Ajusta los roles que deberían ver esta opción"
       external: true,
       path: "http://66.232.105.108:3000/menu/estadisticos",
@@ -131,7 +134,7 @@ export const mainListItems = (user) => {
     },
     {
       role: [
-        "Admin",
+        "Admin", 
         "Master",
         "AdminAudi",
         "Trans",
@@ -150,7 +153,7 @@ export const mainListItems = (user) => {
     },
     {
       role: [
-        "Admin",
+        "Admin", 
         "Master",
         "AdminAudi",
         "Trans",
@@ -161,6 +164,7 @@ export const mainListItems = (user) => {
         "VENT",
         "VENT2",
         "VENT3",
+        "VENTN",
         "VentAdmin",
         "Tran",
         "AdminTran",
@@ -171,13 +175,13 @@ export const mainListItems = (user) => {
       text: "Tracking",
     },
     {
-      role: ["Control", "Admin", "Master"],
+      role: ["Control", "Admin",  "Master"],
       path: "/dashboard/pedidos",
       icon: <AssignmentIcon />,
       text: "Pedidos Pendientes",
     },
     {
-      role: ["Master", "AdminAudi", "Control", "Admin", "Master2", "Embar"],
+      role: ["Master", "AdminAudi", "Control", "Admin", "MASTER", "Master2", "Embar"],
       path: "/dashboard/surtido",
       icon: <AodIcon />,
       text: "Surtiendo",
@@ -187,10 +191,12 @@ export const mainListItems = (user) => {
         "Master",
         "AdminAudi",
         "Control",
-        "Admin",
+        "Admin", 
         "Master2",
         "Paquet",
         "AdminTran",
+        "Embar",
+        "Trans",
       ],
       path: "/dashboard/kpi",
       icon: <AodIcon />,
@@ -208,6 +214,7 @@ export const mainListItems = (user) => {
         "INV",
         "VEN",
         "VENT2",
+        "VENTN",
         "Master",
       ],
       path: "/dashboard/pedidos-surtido",
@@ -221,7 +228,7 @@ export const mainListItems = (user) => {
         "Master",
         "AdminAudi",
         "Control",
-        "Admin",
+        "Admin", "MASTER",
         "Rep",
         "Master2",
         "Audi",
@@ -233,7 +240,9 @@ export const mainListItems = (user) => {
         "VEN",
         "VENT2",
         "Tran",
+        "Trans",
         "AdminTran",
+        "VENTN",
       ],
       path: "/dashboard/finalizados",
       icon: <PlaylistAddCheckIcon />,
@@ -267,7 +276,7 @@ export const mainListItems = (user) => {
 
     {
       role: [
-        "Admin",
+        "Admin", 
         "AdminTran",
         "Trans",
         "Master",
@@ -275,13 +284,13 @@ export const mainListItems = (user) => {
         "Master",
         "AdminAudi",
         "Control",
-        "Admin",
         "Master2",
         "Paquet",
         "Embar",
         "AdminTran",
         "Trans",
         "VentAdmin",
+        "VENTN",
       ],
       path: "/dashboard/plan",
       icon: <ViewQuiltIcon />,
@@ -292,13 +301,14 @@ export const mainListItems = (user) => {
         "Master",
         "AdminAudi",
         "Control",
-        "Admin",
         "Master2",
         "Paquet",
         "Embar",
         "AdminTran",
         "Trans",
         "VentAdmin",
+        "VENTN",
+        "Admin",
       ],
       path: "/dashboard/Plansurtido",
       icon: <AodIcon />,
@@ -306,7 +316,7 @@ export const mainListItems = (user) => {
     },
     {
       role: [
-        "Admin",
+        "Admin", "MASTER",
         "Control",
         "Embar",
         "Master",
@@ -319,15 +329,15 @@ export const mainListItems = (user) => {
       icon: <ViewModuleIcon />,
       text: "Bahias",
     },
-    {
-      role: ["Admin", "Master", "AdminAudi"],
-      path: "/dashboard/ubicaciones",
-      icon: <WarehouseIcon />,
-      text: "Ubicaciones",
-    },
+    // {
+    //   role: ["Admin", "Master", "AdminAudi"],
+    //   path: "/dashboard/ubicaciones",
+    //   icon: <WarehouseIcon />,
+    //   text: "Ubicaciones",
+    // },
     {
       role: [
-        "Admin",
+        "Admin", "MASTER",
         "Master",
         "AdminAudi",
         "Imp",
@@ -346,7 +356,7 @@ export const mainListItems = (user) => {
     },
     {
       role: [
-        "Admin",
+        "Admin", "MASTER",
         "Master",
         "AdminAudi",
         "Recibo",
@@ -357,6 +367,7 @@ export const mainListItems = (user) => {
         "VentAdmin",
         "VEN",
         "VENT2",
+        "VENTN",
       ],
       path: "/dashboard/recibo",
       icon: <ReceiptLongIcon />,
@@ -370,7 +381,7 @@ export const mainListItems = (user) => {
     },
     {
       role: [
-        "Admin",
+        "Admin", "MASTER",
         "INV",
         "MONTA6",
         "Master",
@@ -388,7 +399,7 @@ export const mainListItems = (user) => {
     },
     {
       role: [
-        "Admin",
+        "Admin", "MASTER",
         "Nac",
         "Imp",
         "INV",
@@ -419,15 +430,15 @@ export const mainListItems = (user) => {
       icon: <AssessmentIcon />,
       text: "Insumos ",
     },
-    // {
-    //   role: ["Admin", "Master","AdminAudi", "Master2" ,"INV"],
-    //   path: "/dashboard/inventario",
-    //   icon: <AssessmentIcon />,
-    //   text: "Inventario dia 0",
-    // },
+    {
+      role: ["Admin", "ADMIN","MASTER","master", "Master"],
+      path: "/dashboard/inventario",
+      icon: <AssessmentIcon />,
+      text: "Inventario dia 0",
+    },
     {
       role: [
-        "Admin",
+        "Admin", 
         "Master",
         "AdminAudi",
         "Master2",
@@ -444,7 +455,7 @@ export const mainListItems = (user) => {
       text: "Muestras",
     },
     {
-      role: ["Admin", "INV", "Master", "AdminAudi", "Audi"],
+      role: ["Admin", "INV", "Master", "MASTER", "AdminAudi", "Audi"],
       path: "/dashboard/historial",
       icon: <CompareArrowsIcon />,
       text: "Historial de Mov",
@@ -462,14 +473,14 @@ export const mainListItems = (user) => {
       text: "RH",
     },
     {
-      role: ["Admin", "Master", "Master2", "VENT3", "VentAdmin", "Pro"],
+      role: ["Admin", "Master", "MASTER", "Master2", "VENT3", "VentAdmin", "Pro"],
       path: "/dashboard/Queretaro",
       icon: <MapIcon />,
       text: "Proyectos",
     },
     {
       role: [
-        "Admin",
+        "Admin", "MASTER",
         "POLIA",
         "POLIB",
         "POLIP",
@@ -493,7 +504,7 @@ export const mainListItems = (user) => {
     },
 
     {
-      role: ["Master", "Admin", "Master2", "AdminTran", "VentAdmin"],
+      role: ["Master", "Admin",  "Master2", "AdminTran", "VentAdmin"],
       path: "/dashboard/Mapa",
       icon: <AodIcon />,
       text: "Mapa",

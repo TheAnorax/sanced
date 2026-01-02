@@ -1,10 +1,10 @@
 const pool = require('../config/database'); // Importa la configuración de la base de datos
 
 // Controlador para el inicio de sesión
-const login = async (req, res) => {
+const loginInv = async (req, res) => {
   // console.log(req.body);
   const { username, password } = req.body;
-  const query = "SELECT * FROM usuarios WHERE email = ? AND password = ? LIMIT 1";
+  const query = "SELECT * FROM usuarios_inv WHERE email = ? AND password = ? LIMIT 1";
 
   try {
     const [results] = await pool.query(query, [username, password]);
@@ -25,5 +25,5 @@ const login = async (req, res) => {
   }
 };
 
-module.exports = { login };
+module.exports = { loginInv };
  

@@ -2,7 +2,7 @@ const pool = require('../config/database'); // Importa la configuración de la b
 
 const actualizarProducto = async (req, res) => {
   const { idPedi, scannedPz, scannedPq, scannedInner, scannedMaster, caja } = req.body;
-  console.log("upd-new-caja", req.body);
+  // console.log("upd-new-caja", req.body);
 
   try {
     const query = `
@@ -123,14 +123,14 @@ const recibirResumenCaja = async (req, res) => {
       return res.status(400).json({ error: 'Faltan datos obligatorios o codigos vacíos' });
     }
 
-    console.log("📦 Resumen recibido:");
-    console.log("→ Pedido:", pedido);
-    console.log("→ Unidad de empaque:", unidad_empaque);
-    console.log("→ Códigos a actualizar:");
+    // console.log("📦 Resumen recibido:");
+    // console.log("→ Pedido:", pedido);
+    // console.log("→ Unidad de empaque:", unidad_empaque);
+    // console.log("→ Códigos a actualizar:");
 
     // Iterar códigos y actualizar tipo_caja
     for (const codigo of codigos) {
-      console.log(`   • Código ${codigo} → tipo_caja = ${unidad_empaque}`);
+      // console.log(`   • Código ${codigo} → tipo_caja = ${unidad_empaque}`);
 
       await pool.query(
         'UPDATE pedido_embarque SET tipo_caja = ? WHERE pedido = ? AND codigo_ped = ?',

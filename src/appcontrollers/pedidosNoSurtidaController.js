@@ -2,7 +2,7 @@
 const pool = require('../config/database'); // Configuración de la base de datos
 
 const actualizarCantidadNoSurtida = async (req, res) => {
-  console.log('Faltante', req.body);
+  // console.log('Faltante', req.body);
   const { pedido, producto, motivo } = req.body;
   const estado = "B";
 

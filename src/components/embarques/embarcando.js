@@ -1,11 +1,17 @@
 import React, { useEffect, useState } from "react";
+import IconButton from "@mui/material/IconButton";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import Barcode from "react-barcode";
+
+
 import {
   Box,
+  Tabs,
+  Tab,
   Card,
   CardContent,
   Typography,
   LinearProgress,
-  Grid,
   CircularProgress,
   Alert,
   Fab,
@@ -19,36 +25,119 @@ import {
   TableCell,
   TableBody,
   Paper,
+  Select, MenuItem
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 
+function TabPanel({ children, value, index }) {
+  return (
+    <div role="tabpanel" hidden={value !== index}>
+      {value === index && <Box sx={{ p: 2 }}>{children}</Box>}
+    </div>
+  );
+}
+
 function Embarcando() {
+  const [tab, setTab] = useState(0);
+
   const [pedidos, setPedidos] = useState([]);
   const [usuariosConRecuento, setUsuariosConRecuento] = useState([]);
+  const [productividad, setProductividad] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [open, setOpen] = useState(false);
-  const [productividad, setProductividad] = useState({
-    cantidad_piezas: "",
-    tiempo_total_trabajo: "",
-  });
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedPrinter, setSelectedPrinter] = useState(null);
+
+  const abrirModal = (imp) => {
+    setSelectedPrinter(imp);
+    setModalOpen(true);
+  };
+
+  const cerrarModal = () => {
+    setModalOpen(false);
+    setSelectedPrinter(null);
+  };
+
+  const [impresoras, setImpresoras] = useState([]);
+
+  useEffect(() => {
+    const fetchImpresoras = async () => {
+      try {
+        const resp = await fetch("http://66.232.105.87:3007/api/embarque/prints/embarcadores");
+        const data = await resp.json();
+        setImpresoras(data);
+      } catch (err) {
+        console.error("Error cargando impresoras:", err);
+      }
+    };
+
+    fetchImpresoras();
+  }, []);
+
+  const [embarcadores, setEmbarcadores] = useState([]);
+
+  useEffect(() => {
+    const fetchEmbarcadores = async () => {
+      try {
+        const resp = await fetch("http://66.232.105.87:3007/api/embarque/embarcadores");
+        const data = await resp.json();
+
+        if (data.ok) {
+          setEmbarcadores(data.embarcadores);
+        }
+      } catch (error) {
+        console.error("Error cargando embarcadores:", error);
+      }
+    };
+
+    fetchEmbarcadores();
+  }, []);
+
+  const asignarImpresora = async (id_print, id_usu) => {
+    try {
+      const res = await fetch("http://66.232.105.87:3007/api/embarque/impresora/asignar", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id_print, id_usu }),
+      });
+
+      const data = await res.json();
+
+      if (!data.ok) {
+        alert("No se pudo asignar 😓");
+        return;
+      }
+
+      alert("Impresora actualizada correctamente ✔");
+      cerrarModal();
+
+      // 🔥 Recargar impresoras
+      window.location.reload();
+
+    } catch (e) {
+      console.log("❌ Error asignando impresora:", e);
+    }
+  };
+
 
   const formatTime = (seconds) => {
-    if (seconds === null || seconds === undefined || isNaN(seconds)) {
-      return "N/A";
-    }
-
+    if (!seconds) return "N/A";
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     return `${hours}h ${minutes}m`;
   };
 
+  // ================================
+  // FETCH PRINCIPAL
+  // ================================
   useEffect(() => {
     const fetchPedidos = async () => {
       try {
         const response = await fetch(
           "http://66.232.105.87:3007/api/embarque/embarque/progreso"
         );
+
         if (!response.ok) {
           throw new Error(`Error HTTP: ${response.status}`);
         }
@@ -56,21 +145,14 @@ function Embarcando() {
         const data = await response.json();
         const { pedidos } = data;
 
-        // Crear un objeto para contar pedidos y sumar piezas
+        // Agrupación por usuario
         const usuariosMap = {};
 
-        // Iterar sobre cada pedido
         pedidos.forEach((pedido) => {
           const { usuario, cantidad_piezas } = pedido;
+          const piezas = Number(cantidad_piezas);
 
-          // Asegurarse de que cantidad_piezas sea un número
-          const piezas = Number(cantidad_piezas); // Convertir a número
-          if (isNaN(piezas)) {
-            console.warn(
-              `Cantidad de piezas no es un número: ${cantidad_piezas}`
-            );
-            return; // Si no es un número, continuar al siguiente pedido
-          }
+          if (isNaN(piezas)) return;
 
           if (!usuariosMap[usuario]) {
             usuariosMap[usuario] = {
@@ -80,15 +162,13 @@ function Embarcando() {
             };
           }
 
-          // Incrementar el conteo de pedidos y sumar las piezas
-          usuariosMap[usuario].cantidad_pedidos += 1;
-          usuariosMap[usuario].cantidad_piezas += piezas; // Usar la variable convertida
+          usuariosMap[usuario].cantidad_pedidos++;
+          usuariosMap[usuario].cantidad_piezas += piezas;
         });
 
-        // Convertir el objeto a un array
-        const usuariosConRecuento = Object.values(usuariosMap);
+        setUsuariosConRecuento(Object.values(usuariosMap));
 
-        // Ordenar los pedidos según progreso
+        // Sort: mayor progreso primero
         const sortedPedidos = pedidos.sort(
           (a, b) =>
             parseFloat(b.progreso_validacion) -
@@ -96,275 +176,455 @@ function Embarcando() {
         );
 
         setPedidos(sortedPedidos);
-        setUsuariosConRecuento(usuariosConRecuento);
         setLoading(false);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        setError(error.message);
+      } catch (err) {
+        console.error(err);
+        setError(err.message);
         setLoading(false);
       }
     };
 
     fetchPedidos();
-    const intervalId = setInterval(fetchPedidos, 10000);
-    return () => clearInterval(intervalId);
+    const interval = setInterval(fetchPedidos, 10000);
+    return () => clearInterval(interval);
   }, []);
 
+  const handleTabChange = (_, val) => {
+    setTab(val);
+  };
+
   const getColorByProgress = (progress) => {
-    if (progress <= 25) return "#e74c3c"; // Rojo para 0-25%
-    if (progress <= 50) return "#f39c12"; // Naranja para 26-50%
-    if (progress <= 75) return "#f1c40f"; // Amarillo para 51-75%
-    return "#2ecc71"; // Verde para 76-100%
+    if (progress <= 25) return "#e74c3c";
+    if (progress <= 50) return "#f39c12";
+    if (progress <= 75) return "#f1c40f";
+    return "#2ecc71";
   };
 
   const handleOpen = async () => {
     try {
-      const response = await fetch(
+      const res = await fetch(
         "http://66.232.105.87:3007/api/embarque/embarque/productividad"
-      ); // URL para obtener los datos de productividad
-      if (!response.ok) {
-        throw new Error(`Error HTTP: ${response.status}`);
-      }
-      const data = await response.json();
-      setProductividad(data); // Almacenar los datos de productividad en el estado
-      setOpen(true); // Abrir el modal
-    } catch (error) {
-      console.error("Error fetching productividad data:", error);
+      );
+      if (!res.ok) throw new Error(`Error HTTP: ${res.status}`);
+
+      const data = await res.json();
+      setProductividad(data);
+      setOpen(true);
+    } catch (err) {
+      console.log(err);
     }
   };
 
-  const handleClose = () => {
-    setOpen(false);
-  };
+  const handleClose = () => setOpen(false);
 
-  if (loading) {
+  // ==========================
+  // RENDER
+  // ==========================
+
+  if (loading)
     return (
       <Box
         sx={{
+          height: "80vh",
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
-          height: "100vh",
         }}
       >
         <CircularProgress />
       </Box>
     );
-  }
 
-  if (error) {
+  if (error)
     return (
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          height: "100vh",
-        }}
-      >
-        <Alert severity="error">Error al cargar los datos: {error}</Alert>
-      </Box>
+      <Alert severity="error" sx={{ mt: 5 }}>
+        Error al cargar datos: {error}
+      </Alert>
     );
-  }
+
+  // ========================================
+  // UI FINAL
+  // ========================================
+
+
+
+  const printersValidas = [
+    "NLS-PP310-EE8E",
+    "NLS-PP310-D8CF",
+    "NLS-PP310-EE97",
+    "NLS-PP310-EA9D",
+    "NLS-PP310-28D3"
+  ];
+
+
+  const normalize = (v) => (v || "").trim().toLowerCase();
+
+  // ============ Filtrado + Normalización ============
+  const impresorasFiltradas = impresoras
+    .map(imp => ({
+      ...imp,
+      hand: imp.hand ? imp.hand.trim() : "",
+      usuario: imp.usuario ? imp.usuario.trim() : null
+    }))
+    .filter(imp => printersValidas.includes(imp.hand));
+
+  // ============ Agrupación UNA VEZ ============
+  const impresorasAgrupadas = impresorasFiltradas.reduce((acc, imp) => {
+    if (!acc[imp.hand]) acc[imp.hand] = [];
+    acc[imp.hand].push(imp);
+    return acc;
+  }, {});
+
+  // ============ Usuarios activos ============
+  const usuariosActivos = new Set(
+    usuariosConRecuento.map(u => normalize(u.usuario))
+  );
+
+
+
+
 
   return (
-    <Box sx={{ padding: 4 }}>
-      <Typography variant="h4" component="h1" gutterBottom>
-        Progreso de Validación de Embarcado
+    <Box sx={{ p: 3 }}>
+      <Typography variant="h4" sx={{ mb: 2 }}>
+        Panel de Embarque 🚚
       </Typography>
 
-      <Box sx={{ marginBottom: 4 }}>
-        <Typography variant="h5" component="h2" gutterBottom>
-          Recuento de Pedidos por Usuario
+      {/* ------------ TABS --------------- */}
+      <Tabs value={tab} onChange={handleTabChange}>
+        <Tab label="En progreso" />
+        <Tab label="Impresoras - Usuarios" />
+      </Tabs>
+
+      {/* ======================================
+         TAB 0: TU CONTENIDO ORIGINAL COMPLETO
+      ======================================= */}
+      <TabPanel value={tab} index={0}>
+        {/* --------- CARDS DE USUARIOS -------- */}
+        <Typography variant="h5" sx={{ mt: 2, mb: 1 }}>
+          Recuento por Usuario
         </Typography>
 
         <Box
           sx={{
             display: "flex",
-            overflowX: "auto", // Permite el desplazamiento horizontal si es necesario
-            gap: 2, // Espacio entre elementos
-            padding: 1,
-            "&::-webkit-scrollbar": {
-              height: 8,
-            },
-            "&::-webkit-scrollbar-thumb": {
-              backgroundColor: "#ccc",
-              borderRadius: 4,
-            },
+            gap: 2,
+            overflowX: "auto",
+            pb: 1,
           }}
         >
-          {usuariosConRecuento.map((usuario, index) => (
-            <Card
-              variant="outlined"
-              key={index}
-              sx={{ minWidth: 120, flexShrink: 0 }}
-            >
+          {usuariosConRecuento.map((u, i) => (
+            <Card key={i} sx={{ minWidth: 200 }}>
               <CardContent>
-                <Typography variant="h6">{usuario.usuario}</Typography>
+                <Typography variant="h6">{u.usuario}</Typography>
                 <Typography variant="body2">
-                  Pedidos: {usuario.cantidad_pedidos}
+                  Pedidos: {u.cantidad_pedidos}
                 </Typography>
                 <Typography variant="body2">
-                  Cantidad de piezas: {usuario.cantidad_piezas}
+                  Piezas: {u.cantidad_piezas}
                 </Typography>
               </CardContent>
             </Card>
           ))}
         </Box>
-      </Box>
 
-      <Box>
-        <Typography variant="h5" component="h2" gutterBottom>
+        {/* ------------ PEDIDOS ------------- */}
+        <Typography variant="h5" sx={{ mt: 4 }}>
           Pedidos en Progreso
         </Typography>
-        {pedidos.length === 0 ? (
-          <Typography variant="body1">No hay pedidos en progreso.</Typography>
-        ) : (
-          pedidos.map((pedido) => {
-            const progreso = parseFloat(pedido.progreso_validacion);
-            const primerNombreUsuario = pedido.usuario;
-            const progressColor = getColorByProgress(progreso); // Obtener el color de la barra según el progreso
+
+        {pedidos.map((pedido, i) => {
+          const progreso = parseFloat(pedido.progreso_validacion) || 0;
+          const color = getColorByProgress(progreso);
+
+          return (
+            <Card key={i} sx={{ mt: 2 }}>
+              <CardContent>
+                <Typography variant="h6">
+                  Pedido: {pedido.pedido}
+                </Typography>
+
+                <Typography>
+                  Usuario: {pedido.usuario} — Partidas: {pedido.partidas} — Piezas:{" "}
+                  {pedido.cantidad_piezas}
+                </Typography>
+
+                <Box sx={{ mt: 2 }}>
+                  <Typography>Progreso: {progreso.toFixed(2)}%</Typography>
+                  <LinearProgress
+                    value={progreso}
+                    variant="determinate"
+                    sx={{
+                      height: 10,
+                      borderRadius: 3,
+                      mt: 1,
+                      backgroundColor: "#ddd",
+                      "& .MuiLinearProgress-bar": {
+                        backgroundColor: color,
+                      },
+                    }}
+                  />
+                </Box>
+              </CardContent>
+            </Card>
+          );
+        })}
+
+        {/* BOTÓN FLOTANTE */}
+        <Fab
+          color="primary"
+          sx={{ position: "fixed", bottom: 20, right: 20 }}
+          onClick={handleOpen}
+        >
+          <AddIcon />
+        </Fab>
+
+        {/* MODAL PRODUCTIVIDAD */}
+        <Modal open={open} onClose={handleClose}>
+          <Fade in={open}>
+            <Box
+              sx={{
+                position: "absolute",
+                top: "50%",
+                left: "50%",
+                transform: "translate(-50%, -50%)",
+                width: "80vw",
+                height: "80vh",
+                bgcolor: "#fff",
+                borderRadius: 3,
+                p: 4,
+                overflowY: "auto",
+              }}
+            >
+              <Typography variant="h4" align="center" gutterBottom>
+                🏆 Ranking Productividad
+              </Typography>
+
+              <TableContainer component={Paper}>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>#</TableCell>
+                      <TableCell>Usuario</TableCell>
+                      <TableCell align="right">Partidas</TableCell>
+                      <TableCell align="right">Piezas</TableCell>
+                      <TableCell align="center">Tiempo</TableCell>
+                    </TableRow>
+                  </TableHead>
+
+                  <TableBody>
+                    {productividad.map((item, i) => (
+                      <TableRow key={i}>
+                        <TableCell>{i + 1}</TableCell>
+                        <TableCell>{item.usuario}</TableCell>
+                        <TableCell align="right">{item.partidas}</TableCell>
+                        <TableCell align="right">
+                          {item.cantidad_piezas}
+                        </TableCell>
+                        <TableCell align="center">
+                          {item.tiempo_total_trabajo}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Box>
+          </Fade>
+        </Modal>
+
+
+      </TabPanel>
+
+      {/* ==========================================================
+        TAB 1 — Impresoras agrupadas por rol
+          ========================================================== */}
+      <TabPanel value={tab} index={1}>
+        <Typography variant="h4" gutterBottom>
+          🖨️ Impresoras asignadas a embarcadores
+        </Typography>
+
+        <Box
+          sx={{
+            display: "flex",
+            gap: 3,
+            overflowX: "auto",
+            pb: 2,
+          }}
+        >
+
+          {Object.entries(impresorasAgrupadas).map(([hand, lista]) => {
+
+            const columnaOcupada = lista.some(imp => usuariosActivos.has(normalize(imp.usuario)));
 
             return (
-              <Card
-                key={pedido.pedido}
-                variant="outlined"
-                sx={{ marginBottom: 2 }}
+              <Box
+                key={hand}
+                sx={{
+                  minWidth: 280,
+                  border: "1px solid #ddd",
+                  borderRadius: 2,
+                  p: 2,
+                  bgcolor: "#fff",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 1.3,
+                }}
               >
-                <CardContent>
-                  <Typography
-                    variant="subtitle1"
-                    sx={{ color: progreso === 0 ? "red" : "inherit" }} // Cambia el color a rojo si el progreso es 0
-                  >
-                    <strong>Pedido:</strong> {pedido.pedido}
-                  </Typography>
-                  <Typography variant="body2">
-                    <strong>Usuario:</strong> {primerNombreUsuario} |{" "}
-                    <strong>Partidas:</strong> {pedido.partidas} |{" "}
-                    <strong>Piezas:</strong> {pedido.cantidad_piezas}
-                  </Typography>
-                  <Box sx={{ marginTop: 2 }}>
-                    <Typography variant="body2">
-                      Progreso: {isNaN(progreso) ? "0.00" : progreso.toFixed(2)}
-                      %
-                    </Typography>
-                    <LinearProgress
-                      variant="determinate"
-                      value={isNaN(progreso) ? 0 : progreso}
+                <Typography
+                  variant="h6"
+                  align="center"
+                  sx={{ fontWeight: 700, mb: 1 }}
+                >
+                  {hand}
+                </Typography>
+
+                {lista.map((imp) => {
+                  const activo = usuariosActivos.has(normalize(imp.usuario));
+
+                  return (
+                    <Card
+                      key={imp.id_print}
                       sx={{
-                        height: 10,
-                        borderRadius: 5,
-                        marginTop: 1,
-                        backgroundColor: "#ddd", // Color de fondo de la barra
-                        "& .MuiLinearProgress-bar": {
-                          backgroundColor: progressColor, // Cambiar el color de la barra de progreso dinámicamente
-                        },
+                        border: activo ? "2px solid #2ecc71" : "1px solid #ddd",
+                        backgroundColor: activo ? "#E8F8EC" : "#fff",
+                        position: "relative",
+                        transition: ".25s",
                       }}
-                    />
-                  </Box>
-                </CardContent>
-              </Card>
+                    >
+                      <CardContent>
+                        {/* HEADER */}
+                        <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                          <Typography
+                            variant="subtitle1"
+                            sx={{
+                              fontWeight: 600,
+                              color: activo ? "#1e8449" : "#000",
+                            }}
+                          >
+                            {imp.usuario}
+                          </Typography>
+
+                          <IconButton
+                            onClick={() => abrirModal(imp)}
+                            disabled={columnaOcupada}  // 🔥 toda columna bloqueada
+                            sx={{
+                              color: columnaOcupada ? "#aaa" : "#1976d2", // gris si bloqueada
+                              "&:hover": {
+                                color: columnaOcupada ? "#aaa" : "#0d47a1",
+                              },
+                            }}
+                          >
+                            <VisibilityIcon />
+                          </IconButton>
+                        </Box>
+
+                        <Typography variant="body2">Mac: {imp.mac_print}</Typography>
+                        <Typography variant="body2">Printer: {imp.hand}</Typography>
+
+                        {activo && (
+                          <Typography
+                            sx={{
+                              mt: 0.5,
+                              fontSize: 12,
+                              color: "#1e8449",
+                              fontWeight: "bold",
+                            }}
+                          >
+                            🟢 En uso
+                          </Typography>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </Box>
             );
-          })
-        )}
-      </Box>
-
-      <Fab
-        color="primary"
-        aria-label="add"
-        onClick={handleOpen} // Abrir el modal al hacer clic en el botón
-        sx={{
-          position: "fixed",
-          bottom: 16,
-          right: 16,
-        }}
-      >
-        <AddIcon />
-      </Fab>
-
-      <Modal
-        open={open}
-        onClose={handleClose}
-        closeAfterTransition
-        BackdropComponent={Backdrop}
-        BackdropProps={{
-          timeout: 500,
-        }}
-      >
-      <Fade in={open}>
-  <Box
-    sx={{
-      position: "absolute",
-      top: "50%",
-      left: "50%",
-      transform: "translate(-50%, -50%)",
-      width: "85vw",
-      height: "85vh",
-      bgcolor: "background.paper",
-      borderRadius: 3,
-      boxShadow: 24,
-      p: 4,
-      overflowY: "auto",
-    }}
-  >
-    <Typography variant="h4" gutterBottom textAlign="center" fontWeight="bold">
-      🏆 Productividad de Embarcadores
-    </Typography>
-
-    <TableContainer component={Paper} elevation={4}>
-      <Table>
-        <TableHead>
-          <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
-            <TableCell align="center"><strong>Ranking</strong></TableCell>
-            <TableCell><strong>Usuario</strong></TableCell>
-            <TableCell align="right"><strong>Partidas</strong></TableCell>
-            <TableCell align="right"><strong>Piezas</strong></TableCell>
-            <TableCell align="center"><strong>Tiempo Total</strong></TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {productividad.length > 0 ? (
-            [...productividad]
-              .sort((a, b) => b.partidas - a.partidas)
-              .map((item, index) => {
-                let trophy = "";
-                if (index === 0) trophy = "🥇";
-                else if (index === 1) trophy = "🥈";
-                else if (index === 2) trophy = "🥉";
-
-                return (
-                  <TableRow key={index}>
-                    <TableCell align="center" sx={{ fontWeight: "bold" }}>
-                      #{index + 1} {trophy}
-                    </TableCell>
-                    <TableCell>{item.usuario}</TableCell>
-                    <TableCell align="right">
-                      {Number(item.partidas).toLocaleString("es-MX")}
-                    </TableCell>
-                    <TableCell align="right">
-                      {Number(item.cantidad_piezas).toLocaleString("es-MX")}
-                    </TableCell>
-                    <TableCell align="center">
-                      {item.tiempo_total_trabajo}
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-          ) : (
-            <TableRow>
-              <TableCell colSpan={6} align="center">
-                No hay datos de productividad disponibles.
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
-    </TableContainer>
-  </Box>
-</Fade>
+          })}
 
 
+        </Box>
+      </TabPanel>
+
+      <Modal open={modalOpen} onClose={cerrarModal}>
+        <Box
+          sx={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: 450,
+            bgcolor: "#fff",
+            p: 3,
+            borderRadius: 2,
+            boxShadow: 5,
+            textAlign: "center",
+          }}
+        >
+          {/* =========================
+       TÍTULO USUARIO ACTUAL
+    ========================= */}
+          <Typography variant="h6" fontWeight={700}>
+            {selectedPrinter?.usuario || "Impresora"}
+          </Typography>
+
+          <Typography sx={{ mt: 1 }}>
+            <b>MAC:</b> {selectedPrinter?.mac_print}
+          </Typography>
+
+          <Typography sx={{ mb: 2 }}>
+            <b>Modelo:</b> {selectedPrinter?.hand}
+          </Typography>
+
+          {/* =========================
+        SELECT PARA ASIGNAR
+     ========================= */}
+          <Typography sx={{ mt: 2, mb: 1 }} fontWeight={600}>
+            Asignar a:
+          </Typography>
+
+          <Select
+            fullWidth
+            size="small"
+            defaultValue=""
+            onChange={(e) =>
+              asignarImpresora(selectedPrinter?.id_print, e.target.value)
+            }
+            sx={{ textAlign: "left" }}
+          >
+            <MenuItem value="">
+              <em>— Selecciona embarcador —</em>
+            </MenuItem>
+
+            {embarcadores.map((emp) => (
+              <MenuItem key={emp.id_usu} value={emp.id_usu}>
+                {emp.name} ({emp.role})
+              </MenuItem>
+            ))}
+          </Select>
+
+          {/* =========================
+       CÓDIGO DE BARRAS
+    ========================= */}
+          <Box sx={{ mt: 3, display: "flex", justifyContent: "center" }}>
+            <Barcode
+              value={selectedPrinter?.mac_print}
+              format="CODE128"
+              width={2.2}
+              height={95}
+              displayValue={true}
+              fontSize={15}
+              background="#fff"
+            />
+          </Box>
+        </Box>
       </Modal>
+
+
+
+
+
+
     </Box>
   );
 }

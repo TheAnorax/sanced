@@ -221,8 +221,23 @@ const updateInventory = async (req, res) => {
     id_usu,
   } = req.body;
 
-  console.log("UpdateInventory", req.body);
+  console.log("📦 UpdateInventory:", req.body);
 
+  // ============================
+  // 1️⃣ VALIDACIONES BÁSICAS
+  // ============================
+  if (!id_ubi) {
+    return res.status(400).json({
+      success: false,
+      message: "El campo id_ubi es obligatorio",
+    });
+  }
+
+  let connection;
+
+  // ============================
+  // 2️⃣ QUERY DE ACTUALIZACIÓN
+  // ============================
   const query = `
     UPDATE inventory SET
       estado = ?,
@@ -239,42 +254,71 @@ const updateInventory = async (req, res) => {
     WHERE id_ubi = ?
   `;
 
-  let connection;
   try {
-    // Obtener conexión de la base de datos
+    // ============================
+    // 3️⃣ OBTENER CONEXIÓN
+    // ============================
     connection = await pool.getConnection();
 
-    // Ejecutar la consulta de forma asíncrona
+    // ============================
+    // 4️⃣ EJECUTAR UPDATE
+    // ============================
     const [result] = await connection.execute(query, [
-      estado,
-      hora_inicio,
-      hora_final,
-      codigo,
-      pz,
-      inner,
-      master,
-      pallet,
-      cantidad,
-      manual,
-      id_usu,
+      estado ?? null,
+      hora_inicio ?? null,
+      hora_final ?? null,
+      codigo ?? null,
+      pz ?? 0,
+      inner ?? 0,
+      master ?? 0,
+      pallet ?? 0,
+      cantidad ?? 0,
+      manual ?? "No",
+      id_usu ?? null,
       id_ubi,
     ]);
 
+    // ============================
+    // 5️⃣ NO SE ACTUALIZÓ NADA
+    // ============================
     if (result.affectedRows === 0) {
-      return res
-        .status(404)
-        .json({ error: "No se encontró la ubicación para actualizar." });
+      return res.status(404).json({
+        success: false,
+        message: "No se encontró la ubicación para actualizar",
+        id_ubi,
+      });
     }
 
-    res.status(200).json({ message: "Inventario actualizado correctamente." });
+    // ============================
+    // 6️⃣ RESPUESTA EXITOSA
+    // ============================
+    return res.status(200).json({
+      success: true,
+      message: "Inventario actualizado correctamente",
+      id_ubi,
+      affectedRows: result.affectedRows,
+    });
+
   } catch (error) {
-    console.error("Error al actualizar el inventario:", error);
-    res.status(500).json({ error: "Error al actualizar el inventario" });
+    console.error("❌ Error al actualizar inventario:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Error interno al actualizar el inventario",
+      error: error.message,
+    });
+
   } finally {
-    if (connection) connection.release(); // Liberar la conexión en cualquier caso
+    // ============================
+    // 7️⃣ LIBERAR CONEXIÓN
+    // ============================
+    if (connection) connection.release();
   }
 };
 
+module.exports = {
+  updateInventory,
+};
 const getInventoryByPasillo = async (req, res) => {
   const query = `
       SELECT 

@@ -209,7 +209,7 @@ else if (!registro.tipo_caja && (registro.caja || registro.cajas)) {
 
   await connection.commit();
 
-    console.log("✅ Corrección de cajas completada con éxito");
+    // console.log("✅ Corrección de cajas completada con éxito");
     return { success: true };
   } catch (error) {
     if (connection) await connection.rollback();

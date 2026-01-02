@@ -24,7 +24,7 @@ FROM (
       ps.registro_surtido,
       NULL AS registro_embarque
     FROM pedido_surtido ps
-    WHERE ps.registro >= DATE_SUB(CURDATE(), INTERVAL 2 MONTH)
+    WHERE ps.registro >= DATE_SUB(CURDATE(), INTERVAL 3 MONTH)
 
     UNION ALL
 
@@ -38,7 +38,7 @@ FROM (
       pe.registro_surtido,
       pe.registro_embarque
     FROM pedido_embarque pe
-    WHERE pe.registro >= DATE_SUB(CURDATE(), INTERVAL 2 MONTH)
+    WHERE pe.registro >= DATE_SUB(CURDATE(), INTERVAL 3 MONTH)
 
     UNION ALL
 
@@ -52,7 +52,7 @@ FROM (
       pf.registro_surtido,
       NULL AS registro_embarque
     FROM pedido_finalizado pf
-    WHERE pf.registro >= DATE_SUB(CURDATE(), INTERVAL 2 MONTH)
+    WHERE pf.registro >= DATE_SUB(CURDATE(), INTERVAL 3 MONTH)
 ) AS pedidos
 GROUP BY pedido, tipo, origen, ubi_bahia
 ORDER BY pedido DESC;

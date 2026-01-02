@@ -1340,6 +1340,7 @@ function Tracking() {
         name: "NO ORDEN",
         role: [
           "Admin",
+          "VENTN",
           "Master",
           "Trans",
           "PQ1",
@@ -1361,6 +1362,7 @@ function Tracking() {
         name: "ESTADO",
         role: [
           "Admin",
+          "VENTN",
           "Master",
           "Trans",
           "PQ1",
@@ -1382,6 +1384,7 @@ function Tracking() {
         name: "FECHA",
         role: [
           "Admin",
+          "VENTN",
           "Master",
           "Trans",
           "PQ1",
@@ -1402,6 +1405,7 @@ function Tracking() {
         name: "NUM CLIENTE",
         role: [
           "Admin",
+          "VENTN",
           "Master",
           "Trans",
           "PQ1",
@@ -1422,6 +1426,7 @@ function Tracking() {
         name: "NOMBRE DEL CLIENTE",
         role: [
           "Admin",
+          "VENTN",
           "Master",
           "Trans",
           "PQ1",
@@ -1443,6 +1448,7 @@ function Tracking() {
         name: "MUNICIPIO",
         role: [
           "Admin",
+          "VENTN",
           "Master",
           "Trans",
           "PQ1",
@@ -1456,6 +1462,7 @@ function Tracking() {
         name: "ESTADO",
         role: [
           "Admin",
+          "VENTN",
           "Master",
           "Trans",
           "PQ1",
@@ -1480,6 +1487,7 @@ function Tracking() {
         name: "TOTAL",
         role: [
           "Admin",
+          "VENTN",
           "Master",
           "Trans",
           "Rep",
@@ -1507,6 +1515,7 @@ function Tracking() {
         name: "NUMERO DE FACTURA",
         role: [
           "Admin",
+          "VENTN",
           "Master",
           "Trans",
           "Rep",
@@ -1524,6 +1533,7 @@ function Tracking() {
         name: "FECHA DE FACTURA",
         role: [
           "Admin",
+          "VENTN",
           "Master",
           "Trans",
           "Rep",
@@ -1541,6 +1551,7 @@ function Tracking() {
         name: "FECHA DE EMBARQUE",
         role: [
           "Admin",
+          "VENTN",
           "Master",
           "Rep",
           "Trans",
@@ -1570,6 +1581,7 @@ function Tracking() {
         name: "TRANSPORTE",
         role: [
           "Admin",
+          "VENTN",
           "Master",
           "Trans",
           "Rep",
@@ -1589,6 +1601,7 @@ function Tracking() {
         name: "PAQUETERIA",
         role: [
           "Admin",
+          "VENTN",
           "Master",
           "Trans",
           "Rep",
@@ -1610,6 +1623,7 @@ function Tracking() {
         name: "GUIA",
         role: [
           "Admin",
+          "VENTN",
           "Master",
           "Rep",
           "Trans",
@@ -1628,6 +1642,7 @@ function Tracking() {
         name: "FECHA DE ENTREGA (CLIENTE)",
         role: [
           "Admin",
+          "VENTN",
           "Master",
           "Trans",
           "Rep",
@@ -1664,6 +1679,7 @@ function Tracking() {
         name: "TOTAL FACTURA LT",
         role: [
           "Admin",
+          "VENTN",
           "Master",
           "Trans",
           "Paquet",
@@ -1717,6 +1733,7 @@ function Tracking() {
         name: "Acciones",
         role: [
           "Admin",
+          "VENTN",
           "Master",
           "Trans",
           "Control",
@@ -1737,6 +1754,7 @@ function Tracking() {
         name: "TRANSPORTISTA",
         role: [
           "Admin",
+          "VENTN",
           "Master",
           "Trans",
           "Control",
@@ -3887,7 +3905,7 @@ function Tracking() {
                 <option value="9">Septiembre</option>
                 <option value="10">Octubre</option>
                 <option value="11">Noviembre</option>
-                {/*  <option value="12">Diciembre</option> */}
+                <option value="12">Diciembre</option>
               </select>
             </div>
 
@@ -4232,7 +4250,7 @@ function Tracking() {
                 <option value="9">Septiembre</option>
                 <option value="10">Octubre</option>
                 <option value="11">Noviembre</option>
-                {/*  <option value="12">Diciembre</option> */}
+                <option value="12">Diciembre</option>
               </select>
             </div>
 
@@ -4742,7 +4760,7 @@ function Tracking() {
                 <option value="9">Septiembre</option>
                 <option value="10">Octubre</option>
                 <option value="11">Noviembre</option>
-                {/*     <option value="12">Diciembre</option> */}
+                <option value="12">Diciembre</option>
               </select>
             </div>
 

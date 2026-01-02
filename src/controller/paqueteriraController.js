@@ -1,4 +1,4 @@
-const pool = require('../config/database');
+const pool = require("../config/database");
 
 const getPaqueteria = async (req, res) => {
   try {
@@ -52,7 +52,7 @@ ORDER BY p.registro_embarque DESC;
         id_pedi: pedido.id_pedi,
         tipo: pedido.tipo,
         pedido: pedido.pedido,
-        partidas: pedido.partidas,  
+        partidas: pedido.partidas,
         monto: pedido.monto,
         ruta: pedido.ruta,
         cliente: pedido.cliente,
@@ -65,12 +65,11 @@ ORDER BY p.registro_embarque DESC;
     res.json(simplifiedPedidos);
   } catch (error) {
     console.error("❌ Error al obtener pedidos de paquetería:", error.message);
-    res.status(500).json({ message: 'Error al obtener los pedidos', error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error al obtener los pedidos", error: error.message });
   }
 };
-
-
-
 
 const updateUsuarioPaqueteria = async (req, res) => {
   try {
@@ -82,17 +81,23 @@ const updateUsuarioPaqueteria = async (req, res) => {
     }
 
     await pool.query(
-      'UPDATE pedido_embarque SET id_usuario_paqueteria = ? WHERE pedido = ? AND tipo = ?',
+      "UPDATE pedido_embarque SET id_usuario_paqueteria = ? WHERE pedido = ? AND tipo = ?",
       [id_usuario_paqueteria, pedidoId, tipo]
     );
 
-    res.status(200).json({ message: 'Usuario de paquetería asignado correctamente' });
+    res
+      .status(200)
+      .json({ message: "Usuario de paquetería asignado correctamente" });
   } catch (error) {
     console.error("❌ Error al asignar usuario de paquetería:", error.message);
-    res.status(500).json({ message: 'Error al asignar el usuario de paquetería', error: error.message });
+    res
+      .status(500)
+      .json({
+        message: "Error al asignar el usuario de paquetería",
+        error: error.message,
+      });
   }
 };
-
 
 // Obtener el progreso de validación de los pedidos
 // Obtener el progreso de validación de los pedidos
@@ -120,7 +125,9 @@ const getProgresoValidacion = async (req, res) => {
     `);
 
     // Filtrar solo los usuarios cuyo role contenga 'PQ'
-    const filteredRows = rows.filter(row => row.role && row.role.includes('PQ'));
+    const filteredRows = rows.filter(
+      (row) => row.role && row.role.includes("PQ")
+    );
 
     // Crear un objeto para contar los pedidos asignados por usuario
     const pedidosPorUsuario = {};
@@ -141,7 +148,7 @@ const getProgresoValidacion = async (req, res) => {
           role: row.role,
           cantidad_pedidos: 1,
           cantidad_piezas: row.cantidad_piezas, // Inicializar con cantidad_piezas actual
-          partidas: row.partidas // Inicializar con partidas actuales
+          partidas: row.partidas, // Inicializar con partidas actuales
         };
       }
     });
@@ -152,13 +159,17 @@ const getProgresoValidacion = async (req, res) => {
     // Devolver tanto los pedidos como el recuento de pedidos por usuario
     res.json({
       pedidos: filteredRows,
-      recuentoUsuarios: usuariosConRecuento
+      recuentoUsuarios: usuariosConRecuento,
     });
   } catch (error) {
-    res.status(500).json({ message: 'Error al obtener el progreso de validación', error: error.message });
+    res
+      .status(500)
+      .json({
+        message: "Error al obtener el progreso de validación",
+        error: error.message,
+      });
   }
 };
-
 
 const getProductividadEmpaquetadores = async (req, res) => {
   try {
@@ -214,24 +225,148 @@ const getProductividadEmpaquetadores = async (req, res) => {
     `);
 
     // Filtrar solo usuarios cuyo rol contenga 'PQ'
-    const filteredRows = rows.filter(row => row.role && row.role.includes('PQ'));
+    const filteredRows = rows.filter(
+      (row) => row.role && row.role.includes("PQ")
+    );
 
     // Respuesta con datos de productividad filtrados
     res.json(filteredRows);
-
   } catch (error) {
-    console.error('Error al obtener la productividad de empaquetadores:', error);
+    console.error(
+      "Error al obtener la productividad de empaquetadores:",
+      error
+    );
     res.status(500).json({
-      message: 'Error al obtener la productividad de empaquetadores',
-      error: error.message
+      message: "Error al obtener la productividad de empaquetadores",
+      error: error.message,
     });
   }
 };
 
+// Obtener impresoras por rol Paqueteria
 
+const getPrintsPorRole = async (req, res) => {
+  try {
+    const query = `
+        SELECT 
+            p.id_print,
+            p.mac_print,
+            p.hand,
+            p.id_usu,
+            u.name AS usuario,
+            u.role AS rol
+        FROM prints p
+        LEFT JOIN usuarios u
+            ON u.id_usu = p.id_usu
+        ORDER BY p.hand ASC, u.name ASC;
 
+    `;
 
+    const [rows] = await pool.query(query);
+    return res.json(rows);
+  } catch (error) {
+    console.error("❌ Error en getPrintsPorRole:", error);
+    return res.status(500).json({ error: "Error al obtener prints por rol." });
+  }
+};
 
-module.exports = { getPaqueteria, updateUsuarioPaqueteria, getProgresoValidacion, getProductividadEmpaquetadores };
+const obtenerEmbarcadores = async (req, res) => {
+  try {
+    const sql = `
+      SELECT 
+        id_usu,
+        name,
+        role
+      FROM usuarios
+      WHERE role LIKE 'PQ%'
+      ORDER BY role ASC;
+    `;
 
+    const [rows] = await pool.query(sql);
 
+    return res.status(200).json({
+      ok: true,
+      total: rows.length,
+      embarcadores: rows,
+    });
+  } catch (error) {
+    console.error("❌ Error obtenerEmbarcadores:", error);
+    return res.status(500).json({
+      ok: false,
+      msg: "Error al obtener embarcadores",
+      error: error.message,
+    });
+  }
+};
+
+const asignarImpresora = async (req, res) => {
+  const { id_print, id_usu } = req.body;
+
+  if (!id_print || !id_usu) {
+    return res.status(400).json({ ok: false, msg: "Faltan parámetros" });
+  }
+
+  try {
+    // 1️⃣ VERIFICAR SI EL USUARIO YA ESTÁ ASIGNADO EN OTRA IMPRESORA
+    const [rows] = await pool.query(
+      "SELECT id_print FROM prints WHERE id_usu = ? AND id_print <> ?",
+      [id_usu, id_print]
+    );
+
+    if (rows.length > 0) {
+      const idAnteriorPrint = rows[0].id_print;
+
+      // 2️⃣ LIBERAR LA OTRA IMPRESORA
+      await pool.query("UPDATE prints SET id_usu = NULL WHERE id_print = ?", [
+        idAnteriorPrint,
+      ]);
+    }
+
+    // 3️⃣ ASIGNAR LA NUEVA IMPRESORA
+    await pool.query("UPDATE prints SET id_usu = ? WHERE id_print = ?", [
+      id_usu,
+      id_print,
+    ]);
+
+    return res.json({
+      ok: true,
+      msg: "Asignación completada. Si tenía impresora previa, fue liberada.",
+    });
+  } catch (error) {
+    console.log("Error update impresora:", error);
+    return res.status(500).json({ ok: false, msg: "Error interno" });
+  }
+};
+
+const liberarImpresora = async (req, res) => {
+  const { id_print } = req.body;
+
+  if (!id_print) {
+    return res.status(400).json({ ok: false, msg: "Falta id_print" });
+  }
+
+  try {
+    await pool.query("UPDATE prints SET id_usu = NULL WHERE id_print = ?", [
+      id_print,
+    ]);
+
+    return res.json({
+      ok: true,
+      msg: "Impresora liberada correctamente",
+    });
+  } catch (error) {
+    console.log("Error al liberar impresora:", error);
+    return res.status(500).json({ ok: false, msg: "Error interno" });
+  }
+};
+
+module.exports = {
+  getPaqueteria,
+  updateUsuarioPaqueteria,
+  getProgresoValidacion,
+  getProductividadEmpaquetadores,
+  getPrintsPorRole,
+  obtenerEmbarcadores,
+  asignarImpresora,
+  liberarImpresora,
+};

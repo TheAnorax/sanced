@@ -56,7 +56,7 @@ const parseUbi = (ubi) => {
 
   // P01 -> quitar la P y ceros a la izquierda -> "01" -> 1
   let pasilloRaw = parts[0].replace("P", "");
-  let pasillo = pasilloRaw.replace(/^0+/, ""); 
+  let pasillo = pasilloRaw.replace(/^0+/, "");
   if (pasillo === "") pasillo = "0"; // por si fuera P00
 
   // Segundo bloque 011 -> número puro
@@ -130,8 +130,8 @@ const NewUbiModal = ({ open, onClose, newUbi, setNewUbi, handleCreateUbi }) => (
 
 
 function InventarioAdmin() {
- const [section, setSection] = useState("almacenamiento");
-// Controla la sección activa
+  const [section, setSection] = useState("almacenamiento");
+  // Controla la sección activa
   const [datosInventarios, setDatosInventarios] = useState([]);
   const [datosPicking, setDatosPicking] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
@@ -197,179 +197,19 @@ function InventarioAdmin() {
   const [sinUbicacionData, setSinUbicacionData] = useState([]);
 
   const [invApi, setInvApi] = useState([]);
-const [pasilloApi, setPasilloApi] = useState("");
-const [nivelApi, setNivelApi] = useState("");
-const [editRowApi, setEditRowApi] = useState(null);
-const [openEditApi, setOpenEditApi] = useState(false);
-const [codeFilterApi, setCodeFilterApi] = useState("");
-const [parFilter, setParFilter] = useState("");
-const [openNewUbi, setOpenNewUbi] = useState(false);
-const [seccionApi, setSeccionApi] = useState("");
-const [progresoPasillos, setProgresoPasillos] = useState([]);
-const [loadingProgreso, setLoadingProgreso] = useState(false);
+  const [pasilloApi, setPasilloApi] = useState("");
+  const [nivelApi, setNivelApi] = useState("");
+  const [editRowApi, setEditRowApi] = useState(null);
+  const [openEditApi, setOpenEditApi] = useState(false);
+  const [codeFilterApi, setCodeFilterApi] = useState("");
+  const [parFilter, setParFilter] = useState("");
+  const [openNewUbi, setOpenNewUbi] = useState(false);
+  const [seccionApi, setSeccionApi] = useState("");
+  const [progresoPasillos, setProgresoPasillos] = useState([]);
+  const [loadingProgreso, setLoadingProgreso] = useState(false);
 
 
-const [newUbi, setNewUbi] = useState({
-  ubi: "",
-  code_prod: "",
-  pasillo: "",
-  nivel: "",
-  lote: "",
-  orden_compra: "",
-  caducidad: "",
-  cant_stock: 0
-});
-
-
-
-const filteredInvApi = invApi.filter((row) => {
-  const codigo = (row.code_prod ?? "").toString().toLowerCase().trim();
-  const filtro = codeFilterApi.toLowerCase().trim();
-
-  // 🧠 Si no hay filtro, mostrar todo (incluyendo los vacíos)
-  if (!filtro) return true;
-
-  // 🔍 Si hay filtro, mostrar los que coincidan o los vacíos
-  return codigo.includes(filtro) || codigo === "" || codigo === "0";
-});
-
-
-const fetchInventarioApi = async () => {
-  try {
-    const response = await axios.get(
-      `http://66.232.105.87:3007/api/inventarios/obtenerInventario`,
-      {
-        params: {
-          pasillo: pasilloApi,
-          seccion: seccionApi,
-          nivel: nivelApi,
-          code_prod: codeFilterApi,
-          par_impar: parFilter,
-        },
-      }
-    );
-    setInvApi(response.data);
-  } catch (error) {
-    console.error("Error obteniendo inventario API:", error);
-  }
-};
-
-
-const handleCreateUbi = async () => {
-  try {
-    const { data } = await axios.post(
-      "http://66.232.105.87:3007/api/inventarios/crear-ubicacion",
-      newUbi
-    );
-
-    Swal.fire("✅ Éxito", "Ubicación creada correctamente", "success");
-
-    // 1) Cerrar modal
-    setOpenNewUbi(false);
-
-    // 2) Agregar visualmente al estado sin esperar refresh
-    setInvApi(prev => [
-      ...prev,
-      {
-        id_ubi: data.id_ubi,  // tu backend debe regresar este ID
-        ...newUbi,
-      },
-    ]);
-
-    // 3) Limpiar formulario
-    setNewUbi({
-      ubi: "",
-      code_prod: "",
-      pasillo: "",
-      nivel: "",
-      lote: "",
-      orden_compra: "",
-      caducidad: "",
-      cant_stock: 0,
-      par_impar: ""
-    });
-
-    // 4) Refrescar real en background después de 500ms
-    setTimeout(() => {
-      fetchInventarioApi();
-    }, 500);
-
-  } catch (err) {
-    Swal.fire("❌ Error", "No se pudo crear la ubicación", "error");
-    console.log(err);
-  }
-};
-
-const fetchProgresoPasillos = async () => {
-  setLoadingProgreso(true);
-  try {
-    const response = await axios.get("http://66.232.105.87:3007/api/inventarios/progreso-pasillo");
-    setProgresoPasillos(response.data);
-  } catch (error) {
-    console.error("Error al obtener el progreso de pasillos:", error);
-    Swal.fire("❌ Error", "No se pudo obtener el progreso de pasillos", "error");
-  } finally {
-    setLoadingProgreso(false);
-  }
-};
-
-
-
-useEffect(() => {
-  if (openNewUbi) return; // 🚫 No refrescar cuando el modal esté abierto
-
-  const timer = setTimeout(() => {
-    fetchInventarioApi();
-  }, 400);
-
-  return () => clearTimeout(timer);
-}, [pasilloApi, nivelApi, codeFilterApi, parFilter, openNewUbi, seccionApi]);
-
-useEffect(() => {
-  if (section === 6) fetchProgresoPasillos();
-}, [section]);
-
-
-const InventarioApiNuevo = () => (
-  <Box sx={{ padding: 2 }}>
-    <Typography variant="h5" sx={{ mb: 2 }}>Inventario Almacenamiento</Typography>
-
-    <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
-      <TextField label="Pasillo" value={pasilloApi}
-        onChange={(e)=>setPasilloApi(e.target.value)} size="small" sx={{ width: 150 }} />
-
-      <TextField label="Nivel" value={nivelApi}
-        onChange={(e)=>setNivelApi(e.target.value)} size="small" sx={{ width: 150 }} />
-
-      <TextField   label="Código Producto"  value={codeFilterApi}  
-      onChange={(e)=>setCodeFilterApi(e.target.value)}  size="small"  sx={{ width: 160 }}/>
-
-      <TextField
-              select
-              label="Par / Impar"
-              value={parFilter}
-              size="small"
-              sx={{ width: 150 }}
-              onChange={(e) => setParFilter(e.target.value)}
-            >
-          <MenuItem value="">Todos</MenuItem>
-          <MenuItem value="PAR">Par</MenuItem>
-          <MenuItem value="IMPAR">Impar</MenuItem>
-        </TextField>
-        <TextField
-  label="Sección"
-  value={seccionApi}
-  onChange={(e) => setSeccionApi(e.target.value)}
-  size="small"
-  sx={{ width: 150 }}
-/>
-
-
-
-      <Button variant="contained" onClick={fetchInventarioApi}>Actualizar</Button>
-    </Box>
-    <Button variant="contained" color="success" onClick={() => {
-  setNewUbi({
+  const [newUbi, setNewUbi] = useState({
     ubi: "",
     code_prod: "",
     pasillo: "",
@@ -377,260 +217,420 @@ const InventarioApiNuevo = () => (
     lote: "",
     orden_compra: "",
     caducidad: "",
-    cant_stock: 0,
-    par_impar: ""
+    cant_stock: 0
   });
-  setOpenNewUbi(true);
-}}>
-  Nueva Ubicación
-</Button>
 
 
 
-    <DataGrid
-     rows={filteredInvApi.map((r)=>({...r, id:r.id_ubi}))}
+  const filteredInvApi = invApi.filter((row) => {
+    const codigo = (row.code_prod ?? "").toString().toLowerCase().trim();
+    const filtro = codeFilterApi.toLowerCase().trim();
 
-      columns={[
-        { field:"ubi", headerName:"Ubicación", width:150 },
-        { field:"code_prod", headerName:"Código", width:150 },
-        { field:"cant_stock", headerName:"Stock", width:100 },
-        { field:"pasillo", headerName:"Pasillo", width:100 },
-        { field: "seccion", headerName: "Sección", width: 100 }, 
-        { field:"nivel", headerName:"Nivel", width:100 },
-        { field:"lote", headerName:"Lote", width:120 },
-        { field:"orden_compra", headerName:"O.C.", width:120 },
-        { field:"par_impar", headerName:"Par/Impar", width:100 },
-        { field:"status_inventario", headerName:"Estado Inv.", width:150 },
+    // 🧠 Si no hay filtro, mostrar todo (incluyendo los vacíos)
+    if (!filtro) return true;
+
+    // 🔍 Si hay filtro, mostrar los que coincidan o los vacíos
+    return codigo.includes(filtro) || codigo === "" || codigo === "0";
+  });
+
+
+  const fetchInventarioApi = async () => {
+    try {
+      const response = await axios.get(
+        `http://66.232.105.87:3007/api/inventarios/obtenerInventario`,
         {
-          field:"acciones", headerName:"Editar", width:120,
-          renderCell:(params)=>(
-            <Button size="small" variant="outlined"
-              onClick={()=>{ setEditRowApi(params.row); setOpenEditApi(true); }}
-            >Editar</Button>
-          )
+          params: {
+            pasillo: pasilloApi,
+            seccion: seccionApi,
+            nivel: nivelApi,
+            code_prod: codeFilterApi,
+            par_impar: parFilter,
+          },
         }
-      ]}
-      autoHeight
-      pageSize={50}
-    />
-    
-    {openEditApi && EditModalApi()}
-   {openNewUbi && (
-  <NewUbiModal
-    open={openNewUbi}
-    onClose={() => setOpenNewUbi(false)}
-    newUbi={newUbi}
-    setNewUbi={setNewUbi}
-    handleCreateUbi={handleCreateUbi}
-  />
-)}
+      );
+      setInvApi(response.data);
+    } catch (error) {
+      console.error("Error obteniendo inventario API:", error);
+    }
+  };
+
+
+  const handleCreateUbi = async () => {
+    try {
+      const { data } = await axios.post(
+        "http://66.232.105.87:3007/api/inventarios/crear-ubicacion",
+        newUbi
+      );
+
+      Swal.fire("✅ Éxito", "Ubicación creada correctamente", "success");
+
+      // 1) Cerrar modal
+      setOpenNewUbi(false);
+
+      // 2) Agregar visualmente al estado sin esperar refresh
+      setInvApi(prev => [
+        ...prev,
+        {
+          id_ubi: data.id_ubi,  // tu backend debe regresar este ID
+          ...newUbi,
+        },
+      ]);
+
+      // 3) Limpiar formulario
+      setNewUbi({
+        ubi: "",
+        code_prod: "",
+        pasillo: "",
+        nivel: "",
+        lote: "",
+        orden_compra: "",
+        caducidad: "",
+        cant_stock: 0,
+        par_impar: ""
+      });
+
+      // 4) Refrescar real en background después de 500ms
+      setTimeout(() => {
+        fetchInventarioApi();
+      }, 500);
+
+    } catch (err) {
+      Swal.fire("❌ Error", "No se pudo crear la ubicación", "error");
+      console.log(err);
+    }
+  };
+
+  const fetchProgresoPasillos = async () => {
+    setLoadingProgreso(true);
+    try {
+      const response = await axios.get("http://66.232.105.87:3007/api/inventarios/progreso-pasillo");
+      setProgresoPasillos(response.data);
+    } catch (error) {
+      console.error("Error al obtener el progreso de pasillos:", error);
+      Swal.fire("❌ Error", "No se pudo obtener el progreso de pasillos", "error");
+    } finally {
+      setLoadingProgreso(false);
+    }
+  };
 
 
 
-  </Box>
-);
+  useEffect(() => {
+    if (openNewUbi) return; // 🚫 No refrescar cuando el modal esté abierto
+
+    const timer = setTimeout(() => {
+      fetchInventarioApi();
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [pasilloApi, nivelApi, codeFilterApi, parFilter, openNewUbi, seccionApi]);
+
+  useEffect(() => {
+    if (section === 6) fetchProgresoPasillos();
+  }, [section]);
 
 
-const EditModalApi = () => (
-  <Dialog open={openEditApi} onClose={() => setOpenEditApi(false)}>
-    <DialogTitle>Editar Ubicación</DialogTitle>
-
-    <DialogContent>
-      {/* Código del producto */}
-      <TextField
-  label="Código Producto"
-  fullWidth
-  margin="dense"
-  value={editRowApi.code_prod ?? ""}
-  placeholder="(sin código asignado)"
-  onChange={(e) =>
-    setEditRowApi({ ...editRowApi, code_prod: e.target.value })
-  }
-/>
-
-
-      {/* Stock */}
-      <TextField
-        label="Stock"
-        fullWidth
-        margin="dense"
-        value={editRowApi.cant_stock}
-        onChange={(e) =>
-          setEditRowApi({ ...editRowApi, cant_stock: e.target.value })
-        }
-      />
-
-      {/* Lote */}
-      <TextField
-        label="Lote"
-        fullWidth
-        margin="dense"
-        value={editRowApi.lote}
-        onChange={(e) =>
-          setEditRowApi({ ...editRowApi, lote: e.target.value })
-        }
-      />
-
-      {/* Nivel */}
-      <TextField
-        label="Nivel"
-        fullWidth
-        margin="dense"
-        value={editRowApi.nivel}
-        onChange={(e) =>
-          setEditRowApi({ ...editRowApi, nivel: e.target.value })
-        }
-      />
-
-      {/* Orden de compra */}
-      <TextField
-        label="Orden Compra"
-        fullWidth
-        margin="dense"
-        value={editRowApi.orden_compra}
-        onChange={(e) =>
-          setEditRowApi({ ...editRowApi, orden_compra: e.target.value })
-        }
-      />
-    </DialogContent>
-
-    <DialogActions>
-      <Button onClick={() => setOpenEditApi(false)}>Cancelar</Button>
-
-      <Button
-        color="primary"
-        onClick={async () => {
-          try {
-            await axios.put(
-              `http://66.232.105.87:3007/api/inventarios/actualizarInventario/${editRowApi.id_ubi}`,
-              editRowApi
-            );
-
-            Swal.fire("✅ Actualizado", "Inventario actualizado correctamente", "success");
-
-            // actualizar solo ese registro localmente
-            setInvApi((prev) =>
-              prev.map((item) =>
-                item.id_ubi === editRowApi.id_ubi ? { ...item, ...editRowApi } : item
-              )
-            );
-
-            setOpenEditApi(false);
-
-            // refrescar desde la API en background
-            setTimeout(() => fetchInventarioApi(), 500);
-          } catch (err) {
-            Swal.fire("❌ Error", "No se pudo actualizar el inventario", "error");
-            console.error(err);
-          }
-        }}
-      >
-        Guardar
-      </Button>
-    </DialogActions>
-  </Dialog>
-);
-
-const ProgresoPasillos = () => {
-  // Ordenar pasillos de menor a mayor (numéricamente)
-  const progresoOrdenado = [...progresoPasillos].sort((a, b) => {
-    const numA = parseInt(a.pasillo?.replace(/\D/g, ""), 10) || 0;
-    const numB = parseInt(b.pasillo?.replace(/\D/g, ""), 10) || 0;
-    return numA - numB;
-  });
-
-  return (
+  const InventarioApiNuevo = () => (
     <Box sx={{ padding: 2 }}>
-      <Typography variant="h5" sx={{ mb: 2 }}>
-        Progreso de Pasillos
-      </Typography>
+      <Typography variant="h5" sx={{ mb: 2 }}>Inventario Almacenamiento</Typography>
 
-      <Button
-        variant="contained"
-        color="primary"
-        onClick={fetchProgresoPasillos}
-        sx={{ mb: 2 }}
-      >
-        Actualizar Datos
+      <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
+        <TextField label="Pasillo" value={pasilloApi}
+          onChange={(e) => setPasilloApi(e.target.value)} size="small" sx={{ width: 150 }} />
+
+        <TextField label="Nivel" value={nivelApi}
+          onChange={(e) => setNivelApi(e.target.value)} size="small" sx={{ width: 150 }} />
+
+        <TextField label="Código Producto" value={codeFilterApi}
+          onChange={(e) => setCodeFilterApi(e.target.value)} size="small" sx={{ width: 160 }} />
+
+        <TextField
+          select
+          label="Par / Impar"
+          value={parFilter}
+          size="small"
+          sx={{ width: 150 }}
+          onChange={(e) => setParFilter(e.target.value)}
+        >
+          <MenuItem value="">Todos</MenuItem>
+          <MenuItem value="PAR">Par</MenuItem>
+          <MenuItem value="IMPAR">Impar</MenuItem>
+        </TextField>
+        <TextField
+          label="Sección"
+          value={seccionApi}
+          onChange={(e) => setSeccionApi(e.target.value)}
+          size="small"
+          sx={{ width: 150 }}
+        />
+
+
+
+        <Button variant="contained" onClick={fetchInventarioApi}>Actualizar</Button>
+      </Box>
+      <Button variant="contained" color="success" onClick={() => {
+        setNewUbi({
+          ubi: "",
+          code_prod: "",
+          pasillo: "",
+          nivel: "",
+          lote: "",
+          orden_compra: "",
+          caducidad: "",
+          cant_stock: 0,
+          par_impar: ""
+        });
+        setOpenNewUbi(true);
+      }}>
+        Nueva Ubicación
       </Button>
 
-      {loadingProgreso ? (
-        <Box display="flex" justifyContent="center" alignItems="center" mt={4}>
-          <CircularProgress />
-        </Box>
-      ) : progresoOrdenado.length > 0 ? (
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead sx={{ backgroundColor: "#f5f5f5" }}>
-              <TableRow>
-                <TableCell><strong>Pasillo</strong></TableCell>
-                <TableCell align="center"><strong>Total Ubicaciones</strong></TableCell>
-                <TableCell align="center"><strong>Ubicaciones OK</strong></TableCell>
-                <TableCell align="center"><strong>Progreso (%)</strong></TableCell>
-                <TableCell align="center"><strong>Última Actividad</strong></TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {progresoOrdenado.map((row, index) => (
-                <TableRow key={index}>
-                  <TableCell>{row.pasillo}</TableCell>
-                  <TableCell align="center">{row.total_ubicaciones}</TableCell>
-                  <TableCell align="center">{row.ubicaciones_ok}</TableCell>
-                  <TableCell align="center">
-                    <Box
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: 1,
-                      }}
-                    >
+
+
+      <DataGrid
+        rows={filteredInvApi.map((r) => ({ ...r, id: r.id_ubi }))}
+
+        columns={[
+          { field: "ubi", headerName: "Ubicación", width: 150 },
+          { field: "code_prod", headerName: "Código", width: 150 },
+          { field: "cant_stock", headerName: "Stock", width: 100 },
+          { field: "pasillo", headerName: "Pasillo", width: 100 },
+          { field: "seccion", headerName: "Sección", width: 100 },
+          { field: "nivel", headerName: "Nivel", width: 100 },
+          { field: "lote", headerName: "Lote", width: 120 },
+          { field: "orden_compra", headerName: "O.C.", width: 120 },
+          { field: "par_impar", headerName: "Par/Impar", width: 100 },
+          { field: "status_inventario", headerName: "Estado Inv.", width: 150 },
+          {
+            field: "acciones", headerName: "Editar", width: 120,
+            renderCell: (params) => (
+              <Button size="small" variant="outlined"
+                onClick={() => { setEditRowApi(params.row); setOpenEditApi(true); }}
+              >Editar</Button>
+            )
+          }
+        ]}
+        autoHeight
+        pageSize={50}
+      />
+
+      {openEditApi && EditModalApi()}
+      {openNewUbi && (
+        <NewUbiModal
+          open={openNewUbi}
+          onClose={() => setOpenNewUbi(false)}
+          newUbi={newUbi}
+          setNewUbi={setNewUbi}
+          handleCreateUbi={handleCreateUbi}
+        />
+      )}
+
+
+
+    </Box>
+  );
+
+
+  const EditModalApi = () => (
+    <Dialog open={openEditApi} onClose={() => setOpenEditApi(false)}>
+      <DialogTitle>Editar Ubicación</DialogTitle>
+
+      <DialogContent>
+        {/* Código del producto */}
+        <TextField
+          label="Código Producto"
+          fullWidth
+          margin="dense"
+          value={editRowApi.code_prod ?? ""}
+          placeholder="(sin código asignado)"
+          onChange={(e) =>
+            setEditRowApi({ ...editRowApi, code_prod: e.target.value })
+          }
+        />
+
+
+        {/* Stock */}
+        <TextField
+          label="Stock"
+          fullWidth
+          margin="dense"
+          value={editRowApi.cant_stock}
+          onChange={(e) =>
+            setEditRowApi({ ...editRowApi, cant_stock: e.target.value })
+          }
+        />
+
+        {/* Lote */}
+        <TextField
+          label="Lote"
+          fullWidth
+          margin="dense"
+          value={editRowApi.lote}
+          onChange={(e) =>
+            setEditRowApi({ ...editRowApi, lote: e.target.value })
+          }
+        />
+
+        {/* Nivel */}
+        <TextField
+          label="Nivel"
+          fullWidth
+          margin="dense"
+          value={editRowApi.nivel}
+          onChange={(e) =>
+            setEditRowApi({ ...editRowApi, nivel: e.target.value })
+          }
+        />
+
+        {/* Orden de compra */}
+        <TextField
+          label="Orden Compra"
+          fullWidth
+          margin="dense"
+          value={editRowApi.orden_compra}
+          onChange={(e) =>
+            setEditRowApi({ ...editRowApi, orden_compra: e.target.value })
+          }
+        />
+      </DialogContent>
+
+      <DialogActions>
+        <Button onClick={() => setOpenEditApi(false)}>Cancelar</Button>
+
+        <Button
+          color="primary"
+          onClick={async () => {
+            try {
+              await axios.put(
+                `http://66.232.105.87:3007/api/inventarios/actualizarInventario/${editRowApi.id_ubi}`,
+                editRowApi
+              );
+
+              Swal.fire("✅ Actualizado", "Inventario actualizado correctamente", "success");
+
+              // actualizar solo ese registro localmente
+              setInvApi((prev) =>
+                prev.map((item) =>
+                  item.id_ubi === editRowApi.id_ubi ? { ...item, ...editRowApi } : item
+                )
+              );
+
+              setOpenEditApi(false);
+
+              // refrescar desde la API en background
+              setTimeout(() => fetchInventarioApi(), 500);
+            } catch (err) {
+              Swal.fire("❌ Error", "No se pudo actualizar el inventario", "error");
+              console.error(err);
+            }
+          }}
+        >
+          Guardar
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+
+  const ProgresoPasillos = () => {
+    // Ordenar pasillos de menor a mayor (numéricamente)
+    const progresoOrdenado = [...progresoPasillos].sort((a, b) => {
+      const numA = parseInt(a.pasillo?.replace(/\D/g, ""), 10) || 0;
+      const numB = parseInt(b.pasillo?.replace(/\D/g, ""), 10) || 0;
+      return numA - numB;
+    });
+
+    return (
+      <Box sx={{ padding: 2 }}>
+        <Typography variant="h5" sx={{ mb: 2 }}>
+          Progreso de Pasillos
+        </Typography>
+
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={fetchProgresoPasillos}
+          sx={{ mb: 2 }}
+        >
+          Actualizar Datos
+        </Button>
+
+        {loadingProgreso ? (
+          <Box display="flex" justifyContent="center" alignItems="center" mt={4}>
+            <CircularProgress />
+          </Box>
+        ) : progresoOrdenado.length > 0 ? (
+          <TableContainer component={Paper}>
+            <Table>
+              <TableHead sx={{ backgroundColor: "#f5f5f5" }}>
+                <TableRow>
+                  <TableCell><strong>Pasillo</strong></TableCell>
+                  <TableCell align="center"><strong>Total Ubicaciones</strong></TableCell>
+                  <TableCell align="center"><strong>Ubicaciones OK</strong></TableCell>
+                  <TableCell align="center"><strong>Progreso (%)</strong></TableCell>
+                  <TableCell align="center"><strong>Última Actividad</strong></TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {progresoOrdenado.map((row, index) => (
+                  <TableRow key={index}>
+                    <TableCell>{row.pasillo}</TableCell>
+                    <TableCell align="center">{row.total_ubicaciones}</TableCell>
+                    <TableCell align="center">{row.ubicaciones_ok}</TableCell>
+                    <TableCell align="center">
                       <Box
                         sx={{
-                          width: 100,
-                          height: 10,
-                          backgroundColor: "#e0e0e0",
-                          borderRadius: "5px",
-                          overflow: "hidden",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: 1,
                         }}
                       >
                         <Box
                           sx={{
-                            width: `${row.porcentaje_progreso}%`,
-                            height: "100%",
-                            backgroundColor:
-                              row.porcentaje_progreso < 50
-                                ? "#f44336"
-                                : row.porcentaje_progreso < 80
-                                ? "#ff9800"
-                                : "#4caf50",
-                            transition: "width 0.5s",
+                            width: 100,
+                            height: 10,
+                            backgroundColor: "#e0e0e0",
+                            borderRadius: "5px",
+                            overflow: "hidden",
                           }}
-                        />
+                        >
+                          <Box
+                            sx={{
+                              width: `${row.porcentaje_progreso}%`,
+                              height: "100%",
+                              backgroundColor:
+                                row.porcentaje_progreso < 50
+                                  ? "#f44336"
+                                  : row.porcentaje_progreso < 80
+                                    ? "#ff9800"
+                                    : "#4caf50",
+                              transition: "width 0.5s",
+                            }}
+                          />
+                        </Box>
+                        <Typography variant="body2" sx={{ fontWeight: "bold" }}>
+                          {row.porcentaje_progreso}%
+                        </Typography>
                       </Box>
-                      <Typography variant="body2" sx={{ fontWeight: "bold" }}>
-                        {row.porcentaje_progreso}%
-                      </Typography>
-                    </Box>
-                  </TableCell>
-                  <TableCell align="center">
-                    {row.ultima_actividad
-                      ? new Date(row.ultima_actividad).toLocaleString("es-MX")
-                      : "Sin actividad"}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      ) : (
-        <Typography variant="body1" color="text.secondary" mt={3}>
-          No hay datos disponibles. Pulsa “Actualizar Datos”.
-        </Typography>
-      )}
-    </Box>
-  );
-};
+                    </TableCell>
+                    <TableCell align="center">
+                      {row.ultima_actividad
+                        ? new Date(row.ultima_actividad).toLocaleString("es-MX")
+                        : "Sin actividad"}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        ) : (
+          <Typography variant="body1" color="text.secondary" mt={3}>
+            No hay datos disponibles. Pulsa “Actualizar Datos”.
+          </Typography>
+        )}
+      </Box>
+    );
+  };
 
 
 
@@ -1094,10 +1094,10 @@ const ProgresoPasillos = () => {
           cant_stock: insumo.cant_stock ? Number(insumo.cant_stock) : null,
           ingreso: insumo.ingreso
             ? new Date(insumo.ingreso).toLocaleDateString("es-ES", {
-                day: "2-digit",
-                month: "2-digit",
-                year: "numeric",
-              })
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+            })
             : null,
         }));
 
@@ -1198,10 +1198,10 @@ const ProgresoPasillos = () => {
           id: index + 1, // Obligatorio para DataGrid
           fecha_salida: item.fecha_salida
             ? new Date(item.fecha_salida).toLocaleDateString("es-ES", {
-                day: "2-digit",
-                month: "2-digit",
-                year: "numeric",
-              })
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+            })
             : "",
           nombre_responsable: item.name || "", // Por si se requiere
           des: item.des || "", // <-- Asegúrate de que este campo venga en la respuesta de la API
@@ -1455,19 +1455,19 @@ const ProgresoPasillos = () => {
 
         // Realiza la solicitud PUT para actualizar los datos
         const { data } = await axios.put(
-  `http://66.232.105.87:3007/api/inventarios/inventarios/updatePeacking`,
-  {
-    id_ubi: selectedDato.id_ubi,
-    ...editedData,
-    user_id: user.id_usu,
-  }
-);
+          `http://66.232.105.87:3007/api/inventarios/inventarios/updatePeacking`,
+          {
+            id_ubi: selectedDato.id_ubi,
+            ...editedData,
+            user_id: user.id_usu,
+          }
+        );
 
-if (data.success) {
-  MySwal.fire("Actualizado", data.message, "success");
-} else {
-  MySwal.fire("Atención", data.message, "warning");
-}
+        if (data.success) {
+          MySwal.fire("Actualizado", data.message, "success");
+        } else {
+          MySwal.fire("Atención", data.message, "warning");
+        }
 
 
         // Actualizar la tabla localmente
@@ -1759,7 +1759,7 @@ if (data.success) {
       width: 150,
       renderCell: (params) => (
         <Box sx={{ display: "flex", justifyContent: "center" }}>
-          {["Admin", "INV", "Volu" ].includes(user?.role) && (
+          {["Admin", "INV", "Volu"].includes(user?.role) && (
             <IconButton
               onClick={() => handleOpenUpdateModal(params.row)}
               color="primary"
@@ -1876,147 +1876,217 @@ if (data.success) {
   );
 
   // Renderizado de las secciones
- const renderSection = () => {
-  switch (section) {
-    case "almacenamiento":
-      return Almacenamiento();
-    case "departamental":
-      return Departamental();
-    case "picking":
-      return Picking();
-    case "sinUbicacion":
-      return SnUbi();
-    case "modificaciones":
-      return Mod();
-    case "inventarioApi":
-      return InventarioApiNuevo();
-    case "progresoPasillos":
-      return ProgresoPasillos();
-    default:
-      return Almacenamiento();
-  }
-};
+  const renderSection = () => {
+    switch (section) {
+      case "almacenamiento":
+        return Almacenamiento();
+      case "departamental":
+        return Departamental();
+      case "picking":
+        return Picking();
+      case "sinUbicacion":
+        return SnUbi();
+      case "modificaciones":
+        return Mod();
+      case "inventarioApi":
+        return InventarioApiNuevo();
+      case "progresoPasillos":
+        return ProgresoPasillos();
+      default:
+        return Almacenamiento();
+    }
+  };
+
+
+  const getBaseUbicacion = (ubi) => {
+    return ubi.slice(0, -1); // quita A o B
+  };
+
+
+  const existeLadoB = (ubiBase) => {
+    return filteredData.some(d => d.ubi === `${ubiBase}B`);
+  };
+
+
+  const generarLadoB = async (dato) => {
+    try {
+      const base = getBaseUbicacion(dato.ubi);
+
+      await axios.post(
+        "http://66.232.105.87:3007/api/inventarios/inventarios/insertNuevaUbicacion",
+        {
+          ubi: `${base}B`,
+          code_prod: dato.code_prod,
+          cant_stock: dato.cant_stock_real || 0,
+          pasillo: dato.pasillo || null,
+          lote: dato.lote || null,
+          almacen: dato.almacen || null
+        }
+      );
+
+      Swal.fire("✅ Correcto", "Ubicación lado B creada", "success");
+      fetchPickingData();
+
+    } catch (error) {
+      console.error(error);
+      Swal.fire(
+        "❌ Error",
+        error.response?.data?.message || "No se pudo crear la ubicación",
+        "error"
+      );
+    }
+  };
+
+
+
+
+
 
 
   const Picking = (titulo) => (
     <div style={{ padding: "20px" }}>
       <Box sx={{ padding: 2 }}>
         <Typography variant="h4">{titulo}</Typography>
+
         <TableContainer component={Paper} sx={{ marginTop: 2 }}>
           {["Admin", "INV"].includes(user?.role) && (
             <Button
               onClick={openInsertModal}
               variant="contained"
               color="primary"
+              sx={{ mr: 1 }}
             >
               Insertar Producto
             </Button>
           )}
+
           <Button onClick={exportToExcel} variant="contained" color="secondary">
             Exportar Todo a Excel
           </Button>
 
           <Table>
+            {/* ================= HEADER ================= */}
             <TableHead>
               <TableRow>
-                <TableCell>Imagen </TableCell>
+                <TableCell>Imagen</TableCell>
                 <TableCell>Ubicación</TableCell>
-                <TableCell>Descripcón </TableCell>
+                <TableCell>Descripción</TableCell>
                 <TableCell>Código Producto</TableCell>
                 <TableCell>Cantidad Stock</TableCell>
-                {/* <TableCell sx={{ width: "5%" }}>Pasillo</TableCell>
-                  <TableCell sx={{ width: "5%" }}>Lote</TableCell>
-                  <TableCell sx={{ width: "5%" }}>Almacén</TableCell> */}
-                <TableCell>Editar</TableCell>
+                <TableCell>Acciones</TableCell>
               </TableRow>
+
+              {/* FILTROS */}
               <TableRow>
-                <TableCell> </TableCell>
+                <TableCell />
                 <TableCell>
                   <TextField
-                    variant="outlined"
                     size="small"
                     placeholder="Ubicación"
                     value={ubicacionFilter}
                     onChange={(e) => setUbicacionFilter(e.target.value)}
-                    // sx={{ width: "100%" }}
                   />
                 </TableCell>
                 <TableCell>
                   <TextField
-                    variant="outlined"
                     size="small"
                     placeholder="Descripción"
                     value={descripcionFilter}
                     onChange={(e) => setDecripcionFilter(e.target.value)}
-                    // sx={{ width: "100%" }}
                   />
                 </TableCell>
-
                 <TableCell>
                   <TextField
-                    variant="outlined"
                     size="small"
                     placeholder="Código"
                     value={codigoFilter}
                     onChange={(e) => setCodigoFilter(e.target.value)}
-                    // sx={{ width: "100%" }}
                   />
                 </TableCell>
+                <TableCell />
+                <TableCell />
               </TableRow>
             </TableHead>
+
+            {/* ================= BODY ================= */}
             <TableBody>
-              {paginatedData.map((dato, index) => (
-                <TableRow key={`${dato.id_ubi || "row"}-${index}`}>
-                  <TableCell>
-                    <img
-                      src={`../assets/image/img_pz/${dato.code_prod}.jpg`}
-                      alt="Producto"
-                      style={{
-                        width: "50px",
-                        height: "50px",
-                        objectFit: "cover",
-                      }}
-                      onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = "../assets/image/img_pz/noimage.png";
-                      }}
-                    />
-                  </TableCell>
-                  <TableCell>{dato.ubi}</TableCell>
-                  <TableCell>{dato.des}</TableCell>
-                  <TableCell>{dato.code_prod}</TableCell>
-                  <TableCell>{dato.cant_stock_real}</TableCell>
-                  {/* <TableCell>{dato.pasillo}</TableCell>
-                    <TableCell>{dato.lote || "N/A"}</TableCell>
-                    <TableCell>{dato.almacen || "N/A"}</TableCell> */}
-                  <TableCell>
-                    {["Admin", "INV"].includes(user?.role) && (
-                      <>
-                        <IconButton onClick={() => handleOpenEditModal(dato)}>
-                          <EditIcon color="primary" />
-                        </IconButton>
-                        <IconButton
-                          onClick={() => handleDeletePick(dato.id_ubi)}
-                          color="error"
-                          sx={{ marginLeft: 1 }}
-                        >
-                          <DeleteIcon />
-                        </IconButton>
-                      </>
-                    )}
+              {paginatedData.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={6} align="center">
+                    No hay registros para mostrar
                   </TableCell>
                 </TableRow>
-              ))}
+              )}
+
+              {paginatedData.map((dato, index) => {
+                const ubi = (dato.ubi || "").toString();
+                const ultimaLetra = ubi ? ubi.slice(-1) : "";
+                const base = ubi ? getBaseUbicacion(ubi) : "";
+
+                return (
+                  <TableRow key={`${dato.id_ubi || "row"}-${index}`}>
+                    {/* IMAGEN */}
+                    <TableCell>
+                      <img
+                        src={`../assets/image/img_pz/${dato.code_prod}.jpg`}
+                        alt="Producto"
+                        width={50}
+                        height={50}
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = "../assets/image/img_pz/noimage.png";
+                        }}
+                      />
+                    </TableCell>
+
+                    <TableCell>{dato.ubi}</TableCell>
+                    <TableCell>{dato.des}</TableCell>
+                    <TableCell>{dato.code_prod}</TableCell>
+                    <TableCell>{dato.cant_stock_real}</TableCell>
+
+                    {/* ===== ACCIONES ===== */}
+                    <TableCell>
+                      {["Admin", "INV"].includes(user?.role) && (
+                        <>
+                          {ultimaLetra === "A" && base && !existeLadoB(base) && (
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              color="success"
+                              sx={{ mr: 1 }}
+                              onClick={() => generarLadoB(dato)}
+                            >
+                              Crear B
+                            </Button>
+                          )}
+
+                          <IconButton onClick={() => handleOpenEditModal(dato)}>
+                            <EditIcon color="primary" />
+                          </IconButton>
+
+                          <IconButton
+                            onClick={() => handleDeletePick(dato.id_ubi)}
+                            color="error"
+                          >
+                            <DeleteIcon />
+                          </IconButton>
+                        </>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
+
           <TablePagination
             component="div"
             count={filteredData.length}
             page={currentPage}
-            onPageChange={(event, newPage) => setCurrentPage(newPage)}
+            onPageChange={(e, newPage) => setCurrentPage(newPage)}
             rowsPerPage={rowsPerPage}
-            onRowsPerPageChange={(event) =>
-              setRowsPerPage(parseInt(event.target.value, 10))
+            onRowsPerPageChange={(e) =>
+              setRowsPerPage(parseInt(e.target.value, 10))
             }
             rowsPerPageOptions={[5, 10, 25, 50, 100]}
             labelRowsPerPage="Filas por página"
@@ -2157,6 +2227,9 @@ if (data.success) {
       </Dialog>
     </div>
   );
+
+
+
 
   const Almacenamiento = (titulo) => (
     <div style={{ padding: "20px" }}>
@@ -2812,25 +2885,25 @@ if (data.success) {
     <div style={{ flexGrow: 1, display: "flex", flexDirection: "column" }}>
       {/* Menú de pestañas */}
       <Tabs
-          value={section}
-          onChange={(event, newValue) => setSection(newValue)}
-        >
-          <Tab label="Almacenamiento" value="almacenamiento" />
-          <Tab label="Departamental" value="departamental" />
-          <Tab label="Picking" value="picking" />
-          {["Admin","INV","Master"].includes(user?.role) && (
-            <Tab label="Codigos Sin Ubicacion" value="sinUbicacion" />
-          )}
-          {["Admin","INV","Master"].includes(user?.role) && (
-            <Tab label="Modificaciones" value="modificaciones" />
-          )}
-          {["Admin","INV","Master","AdminAudi"].includes(user?.role) && (
-            <Tab label="Inventario Almacenamiento" value="inventarioApi" />
-          )}
-          {["Admin","INV","Master","AdminAudi"].includes(user?.role) && (
-            <Tab label="Progreso Pasillos" value="progresoPasillos" />
-          )}
-        </Tabs>
+        value={section}
+        onChange={(event, newValue) => setSection(newValue)}
+      >
+        <Tab label="Almacenamiento" value="almacenamiento" />
+        <Tab label="Departamental" value="departamental" />
+        <Tab label="Picking" value="picking" />
+        {["Admin", "INV", "Master"].includes(user?.role) && (
+          <Tab label="Codigos Sin Ubicacion" value="sinUbicacion" />
+        )}
+        {["Admin", "INV", "Master"].includes(user?.role) && (
+          <Tab label="Modificaciones" value="modificaciones" />
+        )}
+        {["Admin", "INV", "Master", "AdminAudi"].includes(user?.role) && (
+          <Tab label="Inventario Almacenamiento" value="inventarioApi" />
+        )}
+        {["Admin", "INV", "Master", "AdminAudi"].includes(user?.role) && (
+          <Tab label="Progreso Pasillos" value="progresoPasillos" />
+        )}
+      </Tabs>
 
 
       {/* Contenido según la sección seleccionada */}

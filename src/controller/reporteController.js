@@ -328,7 +328,7 @@ const getPrduPaqueteria = async (req, res) => {
       const placeholders = pedidosList.map(() => "?").join(",");
       const [totalFacturadoRows] = await pool.query(
         `
-        SELECT FORMAT(SUM(IFNULL(TOTAL, 0)), 2) AS total_facturado
+        SELECT FORMAT(SUM(IFNULL(total_api, 0)), 2) AS total_facturado
         FROM paqueteria
         WHERE tipo = 'paqueteria'
           AND no_orden_int IN (${placeholders})

@@ -15,95 +15,139 @@ const insertarChecklist = async (req, res) => {
         const data = req.body;
 
         const query = `
-      INSERT INTO checklist_equipos (
-        fecha, folio, marca, modelo, serie, tipo_equipo, empresa, supervisor,
-        torreta, obs_torreta,
-        alarma_reversa, obs_alarma_reversa,
-        claxon, obs_claxon,
-        extintor, obs_extintor,
-        espejos_protector_cristal, obs_espejos_protector_cristal,
-        cuartos, obs_cuartos,
-        base_cuartos, obs_base_cuartos,
-        faro, obs_faro,
-        base_faro, obs_base_faro,
-        switch_ignicion, obs_switch_ignicion,
-        llave_switch, obs_llave_switch,
-        tapas_plastico, obs_tapas_plastico,
-        perno_arrastre, obs_perno_arrastre,
-        calcomanias, obs_calcomanias,
-        portahorquillas, obs_portahorquillas,
-        horquilla, obs_horquilla,
-        respaldo_carga, obs_respaldo_carga,
-        parrilla_contrapeso, obs_parrilla_contrapeso,
-        desplazador_lateral, obs_desplazador_lateral,
-        palanca_control_velocidades, obs_palanca_control_velocidades,
-        aditamento, obs_aditamento,
-        llantas_delanteras, obs_llantas_delanteras,
-        llantas_traseras, obs_llantas_traseras,
-        bateria, obs_bateria,
-        cargador, obs_cargador,
-        valtaje_cargador, obs_valtaje_cargador,
-        asiento, obs_asiento,
-        protector_operador, obs_protector_operador,
-        piso_plataforma, obs_piso_plataforma,
-        tapon_aceite, obs_tapon_aceite,
-        estado_pintura, obs_estado_pintura,
-        altura_mastil, obs_altura_mastil,
-        golpes, obs_golpes,
-        nota_adicional,
-        firma_operador, firma_supervisor
-      ) VALUES ?
-    `;
+            INSERT INTO checklist_equipos (
+                fecha,
+                folio,
+                marca,
+                modelo,
+                serie,
+                empresa,
+                tipo_equipo,
+                supervisor,
+                firma_supervisor,
+                firma_operador
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `;
 
-        // Preparamos los valores (en un solo array de un registro)
-        const values = [[
-            data.fecha, data.folio, data.marca, data.modelo, data.serie, data.tipo_equipo,
-            data.empresa, data.supervisor,
-            data.torreta, data.obs_torreta,
-            data.alarma_reversa, data.obs_alarma_reversa,
-            data.claxon, data.obs_claxon,
-            data.extintor, data.obs_extintor,
-            data.espejos_protector_cristal, data.obs_espejos_protector_cristal,
-            data.cuartos, data.obs_cuartos,
-            data.base_cuartos, data.obs_base_cuartos,
-            data.faro, data.obs_faro,
-            data.base_faro, data.obs_base_faro,
-            data.switch_ignicion, data.obs_switch_ignicion,
-            data.llave_switch, data.obs_llave_switch,
-            data.tapas_plastico, data.obs_tapas_plastico,
-            data.perno_arrastre, data.obs_perno_arrastre,
-            data.calcomanias, data.obs_calcomanias,
-            data.portahorquillas, data.obs_portahorquillas,
-            data.horquilla, data.obs_horquilla,
-            data.respaldo_carga, data.obs_respaldo_carga,
-            data.parrilla_contrapeso, data.obs_parrilla_contrapeso,
-            data.desplazador_lateral, data.obs_desplazador_lateral,
-            data.palanca_control_velocidades, data.obs_palanca_control_velocidades,
-            data.aditamento, data.obs_aditamento,
-            data.llantas_delanteras, data.obs_llantas_delanteras,
-            data.llantas_traseras, data.obs_llantas_traseras,
-            data.bateria, data.obs_bateria,
-            data.cargador, data.obs_cargador,
-            data.valtaje_cargador, data.obs_valtaje_cargador,
-            data.asiento, data.obs_asiento,
-            data.protector_operador, data.obs_protector_operador,
-            data.piso_plataforma, data.obs_piso_plataforma,
-            data.tapon_aceite, data.obs_tapon_aceite,
-            data.estado_pintura, data.obs_estado_pintura,
-            data.altura_mastil, data.obs_altura_mastil,
-            data.golpes, data.obs_golpes,
-            data.nota_adicional,
-            data.firma_operador, data.firma_supervisor
-        ]];
+        const values = [
+            data.fecha,
+            data.folio,
+            data.marca,
+            data.modelo,
+            data.serie,
+            data.empresa,
+            data.tipo_equipo,
+            data.supervisor,           // NORMAL
+            data.supervisor,           // 🟢 firma_supervisor = supervisor
+            data.firma_operador        // 🟢 operador REAL
+        ];
 
-        await pool.query(query, [values]);
+        await pool.query(query, values);
 
-        res.json({ message: "Checklist insertado correctamente" });
+        res.json({ message: "Checklist creado correctamente" });
+
     } catch (error) {
         console.error("❌ Error al insertar checklist:", error);
         res.status(500).json({ message: "Error al insertar checklist" });
     }
 };
 
+const actualizarPartesChecklist = async (req, res) => {
+    const { id } = req.params;
+    const cambios = req.body;
+    const usuario = cambios.usuario || "SISTEMA";
 
-module.exports = { obtenerChecklist, insertarChecklist };
+    try {
+        // 1️⃣ Traemos el registro actual
+        const [rows] = await pool.query(
+            "SELECT * FROM checklist_equipos WHERE id = ?",
+            [id]
+        );
+
+        if (!rows.length) {
+            return res.status(404).json({ message: "Checklist no encontrado" });
+        }
+
+        const actual = rows[0];
+
+        const camposModificados = {};
+        const historialValues = [];
+
+        // 2️⃣ Detectamos SOLO los campos que cambiaron
+        Object.keys(cambios).forEach((campo) => {
+            if (campo === "usuario") return;
+
+            const valorNuevo = cambios[campo];
+            const valorAnterior = actual[campo];
+
+            if (valorNuevo !== valorAnterior) {
+                camposModificados[campo] = valorNuevo;
+
+                historialValues.push([
+                    id,
+                    campo,
+                    valorAnterior,
+                    valorNuevo,
+                    usuario
+                ]);
+            }
+        });
+
+        // Si no hay cambios → salimos
+        if (!Object.keys(camposModificados).length) {
+            return res.json({ message: "No hubo cambios" });
+        }
+
+        // 3️⃣ UPDATE único
+        await pool.query(
+            "UPDATE checklist_equipos SET ? WHERE id = ?",
+            [camposModificados, id]
+        );
+
+        // 4️⃣ Guardar historial masivo
+        await pool.query(
+            `
+            INSERT INTO checklist_equipos_historial
+            (id_checklist, columna, valor_anterior, valor_nuevo, usuario)
+            VALUES ?
+        `,
+            [historialValues]
+        );
+
+        res.json({ message: "Checklist actualizado correctamente" });
+
+    } catch (error) {
+        console.log("❌ Error al actualizar:", error);
+        res.status(500).json({ message: "Error en actualización" });
+    }
+};
+
+const getHistorialChecklist = async (req, res) => {
+    try {
+        const [rows] = await pool.query(`
+            SELECT 
+                l.id_checklist,
+                u.name AS usuario,
+                l.columna,
+                l.valor_anterior,
+                l.valor_nuevo,
+                l.fecha
+            FROM checklist_equipos_historial l
+            JOIN usuarios u ON l.usuario = u.id_usu
+            ORDER BY u.name ASC, l.fecha DESC;
+        `);
+
+        return res.json(rows);
+
+    } catch (error) {
+        console.error("❌ Error al obtener historial:", error);
+        return res.status(500).json({
+            ok: false,
+            message: "Error al obtener historial",
+            error
+        });
+    }
+};
+
+module.exports = { obtenerChecklist, insertarChecklist, actualizarPartesChecklist, getHistorialChecklist };

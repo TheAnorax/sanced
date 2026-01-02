@@ -3,7 +3,6 @@ const pool = require("../config/database");
 const getEmbarques = async (req, res) => {
   try {
     const [rows] = await pool.query(` 
-      
 SELECT
   p.id_pedi,
   p.tipo,
@@ -26,34 +25,31 @@ LEFT JOIN paqueteria pq
  AND p.tipo = pq.\`tipo_original\`
 WHERE p.estado = 'E'
   AND p.id_usuario_paqueteria IS NULL
-  AND pq.\`NO_FACTURA\` IS NOT NULL
-  AND pq.\`NO_FACTURA\` <> ''
+
 GROUP BY p.pedido, p.tipo
 ORDER BY p.registro_embarque DESC;
+`);
 
-    `);
-
-      const simplifiedPedidos = rows.map((pedido) => {
-      // Formatear la fecha y hora
+    const simplifiedPedidos = rows.map((pedido) => {
       let fechaHora = null;
       if (pedido.registro_embarque) {
         const d = new Date(pedido.registro_embarque);
-        const fecha = d.toISOString().split("T")[0]; // YYYY-MM-DD
-        const hora = d.toTimeString().split(" ")[0]; // HH:MM:SS
-        fechaHora = `${fecha} ${hora}`;
+        fechaHora = `${d.toISOString().split("T")[0]} ${
+          d.toTimeString().split(" ")[0]
+        }`;
       }
 
-   return {
+      return {
         id_pedi: pedido.id_pedi,
         tipo: pedido.tipo,
         pedido: pedido.pedido,
-        partidas: pedido.partidas,  
+        partidas: pedido.partidas,
         monto: pedido.monto,
         ruta: pedido.ruta,
         cliente: pedido.cliente,
-        registro_embarque: fechaHora, // 👈 ya formateado
-        id_usuario_paqueteria: pedido.id_usuario_paqueteria,
+        registro_embarque: fechaHora,
         factura: pedido.factura,
+        id_usuario_paqueteria: pedido.id_usuario_paqueteria,
       };
     });
 
@@ -66,7 +62,6 @@ ORDER BY p.registro_embarque DESC;
     });
   }
 };
-
 
 const updateUsuarioEmbarques = async (req, res) => {
   try {
@@ -88,7 +83,6 @@ const updateUsuarioEmbarques = async (req, res) => {
     });
   }
 };
-
 
 const getProgresoValidacionEmbarque = async (req, res) => {
   try {
@@ -214,8 +208,6 @@ const getProductividadEmbarcadores = async (req, res) => {
   }
 };
 
-
-
 const resetUsuarioEmbarque = async (req, res) => {
   try {
     const { pedidoId } = req.params;
@@ -243,15 +235,14 @@ const resetUsuarioEmbarque = async (req, res) => {
     }
 
     const { v_pz, v_pq, v_inner, v_master } = acumRows[0];
-    const hayCantidades = (v_pz > 0) || (v_pq > 0) || (v_inner > 0) || (v_master > 0);
+    const hayCantidades = v_pz > 0 || v_pq > 0 || v_inner > 0 || v_master > 0;
 
     if (hayCantidades) {
       // 409 Conflict: ya hay cantidades registradas
       return res.status(409).json({
         code: "CANTIDADES_REGISTRADAS",
-        message:
-          `No se puede liberar el pedido ${pedidoId} porque ya tiene cantidades registradas en embarque.`,
-        detalle: { v_pz, v_pq, v_inner, v_master }
+        message: `No se puede liberar el pedido ${pedidoId} porque ya tiene cantidades registradas en embarque.`,
+        detalle: { v_pz, v_pq, v_inner, v_master },
       });
     }
 
@@ -267,17 +258,103 @@ const resetUsuarioEmbarque = async (req, res) => {
 
     return res.status(200).json({
       message: `Usuario de paquetería removido correctamente para el pedido ${pedidoId}`,
-      filas_afectadas: upd.affectedRows
+      filas_afectadas: upd.affectedRows,
     });
   } catch (error) {
     console.error("Error al resetear usuario:", error);
     return res.status(500).json({
-      message: "Error al remover usuario TERMINA EL PEDIDOOOOOOO, sorry, no sorry",
+      message:
+        "Error al remover usuario TERMINA EL PEDIDOOOOOOO, sorry, no sorry",
       error: error.message,
     });
   }
 };
 
+// Obtener impresoras por rol EB%
+const getPrintsPorRole = async (req, res) => {
+  try {
+    const query = `
+        SELECT 
+            p.id_print,
+            p.mac_print,
+            p.hand,
+            p.id_usu,
+            u.name AS usuario,
+            u.role AS rol
+        FROM prints p
+        LEFT JOIN usuarios u
+            ON u.id_usu = p.id_usu
+        ORDER BY p.hand ASC, u.name ASC;
 
+    `;
 
-module.exports = { getEmbarques, updateUsuarioEmbarques ,  getProgresoValidacionEmbarque,  getProductividadEmbarcadores, resetUsuarioEmbarque };
+    const [rows] = await pool.query(query);
+    return res.json(rows);
+  } catch (error) {
+    console.error("❌ Error en getPrintsPorRole:", error);
+    return res.status(500).json({ error: "Error al obtener prints por rol." });
+  }
+};
+
+const obtenerEmbarcadores = async (req, res) => {
+  try {
+    const sql = `
+      SELECT 
+        id_usu,
+        name,
+        role
+      FROM usuarios
+      WHERE role LIKE 'EB%'
+      ORDER BY role ASC;
+    `;
+
+    const [rows] = await pool.query(sql);
+
+    return res.status(200).json({
+      ok: true,
+      total: rows.length,
+      embarcadores: rows,
+    });
+  } catch (error) {
+    console.error("❌ Error obtenerEmbarcadores:", error);
+    return res.status(500).json({
+      ok: false,
+      msg: "Error al obtener embarcadores",
+      error: error.message,
+    });
+  }
+};
+
+const asignarImpresora = async (req, res) => {
+  const { id_print, id_usu } = req.body;
+
+  if (!id_print || !id_usu) {
+    return res.status(400).json({ ok: false, msg: "Faltan parámetros" });
+  }
+
+  try {
+    await pool.query("UPDATE prints SET id_usu = ? WHERE id_print = ?", [
+      id_usu,
+      id_print,
+    ]);
+
+    return res.json({
+      ok: true,
+      msg: "Impresora asignada correctamente",
+    });
+  } catch (error) {
+    console.log("Error update impresora:", error);
+    return res.status(500).json({ ok: false, msg: "Error interno" });
+  }
+};
+
+module.exports = {
+  getEmbarques,
+  updateUsuarioEmbarques,
+  getProgresoValidacionEmbarque,
+  getProductividadEmbarcadores,
+  resetUsuarioEmbarque,
+  getPrintsPorRole,
+  obtenerEmbarcadores,
+  asignarImpresora,
+};

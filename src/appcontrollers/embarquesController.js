@@ -206,7 +206,7 @@ const obtenerEmbarquesNew = async (req, res) => {
 
       return acc;
     }, {});
-    console.log("Pedidos detectados:", Object.keys(groupedResults));
+    // console.log("Pedidos detectados:", Object.keys(groupedResults));
 
 
     const response = Object.values(groupedResults);
@@ -270,6 +270,7 @@ const obtenerEmbarquesNewTest= async (req, res) => {
       GROUP BY pedido
     ) AS caja_info ON p.pedido = caja_info.pedido
     WHERE p.estado = 'E' AND p.id_usuario_paqueteria = ?;
+    
   `;
 
   try {
@@ -324,7 +325,7 @@ const obtenerEmbarquesNewTest= async (req, res) => {
 
       return acc;
     }, {});
-    console.log("Pedidos detectados:", Object.keys(groupedResults));
+    // console.log("Pedidos detectados:", Object.keys(groupedResults));
 
 
     const response = Object.values(groupedResults);
@@ -336,7 +337,7 @@ const obtenerEmbarquesNewTest= async (req, res) => {
 };
 
 const actualizarBahiaEmbarque = async (req, res) => {
-  console.log("UPDT-BHIA",req.body);
+  // console.log("UPDT-BHIA",req.body);
   const { pedido } = req.body;
   const updateBahiasQuery = "UPDATE bahias SET id_pdi=NULL, estado=NULL, ingreso = NULL WHERE id_pdi=?";
 

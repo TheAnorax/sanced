@@ -280,7 +280,7 @@ const realizarMovimiento = async (req, res) => {
       } else {
         // Si no existe, insertar nuevo registro
         await connection.query(
-          "INSERT INTO ubicaciones (ubi, code_prod, cant_stock_real,  lote, almacen, ingreso) VALUES (?, ?, ?, ?, ?, ?, NOW())",
+          "INSERT INTO ubicaciones (ubi, code_prod, cant_stock_real,  lote, almacen, ingreso) VALUES (?, ?, ?, ?, ?, NOW())",
           [ubicacion_final, codigo_producto, mitadStock,  lote, codigo_almacen]
         );
       }
@@ -348,7 +348,7 @@ const realizarMovimiento = async (req, res) => {
     await connection.query(
       `INSERT INTO ubicaciones 
         (ubi, code_prod, cant_stock_real, lote, orden_compra,  caducidad, almacen, ingreso)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, NOW())`,
       [
         ubicacion_final,
         origen.code_prod,
@@ -411,7 +411,7 @@ const realizarMovimiento = async (req, res) => {
     } else if (codigo_almacen === '7066') {
       // Caso para el almacén 7066: Insertar en la tabla departamental
       await connection.query(
-        `INSERT INTO departamental 
+        `INSERT INTO departamental_alma 
           (ubi, code_prod, cant_stock, pasillo, lote, almacen_entrada) 
          VALUES (?, ?, ?, ?, ?, ?)`,
         [ubicacion_final, code_prod, cantidad_stock, pasillo, lote, codigo_almacen]

@@ -4,26 +4,41 @@ const getRecibo = async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT
-        prod.des,
-        r.codigo, 
+        r.id_recibo,
+        prod.des AS descripcion,
+        r.codigo,
         r.oc,
         r.cant_recibir,
         r.arribo,
-        r.cant_recibida,
-        r.recepcion,
-        us.name,
-        r.estado  
-      FROM recibo r
-      LEFT JOIN productos prod ON r.codigo = prod.codigo_pro
-      LEFT JOIN usuarios us ON r.usuario = us.id_usu
+        r.estado,
+        us.name AS usuario_registro
+      FROM recibo_compras r
+      LEFT JOIN productos prod 
+        ON r.codigo = prod.codigo_pro
+      LEFT JOIN usuarios us 
+        ON r.usuario = us.id_usu
+      ORDER BY r.arribo DESC
     `);
-    res.json(rows);
+
+    res.json({
+      resultado: {
+        error: "false",
+        list: rows
+      }
+    });
+
   } catch (error) {
-    res
-      .status(500)
-      .json({ message: "Error al obtener los recibo", error: error.message });
+    console.error("❌ Error getRecibo:", error);
+    res.status(500).json({
+      resultado: {
+        error: "true",
+        message: "Error al obtener los recibos",
+        detail: error.message
+      }
+    });
   }
 };
+
 
 const updateVolumetria = async (req, res) => {
   const {

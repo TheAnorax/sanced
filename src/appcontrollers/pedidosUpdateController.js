@@ -134,7 +134,7 @@ const actualizarCantidadSurtida = async (req, res) => {
 
   } catch (transactionError) {
     if (connection) await connection.rollback();  // 🔄 Rollback solo si falla ubicaciones
-    console.error("Error en la transacción ubicaciones:", transactionError);
+    // console.error("Error en la transacción ubicaciones:", transactionError);
     res.status(500).json({ error: "Error en la transacción ubicaciones: " + transactionError.message });
   } finally {
     if (connection) connection.release();

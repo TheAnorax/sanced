@@ -110,7 +110,7 @@ function Transporte() {
 
   const [selectedRoutes, setSelectedRoutes] = useState([]);
   const [confirmSendModalOpen, setConfirmSendModalOpen] = useState(false);
-  const [sentRoutesData, setSentRoutesData] = useState([]);
+  
 
   const [totalClientes, setTotalClientes] = useState(0);
   const [totalPedidos, setTotalPedidos] = useState(0);
@@ -196,11 +196,17 @@ function Transporte() {
   const [historicoModalOpen, setHistoricoModalOpen] = useState(false);
   const [columnasDisponibles, setColumnasDisponibles] = useState([]);
 
-  const [selectedMonth, setSelectedMonth] = useState("");
+  const [sentRoutesData, setSentRoutesData] = useState([]);
+
+  const [anio, setAnio] = useState(2025);
+  
 
   const [filtro, setFiltro] = useState("");
 
   const [numeroFacturaGrupo, setNumeroFacturaGrupo] = useState("");
+
+  const [mes, setMes] = useState(""); // 1 - 12
+  const [rutas, setRutas] = useState([]);
 
   //estos son de los status
   const isFetchingRef = useRef(false);
@@ -559,7 +565,12 @@ function Transporte() {
 
   useEffect(() => {
     const mesActual = new Date().getMonth() + 1;
-    fetchPaqueteriaRoutes({ mes: mesActual });
+    const anioActual = 2025; // o new Date().getFullYear()
+
+    fetchPaqueteriaRoutes({
+      mes: mesActual,
+      anio: anioActual,
+    });
   }, []);
 
   useEffect(() => {
@@ -700,9 +711,6 @@ function Transporte() {
     const mes = new Date().getMonth() + 1;
     return mes.toString();
   });
-
-
-  
 
   const mapColumns = (row) => ({
     RUTA: "Sin Ruta",
@@ -1080,9 +1088,10 @@ function Transporte() {
       ].rows.filter((row) => row["NO ORDEN"] !== item["NO ORDEN"]);
 
       // 🚀 **Conservar observaciones**
-      const observacionGuardada =
-        observacionesPorRegistro[item["NUM. CLIENTE"]] || "Sin observaciones";
-      const observacionActual = item.OBSERVACIONES || observacionGuardada;
+      const observacionActual =
+        item.OBSERVACIONES && item.OBSERVACIONES.trim() !== ""
+          ? item.OBSERVACIONES
+          : observacionesPorRegistro[item["NUM. CLIENTE"]] || "";
 
       // ⚡ 4. Agregar el pedido a la nueva ruta, asegurando que conserve las observaciones
       updatedGroupedData[newRoute].rows.push({
@@ -1391,29 +1400,46 @@ function Transporte() {
     );
   };
 
-  const fetchPaqueteriaRoutes = async ({
-    filtro = "",
-    desde = "",
-    hasta = "",
-    mes = "",
-  } = {}) => {
-    try {
-      let url = `http://66.232.105.87:3007/api/Trasporte/rutas?expandir=true`;
 
-      if (filtro) url += `&guia=${filtro}`;
-      if (desde && hasta) url += `&desde=${desde}&hasta=${hasta}`;
-      if (mes) url += `&mes=${mes}`;
+  const [selectedMonth, setSelectedMonth] = useState(
+  new Date().getMonth() + 1 // mes actual
+);
+const [selectedYear, setSelectedYear] = useState(
+  new Date().getFullYear() // año actual
+);
 
-      const response = await fetch(url);
-      const data = await response.json();
 
-      if (Array.isArray(data)) {
-        setSentRoutesData(data); // Aquí actualizas la tabla
-      }
-    } catch (error) {
-      console.error("Error al obtener rutas:", error);
+const fetchPaqueteriaRoutes = async ({
+  filtro = "",
+  desde = "",
+  hasta = "",
+  mes = "",
+  anio = "",
+} = {}) => {
+  try {
+    let url = `http://66.232.105.87:3007/api/Trasporte/rutas?expandir=true`;
+
+    if (filtro) url += `&guia=${filtro}`;
+    if (desde && hasta) url += `&desde=${desde}&hasta=${hasta}`;
+    if (mes) url += `&mes=${mes}`;
+    if (anio) url += `&anio=${anio}`; // 🔥 CLAVE
+
+    console.log("URL FINAL:", url);
+
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (Array.isArray(data)) {
+      setSentRoutesData(data);
+    } else {
+      setSentRoutesData([]);
     }
-  };
+  } catch (error) {
+    console.error("Error al obtener rutas:", error);
+    setSentRoutesData([]);
+  }
+};
+
 
   useEffect(() => {
     if (!Array.isArray(sentRoutesData) || sentRoutesData.length === 0) {
@@ -1489,9 +1515,12 @@ function Transporte() {
           updated[routeName].rows = updated[routeName].rows.map((row) => ({
             ...row,
             OBSERVACIONES:
-              observaciones[row["NUM. CLIENTE"]] ||
-              row.OBSERVACIONES ||
-              "Sin observaciones",
+              row.OBSERVACIONES && row.OBSERVACIONES.trim() !== ""
+                ? row.OBSERVACIONES
+                : observaciones[row["NUM. CLIENTE"]] &&
+                  observaciones[row["NUM. CLIENTE"]].trim() !== ""
+                ? observaciones[row["NUM. CLIENTE"]]
+                : "Sin observaciones",
           }));
         });
 
@@ -1566,9 +1595,10 @@ function Transporte() {
               ...row,
               routeName: route,
               OBSERVACIONES:
-                observacionesPorRegistro[row["NUM. CLIENTE"]] ||
-                row.OBSERVACIONES ||
-                "Sin observaciones disponibles",
+                row.OBSERVACIONES && row.OBSERVACIONES.trim() !== ""
+                  ? row.OBSERVACIONES
+                  : "Sin observaciones",
+
               TIPO: tipoRutaActual,
               GUIA: guiaEnviar,
               tipo_original:
@@ -3990,13 +4020,13 @@ function Transporte() {
   const [filtroGeneral, setFiltroGeneral] = useState(""); // para No Orden y Num Cliente
   const [filtroEstado, setFiltroEstado] = useState(""); // separado
   const [filterFactura, setFilterFactura] = useState("");
+  const [filterGuia, setFilterGuia] = useState("");
 
   const toggleMostrarSinGuia = () => {
     setMostrarSinGuia((prev) => !prev);
   };
 
   const paqueteriaFiltrada = useMemo(() => {
-    // Normalizador: quita espacios y pone mayúsculas
     const normalizar = (texto) =>
       texto ? texto.toString().replace(/\s+/g, "").toUpperCase() : "";
 
@@ -4013,7 +4043,6 @@ function Transporte() {
         !filtroEstado ||
         routeData.ESTADO?.toLowerCase().includes(filtroEstado.toLowerCase());
 
-      // 🔹 Filtro de paquetería mejorado
       const paq = normalizar(
         routeData.PAQUETERIA ||
           routeData.paqueteria ||
@@ -4025,7 +4054,6 @@ function Transporte() {
       const coincidePaqueteria =
         !paqueteriaSeleccionada ||
         paq.includes(filtroPaq) ||
-        // Casos especiales
         (filtroPaq === "EXPRESS" &&
           (paq.includes("PAQUETEXPRESS") || paq.includes("EXPRESS"))) ||
         ((filtroPaq === "TRESGUERRAS" || filtroPaq === "TRES GUERRAS") &&
@@ -4034,7 +4062,15 @@ function Transporte() {
       const coincideEstatus =
         !estatusSeleccionado || routeData.statusText === estatusSeleccionado;
 
-      const coincideGuia =
+      // ----------- 🔥 FILTRO POR GUIA (texto) -------------
+      const coincideGuiaTexto =
+        !filterGuia ||
+        routeData.GUIA?.toString()
+          .toLowerCase()
+          .includes(filterGuia.toLowerCase());
+
+      // ----------- 🔥 FILTRO DE SIN GUIA ------------------
+      const coincideGuiaVacia =
         !mostrarSinGuia || !routeData.GUIA || routeData.GUIA.trim() === "";
 
       const coincideFactura =
@@ -4049,7 +4085,8 @@ function Transporte() {
         coincideEstado &&
         coincidePaqueteria &&
         coincideEstatus &&
-        coincideGuia &&
+        coincideGuiaTexto && // <- 💥 ESTA ES LA LÍNEA CLAVE
+        coincideGuiaVacia &&
         coincideFactura
       );
     });
@@ -4061,6 +4098,7 @@ function Transporte() {
     estatusSeleccionado,
     mostrarSinGuia,
     filterFactura,
+    filterGuia, // <-- AGREGA EL NUEVO DEPENDENCY
   ]);
 
   const [facturaSeleccionada, setFacturaSeleccionada] = useState(""); // Filtro por factura
@@ -5725,7 +5763,6 @@ function Transporte() {
                       onChange={handleFileUpload}
                     />
                   </Button>
-
                 </Stack>
 
                 {/* DERECHA — BUSCAR + ACCIONES (empujado a la derecha) */}
@@ -7101,23 +7138,49 @@ function Transporte() {
             )}
 
             <select
-              value={mesSeleccionado}
-              onChange={handleChangeMes}
-              className="form-select"
-            >
-              <option value="1">Enero</option>
-              <option value="2">Febrero</option>
-              <option value="3">Marzo</option>
-              <option value="4">Abril</option>
-              <option value="5">Mayo</option>
-              <option value="6">Junio</option>
-              <option value="7">Julio</option>
-              <option value="8">Agosto</option>
-              <option value="9">Septiembre</option>
-              <option value="10">Octubre</option>
-              <option value="11">Noviembre</option>
-              {/*  <option value="12">Diciembre</option>*/}
-            </select>
+  value={mesSeleccionado}
+  className="form-select"
+  onChange={(e) => {
+    const mes = e.target.value;
+    setMesSeleccionado(mes);
+
+    fetchPaqueteriaRoutes({
+      mes,
+      anio, // 👈 SIEMPRE manda el año
+    });
+  }}
+>
+  <option value="1">Enero</option>
+  <option value="2">Febrero</option>
+  <option value="3">Marzo</option>
+  <option value="4">Abril</option>
+  <option value="5">Mayo</option>
+  <option value="6">Junio</option>
+  <option value="7">Julio</option>
+  <option value="8">Agosto</option>
+  <option value="9">Septiembre</option>
+  <option value="10">Octubre</option>
+  <option value="11">Noviembre</option>
+  <option value="12">Diciembre</option>
+</select>
+
+
+     <select
+  value={anio}
+  className="form-select"
+  onChange={(e) => {
+    const nuevoAnio = e.target.value;
+    setAnio(nuevoAnio);
+
+    fetchPaqueteriaRoutes({
+      mes: mesSeleccionado, // 👈 SIEMPRE manda el mes
+      anio: nuevoAnio,
+    });
+  }}
+>
+  <option value="2025">2025</option>
+  <option value="2026">2026</option>
+</select>
 
             {/* ===== Modal: Porrateo por Transporte ===== */}
 
@@ -8287,6 +8350,7 @@ function Transporte() {
                   onChange={(e) => setFiltroGeneral(e.target.value)}
                   variant="outlined"
                   size="small"
+                  style={{ marginRight: 16 }}
                 />
 
                 <TextField
@@ -8295,6 +8359,7 @@ function Transporte() {
                   onChange={(e) => setFiltroEstado(e.target.value)}
                   variant="outlined"
                   size="small"
+                  style={{ marginRight: 16 }}
                 />
 
                 <TextField
@@ -8306,9 +8371,18 @@ function Transporte() {
                   style={{ marginRight: 16 }}
                 />
 
+                <TextField
+                  label="Buscar por Guía"
+                  variant="outlined"
+                  size="small"
+                  value={filterGuia}
+                  onChange={(e) => setFilterGuia(e.target.value)}
+                  style={{ marginRight: 16 }}
+                />
+
                 <FormControl
                   variant="outlined"
-                  style={{ minWidth: 200, marginBottom: 10 }}
+                  style={{ minWidth: 200, marginBottom: 10, marginRight: 16 }}
                 >
                   <InputLabel>Filtrar por Paquetería</InputLabel>
                   <Select
@@ -8319,24 +8393,14 @@ function Transporte() {
                     <MenuItem value="">Todas</MenuItem>
                     <MenuItem value="PITIC">PITIC</MenuItem>
                     <MenuItem value="FLECHISA">FLECHISA</MenuItem>
-                    <MenuItem value="TRESGUERRAS">TRES GUERRAS</MenuItem>
-                    <MenuItem value="PAQUETEXPRESS">PAQUETEXPRESS</MenuItem>
+                    <MenuItem value="TRESGUERRAS">TRESGUERRAS</MenuItem>
+                    <MenuItem value="EXPRESS">EXPRESS</MenuItem>
                   </Select>
                 </FormControl>
 
-                {/* 🔹 Botón para mostrar solo las filas sin guía */}
-                <Button
-                  variant="contained"
-                  color={mostrarSinGuia ? "secondary" : "primary"}
-                  onClick={toggleMostrarSinGuia}
-                  style={{ marginBottom: 10 }}
-                >
-                  {mostrarSinGuia ? "Mostrar Todas" : "Mostrar Sin Guía"}
-                </Button>
-
                 <FormControl
                   variant="outlined"
-                  style={{ minWidth: 200, marginBottom: 10 }}
+                  style={{ minWidth: 200, marginBottom: 10, marginRight: 16 }}
                 >
                   <InputLabel>Filtrar por Estatus</InputLabel>
                   <Select
@@ -8353,6 +8417,16 @@ function Transporte() {
                     </MenuItem>
                   </Select>
                 </FormControl>
+
+                {/* 🔹 Botón para mostrar solo las filas sin guía */}
+                <Button
+                  variant="contained"
+                  color={mostrarSinGuia ? "secondary" : "primary"}
+                  onClick={toggleMostrarSinGuia}
+                  style={{ marginBottom: 10 }}
+                >
+                  {mostrarSinGuia ? "Mostrar Todas" : "Mostrar Sin Guía"}
+                </Button>
 
                 <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, mb: 2 }}>
                   {ordenEstatus.map((estatus) => {
@@ -9847,3 +9921,5 @@ function Transporte() {
 }
 
 export default Transporte;
+
+

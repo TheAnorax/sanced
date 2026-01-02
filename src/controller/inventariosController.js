@@ -151,62 +151,57 @@ const actualizarUbicacion = async (req, res) => {
 };
 
 const insertNuevaUbicacion = async (req, res) => {
-  console.log("Datos recibidos en el backend:", req.body);
+  console.log("📥 insertNuevaUbicacion:", req.body);
 
-  const { ubi, code_prod, cant_stock, pasillo, lote, almacen } = req.body;
+  const {
+    ubi,
+    code_prod,
+    cant_stock = 0,
+    pasillo = null,
+    lote = null,
+    almacen = null,
+  } = req.body;
 
-  // Validar que todos los campos estén presentes
-  if (!ubi || !code_prod || !cant_stock || !pasillo || !lote || !almacen) {
+  // ✅ SOLO lo realmente obligatorio
+  if (!ubi || !code_prod) {
     return res.status(400).json({
       success: false,
-      message: "Todos los campos son requeridos.",
+      message: "ubi y code_prod son obligatorios",
     });
   }
 
   try {
-    // Verificar si ya existe una fila con la misma 'ubi' y 'code_prod'
-    const [existingEntries] = await pool.query(
-      "SELECT * FROM ubicaciones WHERE ubi = ? AND code_prod = ?",
-      [ubi, code_prod]
+    // 🔒 Validar que no exista la ubicación
+    const [existe] = await pool.query(
+      "SELECT id_ubi FROM ubicaciones WHERE ubi = ?",
+      [ubi]
     );
 
-    if (existingEntries.length > 0) {
-      return res.status(400).json({
+    if (existe.length > 0) {
+      return res.status(409).json({
         success: false,
-        message: "El código y la ubicación ya existen en la base de datos.",
+        message: "La ubicación ya existe",
       });
     }
 
-    // Verificar si ya existe 'code_prod' independientemente de la ubicación
-    const [existingCodeProd] = await pool.query(
-      "SELECT * FROM ubicaciones WHERE code_prod = ?",
-      [code_prod]
-    );
-
-    if (existingCodeProd.length > 0) {
-      return res.status(400).json({
-        success: false,
-        message: "El código de producto ya existe en la base de datos.",
-      });
-    }
-
-    // Insertar nueva ubicación si no hay conflictos
+    // ✅ Insertar
     const [result] = await pool.query(
-      `INSERT INTO ubicaciones (ubi, code_prod, cant_stock, pasillo, lote, almacen) 
+      `INSERT INTO ubicaciones 
+       (ubi, code_prod, cant_stock, pasillo, lote, almacen)
        VALUES (?, ?, ?, ?, ?, ?)`,
       [ubi, code_prod, cant_stock, pasillo, lote, almacen]
     );
 
     res.json({
       success: true,
-      message: "Nueva ubicación insertada correctamente",
+      message: "Ubicación creada correctamente",
       insertId: result.insertId,
     });
   } catch (error) {
-    console.error("Error al insertar la nueva ubicación:", error);
+    console.error("❌ Error insertNuevaUbicacion:", error);
     res.status(500).json({
       success: false,
-      message: "Error al insertar la nueva ubicación",
+      message: "Error al insertar la ubicación",
       error: error.message,
     });
   }
@@ -280,60 +275,78 @@ ORDER BY u.ubi ASC
 const updatePeacking = async (req, res) => {
   const {
     id_ubi,
+    ubi,            // 👈 AHORA SÍ
     code_prod,
     cant_stock,
-    pasillo,
     lote,
     almacen,
-    user_id,
-    ubi,
+    user_id
   } = req.body;
-  console.log("Update Pick:", req.body);
 
-  // Validación de entrada
   if (!id_ubi || !user_id) {
     return res.status(400).json({
       success: false,
-      message: "ID de ubicación y user_id son requeridos.",
+      message: "id_ubi y user_id son obligatorios"
     });
   }
 
   try {
-    // Actualizar la tabla principal
     const [result] = await pool.query(
-      `UPDATE ubicaciones 
-       SET code_prod = ?, cant_stock = ?, lote = ?, almacen = ?
-       WHERE id_ubi = ?`,
-      [code_prod, cant_stock, lote, almacen, id_ubi]
+      `
+      UPDATE ubicaciones
+      SET
+        ubi = ?,                 -- 🔥 AQUÍ ESTÁ LA CLAVE
+        code_prod = ?,
+        cant_stock = ?,
+        cant_stock_real = ?,
+        lote = ?,
+        almacen = ?
+      WHERE id_ubi = ?
+      `,
+      [
+        ubi,
+        code_prod,
+        cant_stock,
+        cant_stock,
+        lote,
+        almacen,
+        id_ubi
+      ]
     );
-    console.log("Resultado de UPDATE:", result);
 
-    if (result.affectedRows > 0) {
-      await pool.query(
-        `INSERT INTO historial_pick (id_ubi, ubi, code_prod, cant_stock, lote, almacen, user_id) 
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [id_ubi, ubi || "N/A", code_prod, cant_stock, lote, almacen, user_id]
-      );
-      return res.json({
-        success: true,
-        message: "Actualización exitosa y registrada en el historial.",
-      });
-    } else {
+    console.log("📊 RESULT UPDATE:", result);
+
+    if (result.changedRows === 0) {
       return res.json({
         success: false,
-        message:
-          "No se modificó ninguna fila. Verifica que el ID exista o que los datos sean distintos.",
+        message: "No hubo cambios (ubicación igual a la anterior)"
       });
     }
+
+    await pool.query(
+      `
+      INSERT INTO historial_pick
+        (id_ubi, ubi, code_prod, cant_stock, lote, almacen, user_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+      `,
+      [id_ubi, ubi, code_prod, cant_stock, lote, almacen, user_id]
+    );
+
+    res.json({
+      success: true,
+      message: "Ubicación actualizada correctamente"
+    });
+
   } catch (error) {
-    console.error("❌ Error en la actualización de ubicación:", error);
-    return res.status(500).json({
+    console.error("❌ Error updatePeacking:", error);
+    res.status(500).json({
       success: false,
-      message: "Error en la actualización de ubicación.",
-      error: error.message,
+      message: "Error actualizando ubicación",
+      error: error.message
     });
   }
 };
+
 
 const insertPeacking = async (req, res) => {
   console.log("Datos recibidos en el backend:", req.body);
@@ -582,14 +595,14 @@ const modificacionesRoutes = async (req, res) => {
   }
 };
 
-
-
 const obtenerInventario = async (req, res) => {
   try {
     const { pasillo, nivel, par_impar, code_prod, seccion } = req.query;
 
     if (!pool || typeof pool.query !== "function") {
-      throw new Error("Conexión a la base de datos no inicializada correctamente.");
+      throw new Error(
+        "Conexión a la base de datos no inicializada correctamente."
+      );
     }
 
     // 🧱 Construcción dinámica del query
@@ -674,7 +687,6 @@ const obtenerInventario = async (req, res) => {
   }
 };
 
-
 const obtenerUbicacion = async (req, res) => {
   try {
     const { id_ubi } = req.params;
@@ -705,8 +717,8 @@ const actualizarInventario = async (req, res) => {
       nivel,
       caducidad,
       orden_compra,
-      usuario = 'Sistema', // ← opcional si tienes autenticación
-      observaciones = 'Actualización manual desde módulo de inventario',
+      usuario = "Sistema", // ← opcional si tienes autenticación
+      observaciones = "Actualización manual desde módulo de inventario",
     } = req.body;
 
     if (!id_ubi) {
@@ -729,7 +741,16 @@ const actualizarInventario = async (req, res) => {
         ultima_modificacion = NOW()
       WHERE id_ubi = ?
       `,
-      [code_prod, cant_stock, lote, estado, nivel, caducidad, orden_compra, id_ubi]
+      [
+        code_prod,
+        cant_stock,
+        lote,
+        estado,
+        nivel,
+        caducidad,
+        orden_compra,
+        id_ubi,
+      ]
     );
 
     if (result.affectedRows === 0) {
@@ -742,8 +763,8 @@ const actualizarInventario = async (req, res) => {
       [id_ubi]
     );
 
-    const ubi = ubicacion[0]?.ubi || 'DESCONOCIDA';
-    const almacen = ubicacion[0]?.almacen_origen || 'N/A';
+    const ubi = ubicacion[0]?.ubi || "DESCONOCIDA";
+    const almacen = ubicacion[0]?.almacen_origen || "N/A";
 
     // 3️⃣ Insertamos registro en historial_movimientos
     await pool.execute(
@@ -754,7 +775,7 @@ const actualizarInventario = async (req, res) => {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?)
       `,
       [
-        'ACTUALIZACION',
+        "ACTUALIZACION",
         ubi,
         ubi, // mismo origen y destino porque es una actualización
         code_prod,
@@ -768,7 +789,9 @@ const actualizarInventario = async (req, res) => {
       ]
     );
 
-    res.json({ mensaje: "Ubicación actualizada y registrada en historial correctamente" });
+    res.json({
+      mensaje: "Ubicación actualizada y registrada en historial correctamente",
+    });
   } catch (error) {
     console.error("Error en actualizarInventario:", error);
     res.status(500).json({
@@ -778,12 +801,14 @@ const actualizarInventario = async (req, res) => {
   }
 };
 
-
-
-
 // Crear nueva ubicación en almacén
 const crearUbicacion = async (req, res) => {
   try {
+    console.log("📦 [VALIDACION INVENTARIOS → crearUbicacion()]");
+    console.log(
+      "➡️ Datos recibidos del front:",
+      JSON.stringify(req.body, null, 2)
+    );
     const {
       ubi,
       code_prod,
@@ -793,8 +818,9 @@ const crearUbicacion = async (req, res) => {
       nivel,
       orden_compra = null,
       caducidad = null,
-      usuario = 'Sistema',
-      observaciones = 'Creación de nueva ubicación en almacén',
+      seccion = null, // 👈🟢 nuevo
+      usuario = "Sistema",
+      observaciones = "Creación de nueva ubicación en almacén",
     } = req.body;
 
     if (!ubi || !code_prod || !pasillo || !nivel) {
@@ -803,22 +829,38 @@ const crearUbicacion = async (req, res) => {
       });
     }
 
-    // Determinar si es PAR o IMPAR
+    // 🧠 Determinar PAR / IMPAR desde el número del medio de la UBI
     const match = ubi.match(/-(\d+)-/);
     const numero = match ? parseInt(match[1]) : null;
-    const par_impar = numero !== null ? (numero % 2 === 0 ? "PAR" : "IMPAR") : null;
+    const par_impar =
+      numero !== null ? (numero % 2 === 0 ? "PAR" : "IMPAR") : null;
 
-    // 1️⃣ Insertamos en ubi_alma
+    // ------------------------------------------------------------------
+    // 1️⃣ INSERT en ubi_alma — ahora guardando SECCION
+    // ------------------------------------------------------------------
     const [result] = await pool.execute(
       `
       INSERT INTO ubi_alma
-        (ubi, code_prod, cant_stock, pasillo, lote, nivel, orden_compra, caducidad, par_impar)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (ubi, code_prod, cant_stock, pasillo, lote, nivel, orden_compra, caducidad, seccion, par_impar)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
-      [ubi, code_prod, cant_stock, pasillo, lote, nivel, orden_compra, caducidad, par_impar]
+      [
+        ubi,
+        code_prod,
+        cant_stock,
+        pasillo,
+        lote,
+        nivel,
+        orden_compra,
+        caducidad,
+        seccion,
+        par_impar,
+      ]
     );
 
-    // 2️⃣ Registramos movimiento en historial
+    // ------------------------------------------------------------------
+    // 2️⃣ Registrar movimiento en historial
+    // ------------------------------------------------------------------
     await pool.execute(
       `
       INSERT INTO historial_movimientos 
@@ -827,13 +869,13 @@ const crearUbicacion = async (req, res) => {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?)
       `,
       [
-        'CREACION',
-        'NUEVA',
+        "CREACION",
+        "NUEVA",
         ubi,
         code_prod,
         cant_stock,
         lote,
-        'N/A',
+        "N/A", // no viene de almacen
         pasillo,
         usuario,
         observaciones,
@@ -841,10 +883,14 @@ const crearUbicacion = async (req, res) => {
       ]
     );
 
+    // ------------------------------------------------------------------
+    // 3️⃣ Respuesta al Front
+    // ------------------------------------------------------------------
     res.json({
-      mensaje: "Ubicación creada y registrada en historial correctamente",
+      mensaje: "Ubicación creada correctamente",
       id_ubi: result.insertId,
       par_impar,
+      seccion,
     });
   } catch (error) {
     console.error("Error creando ubicación:", error);
@@ -854,9 +900,6 @@ const crearUbicacion = async (req, res) => {
     });
   }
 };
-
-
-
 
 const obtenerProgresoPorPasillo = async (req, res) => {
   try {
@@ -885,9 +928,6 @@ const obtenerProgresoPorPasillo = async (req, res) => {
   }
 };
 
-
-
-
 module.exports = {
   getInventarios,
   autorizarRecibo,
@@ -908,5 +948,5 @@ module.exports = {
   obtenerUbicacion,
   actualizarInventario,
   crearUbicacion,
-  obtenerProgresoPorPasillo
+  obtenerProgresoPorPasillo,
 };

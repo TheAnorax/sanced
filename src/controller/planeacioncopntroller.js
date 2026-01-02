@@ -259,7 +259,9 @@ const getFactura = async (req, res) => {
     const query = `
       SELECT
         \`NUM. CLIENTE\` AS clave_dir,
-        \`NOMBRE DEL CLIENTE\` AS nombre,
+        \`NOMBRE DEL CLIENTE\` AS nombre,            
+        \`NO ORDEN\` AS orden,   
+        \`tipo_original\` AS tipo,
         \`FECHA_DE_ENTREGA_CLIENTE\` AS fecha_entrega,
         \`DIRECCION\` AS direccion,
         \`NO_FACTURA\` AS numero_factura,
@@ -293,7 +295,8 @@ const getFactura = async (req, res) => {
     // ✅ Limpiar dirección y formatear fecha
     const datos = rows.map((row) => ({
       clave_dir: row.clave_dir,
-      nombre: row.nombre,
+      nombre: row.nombre,orden: row.orden,
+      tipo: row.tipo,
       direccion: row.direccion
         ? row.direccion.replace(/\s+/g, " ").trim()
         : null,

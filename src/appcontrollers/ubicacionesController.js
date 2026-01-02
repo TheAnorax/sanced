@@ -3,7 +3,7 @@ const pool = require('../config/database');
 const consultaUbicaciones = async (req, res) => {
   const { codigo_pro } = req.body;
 
-  console.log("Consulta alma con código:", codigo_pro);
+  // console.log("Consulta alma con código:", codigo_pro);
 
   if (!codigo_pro) {
     return res.status(400).json({ error: "codigo_pro es requerido" });

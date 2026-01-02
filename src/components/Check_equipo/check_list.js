@@ -2,7 +2,10 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import useMediaQuery from "@mui/material/useMediaQuery";
+import EditIcon from "@mui/icons-material/Edit";
 import { useTheme } from "@mui/material/styles";
+
+
 
 import {
     Table,
@@ -28,7 +31,10 @@ import {
     FormGroup,
     FormControlLabel,
     Checkbox,
-    TableContainer
+    TableContainer,
+    Tabs,
+    Tab,
+    Box
 } from "@mui/material";
 import { name } from "dayjs/locale/es";
 import CloseIcon from "@mui/icons-material/Close";
@@ -39,6 +45,7 @@ function Check() {
 
     const theme = useTheme();
     const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
+    const user = JSON.parse(localStorage.getItem("user"));
 
 
     // Estado general
@@ -46,6 +53,25 @@ function Check() {
     const [openModal, setOpenModal] = useState(false);
     const [detalle, setDetalle] = useState(null);
     const [openModalNuevo, setOpenModalNuevo] = useState(false);
+
+    // MODIFACION DE LOS DATOS 
+    const [openModalEditar, setOpenModalEditar] = useState(false);
+    const [formEdit, setFormEdit] = useState({});
+    const [editId, setEditId] = useState(null);
+
+    const [tab, setTab] = useState(0);
+    const [historial, setHistorial] = useState([]);
+
+    const hoy = new Date().toISOString().slice(0, 10);
+    const [fechaFiltro, setFechaFiltro] = useState(hoy);
+
+
+
+    const abrirModal = (item) => {
+        setDetalle(item);
+        setFormEdit(item);
+        setOpenModal(true);
+    };
 
     // Estado del formulario de inserción
     const [form, setForm] = useState({
@@ -74,6 +100,7 @@ function Check() {
 
     useEffect(() => {
         obtenerDatos();
+        obtenerHistorial();
     }, []);
 
     const obtenerDatos = async () => {
@@ -85,23 +112,27 @@ function Check() {
         }
     };
 
-    const abrirModal = (item) => {
-        setDetalle(item);
-        setOpenModal(true);
-    };
-
     const cerrarModal = () => {
         setOpenModal(false);
         setDetalle(null);
     };
 
     const handleChange = (e) => {
-        setForm({ ...form, [e.target.name]: e.target.value });
+        const { name, value } = e.target;
+
+        if (name === "supervisor") {
+            setForm({
+                ...form,
+                supervisor: value,
+                firma_supervisor: value,
+            });
+            return;
+        }
+
+        setForm({ ...form, [name]: value });
     };
 
-
     const handleSubmit = async () => {
-        // 🔹 Campos obligatorios
         const camposObligatorios = [
             "fecha",
             "folio",
@@ -113,128 +144,318 @@ function Check() {
             "tipo_equipo",
         ];
 
-        // 🔹 Detectar vacíos
         const camposFaltantes = camposObligatorios.filter(
-            (campo) => !form[campo] || form[campo].trim() === ""
+            campo => !form[campo] || form[campo].trim() === ""
         );
 
         if (camposFaltantes.length > 0) {
-            // 🔹 Cierra el modal temporalmente
+            // cierre inmediato
             setOpenModalNuevo(false);
 
-            // ⚠️ Mostrar advertencia
             Swal.fire({
                 icon: "warning",
                 title: "Campos faltantes",
                 html: `
-            <p>Por favor completa los siguientes campos antes de guardar:</p>
-            <ul style="text-align: left; margin-top: 10px;">
-              ${camposFaltantes.map((f) => `<li><b>${f}</b></li>`).join("")}
-            </ul>
-        `,
-                confirmButtonColor: "#1976d2",
-                confirmButtonText: "Entendido",
-            }).then(() => {
-                // 🔹 Vuelve a abrir el modal al cerrar el SweetAlert
-                setOpenModalNuevo(true);
-            });
-
+                <p>Por favor completa los siguientes campos:</p>
+                <ul style="text-align:left;margin-top:10px">
+                    ${camposFaltantes.map(f => `<li><b>${f}</b></li>`).join("")}
+                </ul>
+            `,
+            }).then(() => setOpenModalNuevo(true)); // <- vuelve a abrir modal
             return;
         }
 
-        // ✅ Si pasa validación
         try {
-            await axios.post("http://66.232.105.87:3007/api/Check-List/checklist-insert", form);
+            await axios.post(
+                "http://66.232.105.87:3007/api/Check-List/checklist-insert",
+                form
+            );
 
             setOpenModalNuevo(false);
 
-            // 🟢 Mostrar mensaje de éxito y cerrar solo después
             Swal.fire({
                 icon: "success",
                 title: "Checklist guardado",
-                text: "El checklist se ha insertado correctamente.",
-                confirmButtonColor: "#1976d2",
-            }).then(() => {
-                // 🔹 Esto se ejecuta cuando el usuario cierra el alert de éxito
-                setOpenModalNuevo(false);
-                obtenerDatos();
-                setForm({
-                    fecha: "",
-                    folio: "",
-                    marca: "",
-                    modelo: "",
-                    serie: "",
-                    tipo_equipo: "Renta",
-                    empresa: "",
-                    supervisor: "",
-                    torreta: "",
-                    obs_torreta: "",
-                    claxon: "",
-                    obs_claxon: "",
-                    extintor: "",
-                    obs_extintor: "",
-                    espejos_protector_cristal: "",
-                    obs_espejos_protector_cristal: "",
-                    firma_operador: "",
-                    firma_supervisor: "",
-                    cargador: "",
-                    obs_cargador: "",
-                    valtaje_cargador: "",
-                    obs_valtaje_cargador: "",
-                    bateria: "",
-                    palanca_control_velocidades: "",
-                    obs_palanca_control_velocidades: "",
-                });
+                text: "Se insertó correctamente.",
             });
+
+            obtenerDatos();
+
+            setForm({
+                fecha: "",
+                folio: "",
+                marca: "",
+                modelo: "",
+                serie: "",
+                tipo_equipo: "Renta",
+                empresa: "",
+                supervisor: "",
+                firma_supervisor: "",
+                firma_operador: "",
+            });
+
         } catch (error) {
-            console.error("Error al insertar checklist:", error);
+            setOpenModalNuevo(false);
+
             Swal.fire({
                 icon: "error",
                 title: "Error al insertar",
-                text: "Hubo un problema al guardar el checklist. Revisa la consola para más detalles.",
-                confirmButtonColor: "#d33",
+                text: error.response?.data?.message || "Ocurrió un problema.",
             });
         }
     };
 
+    const guardarCambios = async () => {
+        if (!editId) {
+            Swal.fire("Error", "No se encontró el ID del checklist", "error");
+            return;
+        }
+
+        const camposPermitidos = [
+            "torreta", "obs_torreta", "alarma_reversa", "obs_alarma_reversa",
+            "claxon", "obs_claxon", "extintor", "obs_extintor",
+            "espejos_protector_cristal", "obs_espejos_protector_cristal",
+            "cuartos", "obs_cuartos", "base_cuartos", "obs_base_cuartos",
+            "faro", "obs_faro", "switch_ignicion", "obs_switch_ignicion",
+            "llave_switch", "obs_llave_switch", "tapas_plastico", "obs_tapas_plastico",
+            "perno_arrastre", "obs_perno_arrastre", "calcomanias", "obs_calcomanias",
+            "portahorquillas", "obs_portahorquillas",
+            "horquilla", "obs_horquilla", "respaldo_carga", "obs_respaldo_carga",
+            "parrilla_contrapeso", "obs_parrilla_contrapeso",
+            "desplazador_lateral", "obs_desplazador_lateral",
+            "palanca_control_velocidades", "obs_palanca_control_velocidades",
+            "aditamento", "obs_aditamento", "llantas_delanteras", "obs_llantas_delanteras",
+            "llantas_traseras", "obs_llantas_traseras", "bateria", "obs_bateria",
+            "cargador", "obs_cargador", "valtaje_cargador", "obs_valtaje_cargador",
+            "asiento", "obs_asiento", "protector_operador", "obs_protector_operador",
+            "piso_plataforma", "obs_piso_plataforma", "tapon_aceite", "obs_tapon_aceite",
+            "estado_pintura", "obs_estado_pintura", "altura_mastil", "obs_altura_mastil",
+            "golpes", "obs_golpes", "nota_adicional"
+        ];// tu lista
+
+        const payload = {};
+
+        camposPermitidos.forEach(c => {
+            if (formEdit[c] !== undefined) {
+                payload[c] = formEdit[c];
+            }
+        });
+
+        payload.usuario = user.id_usu;
 
 
-    const CheckBoxGroup = ({ label, name, value, onChange }) => {
-        const options = ["BIEN", "MAL", "NUEVO", "USADO", "N/A"];
+        try {
+            await axios.put(
+                `http://66.232.105.87:3007/api/Check-List/checklist-update/${editId}`,
+                payload
+            );
 
-        const handleOptionChange = (e) => {
-            onChange({
-                target: {
-                    name,
-                    value: e.target.value,
-                },
-            });
-        };
+
+            setOpenModalEditar(false);
+            Swal.fire("OK", "Checklist actualizado", "success");
+            obtenerDatos();
+
+        } catch (err) {
+            Swal.fire("Error", "No se pudo actualizar", "error");
+            console.log(err);
+        }
+    };
+
+    const SelectEstado = ({ label, name, value, onChange }) => {
+        const opciones = ["BIEN", "DAÑADO", "REVISAR", "CAMBIO"];
 
         return (
-            <div style={{ marginBottom: 15 }}>
-                <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: "bold" }}>
-                    {label}
-                </Typography>
-                <FormGroup row>
-                    {options.map((opt) => (
-                        <FormControlLabel
-                            key={opt}
-                            control={
-                                <Checkbox
-                                    checked={value === opt}
-                                    onChange={handleOptionChange}
-                                    value={opt}
-                                />
-                            }
-                            label={opt}
-                        />
+            <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+                <InputLabel>{label}</InputLabel>
+                <Select
+                    name={name}
+                    label={label}
+                    value={value || ""}
+                    onChange={onChange}
+                >
+                    {opciones.map((op) => (
+                        <MenuItem key={op} value={op}>
+                            {op}
+                        </MenuItem>
                     ))}
-                </FormGroup>
-            </div>
+                </Select>
+            </FormControl>
         );
     };
 
+
+    //HISTORIAL DE MOVIMIENTOS 
+
+    const obtenerHistorial = async () => {
+        try {
+            const res = await axios.get("http://66.232.105.87:3007/api/Check-List/historial");
+            setHistorial(res.data);
+        } catch (error) {
+            console.error("Error al obtener Historial", error);
+        }
+    };
+
+    const historialFiltrado = (historial || []).filter(row => {
+        if (!fechaFiltro) return true; // si no hay filtro → todos
+        const fechaRow = new Date(row.fecha).toISOString().slice(0, 10);
+        return fechaRow === fechaFiltro;
+    });
+
+    // AGRUPAR SIEMPRE SIN FILTRO
+    const historialAgrupado = historial.reduce((acc, row) => {
+        const usuario = row.usuario;
+        if (!acc[usuario]) acc[usuario] = [];
+        acc[usuario].push(row);
+        return acc;
+    }, {});
+
+
+
+    const customLabels = {
+
+        torreta: "Torreta",
+        obs_torreta: "Obs Torreta",
+
+        alarma_reversa: "Alarma de Reversa",
+        obs_alarma_reversa: "Obs de Alarma de Reversa",
+
+        claxon: "Claxon",
+        Obs_claxon: "Obs de Claxon",
+
+        extintor: "Extintor",
+        obs_extintor: "Obs de Exttintor",
+
+        espejos_protector_cristal: "Espejos Protector cristal",
+        obs_espejos_protector_cristal: "Obs Espejos Protector cristal",
+
+        cuartos: "Cuartos",
+        obs_cuartos: "Obs Cuartos",
+
+        base_cuartos: "Base de Cuarto",
+        obs_base_cuartos: "Obs de Bade de Cuarto",
+
+        faro: "Faro",
+        obs_faro: "Obs de Faro",
+
+        base_faro: "Base del Faro",
+        obs_base_faro: "Obs de base deL faro",
+
+        switch_ignicion: "Switch de Ignición",
+        obs_switch_ignicion: "OBS Switch de Ignición",
+
+        llave_switch: "Llave de Encendido",
+        obs_llave_switch: "Obs Llave de Encendido",
+
+        tapas_plastico: "Tapa de Plastico",
+        obs_tapas_plastico: "Obs de Tapas de Plastico",
+
+        perno_arrastre: "Perno de Arrastre",
+        obs_perno_arrastre: "Obs de Perno de Arrastre",
+
+        calcomanias: "Calcomania",
+        obs_calcomanias: "Obs Calcomania",
+
+        portahorquillas: "Portahorquillas",
+        obs_portahorquillas: "Obs de Portahorquillas",
+
+        horquilla: "Horquilla",
+        obs_horquilla: "Obs de Horquilla",
+
+        respaldo_carga: "Respaldo de Carga",
+        obs_respaldo_carga: "Obs Respaldo de Carga",
+
+        parrilla_contrapeso: "Parrilla de Contrapeso",
+        obs_parrilla_contrapeso: "Obs de Parrilla de Contrapeso",
+
+        desplazador_lateral: "Desplazador Lateral",
+        obs_desplazador_lateral: "Obs de Desplazador Lateral",
+
+        palanca_control_velocidades: "Palanca de Control Velocidades",
+        obs_palanca_control_velocidades: "Obs de Palanca de Control Velocidades",
+
+        aditamento: "Aditamento",
+        obs_aditamento: "Obs de Aditamento",
+
+        llantas_delanteras: "Llantas Delanteras",
+        obs_llantas_delanteras: "Obs de Llantas Delanteras",
+
+        llantas_traseras: "Llantas Traseras",
+        obs_llantas_traseras: "Obs de Llantas Traseras",
+
+        bateria: "Bateria",
+        obs_bateria: "Obs de Bateria",
+
+        cargador: "Cargador",
+        obs_cargador: "Obs del Cargador",
+
+        valtaje_cargador: "Voltaje Cargador",
+        obs_valtaje_cargador: "Obs del Voltaje Cargador",
+
+        asiento: "Asiento",
+        obs_asiento: "Obs de Asiento",
+
+        protector_operador: "Protección Operador",
+        obs_protector_operador: "Obs del Protección Operador",
+
+
+        piso_plataforma: "Piso de Plataforma",
+        obs_piso_plataforma: "Obs del Piso de la Plataforma",
+
+
+        tapon_aceite: "Tapon de Aceite",
+        obs_tapon_aceite: "Obs del Tapon de Aceite",
+
+        estado_pintura: "Estado de Pintura",
+        obs_estado_pintura: "Obs deñ Estado de Pintura",
+
+        altura_mastil: "Altura del Mastil",
+        obs_altura_mastil: "Obs de la Altura del Mastil",
+
+        golpes: "Golpes",
+        obs_golpes: "Obs de Golpes",
+
+        nota_adicional: "Nota Adicional"
+
+    };
+
+    function formatLabel(col) {
+        if (!col) return "-";
+
+        // Diccionario — prioridad
+        if (customLabels[col]) return customLabels[col];
+
+        // Caso observación
+        if (col.startsWith("obs_")) {
+            const base = col.replace("obs_", "");
+            return "Observación " + formatLabel(base);
+        }
+
+        // Texto estándar
+        return col
+            .split("_")
+            .map(p => p.charAt(0).toUpperCase() + p.slice(1))
+            .join(" ");
+    }
+
+    // Contadores por usuario para DAÑADO, REVISAR, CAMBIO
+    const resumenValores = historialFiltrado.reduce((acc, item) => {
+        const u = item.usuario;
+        const estado = item.valor_nuevo?.toUpperCase() || "";
+
+        if (!acc[u]) {
+            acc[u] = {
+                DANADO: 0,
+                REVISAR: 0,
+                CAMBIO: 0,
+            };
+        }
+
+        if (estado === "DAÑADO" || estado === "DANADO") acc[u].DANADO++;
+        if (estado === "REVISAR") acc[u].REVISAR++;
+        if (estado === "CAMBIO") acc[u].CAMBIO++;
+
+        return acc;
+    }, {});
 
 
     return (
@@ -243,54 +464,211 @@ function Check() {
                 Check List de Equipos
             </Typography>
 
-            {/* Botón nuevo checklist */}
-            <Button
-                variant="contained"
-                color="primary"
-                onClick={() => setOpenModalNuevo(true)}
+
+            <Tabs
+                value={tab}
+                onChange={(e, v) => setTab(v)}
+                textColor="primary"
+                indicatorColor="primary"
+                sx={{ mb: 2 }}
             >
-                Nuevo Checklist
-            </Button>
+                <Tab label="CheckList" />
+                <Tab label="Historial" />
 
-            {/* Tabla de datos */}
-            <Paper sx={{ p: 1, mt: 2 }}>
-                <TableContainer sx={{ overflowX: "auto", maxWidth: "100%" }}>
-                    <Table size="small" stickyHeader>
+            </Tabs>
 
-                        <TableHead>
-                            <TableRow>
-                                <TableCell><b>Folio</b></TableCell>
-                                <TableCell><b>Marca</b></TableCell>
-                                <TableCell><b>Fecha</b></TableCell>
-                                <TableCell><b>Acciones</b></TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {checklists.map((item) => (
-                                <TableRow key={item.id}>
-                                    <TableCell>{item.folio}</TableCell>
-                                    <TableCell>{item.marca}</TableCell>
-                                    <TableCell>
-                                        {item.fecha ? new Date(item.fecha).toLocaleDateString() : "-"}
-                                    </TableCell>
-                                    <TableCell>
-                                        <Tooltip title="Ver Detalle">
-                                            <IconButton
-                                                color="primary"
-                                                size="small"
-                                                onClick={() => abrirModal(item)}
-                                            >
-                                                <VisibilityIcon />
-                                            </IconButton>
-                                        </Tooltip>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
 
-            </Paper>
+            {tab === 0 && (
+                <>
+                    {/* Botón nuevo checklist */}
+                    <Box sx={{ display: "flex", justifyContent: "flex-start", mb: 2 }}>
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            onClick={() => setOpenModalNuevo(true)}
+                        >
+                            Nuevo Checklist
+                        </Button>
+                    </Box>
+
+                    {/* TABLA */}
+                    <Paper sx={{ p: 1, mt: 1 }}>
+                        <TableContainer sx={{ overflowX: "auto" }}>
+                            <Table size="small" stickyHeader>
+                                <TableHead>
+                                    <TableRow>
+                                        <TableCell><b>Id</b></TableCell>
+                                        <TableCell><b>Folio</b></TableCell>
+                                        <TableCell><b>Marca</b></TableCell>
+                                        <TableCell><b>Fecha</b></TableCell>
+                                        <TableCell><b>Supervisor</b></TableCell>
+                                        <TableCell><b>Operador</b></TableCell>
+                                        <TableCell align="center"><b>Acciones</b></TableCell>
+                                    </TableRow>
+                                </TableHead>
+
+                                <TableBody>
+                                    {checklists.map((item) => (
+                                        <TableRow key={item.id}>
+                                            <TableCell>{item.id}</TableCell>
+                                            <TableCell>{item.folio}</TableCell>
+                                            <TableCell>{item.marca}</TableCell>
+
+                                            <TableCell>
+                                                {item.fecha
+                                                    ? new Date(item.fecha).toLocaleDateString()
+                                                    : "-"}
+                                            </TableCell>
+
+                                            <TableCell>{item.supervisor}</TableCell>
+                                            <TableCell>{item.firma_operador}</TableCell>
+
+                                            {/* 🔥 COLUMNA ACCIONES */}
+                                            <TableCell align="center">
+                                                <Box sx={{ display: "flex", gap: 1, justifyContent: "center" }}>
+
+                                                    {/* Ver */}
+                                                    <Tooltip title="Ver Checklist">
+                                                        <IconButton
+                                                            sx={{ color: "#FFB300" }}
+                                                            size="small"
+                                                            onClick={() => abrirModal(item)}
+                                                        >
+                                                            <VisibilityIcon />
+                                                        </IconButton>
+                                                    </Tooltip>
+
+                                                    {/* Editar */}
+                                                    <Tooltip title="Editar partes">
+                                                        <IconButton
+                                                            sx={{ color: "#275EF5" }} 
+                                                            size="small"
+                                                            onClick={() => {
+                                                                setFormEdit(item);
+                                                                setEditId(item.id);
+                                                                setOpenModalEditar(true);
+                                                            }}
+                                                        >
+                                                            <EditIcon />
+                                                        </IconButton>
+                                                    </Tooltip>
+
+                                                </Box>
+                                            </TableCell>
+
+
+
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+                    </Paper>
+                </>
+            )}
+
+
+            {tab === 1 && (
+                <Paper sx={{ p: 1 }}>
+                    <Typography variant="h6" sx={{ mb: 2 }}>
+                        Historial de cambios
+                    </Typography>
+
+                    {/* ==== FILTRO DE FECHA ==== */}
+                    <div style={{ marginBottom: 20 }}>
+                        <label><b>Filtrar por fecha: </b></label>
+                        <input
+                            type="date"
+                            value={fechaFiltro}
+                            onChange={(e) => setFechaFiltro(e.target.value)}
+                            style={{ padding: 6, marginLeft: 10 }}
+                        />
+                    </div>
+
+                    {/* === RESUMEN POR OPERADOR === */}
+                    <Typography variant="h6" sx={{ mt: 2, mb: 1 }}>
+                        Resumen diario por usuario
+                    </Typography>
+
+                    <Grid container spacing={2}>
+                        {Object.entries(resumenValores).map(([usuario, data]) => (
+                            <Grid item xs={12} sm={6} md={3} key={usuario}>
+                                <Paper sx={{ p: 2, textAlign: "center", borderRadius: 2, boxShadow: 3 }}>
+                                    <Typography sx={{ fontWeight: "bold" }}>{usuario}</Typography>
+
+                                    <Typography variant="body2" sx={{ mt: 1 }}>
+                                        🟥 <b style={{ color: "#d32f2f" }}>DAÑADO: {data.DANADO}</b>
+                                    </Typography>
+
+                                    <Typography variant="body2">
+                                        🟧 <b style={{ color: "#ff9800" }}>REVISAR: {data.REVISAR}</b>
+                                    </Typography>
+
+                                    <Typography variant="body2">
+                                        🟨 <b style={{ color: "#ffcc00ff" }}>CAMBIO: {data.CAMBIO}</b>
+                                    </Typography>
+                                </Paper>
+                            </Grid>
+                        ))}
+                    </Grid>
+
+
+                    {/* ==== TABLA DEL HISTORIAL ==== */}
+                    <TableContainer sx={{ maxHeight: 600 }}>
+
+                        {Object.entries(historialAgrupado)
+                            .filter(([usuario, cambios]) => cambios.length > 0)
+                            .map(([usuario, cambios]) => {
+
+                                const cambiosFiltrados = fechaFiltro
+                                    ? cambios.filter(c => new Date(c.fecha).toISOString().slice(0, 10) === fechaFiltro)
+                                    : cambios;
+
+                                if (cambiosFiltrados.length === 0) return null;
+
+                                return (
+                                    <div key={usuario} style={{ marginBottom: 40 }}>
+
+                                        {/* nombre usuario */}
+                                        <Typography
+                                            variant="h6"
+                                            sx={{ fontWeight: "bold", mb: 1, color: "#1976d2" }}
+                                        >
+                                            {usuario}
+                                        </Typography>
+
+                                        <TableContainer sx={{ maxHeight: 350, border: "1px solid #ddd" }}>
+                                            <Table size="small">
+                                                <TableHead>
+                                                    <TableRow>
+                                                        <TableCell><b>Columna</b></TableCell>
+                                                        <TableCell><b>Valor Anterior</b></TableCell>
+                                                        <TableCell><b>Valor Nuevo</b></TableCell>
+                                                        <TableCell><b>Fecha</b></TableCell>
+                                                    </TableRow>
+                                                </TableHead>
+
+                                                <TableBody>
+                                                    {cambiosFiltrados.map((c, i) => (
+                                                        <TableRow key={i}>
+                                                            <TableCell>{formatLabel(c.columna)}</TableCell>
+                                                            <TableCell>{c.valor_anterior}</TableCell>
+                                                            <TableCell>{c.valor_nuevo}</TableCell>
+                                                            <TableCell>{new Date(c.fecha).toLocaleString()}</TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        </TableContainer>
+                                    </div>
+                                );
+                            })}
+
+
+                    </TableContainer>
+                </Paper>
+            )}
+
 
             {/* 🔹 Modal de Inserción */}
             <Dialog
@@ -305,409 +683,135 @@ function Check() {
                         background: "#1976d2",
                         color: "white",
                         fontWeight: "bold",
-                        textAlign: "center",
-
+                        textAlign: "center"
                     }}
                 >
                     Nuevo Checklist de Equipo
                 </DialogTitle>
 
                 <DialogContent dividers>
-                    {/* 🟦 Sección: Datos generales */}
-                    <Typography variant="subtitle1" sx={{ fontWeight: "bold", mb: 1 }}>
-                        Datos Generales
+
+                    {/* DATOS GENERALES */}
+                    <Typography variant="h6" sx={{ fontWeight: "bold", mb: 2 }}>
+                        Información general del equipo
                     </Typography>
-                    <Grid container spacing={2} sx={{ mb: 2 }}>
-                        <Grid item xs={4}>
-                            <TextField
-                                fullWidth
-                                name="fecha"
-                                type="date"
-                                label="Fecha"
-                                onChange={handleChange}
-                                InputLabelProps={{ shrink: true }}
-                            />
-                        </Grid>
-                        <Grid item xs={4}>
-                            <TextField fullWidth name="folio" label="Folio" onChange={handleChange} />
-                        </Grid>
-                        <Grid item xs={4}>
-                            <TextField fullWidth name="marca" label="Marca" onChange={handleChange} />
-                        </Grid>
-
-                        <Grid item xs={4}>
-                            <TextField fullWidth name="modelo" label="Modelo" onChange={handleChange} />
-                        </Grid>
-                        <Grid item xs={4}>
-                            <TextField fullWidth name="serie" label="Serie" onChange={handleChange} />
-                        </Grid>
-                        <Grid item xs={4}>
-                            <TextField fullWidth name="empresa" label="Empresa" onChange={handleChange} />
-                        </Grid>
-                    </Grid>
-
-                    {/* 🟩 Sección: Personal / Supervisor */}
-                    <Typography variant="subtitle1" sx={{ fontWeight: "bold", mb: 1 }}>
-                        Personal
-                    </Typography>
-                    <Grid container spacing={2} sx={{ mb: 2 }}>
-                        <Grid item xs={6}>
-                            <TextField fullWidth name="supervisor" label="Supervisor" onChange={handleChange} />
-                        </Grid>
-                        <Grid item xs={6}>
-                            <Grid item xs={6}>
-                                <FormControl fullWidth>
-                                    <InputLabel>Tipo de Equipo</InputLabel>
-                                    <Select
-                                        name="tipo_equipo"
-                                        value={form.tipo_equipo}
-                                        label="Tipo de Equipo"
-                                        onChange={handleChange}
-                                    >
-                                        <MenuItem value="Renta">Renta</MenuItem>
-                                        <MenuItem value="Venta">Venta</MenuItem>
-                                    </Select>
-                                </FormControl>
-                            </Grid>
-
-                        </Grid>
-                    </Grid>
-
-                    {/* 🟨 Sección: Conceptos */}
-                    <Typography variant="subtitle1" sx={{ fontWeight: "bold", mb: 1 }}>
-                        Revisión Técnica
-                    </Typography>
-                    <Grid container spacing={2} sx={{ mb: 2 }}>
-
-                        {/* 🔹 Ejemplo 1 */}
-                        <Grid item xs={6}>
-                            <CheckBoxGroup label="Torreta" name="torreta" value={form.torreta} onChange={handleChange} />
-                        </Grid>
-                        <Grid item xs={6}>
-                            <TextField fullWidth name="obs_torreta" label="Observación Torreta" onChange={handleChange} />
-                        </Grid>
-
-                        {/* 🔹 Alarma de Reversa */}
-                        <Grid item xs={6}>
-                            <CheckBoxGroup label="Alarma de Reversa" name="alarma_reversa" value={form.alarma_reversa} onChange={handleChange} />
-                        </Grid>
-                        <Grid item xs={6}>
-                            <TextField fullWidth name="obs_alarma_reversa" label="Observación de Alarma de Reversa" onChange={handleChange} />
-                        </Grid>
-
-                        {/* 🔹 Claxon */}
-                        <Grid item xs={6}>
-                            <CheckBoxGroup label="Claxon" name="claxon" value={form.claxon} onChange={handleChange} />
-                        </Grid>
-                        <Grid item xs={6}>
-                            <TextField fullWidth name="obs_claxon" label="Observación Claxon" onChange={handleChange} />
-                        </Grid>
-
-                        {/* 🔹 Extintor */}
-                        <Grid item xs={6}>
-                            <CheckBoxGroup label="Extintor" name="extintor" value={form.extintor} onChange={handleChange} />
-                        </Grid>
-                        <Grid item xs={6}>
-                            <TextField fullWidth name="obs_extintor" label="Observación Extintor" onChange={handleChange} />
-                        </Grid>
-
-                        {/* 🔹 Espejos / Protector Cristal */}
-                        <Grid item xs={6}>
-                            <CheckBoxGroup label="Espejos / Protector Cristal" name="espejos_protector_cristal" value={form.espejos_protector_cristal} onChange={handleChange} />
-                        </Grid>
-                        <Grid item xs={6}>
-                            <TextField fullWidth name="obs_espejos_protector_cristal" label="Observación Espejos" onChange={handleChange} />
-                        </Grid>
-
-                        {/* 🔹 Cuartos */}
-                        <Grid item xs={6}>
-                            <CheckBoxGroup label="Cuartos" name="cuartos" value={form.cuartos} onChange={handleChange} />
-                        </Grid>
-                        <Grid item xs={6}>
-                            <TextField fullWidth name="obs_cuartos" label="Observación Cuartos" onChange={handleChange} />
-                        </Grid>
-
-                        {/* 🔹 Base Cuartos */}
-                        <Grid item xs={6}>
-                            <CheckBoxGroup label="Base Cuartos" name="base_cuartos" value={form.base_cuartos} onChange={handleChange} />
-                        </Grid>
-                        <Grid item xs={6}>
-                            <TextField fullWidth name="obs_base_cuartos" label="Observación Base Cuartos" onChange={handleChange} />
-                        </Grid>
-
-                        {/* 🔹 Faros */}
-                        <Grid item xs={6}>
-                            <CheckBoxGroup label="Faros" name="faro" value={form.faro} onChange={handleChange} />
-                        </Grid>
-                        <Grid item xs={6}>
-                            <TextField fullWidth name="obs_faro" label="Observación Faros" onChange={handleChange} />
-                        </Grid>
-
-                        {/* 🔹 Base Faros */}
-                        <Grid item xs={6}>
-                            <CheckBoxGroup label="Base Faros" name="base_faro" value={form.base_faro} onChange={handleChange} />
-                        </Grid>
-                        <Grid item xs={6}>
-                            <TextField fullWidth name="obs_base_faro" label="Observación Base Faros" onChange={handleChange} />
-                        </Grid>
-
-                        {/* 🔹 Switch Ignición */}
-                        <Grid item xs={6}>
-                            <CheckBoxGroup label="Switch Ignición" name="switch_ignicion" value={form.switch_ignicion} onChange={handleChange} />
-                        </Grid>
-                        <Grid item xs={6}>
-                            <TextField fullWidth name="obs_switch_ignicion" label="Observación Switch Ignición" onChange={handleChange} />
-                        </Grid>
-
-                        {/* 🔹 Llave Switch */}
-                        <Grid item xs={6}>
-                            <CheckBoxGroup label="Llave Switch" name="llave_switch" value={form.llave_switch} onChange={handleChange} />
-                        </Grid>
-                        <Grid item xs={6}>
-                            <TextField fullWidth name="obs_llave_switch" label="Observación Llave Switch" onChange={handleChange} />
-                        </Grid>
-
-                        {/* 🔹 Tapas de Plástico */}
-                        <Grid item xs={6}>
-                            <CheckBoxGroup label="Tapas Plástico" name="tapas_plastico" value={form.tapas_plastico} onChange={handleChange} />
-                        </Grid>
-                        <Grid item xs={6}>
-                            <TextField fullWidth name="obs_tapas_plastico" label="Observación Tapas Plástico" onChange={handleChange} />
-                        </Grid>
-
-                        {/* 🔹 Perno Arrastre */}
-                        <Grid item xs={6}>
-                            <CheckBoxGroup label="Perno Arrastre" name="perno_arrastre" value={form.perno_arrastre} onChange={handleChange} />
-                        </Grid>
-                        <Grid item xs={6}>
-                            <TextField fullWidth name="obs_perno_arrastre" label="Observación Perno Arrastre" onChange={handleChange} />
-                        </Grid>
-
-                        {/* 🔹 Calcomanías */}
-                        <Grid item xs={6}>
-                            <CheckBoxGroup label="Calcomanías" name="calcomanias" value={form.calcomanias} onChange={handleChange} />
-                        </Grid>
-                        <Grid item xs={6}>
-                            <TextField fullWidth name="obs_calcomanias" label="Observación Calcomanías" onChange={handleChange} />
-                        </Grid>
-
-                        {/* 🔹 Portahorquillas */}
-                        <Grid item xs={6}>
-                            <CheckBoxGroup label="Portahorquillas" name="portahorquillas" value={form.portahorquillas} onChange={handleChange} />
-                        </Grid>
-                        <Grid item xs={6}>
-                            <TextField fullWidth name="obs_portahorquillas" label="Observación Portahorquillas" onChange={handleChange} />
-                        </Grid>
-
-                        {/* 🔹 Horquilla */}
-                        <Grid item xs={6}>
-                            <CheckBoxGroup label="Horquilla" name="horquilla" value={form.horquilla} onChange={handleChange} />
-                        </Grid>
-                        <Grid item xs={6}>
-                            <TextField fullWidth name="obs_horquilla" label="Observación Horquilla" onChange={handleChange} />
-                        </Grid>
-
-                        {/* 🔹 Respaldo Carga */}
-                        <Grid item xs={6}>
-                            <CheckBoxGroup label="Respaldo Carga" name="respaldo_carga" value={form.respaldo_carga} onChange={handleChange} />
-                        </Grid>
-                        <Grid item xs={6}>
-                            <TextField fullWidth name="obs_respaldo_carga" label="Observación Respaldo Carga" onChange={handleChange} />
-                        </Grid>
-
-                        {/* 🔹 Parrilla Contrapeso */}
-                        <Grid item xs={6}>
-                            <CheckBoxGroup label="Parrilla Contrapeso" name="parrilla_contrapeso" value={form.parrilla_contrapeso} onChange={handleChange} />
-                        </Grid>
-                        <Grid item xs={6}>
-                            <TextField fullWidth name="obs_parrilla_contrapeso" label="Observación Parrilla Contrapeso" onChange={handleChange} />
-                        </Grid>
-
-                        {/* 🔹 Desplazador Lateral */}
-                        <Grid item xs={6}>
-                            <CheckBoxGroup label="Desplazador Lateral" name="desplazador_lateral" value={form.desplazador_lateral} onChange={handleChange} />
-                        </Grid>
-                        <Grid item xs={6}>
-                            <TextField fullWidth name="obs_desplazador_lateral" label="Observación Desplazador Lateral" onChange={handleChange} />
-                        </Grid>
-
-                        {/* 🔹 Palanca de control de velocidades */}
-                        <Grid item xs={6}>
-                            <CheckBoxGroup label="Palanca de control de velocidades " name="palanca_control_velocidades" value={form.palanca_control_velocidades} onChange={handleChange} />
-                        </Grid>
-                        <Grid item xs={6}>
-                            <TextField fullWidth name="obs_palanca_control_velocidades" label="Observación Palanca de control de Velocidades" onChange={handleChange} />
-                        </Grid>
-
-                        {/* 🔹 Aditamento */}
-                        <Grid item xs={6}>
-                            <CheckBoxGroup label="Aditamento" name="aditamento" value={form.aditamento} onChange={handleChange} />
-                        </Grid>
-                        <Grid item xs={6}>
-                            <TextField fullWidth name="obs_aditamento" label="Observación Aditamento" onChange={handleChange} />
-                        </Grid>
-
-                        {/* 🔹 Llantas Delanteras */}
-                        <Grid item xs={6}>
-                            <CheckBoxGroup label="Llantas Delanteras" name="llantas_delanteras" value={form.llantas_delanteras} onChange={handleChange} />
-                        </Grid>
-                        <Grid item xs={6}>
-                            <TextField fullWidth name="obs_llantas_delanteras" label="Observación Llantas Delanteras" onChange={handleChange} />
-                        </Grid>
-
-                        {/* 🔹 Llantas Traseras */}
-                        <Grid item xs={6}>
-                            <CheckBoxGroup label="Llantas Traseras" name="llantas_traseras" value={form.llantas_traseras} onChange={handleChange} />
-                        </Grid>
-                        <Grid item xs={6}>
-                            <TextField fullWidth name="obs_llantas_traseras" label="Observación Llantas Traseras" onChange={handleChange} />
-                        </Grid>
-
-                        {/* 🔹 Batería con Select */}
-                        <Grid item xs={6}>
-                            <CheckBoxGroup
-                                label="Batería"
-                                name="bateria"
-                                value={form.bateria}
-                                onChange={handleChange}
-                            />
-                        </Grid>
-
-                        <Grid item xs={6}>
-                            <TextField fullWidth name="obs_bateria" label="Observación Batería" onChange={handleChange} />
-                        </Grid>
-
-                        {/* 🔹 Cargador */}
-                        <Grid item xs={6}>
-                            <FormControl fullWidth>
-                                <InputLabel>Cargador</InputLabel>
-                                <Select
-                                    name="cargador"
-                                    value={form.cargador || ""}
-                                    label="Cargador"
-                                    onChange={handleChange}
-                                >
-                                    <MenuItem value="S/Clavija">S/Clavija</MenuItem>
-                                    <MenuItem value="C/Clavija">C/Clavija</MenuItem>
-                                </Select>
-                            </FormControl>
-                        </Grid>
-                        <Grid item xs={6}>
-                            <TextField fullWidth name="obs_cargador" label="Observación Cargador" onChange={handleChange} />
-                        </Grid>
-
-                        {/* 🔹 Voltaje del cargador */}
-                        <Grid item xs={6}>
-                            <CheckBoxGroup label="Voltaje Cargador" name="valtaje_cargador" value={form.valtaje_cargador} onChange={handleChange} />
-                        </Grid>
-                        <Grid item xs={6}>
-                            <TextField fullWidth name="obs_valtaje_cargador" label="Observación de Voltaje Cargador" onChange={handleChange} />
-                        </Grid>
-
-
-                        {/* 🔹 Asiento con Select */}
-                        <Grid item xs={6}>
-                            <FormControl fullWidth>
-                                <InputLabel>Asiento</InputLabel>
-                                <Select
-                                    name="asiento"
-                                    value={form.asiento || ""}
-                                    label="Asiento"
-                                    onChange={handleChange}
-                                >
-                                    <MenuItem value="S/Cinturón">S/Cinturón</MenuItem>
-                                    <MenuItem value="C/Cinturón">C/Cinturón</MenuItem>
-                                </Select>
-                            </FormControl>
-                        </Grid>
-                        <Grid item xs={6}>
-                            <TextField fullWidth name="obs_asiento" label="Observación Asiento" onChange={handleChange} />
-                        </Grid>
-
-                        {/* 🔹 Resto de campos */}
-                        <Grid item xs={6}>
-                            <CheckBoxGroup label="Protector Operador" name="protector_operador" value={form.protector_operador} onChange={handleChange} />
-                        </Grid>
-                        <Grid item xs={6}>
-                            <TextField fullWidth name="obs_protector_operador" label="Observación Protector Operador" onChange={handleChange} />
-                        </Grid>
-
-                        <Grid item xs={6}>
-                            <CheckBoxGroup label="Piso Plataforma" name="piso_plataforma" value={form.piso_plataforma} onChange={handleChange} />
-                        </Grid>
-                        <Grid item xs={6}>
-                            <TextField fullWidth name="obs_piso_plataforma" label="Observación Piso Plataforma" onChange={handleChange} />
-                        </Grid>
-
-                        <Grid item xs={6}>
-                            <CheckBoxGroup label="Tapon Aceite" name="tapon_aceite" value={form.tapon_aceite} onChange={handleChange} />
-                        </Grid>
-                        <Grid item xs={6}>
-                            <TextField fullWidth name="obs_tapon_aceite" label="Observación Tapon Aceite" onChange={handleChange} />
-                        </Grid>
-
-                        <Grid item xs={6}>
-                            <CheckBoxGroup label="Estado Pintura" name="estado_pintura" value={form.estado_pintura} onChange={handleChange} />
-                        </Grid>
-                        <Grid item xs={6}>
-                            <TextField fullWidth name="obs_estado_pintura" label="Observación Estado Pintura" onChange={handleChange} />
-                        </Grid>
-
-                        <Grid item xs={6}>
-                            <CheckBoxGroup label="Altura Mastil" name="altura_mastil" value={form.altura_mastil} onChange={handleChange} />
-                        </Grid>
-                        <Grid item xs={6}>
-                            <TextField fullWidth name="obs_altura_mastil" label="Observación Altura Mastil" onChange={handleChange} />
-                        </Grid>
-
-                        <Grid item xs={6}>
-                            <CheckBoxGroup label="Golpes" name="golpes" value={form.golpes} onChange={handleChange} />
-                        </Grid>
-                        <Grid item xs={6}>
-                            <TextField fullWidth name="obs_golpes" label="Observación Golpes" onChange={handleChange} />
-                        </Grid>
-
-                        {/* 🔹 Nota adicional */}
-                        <Grid item xs={12}>
-                            <TextField fullWidth name="nota_adicional" label="Nota Adicional" onChange={handleChange} />
-                        </Grid>
-
-                    </Grid>
-
-
-                    {/* 🟧 Sección: Firmas */}
-                    <Typography variant="subtitle1" sx={{ fontWeight: "bold", mb: 1 }}>
-                        Firmas
-                    </Typography>
-
 
                     <Grid container spacing={2}>
                         <Grid item xs={6}>
-                            <TextField fullWidth name="firma_supervisor" label="Firma Supervisor" onChange={handleChange} />
+                            <TextField
+                                name="fecha"
+                                type="date"
+                                fullWidth
+                                label="Fecha"
+                                InputLabelProps={{ shrink: true }}
+                                onChange={handleChange}
+                            />
                         </Grid>
 
                         <Grid item xs={6}>
-                            <TextField fullWidth name="firma_operador" label="Firma Operador" onChange={handleChange} />
+                            <TextField
+                                name="folio"
+                                fullWidth
+                                label="Folio"
+                                onChange={handleChange}
+                            />
+                        </Grid>
+
+                        <Grid item xs={6}>
+                            <TextField
+                                name="marca"
+                                fullWidth
+                                label="Marca"
+                                onChange={handleChange}
+                            />
+                        </Grid>
+
+                        <Grid item xs={6}>
+                            <TextField
+                                name="modelo"
+                                fullWidth
+                                label="Modelo"
+                                onChange={handleChange}
+                            />
+                        </Grid>
+
+                        <Grid item xs={6}>
+                            <TextField
+                                name="serie"
+                                fullWidth
+                                label="Serie"
+                                onChange={handleChange}
+                            />
+                        </Grid>
+
+                        <Grid item xs={6}>
+                            <TextField
+                                name="empresa"
+                                fullWidth
+                                label="Empresa"
+                                onChange={handleChange}
+                            />
+                        </Grid>
+
+                        <Grid item xs={6}>
+                            <TextField
+                                name="supervisor"
+                                fullWidth
+                                label="Supervisor"
+                                onChange={handleChange}
+                            />
+                        </Grid>
+
+                        <Grid item xs={6}>
+                            <FormControl fullWidth>
+                                <InputLabel>Tipo de Equipo</InputLabel>
+                                <Select
+                                    name="tipo_equipo"
+                                    value={form.tipo_equipo}
+                                    label="Tipo de Equipo"
+                                    onChange={handleChange}
+                                >
+                                    <MenuItem value="Renta">Renta</MenuItem>
+                                    <MenuItem value="Venta">Venta</MenuItem>
+                                </Select>
+                            </FormControl>
                         </Grid>
                     </Grid>
 
+                    <hr style={{ margin: 20 }} />
+
+                    {/* FIRMAS */}
+                    <Typography variant="h6" sx={{ fontWeight: "bold", mb: 2 }}>
+                        Responsable del montacargas
+                    </Typography>
+
+                    <Grid container spacing={2}>
+
+                        <Grid item xs={6}>
+                            <TextField
+                                name="firma_operador"
+                                fullWidth
+                                label="Operador"
+                                onChange={handleChange}
+                            />
+                        </Grid>
+                    </Grid>
                 </DialogContent>
 
-                <DialogActions sx={{ justifyContent: "space-between", p: 2 }}>
+                <DialogActions>
                     <Button
-                        onClick={() => setOpenModalNuevo(false)}
                         color="error"
-                        sx={{ fontWeight: "bold" }}
+                        onClick={() => setOpenModalNuevo(false)}
                     >
-                        CANCELAR
+                        Cancelar
                     </Button>
+
                     <Button
                         variant="contained"
                         color="primary"
-                        sx={{ fontWeight: "bold" }}
                         onClick={handleSubmit}
                     >
-                        GUARDAR
+                        Guardar
                     </Button>
                 </DialogActions>
             </Dialog>
@@ -721,7 +825,7 @@ function Check() {
                         display: "flex",
                         justifyContent: "space-between",
                         alignItems: "center",
-                        background: "#1976d2",
+                        background: "#d21919ff",
                         color: "white",
                         fontWeight: "bold",
                     }}
@@ -970,8 +1074,7 @@ function Check() {
 
                             <hr />
                             <Typography variant="body2" style={{ marginTop: 10 }}>
-                                <b>Firma Operador:</b> {detalle.firma_operador || "-"} <br />
-                                <b>Firma Supervisor:</b> {detalle.firma_supervisor || "-"}
+                                <b>Responsable del montacargas:</b> {detalle.firma_operador || "-"} <br />
                             </Typography>
                         </div>
                     ) : (
@@ -979,6 +1082,143 @@ function Check() {
                     )}
                 </DialogContent>
             </Dialog>
+
+
+            {/* MODAL DE aCTUIALIZACION */}
+            <Dialog
+                open={openModalEditar}
+                onClose={() => setOpenModalEditar(false)}
+                maxWidth="md"
+                fullWidth
+            >
+                <DialogTitle sx={{ background: "#0011ffff", color: "white", fontWeight: "bold" }}>
+                    Editar checklist del montacargas
+                </DialogTitle>
+
+                <DialogContent dividers>
+
+                    <Typography sx={{ mb: 2, fontSize: 14 }}>
+                        Selecciona el estado del componente y agrega observaciones si aplica.
+                    </Typography>
+
+                    <Grid container spacing={2}>
+                        {[
+                            ["torreta", "obs_torreta"],
+                            ["alarma_reversa", "obs_alarma_reversa"],
+                            ["claxon", "obs_claxon"],
+                            ["extintor", "obs_extintor"],
+                            ["espejos_protector_cristal", "obs_espejos_protector_cristal"],
+                            ["cuartos", "obs_cuartos"],
+                            ["base_cuartos", "obs_base_cuartos"],
+                            ["faro", "obs_faro"],
+                            ["switch_ignicion", "obs_switch_ignicion"],
+                            ["llave_switch", "obs_llave_switch"],
+                            ["tapas_plastico", "obs_tapas_plastico"],
+                            ["perno_arrastre", "obs_perno_arrastre"],
+                            ["calcomanias", "obs_calcomanias"],
+                            ["portahorquillas", "obs_portahorquillas"],
+                            ["horquilla", "obs_horquilla"],
+                            ["respaldo_carga", "obs_respaldo_carga"],
+                            ["parrilla_contrapeso", "obs_parrilla_contrapeso"],
+                            ["desplazador_lateral", "obs_desplazador_lateral"],
+                            ["palanca_control_velocidades", "obs_palanca_control_velocidades"],
+                            ["aditamento", "obs_aditamento"],
+                            ["llantas_delanteras", "obs_llantas_delanteras"],
+                            ["llantas_traseras", "obs_llantas_traseras"],
+                            ["bateria", "obs_bateria"],
+                            ["cargador", "obs_cargador"],
+                            ["valtaje_cargador", "obs_valtaje_cargador"],
+                            ["asiento", "obs_asiento"],
+                            ["protector_operador", "obs_protector_operador"],
+                            ["piso_plataforma", "obs_piso_plataforma"],
+                            ["tapon_aceite", "obs_tapon_aceite"],
+                            ["estado_pintura", "obs_estado_pintura"],
+                            ["altura_mastil", "obs_altura_mastil"],
+                            ["golpes", "obs_golpes"],
+                            ["nota_adicional", null]
+                        ].map(([campo, obs]) => {
+                            // 🔥 caso especial
+                            if (campo === "nota_adicional") {
+                                return (
+                                    <Grid item xs={12} key={campo}>
+                                        <TextField
+                                            fullWidth
+                                            multiline
+                                            rows={3}
+                                            label="Notas adicionales"
+                                            name="nota_adicional"
+                                            value={formEdit.nota_adicional || ""}
+                                            onChange={(e) =>
+                                                setFormEdit({
+                                                    ...formEdit,
+                                                    nota_adicional: e.target.value,
+                                                })
+                                            }
+                                        />
+                                    </Grid>
+                                );
+                            }
+
+                            return (
+                                <React.Fragment key={campo}>
+                                    {/* Select */}
+                                    <Grid item xs={4}>
+                                        <SelectEstado
+                                            label={campo}
+                                            name={campo}
+                                            value={formEdit[campo] || ""}
+                                            onChange={(e) =>
+                                                setFormEdit({
+                                                    ...formEdit,
+                                                    [campo]: e.target.value,
+                                                })
+                                            }
+                                        />
+                                    </Grid>
+
+                                    {/* Observación */}
+                                    {obs && (
+                                        <Grid item xs={8}>
+                                            <TextField
+                                                fullWidth
+                                                multiline
+                                                minRows={1}
+                                                label={`Observación ${campo}`}
+                                                name={obs}
+                                                size="small"
+                                                value={formEdit[obs] || ""}
+                                                onChange={(e) =>
+                                                    setFormEdit({
+                                                        ...formEdit,
+                                                        [obs]: e.target.value,
+                                                    })
+                                                }
+                                            />
+                                        </Grid>
+                                    )}
+                                </React.Fragment>
+                            );
+                        })}
+                    </Grid>
+
+
+                </DialogContent>
+
+                <DialogActions>
+                    <Button color="error" onClick={() => setOpenModalEditar(false)}>
+                        Cancelar
+                    </Button>
+
+                    <Button
+                        variant="contained"
+                        color="success"
+                        onClick={guardarCambios}
+                    >
+                        Guardar cambios
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
 
 
         </div>

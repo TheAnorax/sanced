@@ -8442,7 +8442,7 @@ const fetchPaqueteriaRoutes = async ({
                           padding: "6px 12px",
                           fontSize: 14,
                           boxShadow: 1,
-                        }}
+                        }} 
                       >
                         <strong>{estatus}:</strong> {cantidad}
                       </Box>

@@ -430,12 +430,12 @@ export const mainListItems = (user) => {
       icon: <AssessmentIcon />,
       text: "Insumos ",
     },
-    {
-      role: ["Admin", "ADMIN","MASTER","master", "Master"],
-      path: "/dashboard/inventario",
-      icon: <AssessmentIcon />,
-      text: "Inventario dia 0",
-    },
+    // {
+    //   role: ["Admin", "ADMIN","MASTER","master", "Master"],
+    //   path: "/dashboard/inventario",
+    //   icon: <AssessmentIcon />,
+    //   text: "Inventario dia 0",
+    // },
     {
       role: [
         "Admin", 

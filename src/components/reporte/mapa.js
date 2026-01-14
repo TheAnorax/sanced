@@ -12,9 +12,8 @@ import {
   Paper,
   Divider,
   Tabs,
-  Tab,
+  Tab, 
   TableSortLabel,
-  Toolbar,
   TextField,
   InputAdornment,
   LinearProgress,
@@ -22,11 +21,14 @@ import {
   Select,
   MenuItem,
   Button,
-     Switch, Tooltip, Stack ,
+  Switch, Tooltip, Stack ,
   FormControlLabel ,
   Checkbox,
-   Grid,
+  Grid,
+  CircularProgress,
+  Backdrop
   } from "@mui/material";
+  
   import { ToggleButton, ToggleButtonGroup } from "@mui/material";
 
 import SearchIcon from "@mui/icons-material/Search";
@@ -46,128 +48,122 @@ export default function MapaMexico() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [fletesClientes, setFletesClientes] = useState([]);
-const [fletesMeta, setFletesMeta] = useState(null);
-const [showPeriodo, setShowPeriodo] = useState(true);
-const [showVista, setShowVista] = useState(false);
-const [availableMonths, setAvailableMonths] = useState([]);     // ['2025-06', '2025-07', ...]
-const [selectedMonth, setSelectedMonth]   = useState(null);     // 'YYYY-MM'
-const [monthsPayload, setMonthsPayload]   = useState(null); 
-const [dense, setDense] = useState(true); // tamaño de fila en la tabla
-const [estadoFiltro, setEstadoFiltro] = useState(""); // vacío = todos
-const estadosDisponibles = Array.from(new Set(fletesClientes.map(c => c.estado))).sort();
-const [yy, mm] = selectedMonth ? selectedMonth.split("-").map(Number) : [];
-const IVA = 0.16; // porcentaje de IVA (16%)
-
-const totalFacturaGlobal = fletesMeta?.total_factura_global ?? 0;
-const totalFleteGlobalBase = fletesMeta?.total_flete_global ?? 0;
-
-// 🔹 Estados para el nuevo tab "Fletes por Transporte"
-const [fletesTransporte, setFletesTransporte] = useState([]);
-const [resumenFletesTransporte, setResumenFletesTransporte] = useState([]);
-const [loadingFletesTransporte, setLoadingFletesTransporte] = useState(true);
-
-
-// 🔹 Si NO es septiembre, quitamos 16%
-const totalFleteGlobal = (mm !== 9) 
-  ? totalFleteGlobalBase * (1 - IVA) 
-  : totalFleteGlobalBase;
-
-// 🔹 Recalcular % flete
-const pctFleteGlobal = totalFacturaGlobal > 0
-  ? (totalFleteGlobal / totalFacturaGlobal) * 100
-  : 0;
+  const [fletesMeta, setFletesMeta] = useState(null);
+  const [showPeriodo, setShowPeriodo] = useState(true);
+  const [showVista, setShowVista] = useState(false);
+  const [availableMonths, setAvailableMonths] = useState([]);     // ['2025-06', '2025-07', ...]
+  const [selectedMonth, setSelectedMonth]   = useState(null);     // 'YYYY-MM'
+  const [monthsPayload, setMonthsPayload]   = useState(null); 
+  const [dense, setDense] = useState(true); // tamaño de fila en la tabla
+  const [estadoFiltro, setEstadoFiltro] = useState(""); // vacío = todos
+  const estadosDisponibles = Array.from(new Set(fletesClientes.map(c => c.estado))).sort();
+  const [yy, mm] = selectedMonth ? selectedMonth.split("-").map(Number) : [];
+  const IVA = 0.16; // porcentaje de IVA (16%)
+  const totalFacturaGlobal = fletesMeta?.total_factura_global ?? 0;
+  const totalFleteGlobalBase = fletesMeta?.total_flete_global ?? 0;
+  // 🔹 Estados para el nuevo tab "Fletes por Transporte"
+  const [fletesTransporte, setFletesTransporte] = useState([]);
+  const [resumenFletesTransporte, setResumenFletesTransporte] = useState([]);
+  const [loadingFletesTransporte, setLoadingFletesTransporte] = useState(true);
+  const [anioSeleccionado, setAnioSeleccionado] = useState(2026);
+const [anioFletes, setAnioFletes] = useState(2026);
+const [anioTransporte, setAnioTransporte] = useState(2026);
 
 
-const pad2 = (n) => String(n).padStart(2, "0");
-const ymLabel = (ym) => {
-  const [y, m] = ym.split("-").map(Number);
-  const MES = ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"];
-  return `${MES[m-1]} ${y}`;
-};
-const nextYm = (ym) => {
-  const [y, m] = ym.split("-").map(Number);
-  const d = new Date(y, m, 1); // primer día del mes siguiente
-  return `${d.getFullYear()}-${pad2(d.getMonth()+1)}`
-};
-const enumerateMonths = (from, toExcl) => {
-  if (!from || !toExcl) return [];
-  const s = new Date(from.slice(0,7) + "-01");
-  const e = new Date(toExcl.slice(0,7) + "-01");
-  const arr = [];
-  for (let d = new Date(s); d < e; d.setMonth(d.getMonth()+1)) {
-    arr.push(`${d.getFullYear()}-${pad2(d.getMonth()+1)}`);
-  }
-  return arr;
-};
+  // 🔹 Si NO es septiembre, quitamos 16%
+  const totalFleteGlobal = totalFleteGlobalBase;
+
+
+  // 🔹 Recalcular % flete
+  const pctFleteGlobal = totalFacturaGlobal > 0
+    ? (totalFleteGlobal / totalFacturaGlobal) * 100
+    : 0;
+  const pad2 = (n) => String(n).padStart(2, "0");
+  const ymLabel = (ym) => {
+    const [y, m] = ym.split("-").map(Number);
+    const MES = ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"];
+    return `${MES[m-1]} ${y}`;
+  };
+  const nextYm = (ym) => {
+    const [y, m] = ym.split("-").map(Number);
+    const d = new Date(y, m, 1); // primer día del mes siguiente
+    return `${d.getFullYear()}-${pad2(d.getMonth()+1)}`
+  };
+  const enumerateMonths = (from, toExcl) => {
+    if (!from || !toExcl) return [];
+    const s = new Date(from.slice(0,7) + "-01");
+    const e = new Date(toExcl.slice(0,7) + "-01");
+    const arr = [];
+    for (let d = new Date(s); d < e; d.setMonth(d.getMonth()+1)) {
+      arr.push(`${d.getFullYear()}-${pad2(d.getMonth()+1)}`);
+    }
+    return arr;
+  };
   const currency = (n) =>
   (Number(n) || 0).toLocaleString("es-MX", { style: "currency", currency: "MXN", minimumFractionDigits: 2 });
 
-const percentToNum = (p) =>
-  typeof p === "string" ? Number(String(p).replace("%", "")) || 0 : Number(p || 0);
+  const percentToNum = (p) =>
+    typeof p === "string" ? Number(String(p).replace("%", "")) || 0 : Number(p || 0);
 
-const percentFmt = (n) => `${(Number(n) || 0).toFixed(2)}%`;
+  const percentFmt = (n) => `${(Number(n) || 0).toFixed(2)}%`;
+  // 1) Mini stat compacto (ponlo arriba del componente o en un helpers file)
+  const StatMini = ({ label, value }) => (
+    <Box
+      sx={{
+        display: "inline-flex",
+        flexDirection: "column",
+        gap: 0.25,
+        px: 1,            // 👈 padding reducido
+        py: 0.5,
+        borderRadius: 1,
+        bgcolor: "grey.50",
+        border: "1px solid",
+        borderColor: "divider",
+        minWidth: 150,    // 👈 puedes bajar a 130/120 si quieres aún más compacto
+      }}
+    >
+      <Typography variant="caption" color="text.secondary" noWrap>{label}</Typography>
+      <Typography variant="body2" fontWeight={700} noWrap>{value}</Typography>
+    </Box>
+  );
 
+  const percentColor = (p) => {
+    const v = Number(p) || 0;
+    if (v >= 9 ) return "error";
+    if (v >= 5) return "warning";
+    return "success";
+  };
 
-
-// 1) Mini stat compacto (ponlo arriba del componente o en un helpers file)
-const StatMini = ({ label, value }) => (
-  <Box
-    sx={{
-      display: "inline-flex",
-      flexDirection: "column",
-      gap: 0.25,
-      px: 1,            // 👈 padding reducido
-      py: 0.5,
-      borderRadius: 1,
-      bgcolor: "grey.50",
-      border: "1px solid",
-      borderColor: "divider",
-      minWidth: 150,    // 👈 puedes bajar a 130/120 si quieres aún más compacto
-    }}
-  >
-    <Typography variant="caption" color="text.secondary" noWrap>{label}</Typography>
-    <Typography variant="body2" fontWeight={700} noWrap>{value}</Typography>
-  </Box>
-);
-
-
-const percentColor = (p) => {
-  const v = Number(p) || 0;
-  if (v >= 9 ) return "error";
-  if (v >= 5) return "warning";
-  return "success";
-};
-
-function exportCSV(rows) {
-  const headers = ["num_cliente","nombre_cliente","total_factura","total_flete","porcentaje_flete","total_guias"];
-  const csv = [
-    headers.join(","),
-    ...rows.map(r => [
-      `"${r.num_cliente}"`,
-      `"${(r.nombre_cliente || "").replace(/"/g, '""')}"`,
-      Number(r.total_factura || 0).toFixed(2),
-      Number(r.total_flete || 0).toFixed(2),
-      percentToNum(r.porcentaje_flete).toFixed(2),
-      Number(r.total_guias ?? 0)
-    ].join(","))
-  ].join("\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url; a.download = "fletes_por_cliente.csv"; a.click();
-  URL.revokeObjectURL(url);
-}
+  function exportCSV(rows) {
+    const headers = ["num_cliente","nombre_cliente","total_factura","total_flete","porcentaje_flete","total_guias"];
+    const csv = [
+      headers.join(","),
+      ...rows.map(r => [
+        `"${r.num_cliente}"`,
+        `"${(r.nombre_cliente || "").replace(/"/g, '""')}"`,
+        Number(r.total_factura || 0).toFixed(2),
+        Number(r.total_flete || 0).toFixed(2),
+        percentToNum(r.porcentaje_flete).toFixed(2),
+        Number(r.total_guias ?? 0)
+      ].join(","))
+    ].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "fletes_por_cliente.csv"; a.click();
+    URL.revokeObjectURL(url);
+  }
 
 
-const [q, setQ] = useState("");
-const [topN, setTopN] = useState(50);
-const [orderBy, setOrderBy] = useState("total_flete");
-const [order, setOrder] = useState("desc");
+  const [q, setQ] = useState("");
+  const [topN, setTopN] = useState(50);
+  const [orderBy, setOrderBy] = useState("total_flete");
+  const [order, setOrder] = useState("desc");
 
-const handleSort = (col) => {
-  if (orderBy === col) setOrder((o) => (o === "asc" ? "desc" : "asc"));
-  else { setOrderBy(col); setOrder("desc"); }
-};
+  const handleSort = (col) => {
+    if (orderBy === col) setOrder((o) => (o === "asc" ? "desc" : "asc"));
+    else { setOrderBy(col); setOrder("desc"); }
+  };
 
 const fletesFiltrados = React.useMemo(() => {
   const query = q.trim().toLowerCase();
@@ -204,30 +200,41 @@ const fletesFiltrados = React.useMemo(() => {
 }, [fletesClientes, q, topN, orderBy, order, estadoFiltro]);
 
 
-const totalesVista = React.useMemo(() => {
-  const tfact = fletesFiltrados.reduce((acc, r) => acc + Number(r.total_factura || 0), 0);
-  const tflet = fletesFiltrados.reduce((acc, r) => acc + Number(r.total_flete || 0), 0);
-  const pct   = tfact > 0 ? (tflet / tfact) * 100 : 0;
-  const tgui  = fletesFiltrados.reduce((acc, r) => acc + Number(r.total_guias || 0), 0);
-  return { tfact, tflet, pct, tgui };
-}, [fletesFiltrados]);
+  const totalesVista = React.useMemo(() => {
+    const tfact = fletesFiltrados.reduce((acc, r) => acc + Number(r.total_factura || 0), 0);
+    const tflet = fletesFiltrados.reduce((acc, r) => acc + Number(r.total_flete || 0), 0);
+    const pct   = tfact > 0 ? (tflet / tfact) * 100 : 0;
+    const tgui  = fletesFiltrados.reduce((acc, r) => acc + Number(r.total_guias || 0), 0);
+    return { tfact, tflet, pct, tgui };
+  }, [fletesFiltrados]);
 
 useEffect(() => {
   (async () => {
-    // Intentamos obtener versión “agrupada por mes”. Si tu backend
-    // no la soporta, regresará el formato antiguo (sin months[]).
-    const resp = await fetch("http://66.232.105.87:3007/api/kpi/getFletesClientes");
+    const resp = await fetch(`http://66.232.105.87:3007/api/kpi/getFletesClientes?year=${anioFletes}`);
     const json = await resp.json();
 
-    // Si viene months[], usamos esa estructura
     if (Array.isArray(json.months) && json.months.length) {
-      setMonthsPayload(json);                         // guardamos payload
-      const months = json.months.map(m => m.ym);
-      setAvailableMonths(months);
-      const last = months[months.length - 1];         // último mes disponible
-      setSelectedMonth(last);
+      setMonthsPayload(json);
 
-      // seteamos tabla/meta con el último mes
+      const months = json.months.map(m => m.ym);
+
+// 👉 aplicar la misma regla
+const filteredMonths = months.filter((ym) => {
+  const [anio, mesNum] = ym.split("-").map(Number);
+
+  if (anio === 2025 && anioFletes === 2025) {
+    return mesNum >= 6;
+  }
+
+  return true;
+});
+
+setAvailableMonths(filteredMonths);
+
+const last = filteredMonths[filteredMonths.length - 1] || null;
+setSelectedMonth(last);
+
+
       const mo = json.months.find(m => m.ym === last) || {};
       setFletesClientes(mo.data || []);
       setFletesMeta({
@@ -238,65 +245,59 @@ useEffect(() => {
         porcentaje_flete_global: mo.porcentaje_flete_global ?? 0,
         total_guias_global:   mo.total_guias_global   ?? 0,
       });
+    } else {
+      setAvailableMonths([]);
+      setFletesClientes([]);
+      setFletesMeta(null);
+    }
+  })();
+}, [anioFletes]);   // 👈 OJO: dependemos del año
+
+
+useEffect(() => {
+  if (tabIndex === 3) {
+    setAnioFletes(anioSeleccionado);
+  }
+}, [tabIndex, anioSeleccionado]);
+
+  useEffect(() => {
+    if (!selectedMonth) return;
+
+    // Si tenemos months[] en memoria, filtramos local
+    if (monthsPayload?.months?.length) {
+      const mo = monthsPayload.months.find(m => m.ym === selectedMonth);
+      setFletesClientes(mo?.data || []);
+      setFletesMeta({
+        from: `${selectedMonth}-01`,
+        to: `${nextYm(selectedMonth)}-01`,
+        total_factura_global: mo?.total_factura_global ?? 0,
+        total_flete_global:   mo?.total_flete_global   ?? 0,
+        porcentaje_flete_global: mo?.porcentaje_flete_global ?? 0,
+        total_guias_global:   mo?.total_guias_global   ?? 0,
+      });
       return;
     }
 
-    // 🟨 Fallback: formato antiguo (meta + data del rango)
-    setFletesClientes(json.data || []);
-    setFletesMeta(json.meta || null);
-
-    // Deducimos meses del rango y precargamos el último con refetch
-    const months = enumerateMonths(json.meta?.from, json.meta?.to);
-    setAvailableMonths(months);
-    const last = months[months.length - 1] || null;
-    setSelectedMonth(last);
-
-    if (last) {
-      const [yy, mm] = last.split("-").map(Number);
-      const r2 = await fetch(`http://66.232.105.87:3007/api/kpi/getFletesClientes?year=${yy}&month=${mm}`);
-      const j2 = await r2.json();
-      setFletesClientes(j2.data || []);
-      setFletesMeta(j2.meta || null);
-    }
-  })();
-}, []);
+    // 🟨 Fallback: pedimos al backend ese mes específico
+    (async () => {
+      const [yy, mm] = selectedMonth.split("-").map(Number);
+      const r = await fetch(`http://66.232.105.87:3007/api/kpi/getFletesClientes?year=${yy}&month=${mm}`);
+      const j = await r.json();
+      setFletesClientes(j.data || []);
+      setFletesMeta(j.meta || null);
+    })();
+  }, [selectedMonth]); 
 
 
-useEffect(() => {
-  if (!selectedMonth) return;
+  useEffect(() => {
+  if (tabIndex !== 4) return;
 
-  // Si tenemos months[] en memoria, filtramos local
-  if (monthsPayload?.months?.length) {
-    const mo = monthsPayload.months.find(m => m.ym === selectedMonth);
-    setFletesClientes(mo?.data || []);
-    setFletesMeta({
-      from: `${selectedMonth}-01`,
-      to: `${nextYm(selectedMonth)}-01`,
-      total_factura_global: mo?.total_factura_global ?? 0,
-      total_flete_global:   mo?.total_flete_global   ?? 0,
-      porcentaje_flete_global: mo?.porcentaje_flete_global ?? 0,
-      total_guias_global:   mo?.total_guias_global   ?? 0,
-    });
-    return;
-  }
-
-  // 🟨 Fallback: pedimos al backend ese mes específico
-  (async () => {
-    const [yy, mm] = selectedMonth.split("-").map(Number);
-    const r = await fetch(`http://66.232.105.87:3007/api/kpi/getFletesClientes?year=${yy}&month=${mm}`);
-    const j = await r.json();
-    setFletesClientes(j.data || []);
-    setFletesMeta(j.meta || null);
-  })();
-}, [selectedMonth]); 
-
-
-useEffect(() => {
-  if (tabIndex !== 4) return; // Solo carga cuando se entra al tab
   const fetchFletesTransporte = async () => {
     try {
       setLoadingFletesTransporte(true);
-      const res = await axios.get("http://66.232.105.87:3007/api/kpi/getHistorico2025Paqueterias");
+      const res = await axios.get(
+        `http://66.232.105.87:3007/api/kpi/getHistorico2025Transportes?year=${anioTransporte}`
+      );
       setFletesTransporte(res.data.transportes || []);
       setResumenFletesTransporte(res.data.resumen_mensual || []);
     } catch (error) {
@@ -305,25 +306,24 @@ useEffect(() => {
       setLoadingFletesTransporte(false);
     }
   };
+
   fetchFletesTransporte();
-}, [tabIndex]);
+}, [tabIndex, anioTransporte]);
 
 
-const [usarIVA, setUsarIVA] = useState(false);
 
-const applyIVA = (valor) => {
-  const n = Number(valor || 0);
-  return usarIVA ? n * (1 + IVA) : n;
-};
+  const [usarIVA, setUsarIVA] = useState(false);
+  const applyIVA = (valor) => {
+    const n = Number(valor || 0);
+    return usarIVA ? n * (1 + IVA) : n;
+  };
 
-const fmtMoney = (n) =>
-  `$${Number(n || 0).toLocaleString("es-MX", { maximumFractionDigits: 0 })}`;
+  const fmtMoney = (n) =>
+    `$${Number(n || 0).toLocaleString("es-MX", { maximumFractionDigits: 0 })}`;
 
-const fmtNumber = (n) => Number(n || 0).toLocaleString("es-MX");
-
-const fmtPercent = (n, digits = 1) =>
-  `${Number(n || 0).toFixed(digits)}%`;
-
+  const fmtNumber = (n) => Number(n || 0).toLocaleString("es-MX");
+  const fmtPercent = (n, digits = 1) =>
+    `${Number(n || 0).toFixed(digits)}%`;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -369,19 +369,26 @@ const fmtPercent = (n, digits = 1) =>
     fetchTop10();
   }, []);
 
-   useEffect(() => {
-    axios.get(API_URL)
-      .then(response => {
-        setData(response.data);
-        setLoading(false);
-      })
-      .catch(error => {
-        console.error('Error al cargar datos de la API:', error);
-        setLoading(false);
-      });
-  }, []);
+useEffect(() => {
+  const fetchHistorico = async () => {
+    try {
+      setLoading(true);
+      const url = `${API_URL}?year=${anioSeleccionado}`;
+      const res = await axios.get(url);
+      setData(res.data);
+    } catch (error) {
+      console.error("❌ Error al cargar histórico de ventas:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchHistorico();
+}, [anioSeleccionado]);
+
   const mesesOrdenados = [
-    // "2024-01", "2024-02",
+    "2024-01", 
+    "2024-02",
     "2024-03",
     "2024-04",
     "2024-05",
@@ -395,7 +402,8 @@ const fmtPercent = (n, digits = 1) =>
   ];
 
   const nombresMeses = {
-    // "2024-01": "ENERO", "2024-02": "FEBRERO",
+    "2024-01": "ENERO", 
+    "2024-02": "FEBRERO",
     "2024-03": "MARZO",
     "2024-04": "ABRIL",
     "2024-05": "MAYO",
@@ -489,18 +497,15 @@ const fmtPercent = (n, digits = 1) =>
     const mesIndex = parseInt(fecha.split("-")[1], 10) - 1;
     return meses[mesIndex];
   };
-const nombreEstado = nombresEstados[estadoSeleccionado || 'total_general'] || (estadoSeleccionado || 'Total General');
+  const nombreEstado = nombresEstados[estadoSeleccionado || 'total_general'] || (estadoSeleccionado || 'Total General');
 
-
-
-const getHistoricoEstado = (estadoId) => {
-  const nodo = data?.[estadoId];
-  if (!nodo) return null;
-  // Si trae por_mes, úsalo; si no, asume que el nodo YA es un mapa de meses
-  return nodo.por_mes ?? nodo;
-};
-
-
+  const getHistoricoEstado = (estadoId) => {
+    const nodo = data?.[estadoId];
+    if (!nodo) return null;
+    // Si trae por_mes, úsalo; si no, asume que el nodo YA es un mapa de meses
+    return nodo.por_mes ?? nodo;
+  };
+  
   const renderInfoEstado = () => {
   const elegido = estadoSeleccionado || 'total_general';
   const historico = getHistoricoEstado(elegido);
@@ -543,37 +548,29 @@ const getHistoricoEstado = (estadoId) => {
         <TableBody>
           {Object.entries(historico)
             .filter(([mes]) => {
-              const [anio, mesNum] = mes.split('-').map(Number);
-              return anio > 2025 || (anio === 2025 && mesNum >= 6); // Junio 2025+
-            })
-            .sort(([a], [b]) => (a > b ? 1 : -1))
-            .map(([mes, v], index) => {
-  const facturaBase = Number(v.total_factura_lt || 0);
-  const fleteBase = Number(v.total_flete || 0);
+  const [anio, mesNum] = mes.split('-').map(Number);
 
-  const [anio, mesNum] = mes.split("-").map(Number);
+  // 🔹 Si es 2025, solo de junio en adelante
+  if (anio === 2025 && anioSeleccionado === 2025) {
+    return mesNum >= 6;
+  }
 
-  // 🔹 Si es junio (06) o agosto (08) 2025, descuenta el 16% de IVA al flete
-  const fleteAjustado = (anio === 2025 && (mesNum === 6 ||mesNum === 7 || mesNum === 8))
-    ? fleteBase * (1 - IVA) // aplica descuento del 16%
-    : fleteBase;
+  // 🔹 Para cualquier otro año, comportamiento normal
+  return anio === anioSeleccionado;
+})
 
-  // Aplica IVA si el switch está activado
-  const factura = applyIVA(facturaBase);
-  const flete = applyIVA(fleteAjustado);
 
-  // porcentaje recalculado
-  const pctFlete = factura > 0 ? (flete / factura) * 100 : 0;
 
-  return (
-    <TableRow
-      key={mes}
-      hover
-      sx={{
-        backgroundColor: index % 2 === 0 ? '#fff' : '#fafafa',
-        transition: 'background 0.2s',
-      }}
-    >
+
+            .sort(([a], [b]) => new Date(a + "-01") - new Date(b + "-01"))
+
+           .map(([mes, v], index) => {
+          const factura = Number(v.total_factura_lt || 0);
+          const flete = Number(v.total_flete || 0);
+          const pctFlete = factura > 0 ? (flete / factura) * 100 : 0;
+
+          return (
+    <TableRow key={mes} hover>
       <TableCell>{getMesNombre(mes)}</TableCell>
       <TableCell>{fmtMoney(factura)}</TableCell>
       <TableCell>{fmtMoney(flete)}</TableCell>
@@ -585,9 +582,9 @@ const getHistoricoEstado = (estadoId) => {
       </TableCell>
       <TableCell align="right">{fmtNumber(v.total_clientes)}</TableCell>
     </TableRow>
-  );
-})
-}
+            );
+          })
+        }
         </TableBody>
       </Table>
     </TableContainer>
@@ -613,11 +610,11 @@ const getHistoricoEstado = (estadoId) => {
         onChange={(e, newIndex) => setTabIndex(newIndex)}
         sx={{ mb: 3 }}
       >
-        <Tab label="Histórico de Ventas 2025" />
+        <Tab label="Histórico de Ventas" />
         <Tab label="Histórico de Ventas 2024" />
         <Tab label="Top 10 Productos Más Vendidos" />
         <Tab label="Fletes por Cliente" />
-        <Tab label="Fletes por Transporte" />
+        {/* <Tab label="Fletes por Transporte" /> */}
       </Tabs>
         {tabIndex === 0 && (
         <Box>
@@ -644,32 +641,48 @@ const getHistoricoEstado = (estadoId) => {
   </Typography>
 
   <Stack direction="row" spacing={2} alignItems="center">
-    <Tooltip title={`Mostrar montos con IVA (${(IVA * 100).toFixed(0)}%)`}>
-      <FormControlLabel
-        control={
-          <Switch
-            checked={usarIVA}
-            onChange={(e) => setUsarIVA(e.target.checked)}
-            color="primary"
-          />
-        }
-        label="Montos con IVA"
-      />
-    </Tooltip>
 
+  <Tooltip title={`Mostrar montos con IVA (${(IVA * 100).toFixed(0)}%)`}>
     <FormControlLabel
       control={
-        <Checkbox
-          checked={estadoSeleccionado === 'total_general'}
-          onChange={(e) =>
-            setEstadoSeleccionado(e.target.checked ? 'total_general' : null)
-          }
+        <Switch
+          checked={usarIVA}
+          onChange={(e) => setUsarIVA(e.target.checked)}
           color="primary"
         />
       }
-      label="Total General"
+      label="Montos con IVA"
     />
-  </Stack>
+  </Tooltip>
+
+  {/* 🔹 Selector de Años */}
+  <ToggleButtonGroup
+  size="small"
+  exclusive
+  value={anioSeleccionado}
+  onChange={(e, newValue) => {
+    if (newValue !== null) setAnioSeleccionado(newValue);
+  }}
+>
+  <ToggleButton value={2025}>2025</ToggleButton>
+  <ToggleButton value={2026}>2026</ToggleButton>
+</ToggleButtonGroup>
+
+
+  <FormControlLabel
+    control={
+      <Checkbox
+        checked={estadoSeleccionado === 'total_general'}
+        onChange={(e) =>
+          setEstadoSeleccionado(e.target.checked ? 'total_general' : null)
+        }
+        color="primary"
+      />
+    }
+    label="Total General"
+  />
+</Stack>
+
 </Box>
 
 
@@ -957,11 +970,12 @@ const getHistoricoEstado = (estadoId) => {
                     </Tooltip>
                 </g>
          </svg>
-            </Box>   
-             <Box
+    </Box>   
+      <Box
         flex={1}
         minWidth={350}
         sx={{
+          position: 'relative',
           p: 2,
           bgcolor: 'background.paper',
           borderRadius: 2,
@@ -973,7 +987,23 @@ const getHistoricoEstado = (estadoId) => {
           },
         }}
       >
-        {renderInfoEstado()}
+        {loading && (
+    <Box
+      sx={{
+        position: 'absolute',
+        inset: 0,
+        bgcolor: 'rgba(255,255,255,0.6)',
+        zIndex: 10,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 2,
+      }}
+    >
+      <CircularProgress size={50} />
+    </Box>
+  )}
+         {!loading && renderInfoEstado()}
       </Box>  
           </Box>
         </Box>
@@ -1262,39 +1292,26 @@ const getHistoricoEstado = (estadoId) => {
             <Grid container spacing={2} alignItems="center">
               {/* Izquierda: búsqueda + Top */}
               <Grid item xs={12} md={4}>
-                <Stack direction="row" spacing={2} alignItems="center">
-                  <TextField
+                <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Año:
+                  </Typography>
+
+                  <ToggleButtonGroup
                     size="small"
-                    fullWidth
-                    placeholder="Buscar cliente o # cliente…"
-                    value={q}
-                    onChange={(e) => setQ(e.target.value)}
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <SearchIcon fontSize="small" />
-                        </InputAdornment>
-                      ),
+                    exclusive
+                    value={anioFletes}
+                    onChange={(e, newValue) => {
+                      if (newValue !== null) {
+                        setAnioFletes(newValue);
+                      }
                     }}
-                  />
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    <Typography variant="body2" color="text.secondary">
-                      Top
-                    </Typography>
-                    <Select
-                      size="small"
-                      value={topN}
-                      onChange={(e) => setTopN(Number(e.target.value))}
-                      sx={{ minWidth: 88 }}
-                    >
-                      {[10, 20, 50, 100, 500, 4000].map((n) => (
-                        <MenuItem key={n} value={n}>
-                          {n}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </Box>
+                  >
+                    <ToggleButton value={2025}>2025</ToggleButton>
+                    <ToggleButton value={2026}>2026</ToggleButton>
+                  </ToggleButtonGroup>
                 </Stack>
+
               </Grid>
 
               {/* Centro: selector de Mes (exclusivo) */}
@@ -1317,11 +1334,24 @@ const getHistoricoEstado = (estadoId) => {
                     value={selectedMonth}
                     onChange={(_, val) => val && setSelectedMonth(val)}
                   >
-                    {availableMonths.map((ym) => (
-                      <ToggleButton key={ym} value={ym} disableRipple>
-                        {ymLabel(ym)}
-                      </ToggleButton>
-                    ))}
+                    {availableMonths
+  .filter((ym) => {
+    const [anio, mesNum] = ym.split("-").map(Number);
+
+    // 👉 Si es 2025, solo de junio en adelante
+    if (anio === 2025 && anioFletes === 2025) {
+      return mesNum >= 6;
+    }
+
+    // 👉 Otros años normales
+    return true;
+  })
+  .map((ym) => (
+    <ToggleButton key={ym} value={ym}>
+      {ymLabel(ym)}
+    </ToggleButton>
+))}
+
                   </ToggleButtonGroup>
                   {!availableMonths.length && (
                     <Chip size="small" label="Sin meses disponibles" />
@@ -1560,7 +1590,7 @@ const getHistoricoEstado = (estadoId) => {
 
         // 🔹 Ajustar flete quitando 16% (excepto septiembre)
         const fleteBase = Number(c.total_flete || 0);
-        const fleteAjustado = (mm !== 9) ? fleteBase * (1 - IVA) : fleteBase;
+        const fleteAjustado = fleteBase;
 
         const factura = Number(c.total_factura || 0);
 
@@ -1621,17 +1651,16 @@ const getHistoricoEstado = (estadoId) => {
           </Paper>
         </Box>
         )}
-        {tabIndex === 4 && (
+        {/* {tabIndex === 4 && (
           <Box>
             <Typography variant="h6" fontWeight="bold" gutterBottom>
-              🚚 Fletes por Transporte (Histórico 2025 desde Junio)
+              🚚 Fletes por Transporte
             </Typography>
 
             {loadingFletesTransporte && <LinearProgress sx={{ my: 2 }} />}
 
           
 
-            {/* Tabla principal por transporte */}
             {!loadingFletesTransporte && fletesTransporte.length > 0 && (
               <Box>
                 <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
@@ -1639,7 +1668,6 @@ const getHistoricoEstado = (estadoId) => {
                 </Typography>
 
                 {fletesTransporte.map((t, idx) => {
-                  // Calculamos totales generales del transporte
                   const totalPedidos = t.datos.reduce((acc, d) => acc + Number(d.total_pedidos || 0), 0);
                   const totalFlete = t.datos.reduce((acc, d) => acc + Number(d.total_flete || 0), 0);
                   const pctFleteProm = totalPedidos > 0 ? (totalFlete / totalPedidos) * 100 : 0;
@@ -1656,7 +1684,6 @@ const getHistoricoEstado = (estadoId) => {
                         borderColor: "divider",
                       }}
                     >
-                      {/* Encabezado de transporte con totales */}
                       <Box
                         sx={{
                           display: "flex",
@@ -1669,27 +1696,26 @@ const getHistoricoEstado = (estadoId) => {
                           🚛 {t.transporte}
                         </Typography>
 
-                        <Stack direction="row" spacing={3} alignItems="center" flexWrap="wrap">
-                          <Typography variant="body2">
-                            <strong>Total Pedidos:</strong> {currency(totalPedidos)}
+                        <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
+                          <Typography variant="body2" color="text.secondary">
+                            Año:
                           </Typography>
-                          <Typography variant="body2">
-                            <strong>Total Flete:</strong> {currency(totalFlete)}
-                          </Typography>
-                          <Typography variant="body2">
-                            <strong>% Flete Promedio:</strong>{" "}
-                            <Chip
-                              size="small"
-                              label={`${pctFleteProm.toFixed(2)}%`}
-                              color={percentColor(pctFleteProm)}
-                              variant="outlined"
-                              sx={{ fontWeight: 700 }}
-                            />
-                          </Typography>
+
+                          <ToggleButtonGroup
+                            size="small"
+                            exclusive
+                            value={anioTransporte}
+                            onChange={(e, newValue) => {
+                              if (newValue !== null) setAnioTransporte(newValue);
+                            }}
+                          >
+                            <ToggleButton value={2025}>2025</ToggleButton>
+                            <ToggleButton value={2026}>2026</ToggleButton>
+                          </ToggleButtonGroup>
                         </Stack>
+
                       </Box>
 
-                      {/* Desglose mensual */}
                       <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
                         <Table size="small" stickyHeader>
                           <TableHead>
@@ -1702,8 +1728,19 @@ const getHistoricoEstado = (estadoId) => {
                           </TableHead>
                           <TableBody>
                             {t.datos
+                              .filter((d) => {
+                                const [anio, mesNum] = d.mes.split("-").map(Number);
+
+                                // 👉 regla negocio
+                                if (anio === 2025 && anioTransporte === 2025) {
+                                  return mesNum >= 6;
+                                }
+
+                                return true;
+                              })
                               .sort((a, b) => a.mes.localeCompare(b.mes))
                               .map((d, i) => (
+
                                 <TableRow key={`${t.transporte}-${d.mes}-${i}`} hover>
                                   <TableCell>{ymLabel(d.mes)}</TableCell>
                                   <TableCell align="right">{currency(d.total_pedidos)}</TableCell>
@@ -1727,7 +1764,7 @@ const getHistoricoEstado = (estadoId) => {
             )}
 
           </Box>
-        )}
+        )} */}
 
 
 

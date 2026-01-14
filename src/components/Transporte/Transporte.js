@@ -110,7 +110,6 @@ function Transporte() {
 
   const [selectedRoutes, setSelectedRoutes] = useState([]);
   const [confirmSendModalOpen, setConfirmSendModalOpen] = useState(false);
-  
 
   const [totalClientes, setTotalClientes] = useState(0);
   const [totalPedidos, setTotalPedidos] = useState(0);
@@ -199,7 +198,6 @@ function Transporte() {
   const [sentRoutesData, setSentRoutesData] = useState([]);
 
   const [anio, setAnio] = useState(2025);
-  
 
   const [filtro, setFiltro] = useState("");
 
@@ -1400,46 +1398,43 @@ function Transporte() {
     );
   };
 
-
   const [selectedMonth, setSelectedMonth] = useState(
-  new Date().getMonth() + 1 // mes actual
-);
-const [selectedYear, setSelectedYear] = useState(
-  new Date().getFullYear() // año actual
-);
+    new Date().getMonth() + 1 // mes actual
+  );
+  const [selectedYear, setSelectedYear] = useState(
+    new Date().getFullYear() // año actual
+  );
 
+  const fetchPaqueteriaRoutes = async ({
+    filtro = "",
+    desde = "",
+    hasta = "",
+    mes = "",
+    anio = "",
+  } = {}) => {
+    try {
+      let url = `http://66.232.105.87:3007/api/Trasporte/rutas?expandir=true`;
 
-const fetchPaqueteriaRoutes = async ({
-  filtro = "",
-  desde = "",
-  hasta = "",
-  mes = "",
-  anio = "",
-} = {}) => {
-  try {
-    let url = `http://66.232.105.87:3007/api/Trasporte/rutas?expandir=true`;
+      if (filtro) url += `&guia=${filtro}`;
+      if (desde && hasta) url += `&desde=${desde}&hasta=${hasta}`;
+      if (mes) url += `&mes=${mes}`;
+      if (anio) url += `&anio=${anio}`; // 🔥 CLAVE
 
-    if (filtro) url += `&guia=${filtro}`;
-    if (desde && hasta) url += `&desde=${desde}&hasta=${hasta}`;
-    if (mes) url += `&mes=${mes}`;
-    if (anio) url += `&anio=${anio}`; // 🔥 CLAVE
+      console.log("URL FINAL:", url);
 
-    console.log("URL FINAL:", url);
+      const response = await fetch(url);
+      const data = await response.json();
 
-    const response = await fetch(url);
-    const data = await response.json();
-
-    if (Array.isArray(data)) {
-      setSentRoutesData(data);
-    } else {
+      if (Array.isArray(data)) {
+        setSentRoutesData(data);
+      } else {
+        setSentRoutesData([]);
+      }
+    } catch (error) {
+      console.error("Error al obtener rutas:", error);
       setSentRoutesData([]);
     }
-  } catch (error) {
-    console.error("Error al obtener rutas:", error);
-    setSentRoutesData([]);
-  }
-};
-
+  };
 
   useEffect(() => {
     if (!Array.isArray(sentRoutesData) || sentRoutesData.length === 0) {
@@ -5170,41 +5165,28 @@ const fetchPaqueteriaRoutes = async ({
   //exportar exel
 
   const handleExportarPorMes = () => {
-    if (!mesSeleccionado) {
-      alert("Selecciona un mes para exportar.");
+    if (!mesSeleccionado || !anio) {
+      alert("Selecciona mes y año.");
       return;
     }
 
-    // Obtener año actual y armar el mes en formato "YYYY-MM"
-    const anioActual = new Date().getFullYear();
-    const mesFormateado = `${anioActual}-${String(mesSeleccionado).padStart(
-      2,
-      "0"
-    )}`;
+    if (!sentRoutesData || sentRoutesData.length === 0) {
+      alert("No hay datos cargados para exportar.");
+      return;
+    }
 
-    const datosFiltrados = sentRoutesData.filter((pedido) => {
-      if (!pedido.created_at) return false;
+    const datosPaqueteria = sentRoutesData.filter(
+      (pedido) => pedido.TIPO?.trim().toLowerCase() === "paqueteria"
+    );
 
-      const fecha = new Date(pedido.created_at);
-      if (isNaN(fecha)) return false;
+    const datosDirecta = sentRoutesData.filter(
+      (pedido) => pedido.TIPO?.trim().toLowerCase() === "directa"
+    );
 
-      const mesActual = `${fecha.getFullYear()}-${String(
-        fecha.getMonth() + 1
-      ).padStart(2, "0")}`;
-      return mesActual === mesFormateado;
-    });
-
-    if (datosFiltrados.length === 0) {
+    if (datosPaqueteria.length === 0 && datosDirecta.length === 0) {
       alert("No hay registros para exportar en ese mes.");
       return;
     }
-
-    const datosPaqueteria = datosFiltrados.filter(
-      (pedido) => pedido.TIPO?.trim().toLowerCase() === "paqueteria"
-    );
-    const datosDirecta = datosFiltrados.filter(
-      (pedido) => pedido.TIPO?.trim().toLowerCase() === "directa"
-    );
 
     const columnas = [
       "FECHA",
@@ -5241,32 +5223,28 @@ const fetchPaqueteriaRoutes = async ({
       "DIFERENCIA",
     ];
 
-    const transformData = (datos) => {
-      return datos.map((row) => {
+    const transformData = (datos) =>
+      datos.map((row) => {
         const exportRow = {};
         columnas.forEach((col) => {
           exportRow[col] = row[col] ?? "";
         });
         return exportRow;
       });
-    };
-
-    const datosPaqueteriaExportados = transformData(datosPaqueteria);
-    const datosDirectaExportados = transformData(datosDirecta);
 
     const workbook = XLSX.utils.book_new();
-    if (datosPaqueteriaExportados.length > 0) {
-      const worksheetPaqueteria = XLSX.utils.json_to_sheet(
-        datosPaqueteriaExportados
-      );
-      XLSX.utils.book_append_sheet(workbook, worksheetPaqueteria, "Paquetería");
-    }
-    if (datosDirectaExportados.length > 0) {
-      const worksheetDirecta = XLSX.utils.json_to_sheet(datosDirectaExportados);
-      XLSX.utils.book_append_sheet(workbook, worksheetDirecta, "Directa");
+
+    if (datosPaqueteria.length > 0) {
+      const ws = XLSX.utils.json_to_sheet(transformData(datosPaqueteria));
+      XLSX.utils.book_append_sheet(workbook, ws, "Paquetería");
     }
 
-    XLSX.writeFile(workbook, `Rutas_Mes_${mesFormateado}.xlsx`);
+    if (datosDirecta.length > 0) {
+      const ws = XLSX.utils.json_to_sheet(transformData(datosDirecta));
+      XLSX.utils.book_append_sheet(workbook, ws, "Directa");
+    }
+
+    XLSX.writeFile(workbook, `Rutas_${anio}_${mesSeleccionado}.xlsx`);
   };
 
   //recuperar las eliminada
@@ -7138,49 +7116,48 @@ const fetchPaqueteriaRoutes = async ({
             )}
 
             <select
-  value={mesSeleccionado}
-  className="form-select"
-  onChange={(e) => {
-    const mes = e.target.value;
-    setMesSeleccionado(mes);
+              value={mesSeleccionado}
+              className="form-select"
+              onChange={(e) => {
+                const mes = e.target.value;
+                setMesSeleccionado(mes);
 
-    fetchPaqueteriaRoutes({
-      mes,
-      anio, // 👈 SIEMPRE manda el año
-    });
-  }}
->
-  <option value="1">Enero</option>
-  <option value="2">Febrero</option>
-  <option value="3">Marzo</option>
-  <option value="4">Abril</option>
-  <option value="5">Mayo</option>
-  <option value="6">Junio</option>
-  <option value="7">Julio</option>
-  <option value="8">Agosto</option>
-  <option value="9">Septiembre</option>
-  <option value="10">Octubre</option>
-  <option value="11">Noviembre</option>
-  <option value="12">Diciembre</option>
-</select>
+                fetchPaqueteriaRoutes({
+                  mes,
+                  anio, // 👈 SIEMPRE manda el año
+                });
+              }}
+            >
+              <option value="1">Enero</option>
+              <option value="2">Febrero</option>
+              <option value="3">Marzo</option>
+              <option value="4">Abril</option>
+              <option value="5">Mayo</option>
+              <option value="6">Junio</option>
+              <option value="7">Julio</option>
+              <option value="8">Agosto</option>
+              <option value="9">Septiembre</option>
+              <option value="10">Octubre</option>
+              <option value="11">Noviembre</option>
+              <option value="12">Diciembre</option>
+            </select>
 
+            <select
+              value={anio}
+              className="form-select"
+              onChange={(e) => {
+                const nuevoAnio = e.target.value;
+                setAnio(nuevoAnio);
 
-     <select
-  value={anio}
-  className="form-select"
-  onChange={(e) => {
-    const nuevoAnio = e.target.value;
-    setAnio(nuevoAnio);
-
-    fetchPaqueteriaRoutes({
-      mes: mesSeleccionado, // 👈 SIEMPRE manda el mes
-      anio: nuevoAnio,
-    });
-  }}
->
-  <option value="2025">2025</option>
-  <option value="2026">2026</option>
-</select>
+                fetchPaqueteriaRoutes({
+                  mes: mesSeleccionado, // 👈 SIEMPRE manda el mes
+                  anio: nuevoAnio,
+                });
+              }}
+            >
+              <option value="2025">2025</option>
+              <option value="2026">2026</option>
+            </select>
 
             {/* ===== Modal: Porrateo por Transporte ===== */}
 
@@ -8442,7 +8419,7 @@ const fetchPaqueteriaRoutes = async ({
                           padding: "6px 12px",
                           fontSize: 14,
                           boxShadow: 1,
-                        }} 
+                        }}
                       >
                         <strong>{estatus}:</strong> {cantidad}
                       </Box>
@@ -9921,5 +9898,3 @@ const fetchPaqueteriaRoutes = async ({
 }
 
 export default Transporte;
-
-

@@ -1367,73 +1367,271 @@ const getTopProductosPorEstado = async (req, res) => {
 // controllers/historicoController.js
 // Asume que ya tienes `pool` importado desde tu módulo de conexión:
 // const pool = require('../db/pool');
+
+
+// const getHistorico2025 = async (req, res) => {
+//   try {
+//     // --- 1) Calcular rango de fechas ---
+//     const now = new Date();
+//     const pad = (n) => String(n).padStart(2, "0");
+
+//     const from = req.query.from || `${now.getFullYear()}-01-01`; 
+//     const to =
+//       req.query.to ||
+//       `${now.getFullYear()}-${pad(now.getMonth() + 1)}-31`;
+
+//     // --- 2) Query directo a SQL con agregación por estado y mes ---
+//     const [rows] = await pool.query(
+//       `
+//       SELECT 
+//         TRIM(ESTADO) AS estado,
+//         DATE_FORMAT(FECHA_DE_FACTURA, '%Y-%m') AS mes,
+//         SUM(CAST(IFNULL(total_api,0) AS DECIMAL(12,2))) AS total_factura_lt,
+//         SUM(CAST(REPLACE(REPLACE(IFNULL(PRORRATEO_FACTURA_LT,'0'),'$',''),',','') AS DECIMAL(12,2))) AS total_flete,
+//         COUNT(DISTINCT \`NUM. CLIENTE\`) AS total_clientes,
+//         AVG(DIAS_DE_ENTREGA) AS promedio_dias_entrega
+//       FROM paqueteria
+//       WHERE ESTADO IS NOT NULL 
+//         AND ESTADO <> ''
+//         AND FECHA_DE_FACTURA >= ? 
+//         AND FECHA_DE_FACTURA < ?
+//       GROUP BY estado, mes
+//       ORDER BY estado, mes;
+//       `,
+//       [from, to]
+//     );
+
+//     if (!rows || rows.length === 0) {
+//       return res.status(404).json({ message: "No hay datos disponibles en ese rango." });
+//     }
+
+//     // --- 3) Estructuras de salida ---
+//     const resultado = {};     // { estado: { mes: {...} } }
+//     const resumenPorMes = {}; // Totales solo por mes
+//     let globalFactura = 0;
+//     let globalFlete = 0;
+//     let globalDias = 0;
+//     let globalRegistros = 0;
+
+//     for (const row of rows) {
+//       const estado = row.estado;
+//       const mes = row.mes;
+//       const total_factura_lt = Number(row.total_factura_lt || 0);
+//       const total_flete = Number(row.total_flete || 0);
+//       const total_clientes = Number(row.total_clientes || 0);
+//       const promedio_dias_entrega = Number(Number(row.promedio_dias_entrega || 0).toFixed(1));
+
+//       // --- Estado/Mes ---
+//       if (!resultado[estado]) resultado[estado] = {};
+//       resultado[estado][mes] = {
+//         total_factura_lt,
+//         total_flete,
+//         promedio_dias_entrega,
+//         total_clientes,
+//         porcentaje_flete: Number(((total_flete / (total_factura_lt || 1)) * 100).toFixed(1)),
+//         tarimas: 0,
+//         cajas: 0,
+//       };
+
+//       // --- Totales por mes (todos los estados juntos) ---
+//       if (!resumenPorMes[mes]) {
+//         resumenPorMes[mes] = {
+//           total_factura_lt: 0,
+//           total_flete: 0,
+//           promedio_dias_entrega: 0,
+//           total_clientes: 0,
+//           porcentaje_flete: 0,
+//           tarimas: 0,
+//           cajas: 0,
+//         };
+//       }
+
+//       resumenPorMes[mes].total_factura_lt += total_factura_lt;
+//       resumenPorMes[mes].total_flete += total_flete;
+//       resumenPorMes[mes].total_clientes += total_clientes;
+//       resumenPorMes[mes].promedio_dias_entrega = Number(
+//         ((resumenPorMes[mes].promedio_dias_entrega + promedio_dias_entrega) / 2).toFixed(1)
+//       );
+//       resumenPorMes[mes].porcentaje_flete = Number(
+//         ((resumenPorMes[mes].total_flete / (resumenPorMes[mes].total_factura_lt || 1)) * 100).toFixed(1)
+//       );
+
+//       // --- Totales globales ---
+//       globalFactura += total_factura_lt;
+//       globalFlete += total_flete;
+//       globalDias += promedio_dias_entrega;
+//       globalRegistros++;
+//     }
+
+//     // --- 4) Traer tarimas y cajas también agrupadas por estado y mes ---
+//     const [logisticaRows] = await pool.query(
+//       `
+//       SELECT
+//         p.ESTADO AS estado,
+//         DATE_FORMAT(f.fin_embarque, '%Y-%m') AS mes,
+//         SUM(CASE WHEN UPPER(f.tipo_caja) LIKE 'TARIMA%' THEN 1 ELSE 0 END) AS tarimas,
+//         SUM(CASE WHEN UPPER(f.tipo_caja) LIKE 'CAJA%'   THEN 1 ELSE 0 END) AS cajas
+//       FROM pedido_finalizado f
+//       JOIN (
+//         SELECT \`NO ORDEN\` AS pedido, MAX(ESTADO) AS ESTADO
+//         FROM paqueteria
+//         WHERE ESTADO IS NOT NULL AND ESTADO <> ''
+//         GROUP BY \`NO ORDEN\`
+//       ) p ON p.pedido = f.pedido
+//       WHERE f.fin_embarque IS NOT NULL
+//         AND f.fin_embarque >= ? 
+//         AND f.fin_embarque < ?
+//       GROUP BY p.ESTADO, mes;
+//       `,
+//       [from, to]
+//     );
+
+//     let globalTarimas = 0;
+//     let globalCajas = 0;
+
+//     for (const r of logisticaRows) {
+//       const estado = r.estado;
+//       const mes = r.mes;
+//       const tarimas = Number(r.tarimas) || 0;
+//       const cajas = Number(r.cajas) || 0;
+
+//       if (!resultado[estado]) resultado[estado] = {};
+//       if (!resultado[estado][mes]) {
+//         resultado[estado][mes] = {
+//           total_factura_lt: 0,
+//           total_flete: 0,
+//           promedio_dias_entrega: 0,
+//           total_clientes: 0,
+//           porcentaje_flete: 0,
+//           tarimas: 0,
+//           cajas: 0,
+//         };
+//       }
+
+//       resultado[estado][mes].tarimas += tarimas;
+//       resultado[estado][mes].cajas += cajas;
+
+//       if (resumenPorMes[mes]) {
+//         resumenPorMes[mes].tarimas += tarimas;
+//         resumenPorMes[mes].cajas += cajas;
+//       }
+
+//       globalTarimas += tarimas;
+//       globalCajas += cajas;
+//     }
+
+//     // --- 5) Totales globales ---
+//     const totalGlobal = {
+//       total_factura_lt: globalFactura,
+//       total_flete: globalFlete,
+//       promedio_dias_entrega: Number((globalDias / (globalRegistros || 1)).toFixed(1)),
+//       total_clientes: Object.values(resumenPorMes).reduce((acc, m) => acc + m.total_clientes, 0),
+//       porcentaje_flete: Number(((globalFlete / (globalFactura || 1)) * 100).toFixed(1)),
+//       tarimas_total: globalTarimas,
+//       cajas_total: globalCajas,
+//     };
+
+//     // --- 6) Respuesta final ---
+//     const payload = {
+//       rango_consulta: { from, to },
+//       ...resultado, // 👈 detalle por estado/mes
+//       total_general: {
+//         por_mes: resumenPorMes,
+//         global: totalGlobal,
+//       },
+//     };
+
+//     res.status(200).json(payload);
+//   } catch (error) {
+//     console.error("Error en getHistorico2025:", error);
+//     res.status(500).json({ message: "Error en el servidor", error: error.message });
+//   }
+// };
+
 const getHistorico2025 = async (req, res) => {
   try {
-    // --- 1) Calcular rango de fechas ---
     const now = new Date();
-    const pad = (n) => String(n).padStart(2, "0");
 
-    const from = req.query.from || `${now.getFullYear()}-01-01`; 
-    const to =
-      req.query.to ||
-      `${now.getFullYear()}-${pad(now.getMonth() + 1)}-31`;
+    const yearParam  = req.query.year;   // ?year=2025
+    const yearsParam = req.query.years;  // ?years=2025,2026
 
-    // --- 2) Query directo a SQL con agregación por estado y mes ---
+    let from, to;
+
+    if (yearsParam) {
+      const years = yearsParam
+        .split(',')
+        .map(y => Number(y.trim()))
+        .filter(Boolean);
+
+      const minYear = Math.min(...years);
+      const maxYear = Math.max(...years);
+
+      from = `${minYear}-01-01`;
+      to   = `${maxYear + 1}-01-01`;
+
+    } else if (yearParam) {
+      const y = Number(yearParam);
+      from = `${y}-01-01`;
+      to   = `${y + 1}-01-01`;
+
+    } else {
+      const currentYear = now.getFullYear();
+      from = `${currentYear}-01-01`;
+      to   = `${currentYear + 1}-01-01`;
+    }
+
+    // ==============================
+    // 1) PAQUETERÍA (factura, flete, clientes, días)
+    // ==============================
     const [rows] = await pool.query(
       `
       SELECT 
-        TRIM(ESTADO) AS estado,
         DATE_FORMAT(FECHA_DE_FACTURA, '%Y-%m') AS mes,
-        SUM(CAST(IFNULL(total_api,0) AS DECIMAL(12,2))) AS total_factura_lt,
-        SUM(CAST(REPLACE(REPLACE(IFNULL(PRORRATEO_FACTURA_LT,'0'),'$',''),',','') AS DECIMAL(12,2))) AS total_flete,
-        COUNT(DISTINCT \`NUM. CLIENTE\`) AS total_clientes,
-        AVG(DIAS_DE_ENTREGA) AS promedio_dias_entrega
+        TRIM(ESTADO) AS estado,
+        \`NUM. CLIENTE\` AS num_cliente,
+        CAST(IFNULL(total_api,0) AS DECIMAL(12,2)) AS total_factura,
+        CAST(REPLACE(REPLACE(IFNULL(PRORRATEO_FACTURA_LT,'0'),'$',''),',','') AS DECIMAL(12,2)) AS total_flete,
+        DIAS_DE_ENTREGA
       FROM paqueteria
-      WHERE ESTADO IS NOT NULL 
-        AND ESTADO <> ''
-        AND FECHA_DE_FACTURA >= ? 
-        AND FECHA_DE_FACTURA < ?
-      GROUP BY estado, mes
-      ORDER BY estado, mes;
+      WHERE FECHA_DE_FACTURA >= ?
+        AND FECHA_DE_FACTURA <  ?
+        AND ESTADO IS NOT NULL
+        AND ESTADO <> '';
       `,
       [from, to]
     );
 
-    if (!rows || rows.length === 0) {
-      return res.status(404).json({ message: "No hay datos disponibles en ese rango." });
+    if (!rows.length) {
+      return res.status(200).json({
+        rango_consulta: { from, to },
+        total_general: { por_mes: {}, global: {} }
+      });
     }
 
-    // --- 3) Estructuras de salida ---
-    const resultado = {};     // { estado: { mes: {...} } }
-    const resumenPorMes = {}; // Totales solo por mes
+    // ==============================
+    // 2) CONSOLIDAR (igual que FletesClientes)
+    // ==============================
+    const resultado = {};     
+    const resumenPorMes = {}; 
+    const clientesPorMes = {}; 
+
     let globalFactura = 0;
     let globalFlete = 0;
     let globalDias = 0;
     let globalRegistros = 0;
 
-    for (const row of rows) {
-      const estado = row.estado;
-      const mes = row.mes;
-      const total_factura_lt = Number(row.total_factura_lt || 0);
-      const total_flete = Number(row.total_flete || 0);
-      const total_clientes = Number(row.total_clientes || 0);
-      const promedio_dias_entrega = Number(Number(row.promedio_dias_entrega || 0).toFixed(1));
+    for (const r of rows) {
+      const estado = r.estado;
+      const mes = r.mes;
+      const factura = Number(r.total_factura || 0);
+      const flete   = Number(r.total_flete || 0);
+      const cliente = r.num_cliente || "SIN_CLIENTE";
+      const dias    = Number(r.DIAS_DE_ENTREGA || 0);
 
       // --- Estado/Mes ---
       if (!resultado[estado]) resultado[estado] = {};
-      resultado[estado][mes] = {
-        total_factura_lt,
-        total_flete,
-        promedio_dias_entrega,
-        total_clientes,
-        porcentaje_flete: Number(((total_flete / (total_factura_lt || 1)) * 100).toFixed(1)),
-        tarimas: 0,
-        cajas: 0,
-      };
-
-      // --- Totales por mes (todos los estados juntos) ---
-      if (!resumenPorMes[mes]) {
-        resumenPorMes[mes] = {
+      if (!resultado[estado][mes]) {
+        resultado[estado][mes] = {
           total_factura_lt: 0,
           total_flete: 0,
           promedio_dias_entrega: 0,
@@ -1444,24 +1642,58 @@ const getHistorico2025 = async (req, res) => {
         };
       }
 
-      resumenPorMes[mes].total_factura_lt += total_factura_lt;
-      resumenPorMes[mes].total_flete += total_flete;
-      resumenPorMes[mes].total_clientes += total_clientes;
-      resumenPorMes[mes].promedio_dias_entrega = Number(
-        ((resumenPorMes[mes].promedio_dias_entrega + promedio_dias_entrega) / 2).toFixed(1)
-      );
-      resumenPorMes[mes].porcentaje_flete = Number(
-        ((resumenPorMes[mes].total_flete / (resumenPorMes[mes].total_factura_lt || 1)) * 100).toFixed(1)
-      );
+      resultado[estado][mes].total_factura_lt += factura;
+      resultado[estado][mes].total_flete += flete;
+      resultado[estado][mes].promedio_dias_entrega += dias;
+      resultado[estado][mes].total_clientes += 1;
 
-      // --- Totales globales ---
-      globalFactura += total_factura_lt;
-      globalFlete += total_flete;
-      globalDias += promedio_dias_entrega;
+      // --- Resumen por mes ---
+      if (!resumenPorMes[mes]) {
+        resumenPorMes[mes] = {
+          total_factura_lt: 0,
+          total_flete: 0,
+          promedio_dias_entrega: 0,
+          total_clientes: 0,
+          porcentaje_flete: 0,
+          tarimas: 0,
+          cajas: 0,
+        };
+        clientesPorMes[mes] = new Set();
+      }
+
+      resumenPorMes[mes].total_factura_lt += factura;
+      resumenPorMes[mes].total_flete += flete;
+      resumenPorMes[mes].promedio_dias_entrega += dias;
+      clientesPorMes[mes].add(cliente);
+
+      // --- Global ---
+      globalFactura += factura;
+      globalFlete += flete;
+      globalDias += dias;
       globalRegistros++;
     }
 
-    // --- 4) Traer tarimas y cajas también agrupadas por estado y mes ---
+    // ==============================
+    // 3) PROMEDIOS Y PORCENTAJES
+    // ==============================
+    for (const estado of Object.keys(resultado)) {
+      for (const mes of Object.keys(resultado[estado])) {
+        const o = resultado[estado][mes];
+        o.promedio_dias_entrega = Number((o.promedio_dias_entrega / (o.total_clientes || 1)).toFixed(1));
+        o.porcentaje_flete = Number(((o.total_flete / (o.total_factura_lt || 1)) * 100).toFixed(2));
+      }
+    }
+
+    for (const mes of Object.keys(resumenPorMes)) {
+      const m = resumenPorMes[mes];
+      m.total_clientes = clientesPorMes[mes].size;
+      m.promedio_dias_entrega = Number((m.promedio_dias_entrega / (m.total_clientes || 1)).toFixed(1));
+      m.porcentaje_flete = Number(((m.total_flete / (m.total_factura_lt || 1)) * 100).toFixed(2));
+    }
+
+    // ==============================
+    // 4) TARIMAS Y CAJAS (pedido_finalizado)
+    // ==============================
     const [logisticaRows] = await pool.query(
       `
       SELECT
@@ -1473,15 +1705,18 @@ const getHistorico2025 = async (req, res) => {
       JOIN (
         SELECT \`NO ORDEN\` AS pedido, MAX(ESTADO) AS ESTADO
         FROM paqueteria
-        WHERE ESTADO IS NOT NULL AND ESTADO <> ''
+        WHERE FECHA_DE_FACTURA >= ?
+          AND FECHA_DE_FACTURA <  ?
+          AND ESTADO IS NOT NULL
+          AND ESTADO <> ''
         GROUP BY \`NO ORDEN\`
       ) p ON p.pedido = f.pedido
       WHERE f.fin_embarque IS NOT NULL
-        AND f.fin_embarque >= ? 
+        AND f.fin_embarque >= ?
         AND f.fin_embarque < ?
       GROUP BY p.ESTADO, mes;
       `,
-      [from, to]
+      [from, to, from, to]
     );
 
     let globalTarimas = 0;
@@ -1490,8 +1725,8 @@ const getHistorico2025 = async (req, res) => {
     for (const r of logisticaRows) {
       const estado = r.estado;
       const mes = r.mes;
-      const tarimas = Number(r.tarimas) || 0;
-      const cajas = Number(r.cajas) || 0;
+      const tarimas = Number(r.tarimas || 0);
+      const cajas = Number(r.cajas || 0);
 
       if (!resultado[estado]) resultado[estado] = {};
       if (!resultado[estado][mes]) {
@@ -1518,21 +1753,25 @@ const getHistorico2025 = async (req, res) => {
       globalCajas += cajas;
     }
 
-    // --- 5) Totales globales ---
+    // ==============================
+    // 5) TOTALES GLOBALES
+    // ==============================
     const totalGlobal = {
-      total_factura_lt: globalFactura,
-      total_flete: globalFlete,
+      total_factura_lt: Number(globalFactura.toFixed(2)),
+      total_flete: Number(globalFlete.toFixed(2)),
       promedio_dias_entrega: Number((globalDias / (globalRegistros || 1)).toFixed(1)),
-      total_clientes: Object.values(resumenPorMes).reduce((acc, m) => acc + m.total_clientes, 0),
-      porcentaje_flete: Number(((globalFlete / (globalFactura || 1)) * 100).toFixed(1)),
+      total_clientes: Object.values(clientesPorMes).reduce((acc, s) => acc + s.size, 0),
+      porcentaje_flete: Number(((globalFlete / (globalFactura || 1)) * 100).toFixed(2)),
       tarimas_total: globalTarimas,
       cajas_total: globalCajas,
     };
 
-    // --- 6) Respuesta final ---
+    // ==============================
+    // 6) RESPUESTA FINAL
+    // ==============================
     const payload = {
       rango_consulta: { from, to },
-      ...resultado, // 👈 detalle por estado/mes
+      ...resultado,
       total_general: {
         por_mes: resumenPorMes,
         global: totalGlobal,
@@ -1540,8 +1779,9 @@ const getHistorico2025 = async (req, res) => {
     };
 
     res.status(200).json(payload);
+
   } catch (error) {
-    console.error("Error en getHistorico2025:", error);
+    console.error("Error en getHistorico2025 (completo):", error);
     res.status(500).json({ message: "Error en el servidor", error: error.message });
   }
 };
@@ -1549,24 +1789,24 @@ const getHistorico2025 = async (req, res) => {
 
 
 
-
-
 const getFletesClientes = async (req, res) => {
   try {
-    // --- 1) Rango por defecto: del 1 de junio del año solicitado -> inicio del mes siguiente al actual ---
     const now  = new Date();
     const year = Number(req.query.year) || now.getFullYear();
 
     const pad = (n) => String(n).padStart(2, "0");
-    const defFrom = `${year}-06-01`;
-    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-    const defTo = `${nextMonth.getFullYear()}-${pad(nextMonth.getMonth() + 1)}-01`;
+
+    // 👉 RANGO POR DEFECTO: TODO EL AÑO
+    const defFrom = `${year}-01-01`;
+    const defTo   = `${year + 1}-01-01`;
 
     // Si mandas ?month=MM, forzamos a ese mes específico
     const qMonth = req.query.month ? Number(req.query.month) : null;
+
     const from = req.query.from || (qMonth
       ? `${year}-${pad(qMonth)}-01`
       : defFrom);
+
     const to = req.query.to || (qMonth
       ? (qMonth === 12 ? `${year + 1}-01-01` : `${year}-${pad(qMonth + 1)}-01`)
       : defTo);
@@ -1574,33 +1814,36 @@ const getFletesClientes = async (req, res) => {
     // --- 2) Traer filas del periodo con etiqueta de mes (YYYY-MM) ya calculada en SQL ---
     const [rows] = await pool.query(
       `
-     SELECT 
+      SELECT 
         DATE_FORMAT(FECHA_DE_FACTURA, '%Y-%m') AS ym,
         \`NUM. CLIENTE\` AS num_cliente,
         \`NOMBRE DEL CLIENTE\` AS nombre_cliente,
         GUIA,
-        CAST(IFNULL(TOTAL,0) AS DECIMAL(12,2)) AS total_facturado,
+        CAST(IFNULL(total_api,0) AS DECIMAL(12,2)) AS total_facturado,
         CAST(REPLACE(REPLACE(IFNULL(PRORRATEO_FACTURA_LT,'0'),'$',''),',','') AS DECIMAL(12,2)) AS flete,
         ESTADO
       FROM paqueteria
-      WHERE  FECHA_DE_FACTURA >= ? 
+      WHERE FECHA_DE_FACTURA >= ?
         AND FECHA_DE_FACTURA <  ?;
       `,
       [from, to]
     );
 
     if (!rows?.length) {
-      return res.status(404).json({ message: "No hay datos disponibles." });
+      return res.status(200).json({
+        meta: { from, to, months: 0 },
+        months: []
+      });
     }
 
     // --- 3) Agrupar por mes -> por cliente ---
-    const months = new Map(); // ym -> { clients: Map, guiasGlobal: Set, totFactura, totFlete }
+    const months = new Map();
 
     for (const r of rows) {
-      const ym = r.ym; // 'YYYY-MM'
+      const ym = r.ym;
       if (!months.has(ym)) {
         months.set(ym, {
-          clients: new Map(),   // num_cliente -> { nombre_cliente, total_factura, total_flete, guias:Set }
+          clients: new Map(),
           guiasGlobal: new Set(),
           totFactura: 0,
           totFlete: 0
@@ -1613,14 +1856,12 @@ const getFletesClientes = async (req, res) => {
       const total   = Number(r.total_facturado || 0);
       const flete   = Number(r.flete || 0);
       const guia    = String(r.GUIA || "").trim();
-      const estado = r.ESTADO || "SIN ESTADO";
+      const estado  = r.ESTADO || "SIN ESTADO";
 
-      // Global del mes
       bucket.totFactura += total;
       bucket.totFlete   += flete;
       if (guia) bucket.guiasGlobal.add(guia);
 
-      // Por cliente del mes
       if (!bucket.clients.has(cliente)) {
         bucket.clients.set(cliente, {
           nombre_cliente: nombre,
@@ -1630,15 +1871,16 @@ const getFletesClientes = async (req, res) => {
           estado
         });
       }
+
       const c = bucket.clients.get(cliente);
       c.total_factura += total;
       c.total_flete   += flete;
       if (guia) c.guias.add(guia);
     }
 
-    // --- 4) Armar respuesta ordenada por mes (asc) y clientes por flete desc ---
+    // --- 4) Armar respuesta ---
     const monthsArr = Array.from(months.entries())
-      .sort(([a], [b]) => a.localeCompare(b)) // 'YYYY-MM'
+      .sort(([a], [b]) => a.localeCompare(b))
       .map(([ym, b]) => {
         const data = Array.from(b.clients.entries())
           .map(([num_cliente, d]) => {
@@ -1650,7 +1892,7 @@ const getFletesClientes = async (req, res) => {
               total_flete: Number(d.total_flete.toFixed(2)),
               total_guias: d.guias.size,
               porcentaje_flete: Number(pct.toFixed(2)),
-              estado: d.estado || "SIN ESTADO"   // 👈 nuevo
+              estado: d.estado
             };
           })
           .sort((x, y) => y.total_flete - x.total_flete || y.total_factura - x.total_factura);
@@ -1658,7 +1900,7 @@ const getFletesClientes = async (req, res) => {
         const porcentaje_flete_global = b.totFactura > 0 ? (b.totFlete / b.totFactura) * 100 : 0;
 
         return {
-          ym, // 'YYYY-MM'
+          ym,
           total_factura_global: Number(b.totFactura.toFixed(2)),
           total_flete_global:   Number(b.totFlete.toFixed(2)),
           porcentaje_flete_global: Number(porcentaje_flete_global.toFixed(2)),
@@ -1671,17 +1913,25 @@ const getFletesClientes = async (req, res) => {
       meta: { from, to, months: monthsArr.length },
       months: monthsArr
     });
+
   } catch (error) {
     console.error("Error en getFletesClientes:", error);
     res.status(500).json({ message: "Error en el servidor", error: error.message });
   }
 };
 
+
 const getHistorico2025Transportes = async (req, res) => {
   try {
+    const now = new Date();
+    const year = Number(req.query.year) || now.getFullYear();
+
+    const from = `${year}-01-01`;
+    const to   = `${year + 1}-01-01`;
+
     const [rows] = await pool.query(`
       SELECT
-        DATE_FORMAT(STR_TO_DATE(FECHA_DE_FACTURA, '%Y-%m-%d'), '%Y-%m') AS mes,
+        DATE_FORMAT(FECHA_DE_FACTURA, '%Y-%m') AS mes,
         UPPER(TRIM(TRANSPORTE)) AS transporte,
         SUM(CAST(REPLACE(REPLACE(TOTAL, '$', ''), ',', '') AS DECIMAL(12,2))) AS total_pedidos,
         SUM(CAST(REPLACE(REPLACE(PRORRATEO_FACTURA_LT, '$', ''), ',', '') AS DECIMAL(12,2))) AS total_flete,
@@ -1692,20 +1942,25 @@ const getHistorico2025Transportes = async (req, res) => {
         ) AS porcentaje_flete
       FROM paqueteria
       WHERE 
-        FECHA_DE_FACTURA IS NOT NULL
+        FECHA_DE_FACTURA >= ?
+        AND FECHA_DE_FACTURA <  ?
         AND TRANSPORTE IS NOT NULL
         AND TRANSPORTE <> ''
-        AND STR_TO_DATE(FECHA_DE_FACTURA, '%Y-%m-%d') >= DATE_FORMAT(CONCAT(YEAR(CURDATE()), '-06-01'), '%Y-%m-%d')
       GROUP BY mes, transporte
       ORDER BY mes ASC, transporte ASC
-    `);
+    `, [from, to]);
 
     if (!rows || rows.length === 0) {
-      return res.status(404).json({ message: "No hay datos disponibles desde junio." });
+      return res.status(200).json({
+        resumen_mensual: [],
+        transportes: []
+      });
     }
 
-    // --- Reestructurar datos por transporte ---
-    const transportesMap = {}; // { transporte: [ { mes, total_pedidos, total_flete, porcentaje_flete } ] }
+    // =========================
+    // Agrupar por transporte
+    // =========================
+    const transportesMap = {};
 
     for (const row of rows) {
       const transporte = row.transporte || "SIN_TRANSPORTE";
@@ -1720,15 +1975,16 @@ const getHistorico2025Transportes = async (req, res) => {
       });
     }
 
-    // --- Convertir el mapa en un array ordenado ---
     const resultado = Object.entries(transportesMap)
       .map(([transporte, datos]) => ({
         transporte,
-        datos: datos.sort((a, b) => a.mes.localeCompare(b.mes)), // asegurar orden de meses
+        datos: datos.sort((a, b) => a.mes.localeCompare(b.mes)),
       }))
-      .sort((a, b) => a.transporte.localeCompare(b.transporte)); // ordenar transportes alfabéticamente
+      .sort((a, b) => a.transporte.localeCompare(b.transporte));
 
-    // --- Calcular totales globales por mes ---
+    // =========================
+    // Resumen mensual global
+    // =========================
     const resumenPorMes = {};
     for (const row of rows) {
       const mes = row.mes;
@@ -1747,7 +2003,6 @@ const getHistorico2025Transportes = async (req, res) => {
       resumenPorMes[mes].transportes += 1;
     }
 
-    // Promediar porcentaje por mes
     for (const mes in resumenPorMes) {
       const m = resumenPorMes[mes];
       m.porcentaje_flete_promedio = Number(
@@ -1756,7 +2011,6 @@ const getHistorico2025Transportes = async (req, res) => {
       delete m.transportes;
     }
 
-    // --- Ordenar meses ---
     const resumenMesesOrdenado = Object.keys(resumenPorMes)
       .sort((a, b) => a.localeCompare(b))
       .map((mes) => ({
@@ -1764,19 +2018,19 @@ const getHistorico2025Transportes = async (req, res) => {
         ...resumenPorMes[mes],
       }));
 
-    // --- Estructura final del JSON ---
-    const payload = {
-      resumen_mensual: resumenMesesOrdenado, // Totales por mes
-      transportes: resultado,                // Array con cada transporte y sus datos por mes
-    };
+    res.status(200).json({
+      year,
+      resumen_mensual: resumenMesesOrdenado,
+      transportes: resultado,
+    });
 
-    res.status(200).json(payload);
   } catch (error) {
     console.error("Error en getHistorico2025Transportes:", error);
     res.status(500).json({ message: "Error en el servidor", error: error.message });
   }
 };
 
+ 
 
 // GET /api/kpi/getFletesClientes?from=2025-06-01&to=2025-07-01
 

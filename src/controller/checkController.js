@@ -1,4 +1,6 @@
 const pool = require("../config/database");
+const multer = require('multer');
+const path = require('path');
 
 const obtenerChecklist = async (req, res) => {
     try {
@@ -53,75 +55,124 @@ const insertarChecklist = async (req, res) => {
     }
 };
 
-const actualizarPartesChecklist = async (req, res) => {
-    const { id } = req.params;
-    const cambios = req.body;
-    const usuario = cambios.usuario || "SISTEMA";
 
-    try {
-        // 1️⃣ Traemos el registro actual
-        const [rows] = await pool.query(
-            "SELECT * FROM checklist_equipos WHERE id = ?",
-            [id]
-        );
 
-        if (!rows.length) {
-            return res.status(404).json({ message: "Checklist no encontrado" });
-        }
-
-        const actual = rows[0];
-
-        const camposModificados = {};
-        const historialValues = [];
-
-        // 2️⃣ Detectamos SOLO los campos que cambiaron
-        Object.keys(cambios).forEach((campo) => {
-            if (campo === "usuario") return;
-
-            const valorNuevo = cambios[campo];
-            const valorAnterior = actual[campo];
-
-            if (valorNuevo !== valorAnterior) {
-                camposModificados[campo] = valorNuevo;
-
-                historialValues.push([
-                    id,
-                    campo,
-                    valorAnterior,
-                    valorNuevo,
-                    usuario
-                ]);
-            }
-        });
-
-        // Si no hay cambios → salimos
-        if (!Object.keys(camposModificados).length) {
-            return res.json({ message: "No hubo cambios" });
-        }
-
-        // 3️⃣ UPDATE único
-        await pool.query(
-            "UPDATE checklist_equipos SET ? WHERE id = ?",
-            [camposModificados, id]
-        );
-
-        // 4️⃣ Guardar historial masivo
-        await pool.query(
-            `
-            INSERT INTO checklist_equipos_historial
-            (id_checklist, columna, valor_anterior, valor_nuevo, usuario)
-            VALUES ?
-        `,
-            [historialValues]
-        );
-
-        res.json({ message: "Checklist actualizado correctamente" });
-
-    } catch (error) {
-        console.log("❌ Error al actualizar:", error);
-        res.status(500).json({ message: "Error en actualización" });
+// ===============================
+// MULTER DENTRO DEL CONTROLLER
+// ===============================
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, 'uploads/checklist');
+    },
+    filename: function (req, file, cb) {
+        const unique = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, unique + path.extname(file.originalname));
     }
+});
+
+const upload = multer({ storage }).any(); // 👈 aquí mismo
+
+const actualizarPartesChecklist = async (req, res) => {
+
+    upload(req, res, async function (err) {
+        if (err) {
+            console.log("❌ Error en upload:", err);
+            return res.status(500).json({ message: "Error subiendo archivos" });
+        }
+
+        const { id } = req.params;
+        const cambios = req.body;
+        const usuario = cambios.usuario || "SISTEMA";
+
+        try {
+            const [rows] = await pool.query(
+                "SELECT * FROM checklist_equipos WHERE id = ?",
+                [id]
+            );
+
+            if (!rows.length) {
+                return res.status(404).json({ message: "Checklist no encontrado" });
+            }
+
+            const actual = rows[0];
+            const camposModificados = {};
+            const historialValues = [];
+
+            // =========================
+            // 📸 FOTOS
+            // =========================
+            if (req.files && req.files.length) {
+                req.files.forEach(file => {
+                    const campo = file.fieldname; // ej: foto_torreta
+                    const ruta = `/uploads/checklist/${file.filename}`;
+                    const valorAnterior = actual[campo];
+
+                    camposModificados[campo] = ruta;
+
+                    historialValues.push([
+                        id,
+                        campo,
+                        valorAnterior,
+                        ruta,
+                        valorAnterior,
+                        ruta,
+                        usuario
+                    ]);
+                });
+            }
+
+            // =========================
+            // 📝 CAMPOS NORMALES
+            // =========================
+            Object.keys(cambios).forEach((campo) => {
+                if (campo === "usuario") return;
+
+                const valorNuevo = cambios[campo];
+                const valorAnterior = actual[campo];
+
+                if (valorNuevo !== valorAnterior) {
+                    camposModificados[campo] = valorNuevo;
+
+                    historialValues.push([
+                        id,
+                        campo,
+                        valorAnterior,
+                        valorNuevo,
+                        null,
+                        null,
+                        usuario
+                    ]);
+                }
+            });
+
+            if (!Object.keys(camposModificados).length) {
+                return res.json({ message: "No hubo cambios" });
+            }
+
+            await pool.query(
+                "UPDATE checklist_equipos SET ? WHERE id = ?",
+                [camposModificados, id]
+            );
+
+            await pool.query(
+                `
+                INSERT INTO checklist_equipos_historial
+                (id_checklist, columna, valor_anterior, valor_nuevo, foto_anterior, foto_nueva, usuario)
+                VALUES ?
+                `,
+                [historialValues]
+            );
+
+            res.json({ message: "Checklist actualizado correctamente" });
+
+        } catch (error) {
+            console.log("❌ Error al actualizar:", error);
+            res.status(500).json({ message: "Error en actualización" });
+        }
+    });
 };
+
+
 
 const getHistorialChecklist = async (req, res) => {
     try {
@@ -150,4 +201,6 @@ const getHistorialChecklist = async (req, res) => {
     }
 };
 
-module.exports = { obtenerChecklist, insertarChecklist, actualizarPartesChecklist, getHistorialChecklist };
+
+
+module.exports = { obtenerChecklist, insertarChecklist, actualizarPartesChecklist, getHistorialChecklist }; 

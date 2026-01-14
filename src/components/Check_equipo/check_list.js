@@ -457,6 +457,32 @@ function Check() {
         return acc;
     }, {});
 
+    const renderValor = (valor) => {
+        if (!valor) return "-";
+
+        // Si es imagen
+        if (valor.startsWith("/uploads/")) {
+            return (
+                <img
+                    src={`http://66.232.105.87:3007${valor}`}
+                    alt="evidencia"
+                    style={{
+                        width: 60,
+                        height: 60,
+                        objectFit: "cover",
+                        borderRadius: 4,
+                        cursor: "pointer",
+                        border: "1px solid #ccc"
+                    }}
+                    onClick={() => window.open(`http://66.232.105.87:3007${valor}`, "_blank")}
+                />
+            );
+        }
+
+        // Texto normal
+        return valor;
+    };
+
 
     return (
         <div style={{ padding: 20 }}>
@@ -541,7 +567,7 @@ function Check() {
                                                     {/* Editar */}
                                                     <Tooltip title="Editar partes">
                                                         <IconButton
-                                                            sx={{ color: "#275EF5" }} 
+                                                            sx={{ color: "#275EF5" }}
                                                             size="small"
                                                             onClick={() => {
                                                                 setFormEdit(item);
@@ -652,8 +678,8 @@ function Check() {
                                                     {cambiosFiltrados.map((c, i) => (
                                                         <TableRow key={i}>
                                                             <TableCell>{formatLabel(c.columna)}</TableCell>
-                                                            <TableCell>{c.valor_anterior}</TableCell>
-                                                            <TableCell>{c.valor_nuevo}</TableCell>
+                                                            <TableCell>{renderValor(c.valor_anterior)}</TableCell>
+                                                            <TableCell>{renderValor(c.valor_nuevo)}</TableCell>
                                                             <TableCell>{new Date(c.fecha).toLocaleString()}</TableCell>
                                                         </TableRow>
                                                     ))}
@@ -878,119 +904,21 @@ function Check() {
                                 </Grid>
 
                                 <Grid item xs={6}>
-                                    <b>Alarma Reversa:</b> {detalle.alarma_reversa || "-"}
+                                    <b>Torreta:</b> {detalle.torreta || "-"}
                                     <br />
-                                    <b>Obs:</b> {detalle.obs_alarma_reversa || "-"}
+                                    <b>Obs:</b> {detalle.obs_torreta || "-"}
                                 </Grid>
 
                                 <Grid item xs={6}>
-                                    <b>Claxon:</b> {detalle.claxon || "-"}
-                                    <br />
-                                    <b>Obs:</b> {detalle.obs_claxon || "-"}
-                                </Grid>
-
-                                <Grid item xs={6}>
-                                    <b>Extintor:</b> {detalle.extintor || "-"}
-                                    <br />
-                                    <b>Obs:</b> {detalle.obs_extintor || "-"}
-                                </Grid>
-
-                                <Grid item xs={6}>
-                                    <b>Espejos Protector Cristal:</b> {detalle.espejos_protector_cristal || "-"}
-                                    <br />
-                                    <b>Obs:</b> {detalle.obs_espejos_protector_cristal || "-"}
-                                </Grid>
-
-                                <Grid item xs={6}>
-                                    <b>Cuartos:</b> {detalle.cuartos || "-"}
-                                    <br />
-                                    <b>Obs:</b> {detalle.obs_cuartos || "-"}
-                                </Grid>
-
-                                <Grid item xs={6}>
-                                    <b>Base Cuartos:</b> {detalle.base_cuartos || "-"}
-                                    <br />
-                                    <b>Obs:</b> {detalle.obs_base_cuartos || "-"}
-                                </Grid>
-
-
-                                <Grid item xs={6}>
-                                    <b>Faros:</b> {detalle.faro || "-"}
-                                    <br />
-                                    <b>Obs:</b> {detalle.obs_faro || "-"}
-                                </Grid>
-
-                                <Grid item xs={6}>
-                                    <b>Switch Ignición:</b> {detalle.switch_ignicion || "-"}
-                                    <br />
-                                    <b>Obs:</b> {detalle.obs_switch_ignicion || "-"}
-                                </Grid>
-
-                                <Grid item xs={6}>
-                                    <b>Llave Switc:</b> {detalle.llave_switch || "-"}
-                                    <br />
-                                    <b>Obs:</b> {detalle.obs_llave_switch || "-"}
-                                </Grid>
-
-                                <Grid item xs={6}>
-                                    <b>Tapas Plastico:</b> {detalle.tapas_plastico || "-"}
-                                    <br />
-                                    <b>Obs:</b> {detalle.obs_tapas_plastico || "-"}
-                                </Grid>
-
-
-                                <Grid item xs={6}>
-                                    <b>Perno Arrastre:</b> {detalle.perno_arrastre || "-"}
-                                    <br />
-                                    <b>Obs:</b> {detalle.obs_perno_arrastre || "-"}
-                                </Grid>
-
-                                <Grid item xs={6}>
-                                    <b>Calcomanías:</b> {detalle.calcomanias || "-"}
-                                    <br />
-                                    <b>Obs:</b> {detalle.obs_calcomanias || "-"}
-                                </Grid>
-
-                                <Grid item xs={6}>
-                                    <b>Portahorquillas:</b> {detalle.portahorquillas || "-"}
-                                    <br />
-                                    <b>Obs:</b> {detalle.obs_portahorquillas || "-"}
-                                </Grid>
-
-                                <Grid item xs={6}>
-                                    <b>Horquillas:</b> {detalle.horquilla || "-"}
+                                    <b>Horquilla:</b> {detalle.horquilla || "-"}
                                     <br />
                                     <b>Obs:</b> {detalle.obs_horquilla || "-"}
-                                </Grid>
-
-                                <Grid item xs={6}>
-                                    <b>Respaldo Carga:</b> {detalle.respaldo_carga || "-"}
-                                    <br />
-                                    <b>Obs:</b> {detalle.obs_respaldo_carga || "-"}
                                 </Grid>
 
                                 <Grid item xs={6}>
                                     <b>Parrilla Contrapeso:</b> {detalle.parrilla_contrapeso || "-"}
                                     <br />
                                     <b>Obs:</b> {detalle.obs_parrilla_contrapeso || "-"}
-                                </Grid>
-
-                                <Grid item xs={6}>
-                                    <b>Desplazador Lateral:</b> {detalle.desplazador_lateral || "-"}
-                                    <br />
-                                    <b>Obs:</b> {detalle.obs_desplazador_lateral || "-"}
-                                </Grid>
-
-                                <Grid item xs={6}>
-                                    <b>Palacan de control de velocidades:</b> {detalle.palanca_control_velocidades || "-"}
-                                    <br />
-                                    <b>Obs:</b> {detalle.obs_palanca_control_velocidades || "-"}
-                                </Grid>
-
-                                <Grid item xs={6}>
-                                    <b>Aditamento:</b> {detalle.aditamento || "-"}
-                                    <br />
-                                    <b>Obs:</b> {detalle.obs_aditamento || "-"}
                                 </Grid>
 
                                 <Grid item xs={6}>
@@ -1006,57 +934,9 @@ function Check() {
                                 </Grid>
 
                                 <Grid item xs={6}>
-                                    <b>Bateria:</b> {detalle.bateria || "-"}
+                                    <b>Extintor:</b> {detalle.extintor || "-"}
                                     <br />
-                                    <b>Obs:</b> {detalle.obs_bateria || "-"}
-                                </Grid>
-
-                                <Grid item xs={6}>
-                                    <b>Cargador:</b> {detalle.cargador || "-"}
-                                    <br />
-                                    <b>Obs:</b> {detalle.obs_cargador || "-"}
-                                </Grid>
-
-                                <Grid item xs={6}>
-                                    <b>Voltaje:</b> {detalle.valtaje_cargador || "-"}
-                                    <br />
-                                    <b>Obs:</b> {detalle.obs_valtaje_cargador || "-"}
-                                </Grid>
-
-                                <Grid item xs={6}>
-                                    <b>Asiento:</b> {detalle.asiento || "-"}
-                                    <br />
-                                    <b>Obs:</b> {detalle.obs_asiento || "-"}
-                                </Grid>
-
-                                <Grid item xs={6}>
-                                    <b>Protector Operador:</b> {detalle.protector_operador || "-"}
-                                    <br />
-                                    <b>Obs:</b> {detalle.obs_protector_operador || "-"}
-                                </Grid>
-
-                                <Grid item xs={6}>
-                                    <b>Piso Plataforma:</b> {detalle.piso_plataforma || "-"}
-                                    <br />
-                                    <b>Obs:</b> {detalle.obs_piso_plataforma || "-"}
-                                </Grid>
-
-                                <Grid item xs={6}>
-                                    <b>Tapon Aceite:</b> {detalle.tapon_aceite || "-"}
-                                    <br />
-                                    <b>Obs:</b> {detalle.obs_tapon_aceite || "-"}
-                                </Grid>
-
-                                <Grid item xs={6}>
-                                    <b>Estado de Pintura:</b> {detalle.estado_pintura || "-"}
-                                    <br />
-                                    <b>Obs:</b> {detalle.obs_estado_pintura || "-"}
-                                </Grid>
-
-                                <Grid item xs={6}>
-                                    <b>Altura Mastil:</b> {detalle.altura_mastil || "-"}
-                                    <br />
-                                    <b>Obs:</b> {detalle.obs_altura_mastil || "-"}
+                                    <b>Obs:</b> {detalle.obs_extintor || "-"}
                                 </Grid>
 
                                 <Grid item xs={6}>
@@ -1064,6 +944,27 @@ function Check() {
                                     <br />
                                     <b>Obs:</b> {detalle.obs_golpes || "-"}
                                 </Grid>
+
+
+                                <Grid item xs={6}>
+                                    <b>Palanca:</b> {detalle.palanca || "-"}
+                                    <br />
+                                    <b>Obs:</b> {detalle.obs_palanca || "-"}
+                                </Grid>
+
+
+                                <Grid item xs={6}>
+                                    <b>horometro:</b> {detalle.horometro || "-"}
+                                    <br />
+                                    <b>Obs:</b> {detalle.obs_horometro || "-"}
+                                </Grid>
+
+                                <Grid item xs={6}>
+                                    <b>Camara:</b> {detalle.camara || "-"}
+                                    <br />
+                                    <b>Obs:</b> {detalle.obs_camara || "-"}
+                                </Grid>
+
 
                                 <Grid item xs={12}>
                                     <b>Notas Adicionales:</b> {detalle.nota_adicional || "-"}
@@ -1104,37 +1005,16 @@ function Check() {
                     <Grid container spacing={2}>
                         {[
                             ["torreta", "obs_torreta"],
-                            ["alarma_reversa", "obs_alarma_reversa"],
-                            ["claxon", "obs_claxon"],
-                            ["extintor", "obs_extintor"],
-                            ["espejos_protector_cristal", "obs_espejos_protector_cristal"],
-                            ["cuartos", "obs_cuartos"],
-                            ["base_cuartos", "obs_base_cuartos"],
-                            ["faro", "obs_faro"],
-                            ["switch_ignicion", "obs_switch_ignicion"],
-                            ["llave_switch", "obs_llave_switch"],
-                            ["tapas_plastico", "obs_tapas_plastico"],
-                            ["perno_arrastre", "obs_perno_arrastre"],
-                            ["calcomanias", "obs_calcomanias"],
-                            ["portahorquillas", "obs_portahorquillas"],
                             ["horquilla", "obs_horquilla"],
-                            ["respaldo_carga", "obs_respaldo_carga"],
                             ["parrilla_contrapeso", "obs_parrilla_contrapeso"],
-                            ["desplazador_lateral", "obs_desplazador_lateral"],
-                            ["palanca_control_velocidades", "obs_palanca_control_velocidades"],
-                            ["aditamento", "obs_aditamento"],
                             ["llantas_delanteras", "obs_llantas_delanteras"],
                             ["llantas_traseras", "obs_llantas_traseras"],
-                            ["bateria", "obs_bateria"],
                             ["cargador", "obs_cargador"],
-                            ["valtaje_cargador", "obs_valtaje_cargador"],
-                            ["asiento", "obs_asiento"],
-                            ["protector_operador", "obs_protector_operador"],
-                            ["piso_plataforma", "obs_piso_plataforma"],
-                            ["tapon_aceite", "obs_tapon_aceite"],
-                            ["estado_pintura", "obs_estado_pintura"],
-                            ["altura_mastil", "obs_altura_mastil"],
+                            ["extintor", "obs_extintor"],
                             ["golpes", "obs_golpes"],
+                            ["palanca", "obs_palanca"],
+                            ["horometro", "obs_horometro"],
+                            ["camara", "obs_camara"],
                             ["nota_adicional", null]
                         ].map(([campo, obs]) => {
                             // 🔥 caso especial

@@ -185,16 +185,45 @@ const obtenerRutasDePaqueteria = async (req, res) => {
       desde = "",
       hasta = "",
       mes = "",
+      anio = "",
     } = req.query;
 
     const offset = (page - 1) * limit;
+
     let query = `
-      SELECT id, routeName, FECHA, \`NO ORDEN\`, NO_FACTURA, FECHA_DE_FACTURA, 
-             \`NUM. CLIENTE\`, \`NOMBRE DEL CLIENTE\`, ZONA, MUNICIPIO, ESTADO, 
-             OBSERVACIONES, TOTAL, PARTIDAS, PIEZAS, TARIMAS, TRANSPORTE, 
-             PAQUETERIA, GUIA, FECHA_DE_ENTREGA_CLIENTE, DIAS_DE_ENTREGA,
-             TIPO, DIRECCION, TELEFONO, TOTAL_FACTURA_LT, ENTREGA_SATISFACTORIA_O_NO_SATISFACTORIA,
-             created_at, MOTIVO, NUMERO_DE_FACTURA_LT, FECHA_DE_ENTREGA_CLIENTE, tipo_original,totalIva
+      SELECT 
+        id,
+        routeName,
+        FECHA,
+        \`NO ORDEN\`,
+        NO_FACTURA,
+        FECHA_DE_FACTURA,
+        \`NUM. CLIENTE\`,
+        \`NOMBRE DEL CLIENTE\`,
+        ZONA,
+        MUNICIPIO,
+        ESTADO,
+        OBSERVACIONES,
+        TOTAL,
+        PARTIDAS,
+        PIEZAS,
+        TARIMAS,
+        TRANSPORTE,
+        PAQUETERIA,
+        GUIA,
+        FECHA_DE_ENTREGA_CLIENTE,
+        DIAS_DE_ENTREGA,
+        TIPO,
+        DIRECCION,
+        TELEFONO,
+        TOTAL_FACTURA_LT,
+        ENTREGA_SATISFACTORIA_O_NO_SATISFACTORIA,
+        created_at,
+        MOTIVO,
+        NUMERO_DE_FACTURA_LT,
+        tipo_original,
+        totalIva,
+        \`EJECUTIVO VTAS\`
       FROM paqueteria
       WHERE 1 = 1
     `;
@@ -203,27 +232,41 @@ const obtenerRutasDePaqueteria = async (req, res) => {
 
     const filtrandoPorGuia = guia && guia.trim() !== "";
 
+    // ===============================
+    // 🗓️ FILTRO POR FECHAS (created_at)
+    // ===============================
     if (!filtrandoPorGuia) {
-      if (mes) {
+      if (mes && anio) {
+        // 👉 Mes + Año (histórico exacto)
+        query += " AND MONTH(created_at) = ? AND YEAR(created_at) = ?";
+        params.push(mes, anio);
+
+        query += " ORDER BY created_at ASC LIMIT ? OFFSET ?";
+
+      } else if (mes && !anio) {
+        // 👉 Solo mes → año actual
         const anioActual = new Date().getFullYear();
         query += " AND MONTH(created_at) = ? AND YEAR(created_at) = ?";
         params.push(mes, anioActual);
 
-        // 👉 Orden ascendente (día 1 al último)
         query += " ORDER BY created_at ASC LIMIT ? OFFSET ?";
-      } else {
-        const fechaLimite = new Date();
-        fechaLimite.setDate(fechaLimite.getDate() - 3);
-        const fechaLimiteStr = fechaLimite.toISOString().slice(0, 10);
-        query += " AND created_at >= ?";
-        params.push(fechaLimiteStr);
 
-        // 👉 Orden descendente (hoy hacia atrás)
+      } else {
+        // 👉 Nada seleccionado → mes actual (incluye hoy)
+        query += `
+          AND MONTH(created_at) = MONTH(CURDATE())
+          AND YEAR(created_at) = YEAR(CURDATE())
+        `;
+
         query += " ORDER BY created_at DESC LIMIT ? OFFSET ?";
       }
+
       params.push(parseInt(limit), parseInt(offset));
     }
 
+    // ===============================
+    // 🔍 FILTROS ADICIONALES
+    // ===============================
     if (tipo) {
       query += " AND TIPO = ?";
       params.push(tipo);
@@ -236,11 +279,12 @@ const obtenerRutasDePaqueteria = async (req, res) => {
 
     const [rows] = await pool.query(query, params);
     res.json(rows);
+
   } catch (error) {
-    console.error("Error al obtener rutas de paquetería:", error.message);
-    res
-      .status(500)
-      .json({ message: "Error al obtener las rutas de paquetería" });
+    console.error("❌ Error al obtener rutas de paquetería:", error.message);
+    res.status(500).json({
+      message: "Error al obtener las rutas de paquetería",
+    });
   }
 };
 

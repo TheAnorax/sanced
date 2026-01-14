@@ -154,10 +154,9 @@ const createTraspaso = async (req, res) => {
     const body = req.body || {};
     let {
       Codigo, Descripcion, Clave, um, _pz,
-      Cantidad, dia_envio, almacen_envio, tiempo_llegada_estimado,
+      Cantidad, dia_envio, almacen_envio, tiempo_llegada_estimado, lote_serie
     } = body;
 
-    // mapea variaciones para No_Orden y tipo_orden si vinieran en el body
     const No_Orden = pickAlias(body, ['No_Orden', 'NO_Orden', 'Número orden', 'Numero orden', 'No Orden']) || null;
     const tipo_orden = pickAlias(body, ['tipo_orden', 'Tp ord', 'TP ORD', 'Tipo ord']) || null;
 
@@ -177,8 +176,8 @@ const createTraspaso = async (req, res) => {
 
     await pool.query(
       `INSERT INTO mandar_traspaso
-       (No_Orden, tipo_orden, Codigo, Descripcion, Clave, um, _pz, Cantidad, dia_envio, almacen_envio, tiempo_llegada_estimado)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (No_Orden, tipo_orden, Codigo, Descripcion, Clave, um, _pz, Cantidad, dia_envio, almacen_envio, tiempo_llegada_estimado, lote_serie)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         No_Orden,
         tipo_orden,
@@ -191,9 +190,12 @@ const createTraspaso = async (req, res) => {
         envio,
         almacen_envio || null,
         llegada,
+        lote_serie || null, // 👈 YA SOPORTA LOTE
       ]
     );
+
     res.status(201).json({ message: 'Registro de traspaso creado correctamente' });
+
   } catch (error) {
     if (error.code === 'ER_DUP_ENTRY') {
       return res.status(409).json({ message: 'El Código ya existe. No se puede duplicar.' });
@@ -201,6 +203,7 @@ const createTraspaso = async (req, res) => {
     res.status(500).json({ message: 'Error al crear el registro de traspaso', error: error.message });
   }
 };
+
 
 /* =========================
    LISTAR TRASPASOS
@@ -274,7 +277,6 @@ const importTraspasosExcel = async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ ok: false, msg: 'No se adjuntó archivo.' });
 
-    // Fecha de llegada única para todo el lote (opcional, si la mandas junto al file)
     const { tiempoLlegadaLote } = req.body;
     const llegadaLote = toMySQLDateTime(tiempoLlegadaLote);
 
@@ -282,7 +284,6 @@ const importTraspasosExcel = async (req, res) => {
     const sheet = wb.Sheets[wb.SheetNames[0]];
     const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
 
-    // 1) Parse preliminar + reunir códigos para el lookup
     const parsed = [];
     const codigos = new Set();
 
@@ -292,12 +293,10 @@ const importTraspasosExcel = async (req, res) => {
       const No_Orden = pickAlias(r, ['Número orden', 'Numero orden', 'No Orden', 'No_Orden', 'NO_Orden']) || null;
       const tipo_orden = pickAlias(r, ['Tp ord', 'TP ORD', 'tipo_orden', 'Tipo ord']) || null;
 
-      // Venta -> almacen_envio (si no hay, intenta por alias de almacén)
       const almacen_envio =
         pickAlias(r, ['Venta', 'venta']) ||
         pickAlias(r, ['almacen_envio', 'almacén', 'almacen']) || null;
 
-      // Fecha solicitud -> dia_envio
       const dia_envio = toMySQLDateTime(
         pickAlias(r, ['Fecha solicitud', 'FECHA SOLICITUD', 'fecha solicitud', 'dia_envio', 'DIA_ENVIO'])
       );
@@ -312,6 +311,23 @@ const importTraspasosExcel = async (req, res) => {
       const articulo2 = pickAlias(r, [
         '2º nº artículo', '2° nº artículo', '2º n° artículo', '2º nº articulo'
       ]) || null;
+
+      // 🔥 NUEVO: leer lote / serie
+      const lote_serie = pickAlias(r, [
+        'Nº lote /serie',
+        'Nº lote / serie',
+        'N° lote /serie',
+        'N° lote / serie',
+        'No lote / serie',
+        'No. lote / serie',
+        'Lote',
+        'lote',
+        'Serie',
+        'serie',
+        'lote_serie',
+        'lote serie'
+      ]) || null;
+
 
       const DescripcionExcel = pickAlias(r, ['Descripcion', 'DESCRIPCION', 'descripción', 'descripcion']);
       const ClaveExcel = pickAlias(r, ['Clave', 'CLAVE', 'clave']);
@@ -333,26 +349,26 @@ const importTraspasosExcel = async (req, res) => {
         pzExcel,
         Cantidad,
         articulo2,
+        lote_serie, // 👈 AQUI YA VIAJA
       });
 
       if (Codigo != null) codigos.add(Number(Codigo));
     }
 
-    // 2) Lookup a productos por lote (para completar descripcion/clave/um/_pz)
+    // Lookup a productos
     let productoByCod = new Map();
     if (codigos.size) {
       const uniq = [...codigos];
       const placeholders = uniq.map(() => '?').join(',');
       const [prodRows] = await pool.query(
         `SELECT codigo_pro AS codigo, des, clave, um, _pz
-           FROM productos
-          WHERE codigo_pro IN (${placeholders})`,
+         FROM productos
+         WHERE codigo_pro IN (${placeholders})`,
         uniq
       );
       productoByCod = new Map(prodRows.map(p => [Number(p.codigo), p]));
     }
 
-    // 3) Insertar
     let inserted = 0, skipped = 0;
     const errors = [];
 
@@ -375,8 +391,8 @@ const importTraspasosExcel = async (req, res) => {
 
         await pool.query(
           `INSERT INTO mandar_traspaso
-           (No_Orden, tipo_orden, Codigo, Descripcion, Clave, um, _pz, Cantidad, dia_envio, almacen_envio, tiempo_llegada_estimado)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           (No_Orden, tipo_orden, Codigo, Descripcion, Clave, um, _pz, Cantidad, dia_envio, almacen_envio, tiempo_llegada_estimado, lote_serie)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             r.No_Orden,
             r.tipo_orden,
@@ -389,8 +405,10 @@ const importTraspasosExcel = async (req, res) => {
             r.dia_envio,
             r.almacen_envio,
             r.tiempo_llegada_estimado,
+            r.lote_serie, // 👈 SE INSERTA AQUÍ
           ]
         );
+
         inserted++;
       } catch (e) {
         skipped++;
@@ -399,11 +417,13 @@ const importTraspasosExcel = async (req, res) => {
     }
 
     return res.json({ ok: true, inserted, skipped, errors });
+
   } catch (err) {
     console.error('importTraspasosExcel error:', err);
     return res.status(500).json({ ok: false, msg: 'Error importando Excel', error: err.message });
   }
 };
+
 
 /* =========================
    EXPORTS

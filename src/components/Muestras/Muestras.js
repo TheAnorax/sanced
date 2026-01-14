@@ -64,6 +64,10 @@ import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import DownloadIcon from "@mui/icons-material/Download";
 import SaveIcon from "@mui/icons-material/Save";
+import 'moment/locale/es';
+
+moment.locale('es');
+
 
 const capitalize = (str) =>
   str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
@@ -334,12 +338,12 @@ function Muestras() {
       updatedCarrito = currentSolicitud.carrito.map((p) =>
         p.codigo === item.codigo
           ? {
-              ...p,
-              master: p.master + item.master,
-              inner: p.inner + item.inner,
-              piezas: p.piezas + item.piezas,
-              totalPiezas: p.totalPiezas + item.totalPiezas,
-            }
+            ...p,
+            master: p.master + item.master,
+            inner: p.inner + item.inner,
+            piezas: p.piezas + item.piezas,
+            totalPiezas: p.totalPiezas + item.totalPiezas,
+          }
           : p
       );
     } else {
@@ -1491,7 +1495,7 @@ function Muestras() {
       (sol) =>
         (departamentoFiltrado === "" ||
           sol.departamento?.toLowerCase() ===
-            departamentoFiltrado.toLowerCase()) &&
+          departamentoFiltrado.toLowerCase()) &&
         moment(sol.created_at).format("YYYY-MM") === mesActual
     )
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
@@ -1503,7 +1507,7 @@ function Muestras() {
       (sol) =>
         (departamentoFiltrado === "" ||
           sol.departamento?.toLowerCase() ===
-            departamentoFiltrado.toLowerCase()) &&
+          departamentoFiltrado.toLowerCase()) &&
         moment(sol.created_at).format("YYYY-MM") === mesActual
     )
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
@@ -1796,24 +1800,24 @@ function Muestras() {
                         {["DIRECCION", "DEPARTAMENTAL"].includes(
                           departamento.toUpperCase()
                         ) && (
-                          <Grid item>
-                            <FormControlLabel
-                              control={
-                                <Checkbox
-                                  checked={requiereEnvio}
-                                  onChange={(e) => {
-                                    setRequiereEnvio(e.target.checked);
-                                    if (e.target.checked) {
-                                      setDetalleEnvio("");
-                                    }
-                                  }}
-                                  color="primary"
-                                />
-                              }
-                              label="¿Requiere envío?"
-                            />
-                          </Grid>
-                        )}
+                            <Grid item>
+                              <FormControlLabel
+                                control={
+                                  <Checkbox
+                                    checked={requiereEnvio}
+                                    onChange={(e) => {
+                                      setRequiereEnvio(e.target.checked);
+                                      if (e.target.checked) {
+                                        setDetalleEnvio("");
+                                      }
+                                    }}
+                                    color="primary"
+                                  />
+                                }
+                                label="¿Requiere envío?"
+                              />
+                            </Grid>
+                          )}
                       </Grid>
                     </Grid>
 
@@ -1834,25 +1838,25 @@ function Muestras() {
 
                     {(requiereEnvio ||
                       detalleEnvio === `Se entrega a ${user?.name}`) && (
-                      <Grid item xs={12}>
-                        <TextField
-                          label={
-                            detalleEnvio === `Se entrega a ${user?.name}`
-                              ? "Lugar de entrega"
-                              : "Cómo se envía"
-                          }
-                          variant="outlined"
-                          fullWidth
-                          required
-                          value={detalleEnvio}
-                          onChange={(e) => setDetalleEnvio(e.target.value)}
-                          InputProps={{
-                            readOnly:
-                              detalleEnvio === `Se entrega a ${user?.name}`,
-                          }}
-                        />
-                      </Grid>
-                    )}
+                        <Grid item xs={12}>
+                          <TextField
+                            label={
+                              detalleEnvio === `Se entrega a ${user?.name}`
+                                ? "Lugar de entrega"
+                                : "Cómo se envía"
+                            }
+                            variant="outlined"
+                            fullWidth
+                            required
+                            value={detalleEnvio}
+                            onChange={(e) => setDetalleEnvio(e.target.value)}
+                            InputProps={{
+                              readOnly:
+                                detalleEnvio === `Se entrega a ${user?.name}`,
+                            }}
+                          />
+                        </Grid>
+                      )}
 
                     {mostrarObservaciones && (
                       <Grid item xs={12}>
@@ -1954,11 +1958,10 @@ function Muestras() {
                             <TableRow key={prod.codigo}>
                               <TableCell>
                                 <img
-                                  src={`${
-                                    process.env.PUBLIC_URL
-                                  }/assets/image/img_pz/${String(
-                                    prod.codigo
-                                  ).trim()}.jpg`}
+                                  src={`${process.env.PUBLIC_URL
+                                    }/assets/image/img_pz/${String(
+                                      prod.codigo
+                                    ).trim()}.jpg`}
                                   alt="Producto"
                                   onError={(e) => {
                                     e.target.src = `${process.env.PUBLIC_URL}/assets/image/img_pz/noimage.png`;
@@ -2037,11 +2040,10 @@ function Muestras() {
                                   <TableCell>{item.codigo}</TableCell>
                                   <TableCell>
                                     <img
-                                      src={`${
-                                        process.env.PUBLIC_URL
-                                      }/assets/image/img_pz/${String(
-                                        item.codigo
-                                      ).trim()}.jpg`}
+                                      src={`${process.env.PUBLIC_URL
+                                        }/assets/image/img_pz/${String(
+                                          item.codigo
+                                        ).trim()}.jpg`}
                                       alt="Producto"
                                       onError={(e) => {
                                         e.target.src = `${process.env.PUBLIC_URL}/assets/image/img_pz/noimage.png`;
@@ -2103,11 +2105,10 @@ function Muestras() {
                     <Box display="flex" justifyContent="center" mb={2}>
                       {producto ? (
                         <img
-                          src={`${
-                            process.env.PUBLIC_URL
-                          }/assets/image/img_pz/${String(
-                            producto.codigo
-                          ).trim()}.jpg`}
+                          src={`${process.env.PUBLIC_URL
+                            }/assets/image/img_pz/${String(
+                              producto.codigo
+                            ).trim()}.jpg`}
                           alt="Producto"
                           onError={(e) => {
                             e.target.src = `${process.env.PUBLIC_URL}/assets/image/img_pz/noimage.png`;
@@ -2367,118 +2368,118 @@ function Muestras() {
                   (s.enviadoParaAutorizar || s.enviado_para_autorizar === 1) &&
                   s.autorizado !== 2 // ⛔ ocultar canceladas
               ).length === 0 && (
-                <Typography>No hay solicitudes para autorizar.</Typography>
-              )}
+                  <Typography>No hay solicitudes para autorizar.</Typography>
+                )}
 
               {solicitudes.filter(
                 (s) =>
                   (s.enviadoParaAutorizar || s.enviado_para_autorizar === 1) &&
                   s.autorizado !== 2 // ⛔ ocultar canceladas
               ).length > 0 && (
-                <TableContainer component={Paper} style={{ marginTop: "20px" }}>
-                  <Table>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Fecha</TableCell>
-                        <TableCell>Folio</TableCell>
-                        <TableCell>Nombre</TableCell>
-                        <TableCell>Departamento</TableCell>
-                        <TableCell>Motivo</TableCell>
-                        <TableCell>Fecha Devolución</TableCell>
-                        <TableCell>Informacion de entrega o de Envio</TableCell>
-                        <TableCell>Observaciones</TableCell>
-                        <TableCell>Artículos</TableCell>
-                        <TableCell>Costo</TableCell>
-                        <TableCell>Acciones</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {solicitudes
-                        .filter(
-                          (s) =>
-                            s.enviadoParaAutorizar ||
-                            s.enviado_para_autorizar === 1
-                        )
-                        .map((sol) => (
-                          <TableRow key={sol.folio}>
-                            <TableCell>
-                              {moment(sol.created_at).format("DD/MM/YYYY")}
-                            </TableCell>
-                            <TableCell>{sol.folio}</TableCell>
-                            <TableCell>{sol.nombre}</TableCell>
-                            <TableCell>{sol.departamento}</TableCell>
-                            <TableCell>{sol.motivo}</TableCell>
-                            <TableCell>
-                              {sol.fecha
-                                ? new Date(sol.fecha).toLocaleDateString(
+                  <TableContainer component={Paper} style={{ marginTop: "20px" }}>
+                    <Table>
+                      <TableHead>
+                        <TableRow>
+                          <TableCell>Fecha</TableCell>
+                          <TableCell>Folio</TableCell>
+                          <TableCell>Nombre</TableCell>
+                          <TableCell>Departamento</TableCell>
+                          <TableCell>Motivo</TableCell>
+                          <TableCell>Fecha Devolución</TableCell>
+                          <TableCell>Informacion de entrega o de Envio</TableCell>
+                          <TableCell>Observaciones</TableCell>
+                          <TableCell>Artículos</TableCell>
+                          <TableCell>Costo</TableCell>
+                          <TableCell>Acciones</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {solicitudes
+                          .filter(
+                            (s) =>
+                              s.enviadoParaAutorizar ||
+                              s.enviado_para_autorizar === 1
+                          )
+                          .map((sol) => (
+                            <TableRow key={sol.folio}>
+                              <TableCell>
+                                {moment(sol.created_at).format("DD/MM/YYYY")}
+                              </TableCell>
+                              <TableCell>{sol.folio}</TableCell>
+                              <TableCell>{sol.nombre}</TableCell>
+                              <TableCell>{sol.departamento}</TableCell>
+                              <TableCell>{sol.motivo}</TableCell>
+                              <TableCell>
+                                {sol.fecha
+                                  ? new Date(sol.fecha).toLocaleDateString(
                                     "es-MX"
                                   )
-                                : "N/A"}
-                            </TableCell>
-                            <TableCell>{sol.detalle_envio || "N/A"}</TableCell>
-                            <TableCell>{sol.observaciones || "N/A"}</TableCell>
-                            <TableCell>{sol.carrito?.length || 0}</TableCell>
-                            <TableCell>
-                              {sol.total_general
-                                ? `$${parseFloat(
+                                  : "N/A"}
+                              </TableCell>
+                              <TableCell>{sol.detalle_envio || "N/A"}</TableCell>
+                              <TableCell>{sol.observaciones || "N/A"}</TableCell>
+                              <TableCell>{sol.carrito?.length || 0}</TableCell>
+                              <TableCell>
+                                {sol.total_general
+                                  ? `$${parseFloat(
                                     sol.total_general
                                   ).toLocaleString("es-MX", {
                                     minimumFractionDigits: 2,
                                     maximumFractionDigits: 2,
                                   })}`
-                                : "$0.00"}{" "}
-                            </TableCell>
+                                  : "$0.00"}{" "}
+                              </TableCell>
 
-                            <TableCell>
-                              <Box
-                                display="flex"
-                                justifyContent="flex-start"
-                                alignItems="center"
-                              >
-                                {sol.autorizado === 0 && (
-                                  <>
-                                    {/* Botón verde: Autorizar */}
-                                    <IconButton
-                                      onClick={() =>
-                                        autorizarSolicitud(sol.folio)
-                                      }
-                                      color="success"
-                                      title="Autorizar y Generar PDF"
-                                      style={{ marginRight: "10px" }}
-                                    >
-                                      <AddTaskIcon />
-                                    </IconButton>
-
-                                    {/* Botón gris: Cancelar / Negar */}
-                                    <IconButton
-                                      onClick={() =>
-                                        cancelarSolicitud(sol.folio)
-                                      }
-                                      color="error"
-                                      title="Cancelar solicitud"
-                                    >
-                                      <CancelIcon />
-                                    </IconButton>
-                                  </>
-                                )}
-
-                                <IconButton
-                                  onClick={() =>
-                                    handleOpenModal(sol.carrito, sol.folio)
-                                  }
-                                  sx={{ color: "orange" }}
-                                  title="Ver productos"
+                              <TableCell>
+                                <Box
+                                  display="flex"
+                                  justifyContent="flex-start"
+                                  alignItems="center"
                                 >
-                                  <VisibilityIcon />
-                                </IconButton>
-                              </Box>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              )}
+                                  {sol.autorizado === 0 && (
+                                    <>
+                                      {/* Botón verde: Autorizar */}
+                                      <IconButton
+                                        onClick={() =>
+                                          autorizarSolicitud(sol.folio)
+                                        }
+                                        color="success"
+                                        title="Autorizar y Generar PDF"
+                                        style={{ marginRight: "10px" }}
+                                      >
+                                        <AddTaskIcon />
+                                      </IconButton>
+
+                                      {/* Botón gris: Cancelar / Negar */}
+                                      <IconButton
+                                        onClick={() =>
+                                          cancelarSolicitud(sol.folio)
+                                        }
+                                        color="error"
+                                        title="Cancelar solicitud"
+                                      >
+                                        <CancelIcon />
+                                      </IconButton>
+                                    </>
+                                  )}
+
+                                  <IconButton
+                                    onClick={() =>
+                                      handleOpenModal(sol.carrito, sol.folio)
+                                    }
+                                    sx={{ color: "orange" }}
+                                    title="Ver productos"
+                                  >
+                                    <VisibilityIcon />
+                                  </IconButton>
+                                </Box>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                )}
             </Paper>
           )}
 
@@ -2489,25 +2490,46 @@ function Muestras() {
             </Typography>
 
             {/* 🔹 Selector de mes */}
-            <FormControl sx={{ width: 200, mb: 2 }}>
+            <FormControl sx={{ width: 220, mb: 2 }}>
               <InputLabel>Seleccionar mes</InputLabel>
               <Select
-                value={selectedMonth || moment().format("YYYY-MM")}
+                value={selectedMonth}
                 label="Seleccionar mes"
                 onChange={(e) => setSelectedMonth(e.target.value)}
+                MenuProps={{
+                  PaperProps: {
+                    style: {
+                      maxHeight: 300, // 🔥 para que no sea eterna la lista
+                    },
+                  },
+                }}
               >
-                {Array.from({ length: 12 }, (_, i) => {
-                  const mes = moment().month(i).format("MM");
-                  const year = moment().format("YYYY");
-                  const value = `${year}-${mes}`;
-                  return (
-                    <MenuItem key={value} value={value}>
-                      {moment(value).format("MMMM YYYY")}
-                    </MenuItem>
-                  );
-                })}
+                {Array.from({ length: 2 }, (_, y) => {
+                  const year = moment().subtract(y, "years").format("YYYY");
+
+                  return [
+                    // 🔹 TÍTULO DEL AÑO (NO seleccionable)
+                    <MenuItem key={`year-${year}`} disabled style={{ fontWeight: "bold", opacity: 1 }}>
+                      {year}
+                    </MenuItem>,
+
+                    // 🔹 MESES DEL AÑO
+                    ...Array.from({ length: 12 }, (_, m) => {
+                      const mes = String(m + 1).padStart(2, "0");
+                      const value = `${year}-${mes}`;
+
+                      return (
+                        <MenuItem key={value} value={value} sx={{ pl: 4 }}>
+                          {moment(value).format("MMMM")}
+                        </MenuItem>
+                      );
+                    }),
+                  ];
+                }).flat()}
               </Select>
             </FormControl>
+
+
 
             {/* 🔹 Filtro de Departamento */}
             <FormControl sx={{ width: 300, mb: 2, ml: 2 }}>
@@ -2667,11 +2689,11 @@ function Muestras() {
                                 <TableCell>
                                   {sol.total_general
                                     ? `$${parseFloat(
-                                        sol.total_general
-                                      ).toLocaleString("es-MX", {
-                                        minimumFractionDigits: 2,
-                                        maximumFractionDigits: 2,
-                                      })}`
+                                      sol.total_general
+                                    ).toLocaleString("es-MX", {
+                                      minimumFractionDigits: 2,
+                                      maximumFractionDigits: 2,
+                                    })}`
                                     : "—"}
                                 </TableCell>
                                 <TableCell>
@@ -2684,8 +2706,8 @@ function Muestras() {
                                 <TableCell>
                                   {sol.fecha
                                     ? new Date(sol.fecha).toLocaleDateString(
-                                        "es-MX"
-                                      )
+                                      "es-MX"
+                                    )
                                     : "N/A"}
                                 </TableCell>
                                 <TableCell>
@@ -2703,8 +2725,8 @@ function Muestras() {
                                 <TableCell>
                                   {sol.fin_embarcado_por
                                     ? `${sol.fin_embarcado_por} - ${new Date(
-                                        sol.fin_embarcado_at
-                                      ).toLocaleTimeString("es-MX")}`
+                                      sol.fin_embarcado_at
+                                    ).toLocaleTimeString("es-MX")}`
                                     : "Pendiente"}
                                 </TableCell>
                                 <TableCell>
@@ -2765,50 +2787,50 @@ function Muestras() {
                                         {(user?.role === "INV" ||
                                           user?.role === "Admin" ||
                                           user?.role === "Master") && (
-                                          <IconButton
-                                            onClick={() =>
-                                              registrarSalida(sol.folio)
-                                            }
-                                            color="success"
-                                            title={
-                                              !sol.fin_embarcado_at
-                                                ? "Registrar fin de embarque"
-                                                : "Registrar salida"
-                                            }
-                                          >
-                                            <ExitToAppIcon />
-                                          </IconButton>
-                                        )}
+                                            <IconButton
+                                              onClick={() =>
+                                                registrarSalida(sol.folio)
+                                              }
+                                              color="success"
+                                              title={
+                                                !sol.fin_embarcado_at
+                                                  ? "Registrar fin de embarque"
+                                                  : "Registrar salida"
+                                              }
+                                            >
+                                              <ExitToAppIcon />
+                                            </IconButton>
+                                          )}
 
                                         {(user?.role === "INV" ||
                                           user?.role === "Admin") && (
-                                          <Tooltip title="Marcar como SIN MATERIAL">
-                                            <IconButton
-                                              color="primary"
-                                              size="medium"
-                                              disabled={marcandoSinMaterial}
-                                              onClick={() =>
-                                                Swal.fire({
-                                                  title:
-                                                    "¿Marcar como SIN MATERIAL?",
-                                                  text: "Esto notificará al solicitante que NO hay material disponible.",
-                                                  icon: "warning",
-                                                  showCancelButton: true,
-                                                  confirmButtonText:
-                                                    "Sí, marcar",
-                                                  cancelButtonText: "Cancelar",
-                                                }).then((result) => {
-                                                  if (result.isConfirmed)
-                                                    marcarSinMaterial(
-                                                      sol.folio
-                                                    );
-                                                })
-                                              }
-                                            >
-                                              <DoNotDisturbIcon />
-                                            </IconButton>
-                                          </Tooltip>
-                                        )}
+                                            <Tooltip title="Marcar como SIN MATERIAL">
+                                              <IconButton
+                                                color="primary"
+                                                size="medium"
+                                                disabled={marcandoSinMaterial}
+                                                onClick={() =>
+                                                  Swal.fire({
+                                                    title:
+                                                      "¿Marcar como SIN MATERIAL?",
+                                                    text: "Esto notificará al solicitante que NO hay material disponible.",
+                                                    icon: "warning",
+                                                    showCancelButton: true,
+                                                    confirmButtonText:
+                                                      "Sí, marcar",
+                                                    cancelButtonText: "Cancelar",
+                                                  }).then((result) => {
+                                                    if (result.isConfirmed)
+                                                      marcarSinMaterial(
+                                                        sol.folio
+                                                      );
+                                                  })
+                                                }
+                                              >
+                                                <DoNotDisturbIcon />
+                                              </IconButton>
+                                            </Tooltip>
+                                          )}
                                       </>
                                     )}
                                   </Box>
@@ -2875,8 +2897,8 @@ function Muestras() {
                                 <TableCell>
                                   {sol.fecha
                                     ? new Date(sol.fecha).toLocaleDateString(
-                                        "es-MX"
-                                      )
+                                      "es-MX"
+                                    )
                                     : "N/A"}
                                 </TableCell>
                                 <TableCell>
@@ -2959,11 +2981,10 @@ function Muestras() {
                     {/* Imagen */}
                     <TableCell align="center">
                       <img
-                        src={`${
-                          process.env.PUBLIC_URL
-                        }/assets/image/img_pz/${String(
-                          item.codigo
-                        ).trim()}.jpg`}
+                        src={`${process.env.PUBLIC_URL
+                          }/assets/image/img_pz/${String(
+                            item.codigo
+                          ).trim()}.jpg`}
                         alt="Producto"
                         onError={(e) => {
                           e.target.src = `${process.env.PUBLIC_URL}/assets/image/img_pz/noimage.png`;
@@ -3009,12 +3030,12 @@ function Muestras() {
                     >
                       {item.total_producto
                         ? `$${parseFloat(item.total_producto).toLocaleString(
-                            "es-MX",
-                            {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            }
-                          )}`
+                          "es-MX",
+                          {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          }
+                        )}`
                         : "$0.00"}
                     </TableCell>
 
@@ -3133,11 +3154,10 @@ function Muestras() {
                       <TableRow key={index}>
                         <TableCell>
                           <img
-                            src={`${
-                              process.env.PUBLIC_URL
-                            }/assets/image/img_pz/${String(
-                              item.codigo
-                            ).trim()}.jpg`}
+                            src={`${process.env.PUBLIC_URL
+                              }/assets/image/img_pz/${String(
+                                item.codigo
+                              ).trim()}.jpg`}
                             alt="Producto"
                             onError={(e) => {
                               e.target.src = `${process.env.PUBLIC_URL}/assets/image/img_pz/noimage.png`;
@@ -3155,7 +3175,7 @@ function Muestras() {
 
                         <TableCell>
                           {ubicacionesPorCodigo[item.codigo] &&
-                          ubicacionesPorCodigo[item.codigo].length > 0 ? (
+                            ubicacionesPorCodigo[item.codigo].length > 0 ? (
                             <Tooltip
                               title={
                                 <ul style={{ margin: 0, padding: 0 }}>
@@ -3222,11 +3242,11 @@ function Muestras() {
                         <TableCell>
                           {item.total_producto
                             ? `$${parseFloat(
-                                item.total_producto
-                              ).toLocaleString("es-MX", {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                              })}`
+                              item.total_producto
+                            ).toLocaleString("es-MX", {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })}`
                             : "—"}
                         </TableCell>
                       </TableRow>

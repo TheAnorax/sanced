@@ -1,6 +1,7 @@
 // server.js 
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const authRoutes = require('./src/routes/authRoutes');
 const productoRoutes = require('./src/routes/productoRoutes');
 const pedidoRoutes = require('./src/routes/pedidoRoutes');
@@ -45,6 +46,8 @@ const port = 3007;
 const bodyParser = require('body-parser');
 app.use(bodyParser.json({ limit: '50mb' })); // Aumenta el límite si es necesario
 app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
+
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 //alertas
 const http = require('http');

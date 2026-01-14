@@ -263,7 +263,7 @@ function Traspasos() {
                             <TableCell>No orden</TableCell>
                             <TableCell>Código</TableCell>
                             <TableCell>Descripción</TableCell>
-                            <TableCell>Clave</TableCell>
+                            <TableCell>Pedimento</TableCell>
                             <TableCell>UM</TableCell>
                             <TableCell>Cantidad</TableCell>
                             <TableCell>Día de envío</TableCell>
@@ -277,7 +277,7 @@ function Traspasos() {
                                 <TableCell>{x.No_Orden ?? x.NO_Orden ?? "—"}</TableCell>
                                 <TableCell>{x.Codigo}</TableCell>
                                 <TableCell>{x.Descripcion}</TableCell>
-                                <TableCell>{x.Clave}</TableCell>
+                                <TableCell>{x.lote_serie}</TableCell>
                                 <TableCell>{x.um || "—"}</TableCell>
                                 <TableCell>{x.Cantidad}</TableCell>
                                 <TableCell>{x.dia_envio ? new Date(x.dia_envio).toLocaleString() : "—"}</TableCell>

@@ -231,13 +231,13 @@ function Tracking() {
         prevData.map((route) =>
           statusMap[route["NO ORDEN"]]
             ? {
-                ...route,
-                // Si la API trae un statusText, lo usamos. Si no, conservamos el que ya tenía.
-                statusText:
-                  statusMap[route["NO ORDEN"]].statusText || route.statusText,
-                // Asigna el color devuelto por la API. Si no hay color, conserva el anterior.
-                color: statusMap[route["NO ORDEN"]].color || route.color,
-              }
+              ...route,
+              // Si la API trae un statusText, lo usamos. Si no, conservamos el que ya tenía.
+              statusText:
+                statusMap[route["NO ORDEN"]].statusText || route.statusText,
+              // Asigna el color devuelto por la API. Si no hay color, conserva el anterior.
+              color: statusMap[route["NO ORDEN"]].color || route.color,
+            }
             : route
         )
       );
@@ -247,11 +247,11 @@ function Tracking() {
         prevData.map((route) =>
           statusMap[route["NO ORDEN"]]
             ? {
-                ...route,
-                statusText:
-                  statusMap[route["NO ORDEN"]].statusText || route.statusText,
-                color: statusMap[route["NO ORDEN"]].color || route.color,
-              }
+              ...route,
+              statusText:
+                statusMap[route["NO ORDEN"]].statusText || route.statusText,
+              color: statusMap[route["NO ORDEN"]].color || route.color,
+            }
             : route
         )
       );
@@ -261,11 +261,11 @@ function Tracking() {
         prevData.map((route) =>
           statusMap[route["NO ORDEN"]]
             ? {
-                ...route,
-                statusText:
-                  statusMap[route["NO ORDEN"]].statusText || route.statusText,
-                color: statusMap[route["NO ORDEN"]].color || route.color,
-              }
+              ...route,
+              statusText:
+                statusMap[route["NO ORDEN"]].statusText || route.statusText,
+              color: statusMap[route["NO ORDEN"]].color || route.color,
+            }
             : route
         )
       );
@@ -275,11 +275,11 @@ function Tracking() {
         prevData.map((route) =>
           statusMap[route["NO ORDEN"]]
             ? {
-                ...route,
-                statusText:
-                  statusMap[route["NO ORDEN"]].statusText || route.statusText,
-                color: statusMap[route["NO ORDEN"]].color || route.color,
-              }
+              ...route,
+              statusText:
+                statusMap[route["NO ORDEN"]].statusText || route.statusText,
+              color: statusMap[route["NO ORDEN"]].color || route.color,
+            }
             : route
         )
       );
@@ -501,9 +501,8 @@ function Tracking() {
       ) || 0,
     PARTIDAS: Number(row["Partidas"] || row["__EMPTY_22"] || 0),
     PIEZAS: Number(row["Cantidad"] || row["__EMPTY_23"] || 0),
-    DIRECCION: `${row["Calle"] || ""} ${row["Colonia"] || ""} ${
-      row["Municipio"] || ""
-    } ${row["Codigo Postal"] || ""} ${row["Estado"] || ""}`,
+    DIRECCION: `${row["Calle"] || ""} ${row["Colonia"] || ""} ${row["Municipio"] || ""
+      } ${row["Codigo Postal"] || ""} ${row["Estado"] || ""}`,
     CORREO: row["E-mail"] || "",
     TELEFONO: row["No. Telefonico"] || "",
   });
@@ -996,29 +995,28 @@ function Tracking() {
   };
 
   const fetchPaqueteriaRoutes = async ({
-    filtro = "",
-    desde = "",
-    hasta = "",
     mes = "",
+    anio = "",
+    filtro = ""
   } = {}) => {
     try {
       let url = `http://66.232.105.87:3007/api/Ventas/rutas?expandir=true`;
 
-      if (filtro) url += `&guia=${filtro}`;
-      if (desde && hasta) url += `&desde=${desde}&hasta=${hasta}`;
       if (mes) url += `&mes=${mes}`;
+      if (anio) url += `&anio=${anio}`;
+      if (filtro) url += `&guia=${filtro}`;
 
-      const response = await fetch(url);
-      const data = await response.json();
-      console.log("📦 Data recibida desde API:", data);
+      console.log("🔎 URL final:", url);
 
-      if (Array.isArray(data)) {
-        setSentRoutesData(data); // Aquí actualizas la tabla
-      }
-    } catch (error) {
-      console.error("Error al obtener rutas:", error);
+      const res = await fetch(url);
+      const data = await res.json();
+
+      setSentRoutesData(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("❌ Error rutas:", err);
     }
   };
+
 
   useEffect(() => {
     if (!Array.isArray(sentRoutesData) || sentRoutesData.length === 0) {
@@ -2990,15 +2988,15 @@ function Tracking() {
     setFechaEntregaCliente(
       data["FECHA_DE_ENTREGA (CLIENTE)"]
         ? new Date(data["FECHA_DE_ENTREGA (CLIENTE)"])
-            .toISOString()
-            .split("T")[0]
+          .toISOString()
+          .split("T")[0]
         : ""
     );
     setFechaEstimadaCliente(
       data["FECHA_DE_ENTREGA (CLIENTE)"]
         ? new Date(data["FECHA_DE_ENTREGA (CLIENTE)"])
-            .toISOString()
-            .split("T")[0]
+          .toISOString()
+          .split("T")[0]
         : ""
     );
     setTipo(data.TIPO || "");
@@ -3203,7 +3201,7 @@ function Tracking() {
     }));
   };
 
-  useEffect(() => {}, [observacionesPorRegistro, groupedData]);
+  useEffect(() => { }, [observacionesPorRegistro, groupedData]);
 
   const moveRowUp = (route, index) => {
     setGroupedData((prevData) => {
@@ -3833,6 +3831,7 @@ function Tracking() {
   //filtar por mes
 
   const [mesSeleccionado, setMesSeleccionado] = useState("");
+  const [anioSeleccionado, setAnioSeleccionado] = useState("");
 
   const handleFiltrarMes = () => {
     fetchPaqueteriaRoutes({ mes: mesSeleccionado });
@@ -3844,6 +3843,20 @@ function Tracking() {
       fetchPaqueteriaRoutes({ mes: mesSeleccionado });
     }
   }, [mesSeleccionado]);
+
+  const buscar = () => {
+    if (!mesSeleccionado || !anioSeleccionado) {
+      alert("Selecciona mes y año");
+      return;
+    }
+
+    fetchPaqueteriaRoutes({
+      mes: mesSeleccionado, // número
+      anio: anioSeleccionado // número
+    });
+  };
+
+
 
   return (
     <Paper elevation={3} style={{ padding: "20px" }}>
@@ -3877,36 +3890,87 @@ function Tracking() {
                 style={{ width: "400px", height: "auto" }}
               />
 
-              <select
-                value={mesSeleccionado}
-                onChange={(e) => setMesSeleccionado(e.target.value)}
-                style={{
-                  padding: "6px 12px",
-                  borderRadius: "4px",
-                  border: "1px solid #ccc",
-                  fontWeight: "bold",
-                  color: "#333",
-                  backgroundColor: "#fff",
-                  cursor: "pointer",
-                  boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-                  outline: "none",
-                  transition: "border-color 0.3s ease",
-                }}
-                onFocus={(e) => (e.target.style.borderColor = "#ff6600")}
-                onBlur={(e) => (e.target.style.borderColor = "#ccc")}
-              >
-                <option value="">Últimos 3 días</option>
-                <option value="3">Marzo</option>
-                <option value="4">Abril</option>
-                <option value="5">Mayo</option>
-                <option value="6">Junio</option>
-                <option value="7">Julio</option>
-                <option value="8">Agosto</option>
-                <option value="9">Septiembre</option>
-                <option value="10">Octubre</option>
-                <option value="11">Noviembre</option>
-                <option value="12">Diciembre</option>
-              </select>
+
+              <div className="tracking-filters">
+                <div className="filter-group">
+                  <label>Mes</label>
+                  <select
+                    value={mesSeleccionado}
+                    onChange={(e) => setMesSeleccionado(Number(e.target.value))}
+                    style={{
+                      padding: "6px 12px",
+                      borderRadius: "4px",
+                      border: "1px solid #ccc",
+                      fontWeight: "bold",
+                      color: "#333",
+                      backgroundColor: "#fff",
+                      cursor: "pointer",
+                      boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                      outline: "none",
+                      transition: "border-color 0.3s ease",
+                    }}
+                  >
+                    <option value="">Selecciona</option>
+                    <option value={1}>Enero</option>
+                    <option value={2}>Febrero</option>
+                    <option value={3}>Marzo</option>
+                    <option value={4}>Abril</option>
+                    <option value={5}>Mayo</option>
+                    <option value={6}>Junio</option>
+                    <option value={7}>Julio</option>
+                    <option value={8}>Agosto</option>
+                    <option value={9}>Septiembre</option>
+                    <option value={10}>Octubre</option>
+                    <option value={11}>Noviembre</option>
+                    <option value={12}>Diciembre</option>
+                  </select>
+                </div>
+
+                <div className="filter-group">
+                  <label>Año</label>
+                  <select
+                    value={anioSeleccionado}
+                    onChange={(e) => setAnioSeleccionado(Number(e.target.value))}
+                    style={{
+                      padding: "6px 12px",
+                      borderRadius: "4px",
+                      border: "1px solid #ccc",
+                      fontWeight: "bold",
+                      color: "#333",
+                      backgroundColor: "#fff",
+                      cursor: "pointer",
+                      boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                      outline: "none",
+                      transition: "border-color 0.3s ease",
+                    }}
+                  >
+                    <option value="">Selecciona</option>
+
+                    <option value={2025}>2025</option>
+                  </select>
+                </div>
+
+                <button className="btn-buscar" onClick={buscar}
+                  style={{
+                    padding: "6px 12px",
+                    borderRadius: "4px",
+                    border: "1px solid #ccc",
+                    fontWeight: "bold",
+                    color: "#333",
+                    backgroundColor: "#fff",
+                    cursor: "pointer",
+                    boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                    outline: "none",
+                    transition: "border-color 0.3s ease",
+                  }}>
+                  🔍 Buscar
+                </button>
+              </div>
+
+
+
+
+
             </div>
 
             <TablePagination
@@ -4102,10 +4166,10 @@ function Tracking() {
                         {visibleColumns.includes("TOTAL FACTURA LT") && (
                           <TableCell>
                             {routeData.TOTAL_FACTURA_LT &&
-                            !isNaN(parseFloat(routeData.TOTAL_FACTURA_LT))
+                              !isNaN(parseFloat(routeData.TOTAL_FACTURA_LT))
                               ? formatCurrency(
-                                  parseFloat(routeData.TOTAL_FACTURA_LT)
-                                )
+                                parseFloat(routeData.TOTAL_FACTURA_LT)
+                              )
                               : "$0.00"}
                           </TableCell>
                         )}
@@ -4131,13 +4195,13 @@ function Tracking() {
                         {visibleColumns.includes(
                           "FECHA DE ENTREGA (CLIENTE)"
                         ) && (
-                          <TableCell>
-                            {" "}
-                            {formatDate(
-                              routeData.FECHA_DE_ENTREGA_CLIENTE
-                            )}{" "}
-                          </TableCell>
-                        )}
+                            <TableCell>
+                              {" "}
+                              {formatDate(
+                                routeData.FECHA_DE_ENTREGA_CLIENTE
+                              )}{" "}
+                            </TableCell>
+                          )}
 
                         <TableCell>
                           <Grid
@@ -4182,16 +4246,16 @@ function Tracking() {
                             <Grid item>
                               {(user?.role === "Admin" ||
                                 user?.role === "Trans") && (
-                                <IconButton
-                                  color="error"
-                                  onClick={() =>
-                                    eliminarRuta(routeData["NO ORDEN"])
-                                  } // Cambiar 'row' a 'routeData'
-                                  disabled={loading}
-                                >
-                                  <DeleteIcon />
-                                </IconButton>
-                              )}
+                                  <IconButton
+                                    color="error"
+                                    onClick={() =>
+                                      eliminarRuta(routeData["NO ORDEN"])
+                                    } // Cambiar 'row' a 'routeData'
+                                    disabled={loading}
+                                  >
+                                    <DeleteIcon />
+                                  </IconButton>
+                                )}
                             </Grid>
                           </Grid>
                         </TableCell>
@@ -4220,38 +4284,83 @@ function Tracking() {
                 alt="Filtro"
                 style={{ width: "400px", height: "auto" }}
               />
-              <select
-                value={mesSeleccionado}
-                onChange={(e) => setMesSeleccionado(e.target.value)}
-                style={{
-                  padding: "6px 12px",
-                  borderRadius: "4px",
-                  border: "1px solid #ccc",
-                  fontWeight: "bold",
-                  color: "#333",
-                  backgroundColor: "#fff",
-                  cursor: "pointer",
-                  boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-                  outline: "none",
-                  transition: "border-color 0.3s ease",
-                }}
-                onFocus={(e) => (e.target.style.borderColor = "#ff6600")}
-                onBlur={(e) => (e.target.style.borderColor = "#ccc")}
-              >
-                <option value="">Últimos 3 días</option>
-                <option value="1">Enero</option>
-                <option value="2">Febrero</option>
-                <option value="3">Marzo</option>
-                <option value="4">Abril</option>
-                <option value="5">Mayo</option>
-                <option value="6">Junio</option>
-                <option value="7">Julio</option>
-                <option value="8">Agosto</option>
-                <option value="9">Septiembre</option>
-                <option value="10">Octubre</option>
-                <option value="11">Noviembre</option>
-                <option value="12">Diciembre</option>
-              </select>
+              <div className="tracking-filters">
+                <div className="filter-group">
+                  <label>Mes</label>
+                  <select
+                    value={mesSeleccionado}
+                    onChange={(e) => setMesSeleccionado(Number(e.target.value))}
+                    style={{
+                      padding: "6px 12px",
+                      borderRadius: "4px",
+                      border: "1px solid #ccc",
+                      fontWeight: "bold",
+                      color: "#333",
+                      backgroundColor: "#fff",
+                      cursor: "pointer",
+                      boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                      outline: "none",
+                      transition: "border-color 0.3s ease",
+                    }}
+                  >
+                    <option value="">Selecciona</option>
+                    <option value={1}>Enero</option>
+                    <option value={2}>Febrero</option>
+                    <option value={3}>Marzo</option>
+                    <option value={4}>Abril</option>
+                    <option value={5}>Mayo</option>
+                    <option value={6}>Junio</option>
+                    <option value={7}>Julio</option>
+                    <option value={8}>Agosto</option>
+                    <option value={9}>Septiembre</option>
+                    <option value={10}>Octubre</option>
+                    <option value={11}>Noviembre</option>
+                    <option value={12}>Diciembre</option>
+                  </select>
+                </div>
+
+                <div className="filter-group">
+                  <label>Año</label>
+                  <select
+                    value={anioSeleccionado}
+                    onChange={(e) => setAnioSeleccionado(Number(e.target.value))}
+                    style={{
+                      padding: "6px 12px",
+                      borderRadius: "4px",
+                      border: "1px solid #ccc",
+                      fontWeight: "bold",
+                      color: "#333",
+                      backgroundColor: "#fff",
+                      cursor: "pointer",
+                      boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                      outline: "none",
+                      transition: "border-color 0.3s ease",
+                    }}
+                  >
+                    <option value="">Selecciona</option>
+
+                    <option value={2025}>2025</option>
+                  </select>
+                </div>
+
+                <button className="btn-buscar" onClick={buscar}
+                  style={{
+                    padding: "6px 12px",
+                    borderRadius: "4px",
+                    border: "1px solid #ccc",
+                    fontWeight: "bold",
+                    color: "#333",
+                    backgroundColor: "#fff",
+                    cursor: "pointer",
+                    boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                    outline: "none",
+                    transition: "border-color 0.3s ease",
+                  }}>
+                  🔍 Buscar
+                </button>
+              </div>
+
+
             </div>
 
             <TablePagination
@@ -4411,7 +4520,7 @@ function Tracking() {
                             style={{ color: routeData.color }}
                           >
                             {routeData.statusText &&
-                            routeData.statusText !== "Cargando..."
+                              routeData.statusText !== "Cargando..."
                               ? routeData.statusText
                               : "Cargando..."}
                           </Typography>
@@ -4459,10 +4568,10 @@ function Tracking() {
                         {visibleColumns.includes(
                           "FECHA DE ENTREGA (CLIENTE)"
                         ) && (
-                          <TableCell>
-                            {formatDate(routeData.FECHA_DE_ENTREGA_CLIENTE)}
-                          </TableCell>
-                        )}
+                            <TableCell>
+                              {formatDate(routeData.FECHA_DE_ENTREGA_CLIENTE)}
+                            </TableCell>
+                          )}
                         {visibleColumns.includes("Acciones") && (
                           <TableCell>
                             <Grid
@@ -4491,16 +4600,16 @@ function Tracking() {
                               <Grid item>
                                 {(user?.role === "Admin" ||
                                   user?.role === "Trans") && (
-                                  <IconButton
-                                    color="error"
-                                    onClick={() =>
-                                      eliminarRuta(routeData["NO ORDEN"])
-                                    } // Cambiar 'row' a 'routeData'
-                                    disabled={loading}
-                                  >
-                                    <DeleteIcon />
-                                  </IconButton>
-                                )}
+                                    <IconButton
+                                      color="error"
+                                      onClick={() =>
+                                        eliminarRuta(routeData["NO ORDEN"])
+                                      } // Cambiar 'row' a 'routeData'
+                                      disabled={loading}
+                                    >
+                                      <DeleteIcon />
+                                    </IconButton>
+                                  )}
                               </Grid>
                             </Grid>
                           </TableCell>
@@ -4613,7 +4722,7 @@ function Tracking() {
                             style={{ color: routeData.color }}
                           >
                             {routeData.statusText &&
-                            routeData.statusText !== "Cargando..."
+                              routeData.statusText !== "Cargando..."
                               ? routeData.statusText
                               : "Cargando..."}
                           </Typography>
@@ -4632,18 +4741,18 @@ function Tracking() {
                         {visibleColumns.includes(
                           "FECHA DE ENTREGA (CLIENTE)"
                         ) && (
-                          <TableCell>
-                            {formatDate(routeData.FECHA_DE_ENTREGA_CLIENTE)}
-                          </TableCell>
-                        )}
+                            <TableCell>
+                              {formatDate(routeData.FECHA_DE_ENTREGA_CLIENTE)}
+                            </TableCell>
+                          )}
 
                         {visibleColumns.includes(
                           "FECHA ESTIMADA DE ENTREGA"
                         ) && (
-                          <TableCell>
-                            {formatDate(routeData.FECHA_ESTIMADA_ENTREGA)}
-                          </TableCell>
-                        )}
+                            <TableCell>
+                              {formatDate(routeData.FECHA_ESTIMADA_ENTREGA)}
+                            </TableCell>
+                          )}
 
                         {visibleColumns.includes("Acciones") && (
                           <TableCell>
@@ -4673,30 +4782,30 @@ function Tracking() {
                               <Grid item>
                                 {(user?.role === "Admin" ||
                                   user?.role === "Trans") && (
-                                  <IconButton
-                                    color="error"
-                                    onClick={() =>
-                                      eliminarRuta(routeData["NO ORDEN"])
-                                    } // Cambiar 'row' a 'routeData'
-                                    disabled={loading}
-                                  >
-                                    <DeleteIcon />
-                                  </IconButton>
-                                )}
+                                    <IconButton
+                                      color="error"
+                                      onClick={() =>
+                                        eliminarRuta(routeData["NO ORDEN"])
+                                      } // Cambiar 'row' a 'routeData'
+                                      disabled={loading}
+                                    >
+                                      <DeleteIcon />
+                                    </IconButton>
+                                  )}
 
                                 <Grid item>
                                   {(user?.role === "Admin" ||
                                     user?.role === "Trans" ||
                                     user?.role === "Embar") && (
-                                    <IconButton
-                                      style={{ color: "#1976D2" }} // Azul
-                                      onClick={() =>
-                                        openDirectaModal(routeData)
-                                      }
-                                    >
-                                      <BorderColorIcon />
-                                    </IconButton>
-                                  )}
+                                      <IconButton
+                                        style={{ color: "#1976D2" }} // Azul
+                                        onClick={() =>
+                                          openDirectaModal(routeData)
+                                        }
+                                      >
+                                        <BorderColorIcon />
+                                      </IconButton>
+                                    )}
                                 </Grid>
                               </Grid>
                             </Grid>
@@ -4730,38 +4839,85 @@ function Tracking() {
                 alt="Filtro"
                 style={{ width: "400px", height: "auto" }}
               />
-              <select
-                value={mesSeleccionado}
-                onChange={(e) => setMesSeleccionado(e.target.value)}
-                style={{
-                  padding: "6px 12px",
-                  borderRadius: "4px",
-                  border: "1px solid #ccc",
-                  fontWeight: "bold",
-                  color: "#333",
-                  backgroundColor: "#fff",
-                  cursor: "pointer",
-                  boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-                  outline: "none",
-                  transition: "border-color 0.3s ease",
-                }}
-                onFocus={(e) => (e.target.style.borderColor = "#ff6600")}
-                onBlur={(e) => (e.target.style.borderColor = "#ccc")}
-              >
-                <option value="">Últimos 3 días</option>
-                <option value="1">Enero</option>
-                <option value="2">Febrero</option>
-                <option value="3">Marzo</option>
-                <option value="4">Abril</option>
-                <option value="5">Mayo</option>
-                <option value="6">Junio</option>
-                <option value="7">Julio</option>
-                <option value="8">Agosto</option>
-                <option value="9">Septiembre</option>
-                <option value="10">Octubre</option>
-                <option value="11">Noviembre</option>
-                <option value="12">Diciembre</option>
-              </select>
+
+
+              <div className="tracking-filters">
+                <div className="filter-group">
+                  <label>Mes</label>
+                  <select
+                    value={mesSeleccionado}
+                    onChange={(e) => setMesSeleccionado(Number(e.target.value))}
+                    style={{
+                      padding: "6px 12px",
+                      borderRadius: "4px",
+                      border: "1px solid #ccc",
+                      fontWeight: "bold",
+                      color: "#333",
+                      backgroundColor: "#fff",
+                      cursor: "pointer",
+                      boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                      outline: "none",
+                      transition: "border-color 0.3s ease",
+                    }}
+                  >
+                    <option value="">Selecciona</option>
+                    <option value={1}>Enero</option>
+                    <option value={2}>Febrero</option>
+                    <option value={3}>Marzo</option>
+                    <option value={4}>Abril</option>
+                    <option value={5}>Mayo</option>
+                    <option value={6}>Junio</option>
+                    <option value={7}>Julio</option>
+                    <option value={8}>Agosto</option>
+                    <option value={9}>Septiembre</option>
+                    <option value={10}>Octubre</option>
+                    <option value={11}>Noviembre</option>
+                    <option value={12}>Diciembre</option>
+                  </select>
+                </div>
+
+                <div className="filter-group">
+                  <label>Año</label>
+                  <select
+                    value={anioSeleccionado}
+                    onChange={(e) => setAnioSeleccionado(Number(e.target.value))}
+                    style={{
+                      padding: "6px 12px",
+                      borderRadius: "4px",
+                      border: "1px solid #ccc",
+                      fontWeight: "bold",
+                      color: "#333",
+                      backgroundColor: "#fff",
+                      cursor: "pointer",
+                      boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                      outline: "none",
+                      transition: "border-color 0.3s ease",
+                    }}
+                  >
+                    <option value="">Selecciona</option>
+
+                    <option value={2025}>2025</option>
+                  </select>
+                </div>
+
+                <button className="btn-buscar" onClick={buscar}
+                  style={{
+                    padding: "6px 12px",
+                    borderRadius: "4px",
+                    border: "1px solid #ccc",
+                    fontWeight: "bold",
+                    color: "#333",
+                    backgroundColor: "#fff",
+                    cursor: "pointer",
+                    boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                    outline: "none",
+                    transition: "border-color 0.3s ease",
+                  }}>
+                  🔍 Buscar
+                </button>
+              </div>
+
+
             </div>
 
             <Table>
@@ -4865,10 +5021,10 @@ function Tracking() {
                   {visibleColumns.includes(
                     "ENTREGA SATISFACTORIA O NO SATISFACTORIA"
                   ) && (
-                    <TableCell>
-                      ENTREGA SATISFACTORIA O NO SATISFACTORIA
-                    </TableCell>
-                  )}
+                      <TableCell>
+                        ENTREGA SATISFACTORIA O NO SATISFACTORIA
+                      </TableCell>
+                    )}
                   {visibleColumns.includes("MOTIVO") && (
                     <TableCell>MOTIVO</TableCell>
                   )}
@@ -4900,7 +5056,7 @@ function Tracking() {
                           style={{ color: routeData.color }}
                         >
                           {routeData.statusText &&
-                          routeData.statusText !== "Cargando..."
+                            routeData.statusText !== "Cargando..."
                             ? routeData.statusText
                             : "Cargando..."}
                         </Typography>
@@ -4945,10 +5101,10 @@ function Tracking() {
                       {visibleColumns.includes("TOTAL FACTURA LT") && (
                         <TableCell>
                           {routeData.TOTAL_FACTURA_LT &&
-                          !isNaN(parseFloat(routeData.TOTAL_FACTURA_LT))
+                            !isNaN(parseFloat(routeData.TOTAL_FACTURA_LT))
                             ? formatCurrency(
-                                parseFloat(routeData.TOTAL_FACTURA_LT)
-                              )
+                              parseFloat(routeData.TOTAL_FACTURA_LT)
+                            )
                             : "$0.00"}
                         </TableCell>
                       )}
@@ -4957,17 +5113,17 @@ function Tracking() {
                           {loading
                             ? "Cargando..."
                             : fechasEmbarque[routeData["NO ORDEN"]]
-                            ? formatDate(fechasEmbarque[routeData["NO ORDEN"]])
-                            : "Sin fecha"}
+                              ? formatDate(fechasEmbarque[routeData["NO ORDEN"]])
+                              : "Sin fecha"}
                         </TableCell>
                       )}
                       {visibleColumns.includes(
                         "FECHA DE ENTREGA (CLIENTE)"
                       ) && (
-                        <TableCell>
-                          {formatDate(routeData.FECHA_DE_ENTREGA_CLIENTE)}
-                        </TableCell>
-                      )}
+                          <TableCell>
+                            {formatDate(routeData.FECHA_DE_ENTREGA_CLIENTE)}
+                          </TableCell>
+                        )}
                       {visibleColumns.includes("PARTIDAS") && (
                         <TableCell>{routeData.PARTIDAS}</TableCell>
                       )}
@@ -4988,10 +5144,10 @@ function Tracking() {
                       {visibleColumns.includes(
                         "ENTREGA SATISFACTORIA O NO SATISFACTORIA"
                       ) && (
-                        <TableCell>
-                          {routeData.ENTREGA_SATISFACTORIA_O_NO_SATISFACTORIA}
-                        </TableCell>
-                      )}
+                          <TableCell>
+                            {routeData.ENTREGA_SATISFACTORIA_O_NO_SATISFACTORIA}
+                          </TableCell>
+                        )}
                       {visibleColumns.includes("MOTIVO") && (
                         <TableCell>{routeData.MOTIVO}</TableCell>
                       )}

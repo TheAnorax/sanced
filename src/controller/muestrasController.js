@@ -1054,9 +1054,9 @@ const enviarPendientesEmbarque = async () => {
 };
 
 // 8:00 AM
-cron.schedule("00 10 * * 1-5", async () => {
+cron.schedule("53 09 * * 1-5", async () => {
   console.log(
-    "⏰ Ejecutando envío diario de pendientes de embarque (10:00 AM, solo lunes a viernes)..."
+    "⏰ Ejecutando envío diario de pendientes de embarque (09:01 AM, solo lunes a viernes)..."
   );
   await enviarPendientesEmbarque();
 });

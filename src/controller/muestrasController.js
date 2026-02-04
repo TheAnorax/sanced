@@ -119,7 +119,7 @@ const guardarSolicitudes = async (req, res) => {
         autorizado,
         enviadoParaAutorizar,
         autorizado_por,
-        sol.observaciones || null, // ✅ nuevo campo aquí
+        sol.observaciones || null, //  nuevo campo aquí
       ]
     );
 
@@ -187,8 +187,8 @@ const guardarSolicitudes = async (req, res) => {
         from: `"Muestras Sanced" <j72525264@gmail.com>`,
         to: destinatarios,
         subject: esAutoAutorizado
-          ? `✅ Solicitud de muestra AUTORIZADA - ${folio}`
-          : `🧾 Nueva solicitud de muestra - ${folio}`,
+          ? ` Solicitud de muestra AUTORIZADA - ${folio}`
+          : ` Nueva solicitud de muestra - ${folio}`,
         html,
         attachments: [
           {
@@ -199,7 +199,7 @@ const guardarSolicitudes = async (req, res) => {
         ],
       });
     } catch (errorCorreo) {
-      console.error("❌ Error al enviar correo de muestra:", errorCorreo);
+      console.error(" Error al enviar correo de muestra:", errorCorreo);
     }
 
     res.status(200).json({
@@ -217,7 +217,7 @@ const actualizarSolicitud = async (req, res) => {
   let { autorizado, enviadoParaAutorizar, autorizado_por } = req.body;
 
   try {
-    // ✅ Asegurar que "autorizado" sea número
+    //  Asegurar que "autorizado" sea número
     autorizado = Number(autorizado);
 
     // 1) Actualizar los campos en la BD
@@ -339,7 +339,7 @@ const actualizarSolicitud = async (req, res) => {
         await transporter.sendMail({
           from: `"Muestras Sanced" <j72525264@gmail.com>`,
           to: destinatariosAut,
-          subject: `✅ Solicitud de muestra AUTORIZADA - ${folio}`,
+          subject: ` Solicitud de muestra AUTORIZADA - ${folio}`,
           html,
           attachments: [
             {
@@ -350,10 +350,10 @@ const actualizarSolicitud = async (req, res) => {
           ],
         });
 
-        console.log("✅ Correo de autorización enviado a:", destinatariosAut);
+        console.log(" Correo de autorización enviado a:", destinatariosAut);
       } catch (errorCorreo) {
         console.error(
-          "❌ Error al leer plantilla o enviar correo de autorización:",
+          " Error al leer plantilla o enviar correo de autorización:",
           errorCorreo
         );
       }
@@ -361,7 +361,7 @@ const actualizarSolicitud = async (req, res) => {
 
     // 6) Si se CANCELÓ (2), enviar correo de cancelación
     if (autorizado === 2) {
-      console.log("📢 Entrando a envío de correo por CANCELACIÓN");
+      console.log(" Entrando a envío de correo por CANCELACIÓN");
 
       try {
         // Leer plantilla de cancelación
@@ -390,7 +390,7 @@ const actualizarSolicitud = async (req, res) => {
         await transporter.sendMail({
           from: `"Muestras Sanced" <j72525264@gmail.com>`,
           to: destinatariosCan,
-          subject: `❌ Solicitud de muestra CANCELADA - ${folio}`,
+          subject: ` Solicitud de muestra CANCELADA - ${folio}`,
           html: htmlCan,
           attachments: [
             {
@@ -401,10 +401,10 @@ const actualizarSolicitud = async (req, res) => {
           ],
         });
 
-        console.log("✅ Correo de cancelación enviado a:", destinatariosCan);
+        console.log(" Correo de cancelación enviado a:", destinatariosCan);
       } catch (errorCorreoCan) {
         console.error(
-          "❌ Error al leer plantilla o enviar correo de cancelación:",
+          " Error al leer plantilla o enviar correo de cancelación:",
           errorCorreoCan
         );
       }
@@ -413,7 +413,7 @@ const actualizarSolicitud = async (req, res) => {
     // 7) Responder siempre al front-end
     res.json({ message: "Solicitud actualizada correctamente." });
   } catch (error) {
-    console.error("❌ Error al actualizar la solicitud:", error);
+    console.error(" Error al actualizar la solicitud:", error);
     res.status(500).json({ message: "Error en el servidor" });
   }
 };
@@ -504,12 +504,12 @@ const obtenerAutorizadas = async (req, res) => {
       }, 0);
 
       row.carrito = productosConTotal;
-      row.total_general = totalGeneral.toFixed(2); // ✅ nuevo campo
+      row.total_general = totalGeneral.toFixed(2); // nuevo campo
     }
 
     res.json(rows);
   } catch (error) {
-    console.error("❌ Error al obtener autorizadas:", error);
+    console.error(" Error al obtener autorizadas:", error);
     res
       .status(500)
       .json({ message: "Error al obtener solicitudes autorizadas" });
@@ -706,8 +706,8 @@ const marcarSalida = async (req, res) => {
         await transporter.sendMail({
           from: `"Muestras Sanced" <j72525264@gmail.com>`,
           to: correoDestino,
-          cc: correosFijos, // ✅ se agregan correos fijos como copia
-          subject: `✅ Tus muestras han sido ENTREGADAS – Folio ${folio}`,
+          cc: correosFijos, //  se agregan correos fijos como copia
+          subject: ` Tus muestras han sido ENTREGADAS – Folio ${folio}`,
           html,
           attachments: [
             {
@@ -720,9 +720,9 @@ const marcarSalida = async (req, res) => {
       }
     }
 
-    res.json({ message: "✅ Salida registrada y correo enviado si aplica." });
+    res.json({ message: " Salida registrada y correo enviado si aplica." });
   } catch (error) {
-    console.error("❌ Error al registrar salida:", error);
+    console.error(" Error al registrar salida:", error);
     res.status(500).json({ message: "Error al registrar salida" });
   }
 };
@@ -870,10 +870,10 @@ const registrarFinEmbarque = async (req, res) => {
     });
 
     res.json({
-      message: "✅ Fin de embarque registrado y correo enviado correctamente.",
+      message: " Fin de embarque registrado y correo enviado correctamente.",
     });
   } catch (error) {
-    console.error("❌ Error al registrar fin de embarque:", error);
+    console.error(" Error al registrar fin de embarque:", error);
     res
       .status(500)
       .json({ message: "Error interno al registrar fin de embarque" });
@@ -1036,7 +1036,7 @@ const enviarPendientesEmbarque = async () => {
         "supervisor.inventarios@santul.net",
         "gerardo.rodriguez@santul.net",
       ],
-      subject: "⚠️ Solicitudes PENDIENTES de embarque",
+      subject: " Solicitudes PENDIENTES de embarque",
       html,
       attachments: [
         {
@@ -1047,16 +1047,16 @@ const enviarPendientesEmbarque = async () => {
       ],
     });
 
-    console.log("✅ Correo de pendientes de embarque enviado.");
+    console.log(" Correo de pendientes de embarque enviado.");
   } catch (error) {
-    console.error("❌ Error al enviar correo de pendientes:", error);
+    console.error(" Error al enviar correo de pendientes:", error);
   }
 };
 
 // 8:00 AM
 cron.schedule("53 09 * * 1-5", async () => {
   console.log(
-    "⏰ Ejecutando envío diario de pendientes de embarque (09:01 AM, solo lunes a viernes)..."
+    " Ejecutando envío diario de pendientes de embarque (09:01 AM, solo lunes a viernes)..."
   );
   await enviarPendientesEmbarque();
 });

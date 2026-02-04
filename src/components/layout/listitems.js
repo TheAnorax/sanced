@@ -449,6 +449,7 @@ export const mainListItems = (user) => {
         "Nac2",
         "Ins",
         "Mues",
+        "Muetras"
       ],
       path: "/dashboard/muestras",
       icon: <SummarizeIcon />,
@@ -466,18 +467,18 @@ export const mainListItems = (user) => {
       icon: <ManageSearchIcon />,
       text: "Tareas",
     },
-    {
-      role: ["Admin", "Master"],
-      path: "/dashboard/RH",
-      icon: <ManageSearchIcon />,
-      text: "RH",
-    },
-    {
-      role: ["Admin", "Master", "MASTER", "Master2", "VENT3", "VentAdmin", "Pro"],
-      path: "/dashboard/Queretaro",
-      icon: <MapIcon />,
-      text: "Proyectos",
-    },
+    // {
+    //   role: ["Admin", "Master"],
+    //   path: "/dashboard/RH",
+    //   icon: <ManageSearchIcon />,
+    //   text: "RH",
+    // },
+    // {
+    //   role: ["Admin", "Master", "MASTER", "Master2", "VENT3", "VentAdmin", "Pro"],
+    //   path: "/dashboard/Queretaro",
+    //   icon: <MapIcon />,
+    //   text: "Proyectos",
+    // },
     {
       role: [
         "Admin", "MASTER",
@@ -528,19 +529,19 @@ export const mainListItems = (user) => {
       text: "Mercado Libre",
     },
     {
-      role: ["Admin"],
+      role: ["Admin","Master"],
       path: "/dashboard/Traspasos",
       icon: <FileUploadIcon />,
       text: "Traspasos",
     },
     {
-      role: ["Admin"],
+      role: ["Admin","Master"],
       path: "/dashboard/Check",
       icon: <FileUploadIcon />,
       text: "Check",
     },
     {
-      role: ["Admin"],
+      role: ["Admin","MASTER2","Dep","Master","Muetras"],
       path: "/dashboard/Departamental",
       icon: <FileUploadIcon />,
       text: "Departamental",

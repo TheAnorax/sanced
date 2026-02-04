@@ -1,23 +1,28 @@
-const express = require('express');
+const express = require("express");
 const {
-  getDevTerea,
+  getTareas,
   createTarea,
   updateTarea,
   deleteTarea,
+  addSeguimiento,
+  getDetalleTarea,
+  getDesarrolladores,
+  getProyectos
 } = require('../controller/devController');
 
 const router = express.Router();
 
-// Ruta para obtener todas las tareas
-router.get('/tareas', getDevTerea);
+// Tareas
+router.get("/tareas", getTareas);
+router.post("/tareas", createTarea);
+router.put("/tareas/:id", updateTarea);
+router.delete("/tareas/:id", deleteTarea);
 
-// Ruta para crear una nueva tarea
-router.post('/tareas', createTarea);
+// Detalle y seguimiento
+router.get("/tareas/:id", getDetalleTarea);
+router.post("/tareas/seguimiento", addSeguimiento);
 
-// Ruta para actualizar el estado de una tarea específica
-router.put('/tareas/:id', updateTarea);
 
-// Ruta para eliminar una tarea específica
-router.delete('/tareas/:id', deleteTarea);
-
+router.get("/desarrolladores", getDesarrolladores);
+router.get("/proyectos", getProyectos);
 module.exports = router;

@@ -31,13 +31,13 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 
-// 📦 Controlador: productosController.js
+//  Controlador: productosController.js
 const getAllProducts = async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT 
         p.id_prod,              
-        p.clave,                 -- ✅ Nuevo campo agregado
+        p.clave,                 --  Nuevo campo agregado
         p.codigo_pro,                 
         p.des,                      
         p.code_pz,               

@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import * as XLSX from "xlsx";
 import {
+  TableContainer,
   Box,
   Typography,
   CircularProgress,
@@ -10,41 +12,215 @@ import {
   TableRow,
   TableCell,
   Paper,
-  TableContainer,
   Divider,
   Select,
   MenuItem,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  TextField,
+  Grid,
+  Autocomplete,
+  InputAdornment,
+  Snackbar,
+  Alert,
+  Tabs,
+  Tab
 } from "@mui/material";
+
+
 
 function Departamental() {
   const [data, setData] = useState([]);
   const [cargando, setCargando] = useState(true);
-  const [year, setYear] = useState("2025"); // Default 2025
+  const [year, setYear] = useState(new Date().getFullYear().toString());
+  const [mes, setMes] = useState("");   // vacío = todos los meses
+  const [busqueda, setBusqueda] = useState("");
+  const [openModal, setOpenModal] = useState(false);
+
+  const [modoEdicion, setModoEdicion] = useState(false);
+
+  const [clienteFiltro, setClienteFiltro] = useState("");
+
+  const [errores, setErrores] = useState({});
+
+  const [opcionesCedis, setOpcionesCedis] = useState([]);
+  const [opcionesDestino, setOpcionesDestino] = useState([]);
+
+  const [registrosExcel, setRegistrosExcel] = useState([]);
+  const [cargandoExcel, setCargandoExcel] = useState(false);
+
+  const [tabExcel, setTabExcel] = useState("lista"); // lista | detalle
+  const [registroSeleccionado, setRegistroSeleccionado] = useState(null);
+
+  const [tabModal, setTabModal] = useState(0);
+
+
+
+  const camposObligatorios = [
+    "FOLIO",
+    "CLIENTE",
+    "CEDIS",
+    "DESTINO",
+    "NO_DE_OC",
+    "VD",
+    "MONTO",
+    "FECHA_LLEGADA_OC"
+  ];
+
+
+  const abrirNuevo = async () => {
+    setModoEdicion(false);
+    setErrores({});
+
+    try {
+      const res = await axios.get(
+        "http://66.232.105.87:3007/api/departamental/siguiente-folio"
+      );
+
+      const siguienteFolio = res.data.siguienteFolio;
+
+      setForm({
+        FOLIO: siguienteFolio,   // 👈 AQUÍ SE ASIGNA AUTOMÁTICO
+        CLIENTE: "",
+        CEDIS: "",
+        DESTINO: "",
+        NO_DE_OC: "",
+        VD: "",
+        CONFIRMACION: "",
+        MONTO: "",
+        FECHA_LLEGADA_OC: "",
+        FECHA_CANCELACION: "",
+        FECHA_DE_CARGA: "",
+        HORA: "",
+        FECHA_DE_CITA: "",
+        HORA_CITA: "",
+        EMPACADOR: "",
+        ESTATUS: "",
+        TIPO_DE_ENVIO: "",
+        COMENTARIOS: "",
+      });
+
+      setOpenModal(true);
+
+    } catch (error) {
+      mostrarMensaje("Error al generar el folio", "error");
+    }
+  };
+
+
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success", // success | error | warning | info
+  });
+
+  const [form, setForm] = useState({
+    CEDIS: "",
+    DESTINO: "",
+    NO_DE_OC: "",
+    VD: "",
+    CONFIRMACION: "",
+    MONTO: "",
+    FECHA_LLEGADA_OC: "",
+    FECHA_CANCELACION: "",
+    FECHA_DE_CARGA: "",
+    HORA: "",
+    FECHA_DE_CITA: "",
+    HORA_CITA: "",
+    EMPACADOR: "",
+    ESTATUS: "",
+    TIPO_DE_ENVIO: "",
+    COMENTARIOS: "",
+    FOLIO: ""
+  });
 
   // ================================
   // Carga inicial
   // ================================
   useEffect(() => {
+    const user = JSON.parse(localStorage.getItem("user"));
+
     axios
-      .get("http://66.232.105.87:3007/api/departamental/datos")
+      .get("http://66.232.105.87:3007/api/departamental/datos", {
+        params: {
+          nombre: user?.name // 👈 aquí va Abigail Ruiz
+        }
+      })
       .then((res) => setData(res.data.data))
       .catch((e) => console.error(e))
       .finally(() => setCargando(false));
   }, []);
 
-  // ================================
+
+  // ======Formato de fecha======
+  const parseFecha = (rawFecha) => {
+    if (!rawFecha) return null;
+
+    // Caso 1: YYYY-MM-DD
+    if (rawFecha.includes("-")) {
+      const [anio, mes, dia] = rawFecha.split("-");
+      return {
+        dia,
+        mes: mes.padStart(2, "0"),
+        anio,
+      };
+    }
+
+    // Caso 2: DD/MM/YYYY o D/M/YYYY
+    if (rawFecha.includes("/")) {
+      const [dia, mes, anio] = rawFecha.split("/");
+      return {
+        dia,
+        mes: mes.padStart(2, "0"),
+        anio,
+      };
+    }
+
+    return null;
+  };
+
+
   // Filtrar por Año
   // ================================
   const filtrados = data.filter((row) => {
-    const fecha =
-      row.FECHA_DE_CITA || row.FECHA_DE_CARGA || row.FECHA_LLEGADA_OC || "";
+    // 📅 FECHA (ya lo tienes bien)
+    const rawFecha = row.FECHA_LLEGADA_OC;
+    if (!rawFecha) return false;
 
-    if (fecha.includes("/")) {
-      const extraido = fecha.split("/")[2]; // DD/MM/YYYY
-      return extraido === year;
+    const fecha = parseFecha(rawFecha);
+    if (!fecha) return false;
+
+    const { mes: mesFecha, anio } = fecha;
+
+    if (anio !== year) return false;
+    if (mes && mesFecha !== mes) return false;
+
+    // 🏪 CLIENTE
+    if (clienteFiltro && row.CLIENTE !== clienteFiltro) {
+      return false;
     }
-    return false;
+
+    // 🔍 BUSCADOR
+    if (busqueda) {
+      const folio = row.FOLIO?.toString() || "";
+      const oc = row.NO_DE_OC?.toString() || "";
+      const vd = row.VD?.toString() || "";
+
+      if (
+        !folio.includes(busqueda.trim()) &&
+        !oc.includes(busqueda.trim()) &&
+        !vd.includes(busqueda.trim())
+      ) {
+        return false;
+      }
+    }
+
+    return true;
   });
+
 
   // ================================
   // Agrupar por cliente
@@ -63,30 +239,474 @@ function Departamental() {
       </Box>
     );
 
+  //ontener status o se agrega el nuevo status
+  const obtenerEstatusAutomatico = (row) => {
+    const estatusBD = row.ESTATUS;
+    const fechaCita = row.FECHA_DE_CITA;
+
+    // Si ya tiene estatus en BD, se respeta
+    if (estatusBD && estatusBD.trim() !== "") {
+      return estatusBD.toUpperCase();
+    }
+
+    // Si no tiene estatus, se calcula
+    if (!fechaCita || fechaCita === "" || fechaCita === null || fechaCita === "-") {
+      return "EN PROCESO";
+    }
+
+    return "EN PROCESO DE SURTIDO";
+  };
+
+  const obtenerColorEstatus = (estatus) => {
+    switch (estatus) {
+      case "EN PROCESO":
+        return "#e53935"; // rojo
+      case "EN PROCESO DE SURTIDO":
+        return "#fb8c00"; // naranja
+      case "ENVIADO":
+        return "#2e7d32"; // verde
+      case "CANCELADO":
+        return "#616161"; // gris
+      default:
+        return "#000"; // negro normal
+    }
+  };
+
+  const resumenEstatus = filtrados.reduce(
+    (acc, item) => {
+      const estatus = obtenerEstatusAutomatico(item);
+
+      acc.total += 1;
+
+      if (estatus === "EN PROCESO") acc.enProceso += 1;
+      else if (estatus === "EN PROCESO DE SURTIDO") acc.enProcesoCita += 1;
+      else if (estatus === "ENVIADO") acc.enviado += 1;
+      else if (estatus === "CANCELADO") acc.cancelado += 1;
+
+      return acc;
+    },
+    {
+      total: 0,
+      enProceso: 0,
+      enProcesoCita: 0,
+      enviado: 0,
+      cancelado: 0,
+    }
+  );
+
+  //Crear nueva insercion de departamental
+
+  const esCancelado = form.ESTATUS === "CANCELADO";
+
+  const handleGuardar = async () => {
+
+    // 🧹 LIMPIAR ERRORES
+    setErrores({});
+
+    const nuevosErrores = {};
+
+    // 🔴 SOLO validar obligatorios SI NO está cancelado
+    if (!esCancelado) {
+      camposObligatorios.forEach((campo) => {
+        if (
+          !form[campo] ||
+          form[campo].toString().trim() === ""
+        ) {
+          nuevosErrores[campo] = "Campo obligatorio";
+        }
+      });
+    }
+
+    // ❌ Si hay errores → detener
+    if (Object.keys(nuevosErrores).length > 0) {
+      setErrores(nuevosErrores);
+      mostrarMensaje(
+        "Completa los campos obligatorios",
+        "warning"
+      );
+      return;
+    }
+
+    try {
+      const payload = {
+        ...form,
+        MONTO: normalizarMonto(form.MONTO),
+      };
+
+      if (modoEdicion) {
+        await axios.put(
+          `http://66.232.105.87:3007/api/departamental/actualizar/VD/${form.VD}`,
+          payload
+        );
+        mostrarMensaje("Registro actualizado correctamente", "success");
+      } else {
+        await axios.post(
+          "http://66.232.105.87:3007/api/departamental/crear",
+          payload
+        );
+        mostrarMensaje("Registro creado correctamente", "success");
+      }
+
+      setOpenModal(false);
+
+      const refrescar = await axios.get(
+        "http://66.232.105.87:3007/api/departamental/datos"
+      );
+      setData(refrescar.data.data);
+
+    } catch (error) {
+      if (error.response && error.response.data) {
+        const { campo, mensaje } = error.response.data;
+
+        if (campo) {
+          setErrores((prev) => ({
+            ...prev,
+            [campo]: mensaje,
+          }));
+        }
+
+        mostrarMensaje(mensaje || "Error de validación", "error");
+      } else {
+        mostrarMensaje("Error de conexión con el servidor", "error");
+      }
+    }
+  };
+
+  const clientesUnicos = [
+    ...new Set(
+      data
+        .map(d =>
+          d.CLIENTE
+            ?.toString()
+            .trim()
+            .toUpperCase()
+        )
+        .filter(Boolean)
+    )
+  ].sort();
+
+  const formatearMonto = (valor) => {
+    if (valor === null || valor === undefined || valor === "") return "$0.00";
+
+    const numero = Number(valor);
+
+    if (isNaN(numero)) return "$0.00";
+
+    return numero.toLocaleString("es-MX", {
+      style: "currency",
+      currency: "MXN",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
+
+  const normalizarMonto = (valor) => {
+    if (!valor) return 0;
+
+    return Number(
+      valor
+        .toString()
+        .replace(/\$/g, "")
+        .replace(/,/g, "")
+        .trim()
+    );
+  };
+
+  const abrirEditar = (row) => {
+    setModoEdicion(true);
+
+    setForm({
+      FOLIO: row.FOLIO || "",
+      CLIENTE: row.CLIENTE || "",
+      CEDIS: row.CEDIS || "",
+      DESTINO: row.DESTINO || "",
+      NO_DE_OC: row.NO_DE_OC || "",
+      VD: row.VD || "",
+      CONFIRMACION: row.CONFIRMACION || "",
+      MONTO: row.MONTO || "",
+      FECHA_LLEGADA_OC: row.FECHA_LLEGADA_OC || "",
+      FECHA_CANCELACION: row.FECHA_CANCELACION || "",
+      FECHA_DE_CARGA: row.FECHA_DE_CARGA || "",
+      HORA: row.HORA || "",
+      FECHA_DE_CITA: row.FECHA_DE_CITA || "",
+      HORA_CITA: row.HORA_CITA || "",
+      EMPACADOR: row.EMPACADOR || "",
+      ESTATUS: row.ESTATUS || "",
+      TIPO_DE_ENVIO: row.TIPO_DE_ENVIO || "",
+      COMENTARIOS: row.COMENTARIOS || ""
+    });
+
+    setOpenModal(true);
+  };
+
+  const mostrarMensaje = (message, severity = "success") => {
+    setSnackbar({
+      open: true,
+      message,
+      severity,
+    });
+  };
+
+  const cerrarSnackbar = () => {
+    setSnackbar({ ...snackbar, open: false });
+  };
+
+  const formatearFechaISO = (rawFecha) => {
+    if (!rawFecha) return "-";
+
+    // ISO → DD/MM/YYYY
+    if (/^\d{4}-\d{2}-\d{2}$/.test(rawFecha)) {
+      const [anio, mes, dia] = rawFecha.split("-");
+      return `${dia}-${mes}-${anio}`;
+    }
+
+    // Si ya viene DD/MM/YYYY
+    if (rawFecha.includes("/")) {
+      return rawFecha;
+    }
+
+    return rawFecha;
+  };
+
+  const handleClienteChange = async (cliente) => {
+    if (!cliente) return;
+
+    const clienteNormalizado = cliente.trim().toUpperCase();
+
+    setForm({
+      ...form,
+      CLIENTE: clienteNormalizado,
+      CEDIS: "",
+      DESTINO: ""
+    });
+
+    const res = await axios.get(
+      `http://66.232.105.87:3007/api/departamental/opciones/${clienteNormalizado}`
+    );
+
+    const data = res.data.data;
+
+    setOpcionesCedis([
+      ...new Set(data.map(d => d.CEDIS?.trim()))
+    ]);
+
+    setOpcionesDestino([
+      ...new Set(data.map(d => d.DESTINO?.trim()))
+    ]);
+  };
+
+
+  const user = JSON.parse(localStorage.getItem("user"));
+
+
+  const puedeEditar = user?.role === "Admin" || user?.role === "Muetras";
+
+  const disabledEdicion = modoEdicion && !puedeEditar;
+
+  const empacadores = [
+    "Mauricio Torres",
+    "Ana Guerrero",
+    "Olivia García",
+    "Berenize Sánchez",
+    "Leonardo Butron",
+    "Alan Resendiz",
+    "Alan Morales",
+    "Meryllin Olarte",
+    "Gabriela Martinez",
+    "Ivonne Montoya",
+    "Gustavo Gloria",
+    "Alejandra",
+  ];
+
+  const handleExcel = async (file) => {
+    if (!file || !form.CLIENTE) return;
+
+    const data = await file.arrayBuffer();
+    const workbook = XLSX.read(data);
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet);
+
+    const folioBase = Number(form.FOLIO);
+
+    const procesados = rows.map((row, index) => ({
+      FOLIO: folioBase + index,
+      CLIENTE: form.CLIENTE,          // 🔴 CLAVE
+      CEDIS: form.CEDIS,
+      DESTINO: form.DESTINO,
+      NO_DE_OC: row.NO_DE_OC || "",
+      VD: row.VD || "",
+      MONTO: row.MONTO || "",
+      FECHA_LLEGADA_OC: row.FECHA_LLEGADA_OC || "",
+    }));
+
+    setRegistrosExcel(procesados);
+  };
+
+
+  const actualizarRegistroExcel = (index, campo, valor) => {
+    const copia = [...registrosExcel];
+    copia[index] = {
+      ...copia[index],
+      [campo]: valor,
+    };
+    setRegistrosExcel(copia);
+  };
+
+
+  const guardarExcel = async () => {
+    try {
+      for (const r of registrosExcel) {
+        await axios.post(
+          "http://66.232.105.87:3007/api/departamental/crear",
+          {
+            ...r,
+            MONTO: normalizarMonto(r.MONTO),
+          }
+        );
+      }
+
+      mostrarMensaje("Registros guardados correctamente", "success");
+      setRegistrosExcel([]);
+      setOpenModal(false);
+
+    } catch (err) {
+      mostrarMensaje("Error al guardar Excel", "error");
+    }
+  };
+
+
+
+
   return (
+
     <Box p={4}>
+
       <Typography variant="h4" align="center" gutterBottom>
         Panel Departamental
       </Typography>
 
       {/* ------------------ SELECT DE AÑO ------------------ */}
-      <Box sx={{ display: "flex", justifyContent: "center", mb: 3 }}>
-        <Typography sx={{ mr: 2, mt: 1 }}>Año:</Typography>
+      <Box sx={{ display: "flex", mb: 3, gap: 2 }}>
+
+        <Typography sx={{ mt: 1 }}>Cliente:</Typography>
+
+        <Select
+          size="small"
+          value={clienteFiltro}
+          onChange={(e) => setClienteFiltro(e.target.value)}
+          sx={{ width: 220 }}
+          displayEmpty
+        >
+          <MenuItem value="">Todos</MenuItem>
+
+          {clientesUnicos.map((c) => (
+            <MenuItem key={c} value={c}>
+              {c}
+            </MenuItem>
+          ))}
+        </Select>
+
+
+        <Typography sx={{ mt: 1 }}>Año:</Typography>
+
         <Select
           size="small"
           value={year}
           onChange={(e) => setYear(e.target.value)}
           sx={{ width: 120 }}
         >
-          <MenuItem value="2023">2023</MenuItem>
-          <MenuItem value="2024">2024</MenuItem>
-          <MenuItem value="2025">2025</MenuItem>
+          <MenuItem value="2026">2026</MenuItem>
+
         </Select>
+
+        <Typography sx={{ mt: 1 }}>Mes:</Typography>
+
+        <Select
+          size="small"
+          value={mes}
+          onChange={(e) => setMes(e.target.value)}
+          sx={{ width: 150 }}
+          displayEmpty
+        >
+          <MenuItem value="">Todos</MenuItem>
+          <MenuItem value="01">Enero</MenuItem>
+          <MenuItem value="02">Febrero</MenuItem>
+          <MenuItem value="03">Marzo</MenuItem>
+          <MenuItem value="04">Abril</MenuItem>
+          <MenuItem value="05">Mayo</MenuItem>
+          <MenuItem value="06">Junio</MenuItem>
+          <MenuItem value="07">Julio</MenuItem>
+          <MenuItem value="08">Agosto</MenuItem>
+          <MenuItem value="09">Septiembre</MenuItem>
+          <MenuItem value="10">Octubre</MenuItem>
+          <MenuItem value="11">Noviembre</MenuItem>
+          <MenuItem value="12">Diciembre</MenuItem>
+        </Select>
+
+
+        <input
+          type="text"
+          placeholder="Folio o OC"
+          value={busqueda}
+          onChange={(e) => setBusqueda(e.target.value)}
+          style={{
+            padding: "6px 10px",
+            borderRadius: 6,
+            border: "1px solid #ccc",
+            minWidth: 180
+          }}
+        />
+
       </Box>
+
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          gap: 4,
+          mb: 3,
+          flexWrap: "wrap",
+        }}>
+
+        <Typography sx={{ color: "#e53935", fontWeight: 700 }}>
+          🔴 En Proceso: {resumenEstatus.enProceso}
+        </Typography>
+
+        <Typography sx={{ color: "#fb4700", fontWeight: 700 }}>
+          🟠 En Proceso de Surtido: {resumenEstatus.enProcesoCita}
+        </Typography>
+
+        <Typography sx={{ color: "#2e7d32", fontWeight: 700 }}>
+          🟢 Enviados: {resumenEstatus.enviado}
+        </Typography>
+
+        <Typography sx={{ color: "#616161", fontWeight: 700 }}>
+          ⚫ Cancelados: {resumenEstatus.cancelado}
+        </Typography>
+
+        <Typography sx={{ fontWeight: 900 }}>
+          📦 Total: {resumenEstatus.total}
+        </Typography>
+      </Box>
+
+      {(user?.role === "Muetras" || user?.role === "Admin") && (
+        <Button
+          variant="contained"
+          onClick={abrirNuevo}
+        >
+          ➕ Nuevo Registro
+        </Button>
+      )}
+
+
+
+
 
       {/* ------------------ BLOQUES POR CLIENTE ------------------ */}
       {Object.entries(agrupado).map(([cliente, pedidos]) => (
+
         <Box key={cliente} mt={4}>
+
           <Typography variant="h5" sx={{ fontWeight: 900, mb: 1 }}>
             🏪 {cliente}
           </Typography>
@@ -100,49 +720,657 @@ function Departamental() {
               overflowY: "auto",
               border: "1px solid #ddd",
               borderRadius: 1,
-            }}
-          >
+            }}>
+
             <Table size="small">
               <TableHead>
                 <TableRow>
                   <TableCell>Folio</TableCell>
+                  <TableCell>Numero de Orden</TableCell>
                   <TableCell>OC</TableCell>
                   <TableCell>Destino</TableCell>
-                  <TableCell>Monto</TableCell>
+                  <TableCell sx={{ textAlign: "right" }}>Monto</TableCell>
                   <TableCell>Llegada OC</TableCell>
-                  <TableCell>Fecha Carga</TableCell>
+                  <TableCell>Vigencia OC</TableCell>
                   <TableCell>Fecha Cita</TableCell>
+                  <TableCell>Hora de Cita</TableCell>
                   <TableCell>Empacador</TableCell>
+                  <TableCell>Fecha Carga y Hora</TableCell>
+                  <TableCell>Hora de Carga</TableCell>
                   <TableCell>Estatus</TableCell>
                   <TableCell>Tipo Envío</TableCell>
                   <TableCell>Comentarios</TableCell>
+                  <TableCell>Acciones</TableCell>
                 </TableRow>
               </TableHead>
 
+
               <TableBody>
-                {pedidos.map((p, idx) => (
-                  <TableRow key={idx}>
-                    <TableCell>{p.FOLIO}</TableCell>
-                    <TableCell>{p.NO_DE_OC}</TableCell>
-                    <TableCell>{p.DESTINO}</TableCell>
-                    <TableCell>{p.MONTO}</TableCell>
-                    <TableCell>{p.FECHA_LLEGADA_OC}</TableCell>
-                    <TableCell>{p.FECHA_DE_CARGA}</TableCell>
-                    <TableCell>{p.FECHA_DE_CITA}</TableCell>
-                    <TableCell>{p.EMPACADOR}</TableCell>
-                    <TableCell>{p.ESTATUS}</TableCell>
-                    <TableCell>{p.TIPO_DE_ENVIO}</TableCell>
-                    <TableCell>{p.COMENTARIOS}</TableCell>
-                  </TableRow>
-                ))}
+                {pedidos
+                  .filter(p => obtenerEstatusAutomatico(p) !== "CANCELADO")
+                  .map((p, idx) => {
+                    const estatusFinal = obtenerEstatusAutomatico(p);
+
+                    return (
+                      <TableRow key={idx}>
+                        <TableCell>{p.FOLIO}</TableCell>
+                        <TableCell>{p.VD}</TableCell>
+                        <TableCell>{p.NO_DE_OC}</TableCell>
+                        <TableCell>{p.DESTINO}</TableCell>
+
+                        <TableCell align="right" sx={{ fontWeight: 700 }}>
+                          {formatearMonto(p.MONTO)}
+                        </TableCell>
+
+                        <TableCell>{formatearFechaISO(p.FECHA_LLEGADA_OC)}</TableCell>
+                        <TableCell>{formatearFechaISO(p.FECHA_CANCELACION)}</TableCell>
+                        <TableCell>{formatearFechaISO(p.FECHA_DE_CITA)}</TableCell>
+                        <TableCell>{p.HORA_CITA}</TableCell>
+                        <TableCell>{p.EMPACADOR}</TableCell>
+                        <TableCell>{formatearFechaISO(p.FECHA_DE_CARGA)}</TableCell>
+                        <TableCell>{p.HORA}</TableCell>
+
+                        <TableCell
+                          sx={{
+                            color: obtenerColorEstatus(estatusFinal),
+                            fontWeight: 700,
+                          }}
+                        >
+                          {estatusFinal}
+                        </TableCell>
+
+                        <TableCell>{p.TIPO_DE_ENVIO}</TableCell>
+                        <TableCell>{p.COMENTARIOS}</TableCell>
+
+                        <TableCell>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            onClick={() => abrirEditar(p)}
+                          >
+                            Editar
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
               </TableBody>
+
+
+
             </Table>
+
           </Paper>
 
           <Divider sx={{ mt: 3 }} />
+
         </Box>
+
       ))}
+
+
+
+
+
+      {/* ------------------ Dialog de insercion / edicion ------------------ */}
+
+      <Dialog
+        open={openModal}
+        onClose={() => setOpenModal(false)}
+        maxWidth="200"
+        fullWidth
+      >
+
+        <DialogTitle>
+          {modoEdicion
+            ? "Editar Registro Departamental"
+            : "Nuevo Registro Departamental"}
+        </DialogTitle>
+
+        <Tabs
+          value={tabModal}
+          onChange={(e, newValue) => setTabModal(newValue)}
+          indicatorColor="primary"
+          textColor="primary"
+          variant="fullWidth"
+        >
+          <Tab label="Registro Manual" />
+          {(user?.role === "Muetras" || user?.role === "Admin") && (
+            <Tab label="Carga por Excel" />
+          )}
+        </Tabs>
+
+        {tabModal === 0 && (
+          <DialogContent dividers>
+
+            <Grid container spacing={2}>
+
+              {/* ================= FOLIO ================= */}
+              <Grid item xs={12}>
+                <TextField
+                  label="FOLIO"
+                  fullWidth
+                  value={form.FOLIO || ""}
+                  disabled={!modoEdicion}   // 👈 SOLO editable en edición
+                  error={!!errores.FOLIO}
+                  helperText={errores.FOLIO}
+                />
+
+
+              </Grid>
+
+              {/* ================= CLIENTE ================= */}
+              <Grid item xs={12} sm={6}>
+
+                <Autocomplete
+                  disabled={disabledEdicion}
+                  options={clientesUnicos}
+                  value={form.CLIENTE || null}
+                  onChange={(e, value) => handleClienteChange(value)}
+                  isOptionEqualToValue={(option, value) => option === value}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="CLIENTE"
+                      fullWidth
+                      error={!!errores.CLIENTE}
+                      helperText={errores.CLIENTE}
+                    />
+                  )}
+                />
+
+              </Grid>
+
+              {/* ================= CEDIS ================= */}
+              <Grid item xs={12} sm={6}>
+                <Autocomplete
+                  disabled={disabledEdicion}
+                  options={opcionesCedis}
+                  value={form.CEDIS}
+                  onChange={(e, value) =>
+                    setForm({ ...form, CEDIS: value || "" })
+                  }
+                  renderInput={(params) => (
+                    <TextField {...params} label="CEDIS" fullWidth />
+                  )}
+                />
+
+              </Grid>
+
+              {/* ================= DESTINO ================= */}
+              <Grid item xs={12} sm={6}>
+                <Autocomplete
+                  disabled={disabledEdicion}
+                  options={opcionesDestino}
+                  value={form.DESTINO}
+                  onChange={(e, value) =>
+                    setForm({ ...form, DESTINO: value || "" })
+                  }
+                  renderInput={(params) => (
+                    <TextField {...params} label="DESTINO" fullWidth />
+                  )}
+                />
+
+              </Grid>
+
+              {/* ================= NO DE OC ================= */}
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="NO DE OC"
+                  fullWidth
+                  disabled={disabledEdicion}
+                  value={form.NO_DE_OC}
+                  error={!!errores.NO_DE_OC}
+                  helperText={errores.NO_DE_OC}
+                  onChange={(e) => {
+                    setForm({ ...form, NO_DE_OC: e.target.value });
+                    setErrores({ ...errores, NO_DE_OC: null });
+                  }}
+                />
+
+              </Grid>
+
+              {/* ================= VD ================= */}
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="VD"
+                  fullWidth
+
+                  disabled={modoEdicion}
+                  value={form.VD}
+                  error={!!errores.VD}
+                  helperText={errores.VD}
+                  onChange={(e) => {
+                    setForm({ ...form, VD: e.target.value });
+                    setErrores({ ...errores, VD: null });
+                  }}
+                />
+
+              </Grid>
+
+              {/* ================= MONTO ================= */}
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="MONTO"
+                  fullWidth
+                  disabled={disabledEdicion}
+                  value={form.MONTO}
+                  onChange={(e) =>
+                    setForm({ ...form, MONTO: e.target.value })
+                  }
+                  InputProps={{
+                    startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                  }}
+                />
+
+              </Grid>
+
+              {/* ================= FECHA LLEGADA OC ================= */}
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="FECHA LLEGADA OC"
+                  type="date"
+                  disabled={disabledEdicion}
+                  fullWidth
+                  InputLabelProps={{ shrink: true }}
+                  value={form.FECHA_LLEGADA_OC}
+                  error={!!errores.FECHA_LLEGADA_OC}
+                  helperText={errores.FECHA_LLEGADA_OC}
+                  onChange={(e) => {
+                    setForm({ ...form, FECHA_LLEGADA_OC: e.target.value });
+                    setErrores({ ...errores, FECHA_LLEGADA_OC: null });
+                  }}
+                />
+
+              </Grid>
+
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  label="FECHA CANCELACIÓN"
+                  type="date"
+                  disabled={disabledEdicion}
+                  fullWidth
+                  InputLabelProps={{ shrink: true }}
+                  value={form.FECHA_CANCELACION || ""}
+                  onChange={(e) =>
+                    setForm({ ...form, FECHA_CANCELACION: e.target.value })
+                  }
+                />
+              </Grid>
+
+
+              {/* ================= FECHA DE CITA ================= */}
+              {modoEdicion && (
+                <>
+                  {/* ================= CONFIRMACION ================= */}
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      label="CONFIRMACION"
+                      fullWidth
+                      value={form.CONFIRMACION}
+                      onChange={(e) =>
+                        setForm({ ...form, CONFIRMACION: e.target.value })
+                      }
+                    />
+                  </Grid>
+
+
+
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      label="FECHA DE CITA"
+                      type="date"
+                      fullWidth
+                      InputLabelProps={{ shrink: true }}
+                      value={form.FECHA_DE_CITA}
+                      onChange={(e) =>
+                        setForm({ ...form, FECHA_DE_CITA: e.target.value })
+                      }
+                    />
+                  </Grid>
+
+                  {/* ================= HORA DE CITA ================= */}
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      label="HORA DE CITA"
+                      type="time"
+                      fullWidth
+                      InputLabelProps={{ shrink: true }}
+                      value={form.HORA_CITA}
+                      onChange={(e) =>
+                        setForm({ ...form, HORA_CITA: e.target.value })
+                      }
+                    />
+                  </Grid>
+
+
+                  {/* ======================================================
+                          👇👇👇 SOLO EN MODO EDICIÓN 👇👇👇
+                    ====================================================== */}
+
+                  {/* FECHA DE CARGA */}
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      label="FECHA DE CARGA"
+                      type="date"
+                      fullWidth
+                      InputLabelProps={{ shrink: true }}
+                      value={form.FECHA_DE_CARGA}
+                      onChange={(e) =>
+                        setForm({ ...form, FECHA_DE_CARGA: e.target.value })
+                      }
+                    />
+                  </Grid>
+
+                  {/* HORA CARGA */}
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      label="HORA CARGA"
+                      type="time"
+                      fullWidth
+                      InputLabelProps={{ shrink: true }}
+                      value={form.HORA}
+                      onChange={(e) =>
+                        setForm({ ...form, HORA: e.target.value })
+                      }
+                    />
+                  </Grid>
+
+                  {/* EMPACADOR */}
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      select
+                      label="EMPACADOR"
+                      fullWidth
+                      value={form.EMPACADOR || ""}
+                      onChange={(e) =>
+                        setForm({ ...form, EMPACADOR: e.target.value })
+                      }
+                    >
+                      <MenuItem value="">
+                        <em>Seleccionar empacador</em>
+                      </MenuItem>
+
+                      {empacadores.map((nombre) => (
+                        <MenuItem key={nombre} value={nombre}>
+                          {nombre}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                  </Grid>
+
+
+                  {/* ESTATUS */}
+
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      select
+                      label="ESTATUS"
+                      fullWidth
+                      value={form.ESTATUS || ""}
+                      onChange={(e) =>
+                        setForm({ ...form, ESTATUS: e.target.value })
+                      }
+                    >
+                      <MenuItem value="EMBARCADO">EMBARCADO</MenuItem>
+                      <MenuItem value="ENVIADO">ENVIADO</MenuItem>
+                      <MenuItem value="CANCELADO">CANCELADO</MenuItem>
+                    </TextField>
+                  </Grid>
+
+                </>
+              )}
+
+              {/* ================= COMENTARIOS ================= */}
+              <Grid item xs={12}>
+                <TextField
+                  label="COMENTARIOS"
+                  fullWidth
+                  multiline
+                  rows={3}
+                  value={form.COMENTARIOS}
+                  onChange={(e) =>
+                    setForm({ ...form, COMENTARIOS: e.target.value })
+                  }
+                />
+              </Grid>
+
+            </Grid>
+
+          </DialogContent>
+        )}
+
+        {tabModal === 1 && (user?.role === "Muetras" || user?.role === "Admin") && (
+
+          <DialogContent dividers>
+
+            {/* BOTÓN CARGAR */}
+            <Box mb={2} display="flex" gap={2}>
+              <Button
+                variant="contained"
+                component="label"
+                disabled={!form.CLIENTE}
+              >
+                📄 Cargar Excel
+                <input
+                  type="file"
+                  hidden
+                  accept=".xlsx,.xls"
+                  onChange={(e) => handleExcel(e.target.files[0])}
+                />
+              </Button>
+
+              {!form.CLIENTE && (
+                <Typography color="error" fontSize={12}>
+                  Primero selecciona un cliente
+                </Typography>
+              )}
+            </Box>
+
+            {/* TABLA */}
+            {registrosExcel.length > 0 && (
+              <TableContainer
+                component={Paper}
+                sx={{
+                  maxHeight: 500,
+                  overflow: "auto",
+                }}
+              >
+                <Table
+                  stickyHeader
+                  size="small"
+                  sx={{ tableLayout: "fixed" }}
+                >
+                  {/* ===== HEAD ===== */}
+                  <TableHead>
+                    <TableRow>
+                      <TableCell sx={{ width: 70 }}>Folio</TableCell>
+                      <TableCell sx={{ width: 180 }}>Cliente</TableCell>
+                      <TableCell sx={{ width: 140 }}>Cedis</TableCell>
+                      <TableCell sx={{ width: 160 }}>Destino</TableCell>
+                      <TableCell sx={{ width: 120 }}>OC</TableCell>
+                      <TableCell sx={{ width: 100 }}>VD</TableCell>
+                      <TableCell sx={{ width: 120 }}>Monto</TableCell>
+                      <TableCell sx={{ width: 120 }}>Fecha Llegada</TableCell>
+                      <TableCell sx={{ width: 120 }}>Fecha Cancelación</TableCell>
+                    </TableRow>
+                  </TableHead>
+
+                  {/* ===== BODY ===== */}
+                  <TableBody>
+                    {registrosExcel.map((r, i) => (
+                      <TableRow
+                        key={i}
+                        sx={{
+                          "& td": {
+                            padding: "6px 8px",
+                            verticalAlign: "middle",
+                          },
+                        }}
+                      >
+                        <TableCell>{r.FOLIO}</TableCell>
+
+                        {/* CLIENTE */}
+                        <TableCell>
+                          <Autocomplete
+                            size="small"
+                            options={clientesUnicos}
+                            value={r.CLIENTE || null}
+                            onChange={(e, v) =>
+                              actualizarRegistroExcel(i, "CLIENTE", v || "")
+                            }
+                            renderInput={(params) => (
+                              <TextField {...params} size="small" />
+                            )}
+                          />
+                        </TableCell>
+
+                        {/* CEDIS */}
+                        <TableCell>
+                          <Autocomplete
+                            size="small"
+                            options={opcionesCedis}
+                            value={r.CEDIS || null}
+                            onChange={(e, v) =>
+                              actualizarRegistroExcel(i, "CEDIS", v || "")
+                            }
+                            renderInput={(params) => (
+                              <TextField {...params} size="small" />
+                            )}
+                          />
+                        </TableCell>
+
+                        {/* DESTINO */}
+                        <TableCell>
+                          <Autocomplete
+                            size="small"
+                            options={opcionesDestino}
+                            value={r.DESTINO || null}
+                            onChange={(e, v) =>
+                              actualizarRegistroExcel(i, "DESTINO", v || "")
+                            }
+                            renderInput={(params) => (
+                              <TextField {...params} size="small" />
+                            )}
+                          />
+                        </TableCell>
+
+                        {/* OC */}
+                        <TableCell>
+                          <TextField
+                            size="small"
+                            value={r.NO_DE_OC}
+                            onChange={(e) =>
+                              actualizarRegistroExcel(i, "NO_DE_OC", e.target.value)
+                            }
+                          />
+                        </TableCell>
+
+                        {/* VD */}
+                        <TableCell>
+                          <TextField
+                            size="small"
+                            value={r.VD}
+                            onChange={(e) =>
+                              actualizarRegistroExcel(i, "VD", e.target.value)
+                            }
+                          />
+                        </TableCell>
+
+                        {/* MONTO */}
+                        <TableCell>
+                          <TextField
+                            size="small"
+                            value={r.MONTO}
+                            onChange={(e) =>
+                              actualizarRegistroExcel(i, "MONTO", e.target.value)
+                            }
+                          />
+                        </TableCell>
+
+                        {/* FECHA LLEGADA */}
+                        <TableCell>
+                          <TextField
+                            size="small"
+                            type="date"
+                            InputLabelProps={{ shrink: true }}
+                            value={r.FECHA_LLEGADA_OC}
+                            onChange={(e) =>
+                              actualizarRegistroExcel(
+                                i,
+                                "FECHA_LLEGADA_OC",
+                                e.target.value
+                              )
+                            }
+                          />
+                        </TableCell>
+
+                        {/* FECHA CANCELACIÓN */}
+                        <TableCell>
+                          <TextField
+                            size="small"
+                            type="date"
+                            InputLabelProps={{ shrink: true }}
+                            value={r.FECHA_CANCELACION || ""}
+                            onChange={(e) =>
+                              actualizarRegistroExcel(
+                                i,
+                                "FECHA_CANCELACION",
+                                e.target.value
+                              )
+                            }
+                          />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
+          </DialogContent>
+        )}
+
+
+
+
+        <DialogActions>
+          <Button onClick={() => setOpenModal(false)}>Cancelar</Button>
+
+          {tabModal === 0 && (
+            <Button variant="contained" onClick={handleGuardar}>
+              Guardar
+            </Button>
+          )}
+
+          {tabModal === 1 && registrosExcel.length > 0 && (
+            <Button variant="contained" color="success" onClick={guardarExcel}>
+              Guardar todos ({registrosExcel.length})
+            </Button>
+          )}
+        </DialogActions>
+
+
+      </Dialog>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3500}
+        onClose={cerrarSnackbar}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+      >
+        <Alert
+          onClose={cerrarSnackbar}
+          severity={snackbar.severity}
+          variant="filled"
+          sx={{ fontWeight: 600 }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+
     </Box>
+
+
   );
 }
 

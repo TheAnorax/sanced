@@ -60,7 +60,7 @@ const login = async (req, res) => {
 }
 
 
-    // ✅ Login exitoso
+    //  Login exitoso
     const token = generateToken(user);
     console.log('Generated token:', token);
     res.json({ token, user });
@@ -161,13 +161,13 @@ const resetPassword = async (req, res) => {
     const decoded = jwt.verify(token, 'your_jwt_secret');
     const user = await getUserByEmail(decoded.email);
 
-    // ✅ Validar que la nueva contraseña no sea igual a la actual
+    //  Validar que la nueva contraseña no sea igual a la actual
     const isSame = await bcrypt.compare(newPassword, user.password);
     if (isSame) {
       return res.status(400).json({ message: 'La nueva contraseña no puede ser igual a la anterior' });
     }
 
-    // ✅ Guardar nueva contraseña
+    //  Guardar nueva contraseña
     await updateUserPassword(user.email, newPassword);
     res.json({ message: 'Contraseña actualizada correctamente' });
   } catch (error) {

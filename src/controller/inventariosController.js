@@ -151,7 +151,7 @@ const actualizarUbicacion = async (req, res) => {
 };
 
 const insertNuevaUbicacion = async (req, res) => {
-  console.log("📥 insertNuevaUbicacion:", req.body);
+  console.log(" insertNuevaUbicacion:", req.body);
 
   const {
     ubi,
@@ -162,7 +162,7 @@ const insertNuevaUbicacion = async (req, res) => {
     almacen = null,
   } = req.body;
 
-  // ✅ SOLO lo realmente obligatorio
+  //  SOLO lo realmente obligatorio
   if (!ubi || !code_prod) {
     return res.status(400).json({
       success: false,
@@ -171,7 +171,7 @@ const insertNuevaUbicacion = async (req, res) => {
   }
 
   try {
-    // 🔒 Validar que no exista la ubicación
+    //  Validar que no exista la ubicación
     const [existe] = await pool.query(
       "SELECT id_ubi FROM ubicaciones WHERE ubi = ?",
       [ubi]
@@ -184,7 +184,7 @@ const insertNuevaUbicacion = async (req, res) => {
       });
     }
 
-    // ✅ Insertar
+    // Insertar
     const [result] = await pool.query(
       `INSERT INTO ubicaciones 
        (ubi, code_prod, cant_stock, pasillo, lote, almacen)
@@ -198,7 +198,7 @@ const insertNuevaUbicacion = async (req, res) => {
       insertId: result.insertId,
     });
   } catch (error) {
-    console.error("❌ Error insertNuevaUbicacion:", error);
+    console.error(" Error insertNuevaUbicacion:", error);
     res.status(500).json({
       success: false,
       message: "Error al insertar la ubicación",
@@ -249,28 +249,32 @@ const insertarNuevoProducto = async (req, res) => {
 const getPeacking = async (req, res) => {
   try {
     const [rows] = await pool.query(`
-SELECT 
-u.id_ubi,
-u.ubi,
-prod.des,
-u.code_prod,
-u.cant_stock,
-u.cant_stock_real,
-u.pasillo,
-u.lote,
-u.almacen
-FROM ubicaciones u
-LEFT JOIN productos prod ON u.code_prod = prod.codigo_pro
-ORDER BY u.ubi ASC
+      SELECT 
+        u.id_ubi,
+        u.ubi,
+        prod.des,
+        LPAD(u.code_prod, 4, '0') AS code_prod,
+        u.cant_stock,
+        u.cant_stock_real,
+        u.pasillo,
+        u.lote,
+        u.almacen
+      FROM ubicaciones u
+      LEFT JOIN productos prod 
+        ON LPAD(u.code_prod, 4, '0') = LPAD(prod.codigo_pro, 4, '0')
+      ORDER BY u.ubi ASC
     `);
+
     res.json(rows);
   } catch (error) {
+    console.error("❌ Error en getPeacking:", error);
     res.status(500).json({
       message: "Error al obtener el inventario",
       error: error.message,
     });
   }
 };
+
 
 const updatePeacking = async (req, res) => {
   const {
@@ -390,13 +394,13 @@ const insertPeacking = async (req, res) => {
 
 const obtenerUbiAlma = async (req, res) => {
   try {
-    // Realizar la consulta para obtener todos los registros
     const [rows] = await pool.query(`
-     SELECT 
+      SELECT 
         u.id_ubi,
         prod.des,
         u.ubi, 
-        u.code_prod, 
+        LPAD(u.code_prod, 4, '0') AS code_prod, 
+        LPAD(u.code_prod, 4, '0') AS code_prod_fmt,
         u.cant_stock, 
         u.pasillo, 
         u.lote, 
@@ -410,19 +414,16 @@ const obtenerUbiAlma = async (req, res) => {
           ELSE 'Otro'
         END AS AREA
       FROM ubi_alma u
-      LEFT JOIN productos prod ON u.code_prod = prod.codigo_pro
+      LEFT JOIN productos prod 
+        ON u.code_prod = prod.codigo_pro
     `);
 
-    // Estructura de la respuesta
-    const result = {
+    res.json({
       resultado: {
         error: false,
         list: rows,
       },
-    };
-
-    // Enviar el JSON como respuesta
-    res.json(result);
+    });
   } catch (error) {
     console.error("Error al obtener ubicaciones:", error);
     res.status(500).json({
@@ -434,6 +435,7 @@ const obtenerUbiAlma = async (req, res) => {
     });
   }
 };
+
 
 // Función para eliminar una tarea
 const deleteTarea = async (req, res) => {
@@ -599,18 +601,11 @@ const obtenerInventario = async (req, res) => {
   try {
     const { pasillo, nivel, par_impar, code_prod, seccion } = req.query;
 
-    if (!pool || typeof pool.query !== "function") {
-      throw new Error(
-        "Conexión a la base de datos no inicializada correctamente."
-      );
-    }
-
-    // 🧱 Construcción dinámica del query
     let sql = `
       SELECT 
         id_ubi,
         ubi,
-        code_prod,
+        LPAD(code_prod, 4, '0') AS code_prod,
         cant_stock,
         pasillo,
         seccion,
@@ -648,36 +643,27 @@ const obtenerInventario = async (req, res) => {
       params.push(par_impar.trim());
     }
 
-    // ✅ Filtro flexible de código de producto:
-    // - Si hay code_prod: busca coincidencias y también los vacíos
-    // - Si NO hay code_prod: devuelve todo, incluyendo vacíos
+    // 🔑 FILTRO DE CÓDIGO NORMALIZADO
     if (code_prod?.trim()) {
       sql += `
         AND (
-          code_prod LIKE ?
+          LPAD(code_prod, 4, '0') LIKE ?
           OR code_prod IS NULL
           OR TRIM(code_prod) = ''
           OR code_prod = '0'
         )
       `;
-      params.push(`%${code_prod.trim()}%`);
-    } else {
-      // Si no se filtra por código, mostrar TODO incluyendo vacíos
-      sql += `
-        AND (
-          code_prod IS NULL
-          OR TRIM(code_prod) = ''
-          OR code_prod = '0'
-          OR code_prod IS NOT NULL
-        )
-      `;
+
+      // Normalizamos lo que escribe el usuario
+      const normalizedCode = code_prod.trim().padStart(4, "0");
+      params.push(`%${normalizedCode}%`);
     }
 
     sql += " ORDER BY pasillo+0 ASC, seccion+0 ASC, nivel+0 ASC";
 
     const [rows] = await pool.query(sql, params);
+    res.status(200).json(rows || []);
 
-    return res.status(200).json(rows || []);
   } catch (error) {
     console.error("❌ Error en obtenerInventario:", error);
     res.status(500).json({
@@ -686,6 +672,7 @@ const obtenerInventario = async (req, res) => {
     });
   }
 };
+
 
 const obtenerUbicacion = async (req, res) => {
   try {

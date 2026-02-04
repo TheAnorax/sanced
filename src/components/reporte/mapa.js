@@ -35,6 +35,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import DownloadIcon from "@mui/icons-material/Download";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
+import moment from "moment";
 
 const API_URL = 'http://66.232.105.87:3007/api/kpi/getHistorico2025';
 
@@ -68,6 +69,95 @@ export default function MapaMexico() {
   const [anioSeleccionado, setAnioSeleccionado] = useState(2026);
 const [anioFletes, setAnioFletes] = useState(2026);
 const [anioTransporte, setAnioTransporte] = useState(2026);
+// 🔹 TAB 5 – Planeación logística
+const [ventasMunicipio, setVentasMunicipio] = useState([]);
+const [costoLogisticoMunicipio, setCostoLogisticoMunicipio] = useState([]);
+const [loadingPlaneacion, setLoadingPlaneacion] = useState(false);
+const [selectedMonthPlaneacion, setSelectedMonthPlaneacion] = useState(null);
+// null = total general
+
+const toNumber = (v) => {
+  if (v === null || v === undefined) return 0;
+  if (typeof v === "number") return v;
+  return Number(String(v).replace("%", "")) || 0;
+};
+
+const normalizeEstado = (v) =>
+  String(v || "")
+    .trim()
+    .toUpperCase();
+
+
+
+const totalVentasMunicipio = React.useMemo(() => {
+  return ventasMunicipio.reduce(
+    (acc, row) => {
+      acc.clientes += Number(row.clientes || 0);
+      acc.pedidos += Number(row.pedidos || 0);
+      acc.venta_total += Number(row.venta_total || 0);
+      acc.piezas += Number(row.piezas || 0);
+      acc.partidas += Number(row.partidas || 0);
+      return acc;
+    },
+    {
+      clientes: 0,
+      pedidos: 0,
+      venta_total: 0,
+      piezas: 0,
+      partidas: 0,
+    }
+  );
+}, [ventasMunicipio]);
+
+const totalCostoLogistico = React.useMemo(() => {
+  const venta = costoLogisticoMunicipio.reduce(
+    (acc, r) => acc + Number(r.venta_total || 0),
+    0
+  );
+
+  const flete = costoLogisticoMunicipio.reduce(
+    (acc, r) => acc + Number(r.costo_flete || 0),
+    0
+  );
+
+  return {
+    venta_total: venta,
+    costo_flete: flete,
+    porcentaje:
+      venta > 0 ? (flete / venta) * 100 : 0,
+  };
+}, [costoLogisticoMunicipio]);
+
+const ventasOrdenadas = React.useMemo(() => {
+  return [...ventasMunicipio].sort(
+    (a, b) => Number(b.venta_total) - Number(a.venta_total)
+  );
+}, [ventasMunicipio]);
+
+const costoOrdenado = React.useMemo(() => {
+  return [...costoLogisticoMunicipio].sort(
+    (a, b) => Number(b.porcentaje_logistico) - Number(a.porcentaje_logistico)
+  );
+}, [costoLogisticoMunicipio]);
+
+
+const mesesPlaneacion = React.useMemo(() => {
+  const start = moment("2025-06-01");
+  const end = moment(); // hoy
+  const months = [];
+
+  let current = start.clone();
+
+  while (current.isSameOrBefore(end, "month")) {
+    months.push({
+      value: current.format("YYYY-MM"),
+      label: current.format("MMMM YYYY").toUpperCase(), // JUNIO 2025
+    });
+    current.add(1, "month");
+  }
+
+  return months;
+}, []);
 
 
   // 🔹 Si NO es septiembre, quitamos 16%
@@ -208,6 +298,68 @@ const fletesFiltrados = React.useMemo(() => {
     return { tfact, tflet, pct, tgui };
   }, [fletesFiltrados]);
 
+
+  const totalesPorEstado = React.useMemo(() => {
+  return ventasMunicipio.reduce((acc, row) => {
+    const estado = normalizeEstado(row.ESTADO);
+
+    if (!acc[estado]) {
+      acc[estado] = {
+        venta_total: 0,
+        clientes: 0,
+        pedidos: 0,
+      };
+    }
+
+    acc[estado].venta_total += Number(row.venta_total || 0);
+    acc[estado].clientes += Number(row.clientes || 0);
+    acc[estado].pedidos += Number(row.pedidos || 0);
+
+    return acc;
+  }, {});
+}, [ventasMunicipio]);
+
+
+const totalCostoGeneral = React.useMemo(() => {
+  const venta = costoLogisticoMunicipio.reduce(
+    (acc, r) => acc + Number(r.venta_total || 0),
+    0
+  );
+
+  const flete = costoLogisticoMunicipio.reduce(
+    (acc, r) => acc + Number(r.costo_flete || 0),
+    0
+  );
+
+  return {
+    venta_total: venta,
+    costo_flete: flete,
+    porcentaje: venta > 0 ? (flete / venta) * 100 : 0,
+  };
+}, [costoLogisticoMunicipio]);
+
+
+const totalesCostoPorEstado = React.useMemo(() => {
+  return costoLogisticoMunicipio.reduce((acc, row) => {
+    const estado = normalizeEstado(row.ESTADO);
+
+    if (!acc[estado]) {
+      acc[estado] = {
+        venta_total: 0,
+        costo_flete: 0,
+      };
+    }
+
+    acc[estado].venta_total += Number(row.venta_total || 0);
+    acc[estado].costo_flete += Number(row.costo_flete || 0);
+
+    return acc;
+  }, {});
+}, [costoLogisticoMunicipio]);
+
+
+
+
 useEffect(() => {
   (async () => {
     const resp = await fetch(`http://66.232.105.87:3007/api/kpi/getFletesClientes?year=${anioFletes}`);
@@ -309,6 +461,36 @@ useEffect(() => {
 
   fetchFletesTransporte();
 }, [tabIndex, anioTransporte]);
+
+useEffect(() => {
+  if (tabIndex !== 4) return;
+
+  const fetchPlaneacion = async () => {
+    try {
+      setLoadingPlaneacion(true);
+
+      const query = selectedMonthPlaneacion
+        ? `?month=${selectedMonthPlaneacion}`
+        : "";
+
+      const [ventasRes, costoRes] = await Promise.all([
+        axios.get(`http://66.232.105.87:3007/api/kpi/getVentasPorMunicipio${query}`),
+        axios.get(`http://66.232.105.87:3007/api/kpi/getCostoLogisticoMunicipio${query}`)
+      ]);
+
+      setVentasMunicipio(ventasRes.data.data || []);
+      setCostoLogisticoMunicipio(costoRes.data.data || []);
+
+    } catch (err) {
+      console.error("Error planeación:", err);
+    } finally {
+      setLoadingPlaneacion(false);
+    }
+  };
+
+  fetchPlaneacion();
+}, [tabIndex, selectedMonthPlaneacion]);
+
 
 
 
@@ -615,6 +797,8 @@ useEffect(() => {
         <Tab label="Top 10 Productos Más Vendidos" />
         <Tab label="Fletes por Cliente" />
         {/* <Tab label="Fletes por Transporte" /> */}
+        <Tab label="Zona noreste" />
+
       </Tabs>
         {tabIndex === 0 && (
         <Box>
@@ -1671,7 +1855,7 @@ useEffect(() => {
                   const totalPedidos = t.datos.reduce((acc, d) => acc + Number(d.total_pedidos || 0), 0);
                   const totalFlete = t.datos.reduce((acc, d) => acc + Number(d.total_flete || 0), 0);
                   const pctFleteProm = totalPedidos > 0 ? (totalFlete / totalPedidos) * 100 : 0;
-
+ 
                   return (
                     <Paper
                       key={t.transporte}
@@ -1765,6 +1949,241 @@ useEffect(() => {
 
           </Box>
         )} */}
+
+
+{tabIndex === 4 && (
+  <Box>
+    <Stack direction="row" spacing={2} alignItems="center" mb={2}>
+  <Typography variant="body2" fontWeight={700}>
+    Periodo:
+  </Typography>
+
+  <ToggleButtonGroup
+    size="small"
+    exclusive
+    value={selectedMonthPlaneacion}
+    onChange={(e, newValue) => {
+      // 👉 Si newValue es null, volvemos a Total general
+      setSelectedMonthPlaneacion(newValue);
+    }}
+    sx={{
+      flexWrap: "wrap",
+      gap: 0.5,
+    }}
+  >
+    {/* 🔹 TOTAL GENERAL */}
+    <ToggleButton
+      value={null}
+      sx={{
+        fontWeight: 700,
+        px: 1.5,
+        bgcolor: selectedMonthPlaneacion === null ? "primary.main" : undefined,
+        color: selectedMonthPlaneacion === null ? "#fff" : undefined,
+        "&:hover": {
+          bgcolor:
+            selectedMonthPlaneacion === null
+              ? "primary.dark"
+              : "action.hover",
+        },
+      }}
+    >
+      TOTAL GENERAL
+    </ToggleButton>
+
+    {/* 🔹 MESES DINÁMICOS */}
+    {mesesPlaneacion.map((m) => (
+      <ToggleButton
+        key={m.value}
+        value={m.value}
+        sx={{
+          fontWeight: 600,
+          px: 1.5,
+          whiteSpace: "nowrap",
+        }}
+      >
+        {m.label}
+      </ToggleButton>
+    ))}
+  </ToggleButtonGroup>
+</Stack>
+
+
+    {loadingPlaneacion && <LinearProgress sx={{ mb: 2 }} />}
+
+    <Grid container spacing={3}>
+
+      {/* =====================  VENTAS POR MUNICIPIO  ===================== */}
+      <Grid item xs={12} md={6}>
+        <Paper sx={{ p: 2, borderRadius: 2, height: "100%" }}>
+        
+        <Stack spacing={1.5} mb={2}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <Typography variant="subtitle1" fontWeight={800}>
+              📍 Ventas por Municipio
+            </Typography>
+
+            <Typography fontWeight={800} color="primary">
+              {currency(totalVentasMunicipio.venta_total)}
+            </Typography>
+          </Stack>
+
+          <Stack direction="row" spacing={1.5}>
+            {Object.entries(totalesPorEstado)
+              .sort((a, b) => b[1].venta_total - a[1].venta_total)
+              .map(([estado, t]) => (
+                <Box
+                  key={estado}
+                  sx={{
+                    px: 1.5,
+                    py: 1,
+                    borderRadius: 1.5,
+                    bgcolor: "grey.100",
+                    minWidth: 140,
+                  }}
+                >
+                  <Typography variant="caption">{estado}</Typography>
+                  <Typography fontWeight={700}>
+                    {currency(t.venta_total)}
+                  </Typography>
+                </Box>
+              ))}
+          </Stack>
+        </Stack>          
+
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow sx={{ bgcolor: "#F6F7F9" }}>
+                  <TableCell sx={{ fontWeight: 700 }}>Municipio</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Estado</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Venta</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Pedidos</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Clientes</TableCell>
+                </TableRow>
+              </TableHead>
+
+  <TableBody>
+    {ventasOrdenadas.map((row, i) => (
+      <TableRow key={i} hover>
+        <TableCell>{row.MUNICIPIO}</TableCell>
+        <TableCell>{row.ESTADO}</TableCell>
+
+        <TableCell sx={{ fontWeight: 700 }}>
+          {currency(row.venta_total)}
+        </TableCell>
+
+        <TableCell>{fmtNumber(row.pedidos)}</TableCell>
+        <TableCell>{fmtNumber(row.clientes)}</TableCell>
+      </TableRow>
+    ))}
+  </TableBody>
+</Table>
+
+          </TableContainer>
+        </Paper>
+      </Grid>
+
+      {/* =====================  COSTO LOGÍSTICO VS VENTA  ===================== */}
+      <Grid item xs={12} md={6}>
+        <Paper sx={{ p: 2, borderRadius: 2, height: "100%" }}>
+        <Stack spacing={1.5} mb={2}>
+  <Stack direction="row" justifyContent="space-between" alignItems="center">
+    <Typography variant="subtitle1" fontWeight={800}>
+      🚚 Costos 
+    </Typography>
+
+    <Stack direction="row" spacing={1} alignItems="center">
+      <Typography fontWeight={800} color="error">
+        {currency(totalCostoGeneral.costo_flete)}
+      </Typography>
+      <Chip
+        label={`${totalCostoGeneral.porcentaje.toFixed(2)}%`}
+        color={percentColor(totalCostoGeneral.porcentaje)}
+        size="small"
+      />
+    </Stack>
+  </Stack>
+
+  <Stack direction="row" spacing={1.5}>
+    {Object.entries(totalesCostoPorEstado)
+      .sort(
+        (a, b) =>
+          b[1].costo_flete / b[1].venta_total -
+          a[1].costo_flete / a[1].venta_total
+      )
+      .map(([estado, t]) => {
+        const pct = (t.costo_flete / t.venta_total) * 100;
+        return (
+          <Box
+            key={estado}
+            sx={{
+              px: 1.5,
+              py: 1,
+              borderRadius: 1.5,
+              bgcolor: "grey.100",
+              minWidth: 140,
+            }}
+          >
+            <Typography variant="caption">{estado}</Typography>
+            <Typography fontWeight={700}>
+              {pct.toFixed(2)}%
+            </Typography>
+          </Box>
+        );
+      })}
+  </Stack>
+</Stack>
+
+
+
+          <TableContainer>
+           <Table size="small">
+  <TableHead>
+    <TableRow sx={{ bgcolor: "#F6F7F9" }}>
+      <TableCell sx={{ fontWeight: 700 }}>Municipio</TableCell>
+      <TableCell sx={{ fontWeight: 700 }}>Estado</TableCell>
+      <TableCell sx={{ fontWeight: 700 }}>% Logístico</TableCell>
+      <TableCell sx={{ fontWeight: 700 }}>Costo</TableCell>
+      <TableCell sx={{ fontWeight: 700 }}>Venta</TableCell>
+    </TableRow>
+  </TableHead>
+
+  <TableBody>
+   {costoOrdenado.map((row, i) => {
+  const pct = toNumber(row.porcentaje_logistico);
+
+  return (
+    <TableRow key={i}>
+      <TableCell>{row.MUNICIPIO}</TableCell>
+      <TableCell>{row.ESTADO}</TableCell>
+
+      <TableCell>
+        <Chip
+          label={`${pct.toFixed(2)}%`}
+          color={percentColor(pct)}
+          size="small"
+        />
+      </TableCell>
+
+      <TableCell>{currency(row.costo_flete)}</TableCell>
+      <TableCell>{currency(row.venta_total)}</TableCell>
+    </TableRow>
+  );
+})}
+
+  </TableBody>
+</Table>
+
+          </TableContainer>
+        </Paper>
+      </Grid>
+
+    </Grid>
+  </Box>
+)}
+
+
+
 
 
 

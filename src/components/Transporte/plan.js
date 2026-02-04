@@ -174,38 +174,52 @@ function Plansurtido() {
   };
 
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      const dateStr = selectedDate.format("YYYY-MM-DD");
-      try {
-        await Promise.all([fetchPaqueteria(dateStr), fetchResumen(dateStr)]);
+  let mounted = true;
 
-        // 🔹 Esperar a que ambas terminen y luego sincronizar
-        setTimeout(() => {
-          setData((prevData) =>
-            prevData.map((grupo) => ({
-              ...grupo,
-              pedidos: grupo.pedidos.map((pedido) => {
-                const encontrado = resumen?.pedidos?.find(
-                  (p) => String(p.pedido) === String(pedido.no_orden)
-                );
+  const fetchData = async () => {
+    setLoading(true);
+    const dateStr = selectedDate.format("YYYY-MM-DD");
 
-                return {
-                  ...pedido,
-                  factura: encontrado?.factura || "—",
-                };
-              }),
-            }))
+    try {
+      const [paqRes, resumenRes] = await Promise.all([
+        axios.get(`http://66.232.105.87:3007/api/Trasporte/getPaqueteriaData?fecha=${dateStr}`),
+        axios.get(`http://66.232.105.87:3007/api/Trasporte/getPedidosDia?fecha=${dateStr}`)
+      ]);
+
+      if (!mounted) return;
+
+      const resumenData = {
+        rutas: resumenRes.data.resumenRutas || [],
+        pedidos: resumenRes.data.pedidos || []
+      };
+
+      const dataFinal = paqRes.data.map((grupo) => ({
+        ...grupo,
+        pedidos: grupo.pedidos.map((pedido) => {
+          const encontrado = resumenData.pedidos.find(
+            (p) => String(p.pedido) === String(pedido.no_orden)
           );
-        }, 300);
-      } catch (err) {
-        console.error("Error fetching datos:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, [selectedDate]);
+          return {
+            ...pedido,
+            factura: encontrado?.factura || "—"
+          };
+        })
+      }));
+
+      setResumen(resumenData);
+      setData(dataFinal);
+
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchData();
+  return () => { mounted = false; };
+
+}, [selectedDate]);
 
   const handleTabChange = (_, newIndex) => {
     setTabIndex(newIndex);
@@ -576,7 +590,7 @@ function Plansurtido() {
       if (!result || !result.datos || result.datos.length === 0)
         return alert("No hay productos");
 
-      console.log(`✅ Productos recibidos: ${result.totalLineas} líneas`);
+      console.log(` Productos recibidos: ${result.totalLineas} líneas`);
       const data = result.datos;
 
       // ======================
@@ -835,7 +849,7 @@ function Plansurtido() {
 
       let numeroCajaSecuencial = 1;
 
-      // ✅ Si hay productos sin caja, agrégalos a la última caja
+      //  Si hay productos sin caja, agrégalos a la última caja
       if (
         productosSinCajaNoRegistrada.length > 0 &&
         cajasOrdenadas.length > 0
@@ -846,7 +860,7 @@ function Plansurtido() {
         );
       }
 
-      // 🔁 Recorremos las cajas
+      //  Recorremos las cajas
       for (const [key, productos] of cajasOrdenadas) {
         const [_, numeroCaja] = key.split("_");
         const tipoVisible = getTipoDominante(productos);

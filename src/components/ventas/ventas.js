@@ -222,7 +222,7 @@ function Tracking() {
         `http://66.232.105.87:3007/api/Ventas/status`,
         { orderNumbers }
       );
-      console.log(`✅ Respuesta recibida para ${tabName}:`, response.data);
+      console.log(` Respuesta recibida para ${tabName}:`, response.data);
 
       const statusMap = response.data;
 
@@ -383,7 +383,7 @@ function Tracking() {
     setPaqueteriaData(paqueteria);
     setDirectaData(directa);
     setVentaEmpleadoData(ventaEmpleado);
-    setAsignacionData(asignacion); // ✅ Agregado
+    setAsignacionData(asignacion); // Agregado
   }, [sentRoutesData]);
 
   useEffect(() => {
@@ -598,7 +598,7 @@ function Tracking() {
           (row) => row["NO ORDEN"] && !pedidosEnRuta.has(row["NO ORDEN"])
         );
 
-      console.log("✅ Pedidos filtrados (sin duplicados):", mappedData);
+      console.log(" Pedidos filtrados (sin duplicados):", mappedData);
 
       // 🔹 Extraer facturados solo de los últimos 5 días hábiles
       const facturados = jsonData
@@ -690,7 +690,7 @@ function Tracking() {
       [newRoute]: { TOTAL: 0, PARTIDAS: 0, PIEZAS: 0, rows: [] },
     }));
 
-    // ✅ Agregar la ruta a las opciones del Autocomplete
+    //  Agregar la ruta a las opciones del Autocomplete
     setOptions((prevOptions) => [...prevOptions, newRoute]);
 
     // Limpiar el campo de entrada después de agregar la ruta
@@ -823,7 +823,7 @@ function Tracking() {
       }
     });
 
-    // ✅ Asegurar que el total no disminuya
+    //  Asegurar que el total no disminuya
     totalAcumulado = Math.max(totalAcumulado, prevTotalGeneral + totalGeneral);
 
     // Guardar en localStorage
@@ -930,7 +930,7 @@ function Tracking() {
       );
 
       console.log(
-        `✅ Ruta renombrada de '${oldRouteName}' a '${newRouteName}' sin perder datos.`
+        ` Ruta renombrada de '${oldRouteName}' a '${newRouteName}' sin perder datos.`
       );
       return updatedData;
     });
@@ -948,7 +948,7 @@ function Tracking() {
 
     const firstRow = groupedData[route]?.rows?.[0];
     if (firstRow) {
-      fetchObservacionPorRegistro(firstRow["NUM. CLIENTE"]); // ✅ Corrección
+      fetchObservacionPorRegistro(firstRow["NUM. CLIENTE"]); //  Corrección
     }
   };
 
@@ -1169,8 +1169,8 @@ function Tracking() {
                 row.OBSERVACIONES ||
                 observacionesPorRegistro[row["NUM. CLIENTE"]] ||
                 "Sin observaciones disponibles",
-              TIPO: tipoRutaActual, // ✅ Asegurar que se inserta el tipo correcto
-              GUIA: guiaEnviar, // ✅ Asignar "NA" si es Directa o Venta Empleado
+              TIPO: tipoRutaActual, //  Asegurar que se inserta el tipo correcto
+              GUIA: guiaEnviar, //  Asignar "NA" si es Directa o Venta Empleado
             });
           });
         } else {
@@ -1312,8 +1312,8 @@ function Tracking() {
       });
 
       if (response.ok) {
-        console.log("✅ Guía actualizada correctamente.");
-        alert("✅ Guía actualizada correctamente.");
+        console.log(" Guía actualizada correctamente.");
+        alert(" Guía actualizada correctamente.");
 
         // Cerrar el modal después de la actualización
         setDirectaModalOpen(false);
@@ -1874,7 +1874,7 @@ function Tracking() {
     XLSX.writeFile(wb, "Datos_Directa.xlsx");
   };
 
-  // ✅ Versión con tabla de IMPORTE AGREGADA al final (corregida)
+  //  Versión con tabla de IMPORTE AGREGADA al final (corregida)
 
   const [referenciasClientes, setReferenciasClientes] = useState([]);
 
@@ -2047,7 +2047,7 @@ function Tracking() {
       );
       const pedidosExternos = direccionAPI.data;
 
-      // ✅ Ahora sí puedes buscar con pedido + tipo
+      //  Ahora sí puedes buscar con pedido + tipo
       const pedidoEncontrado = pedidosExternos.find(
         (p) =>
           String(p.NoOrden) === String(pedido) &&
@@ -2167,7 +2167,7 @@ function Tracking() {
         (p) => (p.um || "").toUpperCase() === "ATA"
       );
 
-      // ✅ AGRUPAR por tipo + cajas (fusionadas respetadas)
+      //  AGRUPAR por tipo + cajas (fusionadas respetadas)
       const cajasAgrupadasOriginal = {};
 
       for (const item of productosConCaja) {
@@ -3125,7 +3125,7 @@ function Tracking() {
         dataToSend
       );
 
-      alert(`✅ Visita insertada correctamente: ${response.data.message}`);
+      alert(` Visita insertada correctamente: ${response.data.message}`);
 
       // Actualizar el estado local para marcar como insertado
       const updatedData = [...directaData, ...paqueteriaData];
@@ -3810,7 +3810,7 @@ function Tracking() {
         const updatedOrders = data.updatedOrders || []; // Asegurar que es un array
 
         setUploadMessage(
-          `✅ Archivo subido correctamente. Se actualizaron ${updatedOrders.length} órdenes.`
+          ` Archivo subido correctamente. Se actualizaron ${updatedOrders.length} órdenes.`
         );
         setUpdatedOrders(updatedOrders); // Guardar la lista de órdenes actualizadas
         alert("Archivo subido correctamente.");
@@ -4498,7 +4498,7 @@ function Tracking() {
                   </TableRow>
                 ) : (
                   directaFiltrada
-                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage) // ✅ PAGINACIÓN SIN AFECTAR FILTROS
+                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage) //  PAGINACIÓN SIN AFECTAR FILTROS
                     .map((routeData, index) => (
                       <TableRow key={index}>
                         {visibleColumns.includes("NO ORDEN") && (
@@ -4707,7 +4707,7 @@ function Tracking() {
                   </TableRow>
                 ) : (
                   ventaEmpleadoFiltrada
-                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage) // ✅ PAGINACIÓN SIN AFECTAR FILTROS
+                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage) //  PAGINACIÓN SIN AFECTAR FILTROS
                     .map((routeData, index) => (
                       <TableRow key={index}>
                         {visibleColumns.includes("NO ORDEN") && (

@@ -207,31 +207,53 @@ const getMotivos = async (req, res) => {
   try {
     let { desde, hasta } = req.query;
 
-    // 🗓️ Si no se mandan fechas, toma desde inicio del mes hasta hoy
+    // 🗓️ Fechas por defecto
     if (!desde || !hasta) {
-      const inicioMes = moment().startOf("month").format("YYYY-MM-DD");
-      const finHoy = moment().endOf("day").format("YYYY-MM-DD");
-      desde = inicioMes;
-      hasta = finHoy;
+      desde = moment().startOf("month").format("YYYY-MM-DD");
+      hasta = moment().endOf("day").format("YYYY-MM-DD");
     }
 
     const [rows] = await pool.query(
       `
       SELECT 
+        'surtido' AS origen,
+        ps.pedido,
+        ps.tipo,
+        ps.codigo_ped,
+        prod.des AS descripcion,
+        ps.motivo,
+        DATE_FORMAT(ps.inicio_surtido, '%d/%m/%Y %H:%i:%s') AS inicio_surtido,
+        ps.cantidad,
+        ps.cant_surti,
+        ps.cant_no_env
+      FROM pedido_surtido ps
+      LEFT JOIN productos prod 
+        ON ps.codigo_ped = prod.codigo_pro
+      WHERE ps.motivo IS NOT NULL
+        AND TRIM(ps.motivo) <> ''
+        AND UPPER(TRIM(ps.motivo)) <> 'NULL'
+        AND ps.cant_no_env > 0
+        AND DATE(ps.inicio_surtido) BETWEEN ? AND ?
+
+      UNION ALL
+
+      SELECT 
         'embarque' AS origen,
         pe.pedido,
         pe.tipo,
         pe.codigo_ped,
-        prod.des AS descripcion, 
+        prod.des AS descripcion,
         pe.motivo,
         pe.inicio_surtido,
-        pe.cantidad,        
-        pe.cant_surti,          
+        pe.cantidad,
+        pe.cant_surti,
         pe.cant_no_env
       FROM pedido_embarque pe
-      LEFT JOIN productos prod ON pe.codigo_ped = prod.codigo_pro
-      WHERE pe.motivo IS NOT NULL 
-        AND UPPER(TRIM(pe.motivo)) != 'NULL' 
+      LEFT JOIN productos prod 
+        ON pe.codigo_ped = prod.codigo_pro
+      WHERE pe.motivo IS NOT NULL
+        AND TRIM(pe.motivo) <> ''
+        AND UPPER(TRIM(pe.motivo)) <> 'NULL'
         AND pe.cant_no_env > 0
         AND DATE(pe.inicio_surtido) BETWEEN ? AND ?
 
@@ -245,24 +267,30 @@ const getMotivos = async (req, res) => {
         prod.des AS descripcion,
         pf.motivo,
         pf.inicio_surtido,
-        pf.cantidad,        
-        pf.cant_surti,          
+        pf.cantidad,
+        pf.cant_surti,
         pf.cant_no_env
       FROM pedido_finalizado pf
-      LEFT JOIN productos prod ON pf.codigo_ped = prod.codigo_pro
-      WHERE pf.motivo IS NOT NULL 
-        AND UPPER(TRIM(pf.motivo)) != 'NULL' 
+      LEFT JOIN productos prod 
+        ON pf.codigo_ped = prod.codigo_pro
+      WHERE pf.motivo IS NOT NULL
+        AND TRIM(pf.motivo) <> ''
+        AND UPPER(TRIM(pf.motivo)) <> 'NULL'
         AND pf.cant_no_env > 0
         AND DATE(pf.inicio_surtido) BETWEEN ? AND ?
       `,
-      [desde, hasta, desde, hasta]
+      [
+        desde, hasta,
+        desde, hasta,
+        desde, hasta
+      ]
     );
 
-    // 🔢 Contar motivos únicos y su frecuencia
+    // 🔢 Contador de motivos
     const motivoContador = {};
     for (const row of rows) {
-      const motivoLimpio = row.motivo.trim().toUpperCase();
-      motivoContador[motivoLimpio] = (motivoContador[motivoLimpio] || 0) + 1;
+      const motivo = row.motivo.trim().toUpperCase();
+      motivoContador[motivo] = (motivoContador[motivo] || 0) + 1;
     }
 
     res.json({
@@ -276,12 +304,13 @@ const getMotivos = async (req, res) => {
     });
   } catch (error) {
     console.error("Error al obtener motivos:", error);
-    res.status(500).json({ 
-      message: "Error al obtener motivos", 
-      error: error.message 
+    res.status(500).json({
+      message: "Error al obtener motivos",
+      error: error.message
     });
   }
 };
+
 
 // GET /api/paqueteria/cliente/:numero
 const getClientePorNumero = async (req, res) => {

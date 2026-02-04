@@ -162,11 +162,11 @@ const insertarRutas = async (req, res) => {
 
     res.status(200).json({
       message:
-        "✅ Rutas insertadas correctamente (sin duplicados por NO ORDEN y tipo_original).",
+        " Rutas insertadas correctamente (sin duplicados por NO ORDEN y tipo_original).",
     });
   } catch (error) {
     await connection.rollback();
-    console.error("❌ Error al insertar rutas:", error.message);
+    console.error(" Error al insertar rutas:", error.message);
     res.status(500).json({ message: "Error al insertar rutas" });
   } finally {
     connection.release();
@@ -510,7 +510,7 @@ const actualizarGuia = async (req, res) => {
 
     if (resultado.affectedRows > 0) {
       return res.status(200).json({
-        message: "✅ Actualización realizada correctamente.",
+        message: " Actualización realizada correctamente.",
       });
     } else {
       return res.status(304).json({
@@ -518,8 +518,8 @@ const actualizarGuia = async (req, res) => {
       });
     }
   } catch (error) {
-    console.error("❌ Error al actualizar:", error.message);
-    return res.status(500).json({ message: "❌ Error al actualizar." });
+    console.error(" Error al actualizar:", error.message);
+    return res.status(500).json({ message: " Error al actualizar." });
   }
 };
 
@@ -632,7 +632,7 @@ const insertarVisita = async (req, res) => {
     }
 
     // console.log(
-    //   "✅ Visita insertada con éxito. Resultado:",
+    //   " Visita insertada con éxito. Resultado:",
     //   insertVisitaResult
     // );
 
@@ -647,16 +647,16 @@ const insertarVisita = async (req, res) => {
     );
 
     if (updateVehiculoResult.affectedRows === 0) {
-      throw new Error("❌ No se pudo actualizar el vehículo.");
+      throw new Error(" No se pudo actualizar el vehículo.");
     }
 
-    // console.log("✅ Vehículo actualizado correctamente.");
+    // console.log(" Vehículo actualizado correctamente.");
 
     res.status(200).json({
       message: "Visita insertada y vehículo actualizado correctamente.",
     });
   } catch (error) {
-    console.error("❌ Error al insertar visita o actualizar vehículo:", error);
+    console.error(" Error al insertar visita o actualizar vehículo:", error);
     res
       .status(500)
       .json({ message: "Error al insertar visita o actualizar vehículo" });
@@ -692,7 +692,7 @@ const guardarDatos = async (req, res) => {
 
 const obtenerDatos = async (req, res) => {
   try {
-    const [rows] = await pool.query("SELECT * FROM rutas ORDER BY fecha DESC"); // ✅ Ahora muestra la más reciente primero
+    const [rows] = await pool.query("SELECT * FROM rutas ORDER BY fecha DESC"); //  Ahora muestra la más reciente primero
 
     res.status(200).json(rows);
   } catch (error) {
@@ -922,7 +922,7 @@ const getOrderStatus = async (req, res) => {
       tipoOriginalMap[pedido] = (tipo_original || "").toLowerCase();
     });
 
-    // ✅ Función que procesa cada tabla
+    //  Función que procesa cada tabla
     const checkFusionStatus = (rows, tableName, statusText) => {
       rows.forEach((row) => {
         const pedido = row.pedido;
@@ -1262,13 +1262,13 @@ const actualizarPorGuia = async (req, res) => {
     }
 
     return res.status(200).json({
-      message: `✅ Se actualizaron ${totalActualizados} pedidos para la guía ${guia}.`,
+      message: ` Se actualizaron ${totalActualizados} pedidos para la guía ${guia}.`,
     });
   } catch (error) {
-    console.error("❌ Error al actualizar por guía:", error.message);
+    console.error(" Error al actualizar por guía:", error.message);
     return res
       .status(500)
-      .json({ message: "❌ Error interno al actualizar los datos." });
+      .json({ message: " Error interno al actualizar los datos." });
   }
 };
 
@@ -1355,11 +1355,11 @@ const crearRuta = async (req, res) => {
     }
 
     res.status(201).json({
-      message: "✅ Ruta creada o actualizada correctamente con pedidos nuevos.",
+      message: " Ruta creada o actualizada correctamente con pedidos nuevos.",
       ruta_id: rutaId,
     });
   } catch (error) {
-    console.error("❌ Error al crear o actualizar la ruta:", error);
+    console.error(" Error al crear o actualizar la ruta:", error);
     res.status(500).json({ message: "Error al procesar la ruta." });
   }
 };
@@ -1427,9 +1427,9 @@ const agregarPedidoARuta = async (req, res) => {
 
     res
       .status(201)
-      .json({ message: "✅ Pedido agregado correctamente a la ruta." });
+      .json({ message: "Pedido agregado correctamente a la ruta." });
   } catch (error) {
-    // console.error("❌ Error al agregar pedido:", error);
+    // console.error(" Error al agregar pedido:", error);
     res.status(500).json({ message: "Error al agregar pedido a la ruta." });
   }
 };
@@ -1892,7 +1892,7 @@ const actualizarTipoOriginalDesdeExcel = async (req, res) => {
     if (!req.file) {
       return res
         .status(400)
-        .json({ message: "❌ No se ha subido ningún archivo." });
+        .json({ message: " No se ha subido ningún archivo." });
     }
 
     const workbook = xlsx.read(req.file.buffer, { type: "buffer" });
@@ -1903,7 +1903,7 @@ const actualizarTipoOriginalDesdeExcel = async (req, res) => {
     if (data.length === 0) {
       return res
         .status(400)
-        .json({ message: "❌ El archivo Excel está vacío." });
+        .json({ message: " El archivo Excel está vacío." });
     }
 
     let actualizaciones = 0;
@@ -1933,11 +1933,11 @@ const actualizarTipoOriginalDesdeExcel = async (req, res) => {
     }
 
     return res.status(200).json({
-      message: `✅ Se actualizaron ${actualizaciones} registros correctamente en la tabla pedidos.`,
+      message: ` Se actualizaron ${actualizaciones} registros correctamente en la tabla pedidos.`,
     });
   } catch (error) {
-    console.error("❌ Error al actualizar tipo en pedidos:", error);
-    return res.status(500).json({ message: "❌ Error interno del servidor." });
+    console.error(" Error al actualizar tipo en pedidos:", error);
+    return res.status(500).json({ message: " Error interno del servidor." });
   }
 };
 
@@ -1955,7 +1955,7 @@ const actualizarGuiaCompleta = async (req, res) => {
     ) {
       return res.status(400).json({
         message:
-          "❌ Faltan datos: NO ORDEN, GUIA o TRANSPORTE/PAQUETERIA no son válidos.",
+          " Faltan datos: NO ORDEN, GUIA o TRANSPORTE/PAQUETERIA no son válidos.",
       });
     }
 
@@ -1967,7 +1967,7 @@ const actualizarGuiaCompleta = async (req, res) => {
 
     if (registroExiste.length === 0) {
       return res.status(404).json({
-        message: `❌ No se encontró la orden con NO ORDEN ${noOrden}.`,
+        message: ` No se encontró la orden con NO ORDEN ${noOrden}.`,
       });
     }
 
@@ -1990,16 +1990,16 @@ const actualizarGuiaCompleta = async (req, res) => {
 
     if (result.affectedRows > 0) {
       return res.status(200).json({
-        message: "✅ Guía, Transporte y Paquetería actualizados correctamente.",
+        message: " Guía, Transporte y Paquetería actualizados correctamente.",
       });
     } else {
       return res.status(404).json({
-        message: `⚠ No se pudo actualizar la orden ${noOrden}.`,
+        message: ` No se pudo actualizar la orden ${noOrden}.`,
       });
     }
   } catch (error) {
-    console.error("❌ Error al actualizar la guía completa:", error.message);
-    return res.status(500).json({ message: "❌ Error interno al actualizar." });
+    console.error(" Error al actualizar la guía completa:", error.message);
+    return res.status(500).json({ message: " Error interno al actualizar." });
   }
 };
 

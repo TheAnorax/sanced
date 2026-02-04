@@ -222,16 +222,18 @@ function InventarioAdmin() {
 
 
 
-  const filteredInvApi = invApi.filter((row) => {
-    const codigo = (row.code_prod ?? "").toString().toLowerCase().trim();
-    const filtro = codeFilterApi.toLowerCase().trim();
+const normalize = (val) =>
+  parseInt(val, 10).toString();
 
-    // 🧠 Si no hay filtro, mostrar todo (incluyendo los vacíos)
-    if (!filtro) return true;
+const filteredInvApi = invApi.filter((row) => {
+  if (!codeFilterApi.trim()) return true;
 
-    // 🔍 Si hay filtro, mostrar los que coincidan o los vacíos
-    return codigo.includes(filtro) || codigo === "" || codigo === "0";
-  });
+  const codigoNorm = normalize(row.code_prod);
+  const filtroNorm = normalize(codeFilterApi);
+
+  return codigoNorm.includes(filtroNorm);
+});
+
 
 
   const fetchInventarioApi = async () => {
@@ -288,7 +290,7 @@ function InventarioAdmin() {
         cant_stock: 0,
         par_impar: ""
       });
-
+ 
       // 4) Refrescar real en background después de 500ms
       setTimeout(() => {
         fetchInventarioApi();

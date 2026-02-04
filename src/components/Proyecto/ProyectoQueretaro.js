@@ -218,7 +218,7 @@ function ProyectoQueretaro() {
 
     // ⚡ Llamar precios con el segmento real
     if (segmentoReal) {
-      fetchPrecios(segmentoReal); // ✅ Llama directo desde aquí
+      fetchPrecios(segmentoReal); //  Llama directo desde aquí
     }
 
     // Codificar para categoría
@@ -256,7 +256,7 @@ function ProyectoQueretaro() {
         }
       })
       .catch((error) => {
-        console.error("❌ Error al obtener datos filtrados:", error);
+        console.error(" Error al obtener datos filtrados:", error);
         setTabData([]);
       });
 
@@ -266,7 +266,7 @@ function ProyectoQueretaro() {
   };
 
   const fueComprado = (codigoUI) => {
-    const normalizar = (val) => parseInt(String(val).trim(), 10); // ✅ Conversión fuerte a número
+    const normalizar = (val) => parseInt(String(val).trim(), 10); //  Conversión fuerte a número
 
     const codUI = normalizar(codigoUI);
 

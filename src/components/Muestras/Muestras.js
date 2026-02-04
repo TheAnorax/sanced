@@ -1587,7 +1587,8 @@ function Muestras() {
             user?.role !== "Nac2" &&
             user?.role !== "Ins" &&
             user?.role !== "Nac" &&
-            user?.role !== "AdminAudi"
+            user?.role !== "AdminAudi" &&
+            user?.role !== "Muetras"
           }
         />
         {/* Solo Admin y Master pueden ver "Autorizar" */}
@@ -1608,7 +1609,8 @@ function Muestras() {
             user?.role !== "Ins" &&
             user?.role !== "Mues" &&
             user?.role !== "Nac" &&
-            user?.role !== "AdminAudi"
+            user?.role !== "AdminAudi" &&
+            user?.role !== "Muetras"
           }
         />
       </Tabs>

@@ -110,7 +110,7 @@ const getCategoryData = async (req, res) => {
     // 🔸 2. Si no hay coincidencia en portafolio, mostrar toda la tabla filtrada por segmento
     let finalRows = categoryRows;
     if (finalRows.length === 0) {
-     //  console.warn(`⚠️ No hubo coincidencia en la categoría "${portafolio}" dentro de "${tableName}". Mostrando toda la tabla filtrada solo por segmento...`);
+     //  console.warn(` No hubo coincidencia en la categoría "${portafolio}" dentro de "${tableName}". Mostrando toda la tabla filtrada solo por segmento...`);
 
       const queryAll = `
         SELECT Codigo, Descripcion, Categoria, ${segmentColumn} AS SegmentoPrecio
@@ -121,20 +121,20 @@ const getCategoryData = async (req, res) => {
       finalRows = allRows;
 
       if (finalRows.length > 0) {
-        // console.log(`✅ Se cargaron ${finalRows.length} registros de la tabla "${tableName}" filtrados por segmento "${segmentColumn}"`);
+        // console.log(` Se cargaron ${finalRows.length} registros de la tabla "${tableName}" filtrados por segmento "${segmentColumn}"`);
       }
     }
 
     // Si aun así no hay datos, devolver vacío
     if (finalRows.length === 0) {
-      // console.warn(`⚠️ No se encontraron datos en la tabla "${tableName}" ni siquiera filtrando solo por segmento.`);
+      // console.warn(` No se encontraron datos en la tabla "${tableName}" ni siquiera filtrando solo por segmento.`);
       return res.json({ data: [] });
     }
 
     // 🔹 3. Obtener precios
     const codigos = finalRows.map((row) => row.Codigo).filter((c) => typeof c === "string" || typeof c === "number");
     if (codigos.length === 0) {
-     //  console.warn("⚠️ No hay códigos válidos para consultar precios.");
+     //  console.warn(" No hay códigos válidos para consultar precios.");
     }
 
     const queryPrices = `
@@ -161,11 +161,11 @@ const getCategoryData = async (req, res) => {
       };
     });
 
-   // console.log(`✅ Total de productos combinados con precios: ${combinedData.length}`);
+   // console.log(` Total de productos combinados con precios: ${combinedData.length}`);
     res.json({ data: combinedData });
 
   } catch (error) {
-    console.error("❌ Error al obtener los datos de la tabla:", error.message);
+    console.error(" Error al obtener los datos de la tabla:", error.message);
     res.status(500).json({
       message: `Error al obtener los datos de ${giro}`,
       error: error.message,
@@ -182,7 +182,7 @@ const normalizeText = (text) => {
 };
 
 const mapGiroToTable = (giro) => {
-  const normalized = normalizeText(giro); // 🔥 Aquí limpiamos el texto
+  const normalized = normalizeText(giro); //  Aquí limpiamos el texto
 
   switch (normalized) {
     case "ferreteria":
@@ -197,8 +197,8 @@ const mapGiroToTable = (giro) => {
       return "cerrajeria";
     case "vidrio y aluminio":
     case "vidrioyaluminio":
-    case "vidrieria":       // ✅ Nuevo alias
-    case "vidriería":       // ✅ Con acento también normalizado
+    case "vidrieria":       //  Nuevo alias
+    case "vidriería":       //  Con acento también normalizado
       return "vidrio_y_aluminio";
     case "plomeria":
       return "plomeria";
@@ -212,7 +212,7 @@ const mapGiroToTable = (giro) => {
     case "construccionligera":
       return "construccionligera";
     default:
-      // console.warn(`⚠️ Giro "${giro}" no encontrado. Usando tabla "ferreteria".`);
+      // console.warn(` Giro "${giro}" no encontrado. Usando tabla "ferreteria".`);
       return "ferreteria";
   }
 };
@@ -321,14 +321,14 @@ const getPreciosBronce = async (req, res) => {
 
     res.json(result);
   } catch (error) {
-    console.error("❌ Error al obtener precios BRONCE:", error.message);
+    console.error(" Error al obtener precios BRONCE:", error.message);
     res
       .status(500)
       .json({ message: "Error interno al obtener precios BRONCE" });
   }
 };
 
-// 🔸 PLATA
+//  PLATA
 const getPreciosPlata = async (req, res) => {
   try {
     const query = `
@@ -355,12 +355,12 @@ const getPreciosPlata = async (req, res) => {
 
     res.json(result);
   } catch (error) {
-    console.error("❌ Error al obtener precios PLATA:", error.message);
+    console.error(" Error al obtener precios PLATA:", error.message);
     res.status(500).json({ message: "Error interno al obtener precios PLATA" });
   }
 };
 
-// 🔸 ORO
+// 🔸ORO
 const getPreciosOro = async (req, res) => {
   try {
     const query = `
@@ -387,7 +387,7 @@ const getPreciosOro = async (req, res) => {
 
     res.json(result);
   } catch (error) {
-    console.error("❌ Error al obtener precios ORO:", error.message);
+    console.error(" Error al obtener precios ORO:", error.message);
     res.status(500).json({ message: "Error interno al obtener precios ORO" });
   }
 };

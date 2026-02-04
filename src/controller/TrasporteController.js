@@ -187,17 +187,17 @@ const insertarRutas = async (req, res) => {
 
     await connection.commit();
 
-    console.log(`\n✅ Inserciones completadas.`);
-    console.log(`📦 Total insertados: ${contadorInsertados}`);
-    console.log(`⚠️ Duplicados ignorados: ${contadorDuplicados}`);
-    console.log("📦 --- FIN DE INSERCIÓN DE RUTAS ---\n");
+    console.log(`\n Inserciones completadas.`);
+    console.log(` Total insertados: ${contadorInsertados}`);
+    console.log(` Duplicados ignorados: ${contadorDuplicados}`);
+    console.log(" --- FIN DE INSERCIÓN DE RUTAS ---\n");
 
     res.status(200).json({
-      message: `✅ Se insertaron ${contadorInsertados} rutas correctamente (se ignoraron ${contadorDuplicados} duplicados).`,
+      message: ` Se insertaron ${contadorInsertados} rutas correctamente (se ignoraron ${contadorDuplicados} duplicados).`,
     });
   } catch (error) {
     await connection.rollback();
-    console.error("❌ Error al insertar rutas:", error.message);
+    console.error(" Error al insertar rutas:", error.message);
     res.status(500).json({ message: "Error al insertar rutas" });
   } finally {
     connection.release();
@@ -565,12 +565,12 @@ const actualizarGuia = async (req, res) => {
     return res.status(resultado.affectedRows > 0 ? 200 : 304).json({
       message:
         resultado.affectedRows > 0
-          ? "✅ Actualización realizada correctamente."
-          : "⚠ No se modificaron campos (ya estaban iguales).",
+          ? " Actualización realizada correctamente."
+          : " No se modificaron campos (ya estaban iguales).",
     });
   } catch (error) {
-    console.error("❌ Error al actualizar:", error);
-    return res.status(500).json({ message: "❌ Error al actualizar." });
+    console.error(" Error al actualizar:", error);
+    return res.status(500).json({ message: " Error al actualizar." });
   }
 };
 
@@ -600,7 +600,7 @@ const getPedidosEmbarque = async (req, res) => {
       });
     }
 
-    // ✅ Si NO está en embarque, traer solo de pedido_finalizado
+    //  Si NO está en embarque, traer solo de pedido_finalizado
     const queryFinalizado = `
       SELECT 
         pe.pedido, 
@@ -638,7 +638,7 @@ const getPedidosEmbarque = async (req, res) => {
     const totalLineasPDF = totalLineasDB - totalMotivo;
 
     console.log(
-      `✅ BD: ${totalLineasDB} | Motivo: ${totalMotivo} | PDF: ${totalLineasPDF}`
+      ` BD: ${totalLineasDB} | Motivo: ${totalMotivo} | PDF: ${totalLineasPDF}`
     );
 
     return res.json({
@@ -755,16 +755,16 @@ const insertarVisita = async (req, res) => {
     );
 
     if (updateVehiculoResult.affectedRows === 0) {
-      throw new Error("❌ No se pudo actualizar el vehículo.");
+      throw new Error(" No se pudo actualizar el vehículo.");
     }
 
-    // console.log("✅ Vehículo actualizado correctamente.");
+    // console.log(" Vehículo actualizado correctamente.");
 
     res.status(200).json({
       message: "Visita insertada y vehículo actualizado correctamente.",
     });
   } catch (error) {
-    console.error("❌ Error al insertar visita o actualizar vehículo:", error);
+    console.error(" Error al insertar visita o actualizar vehículo:", error);
     res
       .status(500)
       .json({ message: "Error al insertar visita o actualizar vehículo" });
@@ -800,7 +800,7 @@ const guardarDatos = async (req, res) => {
 
 const obtenerDatos = async (req, res) => {
   try {
-    const [rows] = await pool.query("SELECT * FROM rutas ORDER BY fecha DESC"); // ✅ Ahora muestra la más reciente primero
+    const [rows] = await pool.query("SELECT * FROM rutas ORDER BY fecha DESC"); //  Ahora muestra la más reciente primero
 
     res.status(200).json(rows);
   } catch (error) {
@@ -1030,7 +1030,7 @@ const getOrderStatus = async (req, res) => {
       tipoOriginalMap[pedido] = (tipo_original || "").toLowerCase();
     });
 
-    // ✅ Función que procesa cada tabla
+    //  Función que procesa cada tabla
     const checkFusionStatus = (rows, tableName, statusText) => {
       rows.forEach((row) => {
         const pedido = row.pedido;
@@ -1327,15 +1327,15 @@ const actualizarFacturasDesdeExcel = async (req, res) => {
     }
 
     return res.json({
-      message: "✅ Proceso completado",
+      message: " Proceso completado",
       filas_actualizadas: actualizaciones,
       filas_saltadas_por_datos_incompletos: saltadas,
     });
   } catch (error) {
-    console.error("❌ Error al actualizar facturas:", error);
+    console.error(" Error al actualizar facturas:", error);
     return res
       .status(500)
-      .json({ message: "❌ Error al actualizar facturas." });
+      .json({ message: " Error al actualizar facturas." });
   }
 };
 
@@ -1401,13 +1401,13 @@ const actualizarPorGuia = async (req, res) => {
     }
 
     return res.status(200).json({
-      message: `✅ Se actualizaron ${totalActualizados} pedidos para la guía ${guia}.`,
+      message: ` Se actualizaron ${totalActualizados} pedidos para la guía ${guia}.`,
     });
   } catch (error) {
-    console.error("❌ Error al actualizar por guía:", error.message);
+    console.error(" Error al actualizar por guía:", error.message);
     return res
       .status(500)
-      .json({ message: "❌ Error interno al actualizar los datos." });
+      .json({ message: " Error interno al actualizar los datos." });
   }
 };
 
@@ -1494,11 +1494,11 @@ const crearRuta = async (req, res) => {
     }
 
     res.status(201).json({
-      message: "✅ Ruta creada o actualizada correctamente con pedidos nuevos.",
+      message: " Ruta creada o actualizada correctamente con pedidos nuevos.",
       ruta_id: rutaId,
     });
   } catch (error) {
-    console.error("❌ Error al crear o actualizar la ruta:", error);
+    console.error(" Error al crear o actualizar la ruta:", error);
     res.status(500).json({ message: "Error al procesar la ruta." });
   }
 };
@@ -1566,9 +1566,9 @@ const agregarPedidoARuta = async (req, res) => {
 
     res
       .status(201)
-      .json({ message: "✅ Pedido agregado correctamente a la ruta." });
+      .json({ message: " Pedido agregado correctamente a la ruta." });
   } catch (error) {
-    // console.error("❌ Error al agregar pedido:", error);
+    // console.error(" Error al agregar pedido:", error);
     res.status(500).json({ message: "Error al agregar pedido a la ruta." });
   }
 };
@@ -2286,11 +2286,11 @@ const actualizarTipoOriginalDesdeExcel = async (req, res) => {
     }
 
     return res.status(200).json({
-      message: `✅ Se actualizaron ${actualizaciones} registros correctamente en la tabla pedidos.`,
+      message: ` Se actualizaron ${actualizaciones} registros correctamente en la tabla pedidos.`,
     });
   } catch (error) {
-    console.error("❌ Error al actualizar tipo en pedidos:", error);
-    return res.status(500).json({ message: "❌ Error interno del servidor." });
+    console.error(" Error al actualizar tipo en pedidos:", error);
+    return res.status(500).json({ message: " Error interno del servidor." });
   }
 };
 
@@ -2343,16 +2343,16 @@ const actualizarGuiaCompleta = async (req, res) => {
 
     if (result.affectedRows > 0) {
       return res.status(200).json({
-        message: "✅ Guía, Transporte y Paquetería actualizados correctamente.",
+        message: " Guía, Transporte y Paquetería actualizados correctamente.",
       });
     } else {
       return res.status(404).json({
-        message: `⚠ No se pudo actualizar la orden ${noOrden}.`,
+        message: ` No se pudo actualizar la orden ${noOrden}.`,
       });
     }
   } catch (error) {
-    console.error("❌ Error al actualizar la guía completa:", error.message);
-    return res.status(500).json({ message: "❌ Error interno al actualizar." });
+    console.error(" Error al actualizar la guía completa:", error.message);
+    return res.status(500).json({ message: " Error interno al actualizar." });
   }
 };
 
@@ -2430,16 +2430,16 @@ async function actualizarTotalIvaMasivoDesdeAPI() {
 
       if (result.affectedRows > 0) {
         actualizados++;
-      // console.log(`✅ Actualizado ${noOrden} ${tipoOriginal}: total_api=${wsTotal}, totalIva=${wsTotalIva}`);
+      // console.log(` Actualizado ${noOrden} ${tipoOriginal}: total_api=${wsTotal}, totalIva=${wsTotalIva}`);
       }
     }
 
     await conn.commit();
-    console.log(`🎯 Proceso completado. Filas actualizadas: ${actualizados}`);
+    console.log(` Proceso completado. Filas actualizadas: ${actualizados}`);
 
   } catch (error) {
     if (conn) await conn.rollback();
-    console.error("❌ Error al actualizar pedidos:", error.message);
+    console.error(" Error al actualizar pedidos:", error.message);
   } finally {
     if (conn) conn.release();
   }

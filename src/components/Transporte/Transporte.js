@@ -197,7 +197,7 @@ function Transporte() {
 
   const [sentRoutesData, setSentRoutesData] = useState([]);
 
-  const [anio, setAnio] = useState(2025);
+  const [anio, setAnio] = useState(2026);
 
   const [filtro, setFiltro] = useState("");
 
@@ -291,21 +291,21 @@ function Transporte() {
         { orderNumbers }
       );
 
-      // console.log(`✅ Respuesta recibida para ${tabName}:`, response.data);
+      // console.log(` Respuesta recibida para ${tabName}:`, response.data);
 
       const statusMap = response.data;
 
       setSentRoutesData((prevData) => {
         const updatedData = prevData.map((route) => {
           const currentStatus = statusMap[route["NO ORDEN"]];
-          if (!currentStatus) return route; // 🚫 Si no hay actualización, deja igual
+          if (!currentStatus) return route; //  Si no hay actualización, deja igual
 
           const prevPriority = statusPriority[route.statusText] || 0;
           const newPriority = statusPriority[currentStatus.statusText] || 0;
 
           let updatedRoute = { ...route };
 
-          // 🔥 Solo actualizar si el nuevo status es mejor o igual
+          //  Solo actualizar si el nuevo status es mejor o igual
           if (newPriority >= prevPriority) {
             updatedRoute.statusText =
               currentStatus.statusText || route.statusText;
@@ -563,7 +563,7 @@ function Transporte() {
 
   useEffect(() => {
     const mesActual = new Date().getMonth() + 1;
-    const anioActual = 2025; // o new Date().getFullYear()
+    const anioActual = 2026; // o new Date().getFullYear()
 
     fetchPaqueteriaRoutes({
       mes: mesActual,
@@ -979,10 +979,9 @@ function Transporte() {
         }
       }
     });
-
-    // console.log("✅ Total Clientes:", totalClientes);
-    // console.log("✅ Total Pedidos:", totalPedidos);
-    // console.log("✅ Total General:", totalGeneral);
+    // console.log(" Total Clientes:", totalClientes);
+    // console.log(" Total Pedidos:", totalPedidos);
+    // console.log(" Total General:", totalGeneral);
 
     setTotalClientes(totalClientes || 0);
     setTotalPedidos(totalPedidos || 0);
@@ -1021,7 +1020,7 @@ function Transporte() {
       [newRoute]: { TOTAL: 0, PARTIDAS: 0, PIEZAS: 0, rows: [] },
     }));
 
-    // ✅ Agregar la ruta a las opciones del Autocomplete
+    //  Agregar la ruta a las opciones del Autocomplete
     setOptions((prevOptions) => [...prevOptions, newRoute]);
 
     // Limpiar el campo de entrada después de agregar la ruta
@@ -1091,7 +1090,7 @@ function Transporte() {
           ? item.OBSERVACIONES
           : observacionesPorRegistro[item["NUM. CLIENTE"]] || "";
 
-      // ⚡ 4. Agregar el pedido a la nueva ruta, asegurando que conserve las observaciones
+      //  4. Agregar el pedido a la nueva ruta, asegurando que conserve las observaciones
       updatedGroupedData[newRoute].rows.push({
         ...item,
         OBSERVACIONES: observacionActual,
@@ -1101,18 +1100,18 @@ function Transporte() {
       updatedGroupedData[newRoute].PIEZAS += item.PIEZAS;
 
       // console.log(
-      //   `✅ Pedido ${item["NO ORDEN"]} movido de ${
+      //   ` Pedido ${item["NO ORDEN"]} movido de ${
       //     oldRoute || "Ninguna"
       //   } a ${newRoute}`
       // );
 
-      // ⚡ 5. Guardar cambios en `localStorage`
+      //  5. Guardar cambios en `localStorage`
       localStorage.setItem(
         "transporteGroupedData",
         JSON.stringify(updatedGroupedData)
       );
 
-      // ⚡ **Guardar las observaciones en localStorage**
+      //  **Guardar las observaciones en localStorage**
       const updatedObservaciones = {
         ...observacionesPorRegistro,
         [item["NUM. CLIENTE"]]: observacionActual,
@@ -1220,7 +1219,7 @@ function Transporte() {
       }
     });
 
-    // ✅ Asegurar que el total no disminuya
+    //  Asegurar que el total no disminuya
     totalAcumulado = Math.max(totalAcumulado, prevTotalGeneral + totalGeneral);
 
     // Guardar en localStorage
@@ -1327,7 +1326,7 @@ function Transporte() {
       );
 
       // console.log(
-      //   `✅ Ruta renombrada de '${oldRouteName}' a '${newRouteName}' sin perder datos.`
+      //   ` Ruta renombrada de '${oldRouteName}' a '${newRouteName}' sin perder datos.`
       // );
 
       return updatedData;
@@ -1522,9 +1521,9 @@ function Transporte() {
         return updated;
       });
 
-      console.log("✅ Observaciones actualizadas:", observaciones);
+      console.log(" Observaciones actualizadas:", observaciones);
     } catch (error) {
-      console.error("❌ Error al obtener observaciones:", error);
+      console.error(" Error al obtener observaciones:", error);
     }
   };
 
@@ -1631,7 +1630,7 @@ function Transporte() {
 
         if (response.ok) {
           const result = await response.json();
-          console.log("✅ Respuesta del servidor:", result);
+          console.log(" Respuesta del servidor:", result);
 
           handleSnackbarOpen("Rutas enviadas con éxito y registradas.");
 
@@ -1757,7 +1756,7 @@ function Transporte() {
       const data = await response.json();
 
       if (response.ok) {
-        Swal.fire("✅", data.message, "success");
+        Swal.fire("", data.message, "success");
         setDirectaModalOpen(false);
         fetchPaqueteriaRoutes({
           mes: selectedMonth || localStorage.getItem("mesSeleccionado") || "",
@@ -1766,8 +1765,8 @@ function Transporte() {
         Swal.fire("⚠", data.message || "Error al actualizar", "warning");
       }
     } catch (error) {
-      console.error("❌ Error en la actualización:", error);
-      Swal.fire("❌", "Error al actualizar la guía.", "error");
+      console.error(" Error en la actualización:", error);
+      Swal.fire("", "Error al actualizar la guía.", "error");
     }
   };
 
@@ -2362,7 +2361,7 @@ function Transporte() {
       return;
     }
 
-    // console.log("✅ Datos filtrados:", filteredData);
+    // console.log(" Datos filtrados:", filteredData);
 
     const groupedData = {};
 
@@ -2455,10 +2454,10 @@ function Transporte() {
     // 🔹 Descargar el archivo
     XLSX.writeFile(wb, `Datos_Directa_${today}.xlsx`);
 
-    // console.log("✅ Archivo Excel generado correctamente.");
+    // console.log(" Archivo Excel generado correctamente.");
   };
 
-  // ✅ Versión con tabla de IMPORTE AGREGADA al final (corregida)
+  // Versión con tabla de IMPORTE AGREGADA al final (corregida)
 
   const [referenciasClientes, setReferenciasClientes] = useState([]);
 
@@ -2607,7 +2606,7 @@ function Transporte() {
       );
       const pedidosExternos = direccionAPI.data;
 
-      // ✅ Ahora sí puedes buscar con pedido + tipo
+      //  Ahora sí puedes buscar con pedido + tipo
       const pedidoEncontrado = pedidosExternos.find(
         (p) =>
           String(p.NoOrden) === String(pedido) &&
@@ -2704,7 +2703,7 @@ function Transporte() {
         (p) => (p.um || "").toUpperCase() === "ATA"
       );
 
-      // ✅ AGRUPAR por tipo + cajas (fusionadas respetadas)
+      //  AGRUPAR por tipo + cajas (fusionadas respetadas)
       const cajasAgrupadasOriginal = {};
 
       for (const item of productosConCaja) {
@@ -3482,7 +3481,7 @@ function Transporte() {
   const openDirectaModal = (data) => {
     // console.log("🔍 Datos recibidos en openDirectaModal:", data);
 
-    setSelectedId(data.id); // ✅ ¡Agregar esto!
+    setSelectedId(data.id); //  ¡Agregar esto!
     setSelectedDirectaData(data);
     setGuia(data.GUIA?.toString() || ""); // fuerza a string si viene null o número
     setSelectedNoOrden(data["NO ORDEN"] || "");
@@ -3692,7 +3691,7 @@ function Transporte() {
         dataToSend
       );
 
-      alert(`✅ Visita insertada correctamente: ${response.data.message}`);
+      alert(` Visita insertada correctamente: ${response.data.message}`);
 
       // Actualizar el estado local para marcar como insertado
       const updatedData = [...directaData, ...paqueteriaData];
@@ -3706,7 +3705,7 @@ function Transporte() {
         updatedData.filter((item) => item.TIPO === "paqueteria")
       );
     } catch (error) {
-      console.error("❌ Error al insertar la visita:", error);
+      console.error(" Error al insertar la visita:", error);
       alert("Error al insertar la visita.");
     }
   };
@@ -4164,7 +4163,7 @@ function Transporte() {
     filtroEstado,
     estatusSeleccionado,
     fechaEntregaSeleccionada,
-    filterFactura, // ✅ No olvides agregarlo aquí
+    filterFactura, //  No olvides agregarlo aquí
   ]);
 
   const ventaEmpleadoFiltrada = useMemo(() => {
@@ -4382,17 +4381,17 @@ function Transporte() {
         const updatedOrders = data.updatedOrders || []; // Asegurar que es un array
 
         setUploadMessage(
-          `✅ Archivo subido correctamente. Se actualizaron las NO ORDEN.`
+          ` Archivo subido correctamente. Se actualizaron las NO ORDEN.`
         );
         setUpdatedOrders(updatedOrders); // Guardar la lista de órdenes actualizadas
         fetchPaqueteriaRoutes(); // Recargar datos después de la actualización
       } else {
-        setUploadMessage(`❌ Error: ${data.message}`);
+        setUploadMessage(` Error: ${data.message}`);
         alert("Error al subir el archivo.");
       }
     } catch (error) {
-      console.error("❌ Error en la subida:", error);
-      setUploadMessage("❌ Error en la subida del archivo.");
+      console.error(" Error en la subida:", error);
+      setUploadMessage(" Error en la subida del archivo.");
     } finally {
       setUploading(false);
       setFile(null);
@@ -4528,7 +4527,7 @@ function Transporte() {
 
   const guardarPorGuia = async () => {
     if (!guia || guia.trim() === "") {
-      alert("❌ Faltan datos: El número de guía es obligatorio.");
+      alert(" Faltan datos: El número de guía es obligatorio.");
       return;
     }
 
@@ -4539,7 +4538,7 @@ function Transporte() {
       totalFacturaLT,
       pedidos: pedidos.map((pedido) => ({
         noOrden: pedido["NO ORDEN"],
-        numeroFacturaLT, // ✅ Aquí lo agregamos dentro de cada pedido
+        numeroFacturaLT, //  Aquí lo agregamos dentro de cada pedido
         prorrateoFacturaLT: parseFloat(pedido.prorrateoFacturaLT) || 0,
         prorrateoFacturaPaqueteria: 0,
         sumaFlete: parseFloat(pedido.sumaFlete) || 0,
@@ -4579,14 +4578,14 @@ function Transporte() {
 
       const resultado = await response.json();
       if (response.ok) {
-        alert("✅ Datos guardados correctamente.");
+        alert(" Datos guardados correctamente.");
         handleCloseModalGuia(); // Cierra el modal después de guardar
       } else {
-        alert("❌ Error al guardar: " + resultado.message);
+        alert(" Error al guardar: " + resultado.message);
       }
     } catch (error) {
-      console.error("❌ Error en la solicitud:", error);
-      alert("❌ Error al conectar con el servidor.");
+      console.error(" Error en la solicitud:", error);
+      alert(" Error al conectar con el servidor.");
     }
   };
 
@@ -4730,10 +4729,10 @@ function Transporte() {
               mappedPedido,
               { headers: { "Content-Type": "application/json" } }
             );
-            totalPedidosSync++; // ✅ sumamos cuando se sincroniza bien
+            totalPedidosSync++; //  sumamos cuando se sincroniza bien
           } catch (error) {
             console.error(
-              "❌ Error al sincronizar pedido:",
+              " Error al sincronizar pedido:",
               error.response?.status,
               error.response?.data || error.message
             );
@@ -4742,12 +4741,12 @@ function Transporte() {
       }
 
       console.log(
-        `✅ Sincronización completada. Total pedidos sincronizados: ${totalPedidosSync}`
+        ` Sincronización completada. Total pedidos sincronizados: ${totalPedidosSync}`
       );
       setLastSync(new Date().toLocaleTimeString());
     } catch (error) {
       console.error(
-        "❌ Error general al sincronizar rutas y pedidos:",
+        " Error general al sincronizar rutas y pedidos:",
         error.message
       );
     } finally {
@@ -4777,14 +4776,14 @@ function Transporte() {
   };
 
   useEffect(() => {
-    syncRoutesToDB(); // ✅ Se ejecuta una vez al inicio
+    syncRoutesToDB(); //  Se ejecuta una vez al inicio
 
     const interval = setInterval(() => {
-      // console.log("⏳ Ejecutando sincronización automática...");
+      // console.log(" Ejecutando sincronización automática...");
       syncRoutesToDB();
-    }, 5 * 60 * 1000); // 🔹 5 minutos en milisegundos
+    }, 5 * 60 * 1000); //  5 minutos en milisegundos
 
-    return () => clearInterval(interval); // 🔹 Limpia el intervalo al desmontar el componente
+    return () => clearInterval(interval); //  Limpia el intervalo al desmontar el componente
   }, []);
 
   const fetchRutasConPedidos = async () => {
@@ -4792,10 +4791,10 @@ function Transporte() {
       const response = await axios.get(
         "http://66.232.105.87:3007/api/Trasporte/Rutasconpedido"
       );
-      // console.log("✅ Rutas obtenidas:", response.data);
+      // console.log(" Rutas obtenidas:", response.data);
       setRutasConPedidos(response.data);
     } catch (error) {
-      console.error("❌ Error al obtener rutas y pedidos:", error);
+      console.error(" Error al obtener rutas y pedidos:", error);
     }
   };
 
@@ -4816,7 +4815,7 @@ function Transporte() {
       );
 
       const statusMap = response.data;
-      // console.log("✅ StatusMap directo:", statusMap);
+      // console.log(" StatusMap directo:", statusMap);
 
       const pedidosActualizados = pedidos.map((pedido) => {
         const match = statusMap[pedido.no_orden];
@@ -4828,13 +4827,13 @@ function Transporte() {
         };
       });
 
-      // ✅ Actualizar la ruta seleccionada (modal)
+      //  Actualizar la ruta seleccionada (modal)
       setSelectedRuta({
         ...ruta,
         pedidos: pedidosActualizados,
       });
 
-      // ✅ Actualizar también la ruta dentro de rutasConPedidos para que los statusText estén en las tarjetas
+      //  Actualizar también la ruta dentro de rutasConPedidos para que los statusText estén en las tarjetas
       setRutasConPedidos((prev) =>
         prev.map((r) =>
           r.id === ruta.id
@@ -4846,7 +4845,7 @@ function Transporte() {
         )
       );
     } catch (error) {
-      console.error("❌ Error al consultar estados antes del modal:", error);
+      console.error(" Error al consultar estados antes del modal:", error);
     }
   };
 
@@ -4959,7 +4958,7 @@ function Transporte() {
     );
 
     pedidosSeleccionados.forEach((pedido) => {
-      assignToRoute(pedido, selectedMassRoute); // ✅ Usa la función existente
+      assignToRoute(pedido, selectedMassRoute); //  Usa la función existente
     });
 
     // Limpiar selección
@@ -5066,9 +5065,9 @@ function Transporte() {
     }
 
     if (errores.length > 0) {
-      alert("❌ Errores al actualizar:\n" + errores.join("\n"));
+      alert(" Errores al actualizar:\n" + errores.join("\n"));
     } else {
-      alert("✅ Actualización exitosa en todos los pedidos.");
+      alert(" Actualización exitosa en todos los pedidos.");
       fetchPaqueteriaRoutes(); // 🔄 Refresca tu tabla
     }
 
@@ -5099,13 +5098,13 @@ function Transporte() {
       );
 
       if (response.data.success) {
-        alert(`✅ Correo enviado para la orden ${noOrden}`);
+        alert(` Correo enviado para la orden ${noOrden}`);
       } else {
-        alert(`⚠️ Error: ${response.data.message}`);
+        alert(` Error: ${response.data.message}`);
       }
     } catch (error) {
-      console.error("❌ Error al enviar correo:", error);
-      alert("❌ No se pudo enviar el correo.");
+      console.error(" Error al enviar correo:", error);
+      alert(" No se pudo enviar el correo.");
     }
   };
 
@@ -5300,7 +5299,7 @@ function Transporte() {
         GUIA: pedido.GUIA || "",
       };
 
-      // console.log("✅ Pedido normalizado:", pedidoNormalizado); // Verifica visualmente
+      // console.log(" Pedido normalizado:", pedidoNormalizado); // Verifica visualmente
 
       nuevaRuta.rows.push(pedidoNormalizado);
     });
@@ -5311,7 +5310,7 @@ function Transporte() {
       return updated;
     });
 
-    alert("✅ Ruta reactivada correctamente.");
+    alert(" Ruta reactivada correctamente.");
   };
 
   const openDetallesRuta = (ruta) => {
@@ -5355,10 +5354,10 @@ function Transporte() {
         formData
       );
 
-      alert(response.data.message || "✅ Actualización completada.");
+      alert(response.data.message || " Actualización completada.");
       fetchPaqueteriaRoutes(); // Refrescar tabla si es necesario
     } catch (error) {
-      console.error("❌ Error al subir archivo:", error);
+      console.error(" Error al subir archivo:", error);
       alert("Error al subir el archivo.");
     }
   };
@@ -8882,7 +8881,7 @@ function Transporte() {
                         .slice(
                           page * rowsPerPage,
                           page * rowsPerPage + rowsPerPage
-                        ) // ✅ PAGINACIÓN SIN AFECTAR FILTROS
+                        ) //  PAGINACIÓN SIN AFECTAR FILTROS
                         .map((routeData, index) => (
                           <TableRow key={index}>
                             {visibleColumns.includes("NO ORDEN") && (
@@ -9146,7 +9145,7 @@ function Transporte() {
                         .slice(
                           page * rowsPerPage,
                           page * rowsPerPage + rowsPerPage
-                        ) // ✅ PAGINACIÓN SIN AFECTAR FILTROS
+                        ) //  PAGINACIÓN SIN AFECTAR FILTROS
                         .map((routeData, index) => (
                           <TableRow key={index}>
                             {visibleColumns.includes("NO ORDEN") && (

@@ -639,7 +639,7 @@ const createVisitaPaqueteria = async (req, res) => {
     // Acompañantes
     if (acompanantesPaq && acompanantesPaq.length > 0) {
       const values = acompanantesPaq.map(acomp => [
-        acomp.nombre_acomp, acomp.apellidos_acomp, acomp.no_ine_acomp, clavePersonalizada, visitaId, claveVisita
+        acomp.nombre_acomp?.toUpperCase() || '', acomp.apellidos_acomp?.toUpperCase() || '', acomp.no_ine_acomp, clavePersonalizada, visitaId, claveVisita
       ]);
       await pool.query(
         `INSERT INTO acomp (nombre_acomp, apellidos_acomp, no_ine_acomp, id_vit, id_visit, clave_visit)
@@ -1083,6 +1083,7 @@ const getVisitasAct = async (req, res) => {
             vehiculos.empresa,
             vehiculos.acc_dir,
             acomp.id_com,
+            acomp.est,
             vehiculo_per.id_vehpr,
             vehiculo_per.acc,
             categorias_visitas.id_catv,
@@ -1096,12 +1097,12 @@ const getVisitasAct = async (req, res) => {
         FROM visitas
         JOIN visitantes ON visitas.id_vit = visitantes.clave
         LEFT JOIN vehiculos ON visitas.id_vit = vehiculos.clave_con
-        LEFT JOIN acomp ON visitas.id_vit = acomp.id_vit
+        LEFT JOIN acomp ON visitas.id_vit = acomp.id_vit AND acomp.est IS NULL
         LEFT JOIN categorias_visitas ON visitantes.id_catv = categorias_visitas.id_catv
         LEFT JOIN contenedores_visitas ON visitantes.clave = contenedores_visitas.id_cont
         LEFT JOIN vehiculo_per ON visitantes.clave = vehiculo_per.id_vit
         LEFT JOIN areas ON visitas.area_per = areas.id_area
-        WHERE visitas.est = 'A'
+        WHERE visitas.est = 'A' 
         GROUP BY visitas.id_visit
     `;
 
@@ -1136,7 +1137,7 @@ const getVisitasAct = async (req, res) => {
             vehiculos.acc_dir,
             acomp.id_com,
             acomp.nombre_acomp,
-            acomp.apellidos_acomp,
+            acomp.est AS est_acomp,
             categorias_visitas.id_catv,
             categorias_visitas.tipo,
             CASE WHEN transportista.id_catv = 12 THEN areas.id_area ELSE cortinas.id_cor END AS id_cor,
@@ -1153,14 +1154,14 @@ const getVisitasAct = async (req, res) => {
         FROM visitas
         JOIN transportista ON visitas.id_vit = transportista.clave
         LEFT JOIN vehiculos ON visitas.id_vit = vehiculos.clave_con
-        LEFT JOIN acomp ON visitas.id_vit = acomp.id_vit
+        LEFT JOIN acomp ON visitas.id_vit = acomp.id_vit AND acomp.est IS NULL
         LEFT JOIN categorias_visitas ON transportista.id_catv = categorias_visitas.id_catv
         LEFT JOIN cortinas ON visitas.area_per = cortinas.id_cor
         LEFT JOIN cortinas AS cortinas2 ON visitas.area_per2 = cortinas2.id_cor 
         LEFT JOIN areas ON visitas.area_per = areas.id_area
         LEFT JOIN paqueterias ON transportista.empresa  = paqueterias.id_paq
         LEFT JOIN vehiculos_fotos ON visitas.id_visit = vehiculos_fotos.id_visit
-        WHERE visitas.est = 'A'
+        WHERE visitas.est = 'A' 
         GROUP BY visitas.id_visit
     `;
 
@@ -1190,6 +1191,7 @@ const getVisitasAct = async (req, res) => {
             areas.id_area,
             areas.area,
             acomp.id_com,
+            acomp.est,
             acomp.nombre_acomp,
             acomp.apellidos_acomp,
             acomp.foto,
@@ -1200,7 +1202,7 @@ const getVisitasAct = async (req, res) => {
         JOIN categorias_visitas ON contenedores_visitas.id_catv = categorias_visitas.id_catv
         JOIN recibo_compras ON contenedores_visitas.contenedor = recibo_compras.contenedor
         JOIN areas ON visitas.area_per = areas.id_area
-        LEFT JOIN acomp ON visitas.id_vit = acomp.id_vit
+        LEFT JOIN acomp ON visitas.id_vit = acomp.id_vit AND acomp.est IS NULL
         LEFT JOIN vehiculos_fotos ON visitas.id_visit = vehiculos_fotos.id_visit
         WHERE visitas.est = 'A'
         GROUP BY visitas.id_visit
@@ -1277,6 +1279,7 @@ const darSalidaVisitante = async (req, res) => {
     const {  est, id_usu_out, tiempo_visita, placa } = req.body;
     const reg_salida = new Date();
     const [[{ id_vit } = {}]] = await pool.query('SELECT id_vit FROM visitas WHERE id_visit = ?', [id_visit]);
+    // const [[{ id_acomp } = {}]] = await pool.query('SELECT id_vit FROM visitas WHERE id_visit = ?', [id_visit]);
 
     try {
         let tabla = null;
@@ -1290,7 +1293,7 @@ const darSalidaVisitante = async (req, res) => {
             return res.status(400).json({ error: 'Prefijo de clave no válido' });
         }
 
-        //await pool.query(`UPDATE ${tabla} SET foto = ? WHERE clave = ?`, [null, id_vit]);
+        await pool.query(`UPDATE ${tabla} SET foto = ? WHERE clave = ?`, [null, id_vit]);
 
         const result = await pool.query(
             'UPDATE visitas SET ? WHERE id_visit = ?',
@@ -1302,10 +1305,24 @@ const darSalidaVisitante = async (req, res) => {
             await pool.query(SQL_UPDATE_CLAVE, [placa])
         }
 
+        // 🔹 Cerrar acompañantes si existen
+        const [acompRows] = await pool.query(
+            'SELECT id_com FROM acomp WHERE id_vit = ?',
+            [id_vit]
+        );
+
+        if (acompRows.length > 0) {
+            await pool.query(
+                'UPDATE acomp SET est = ? WHERE id_vit = ?',
+                ['C', id_vit]
+            );
+        }
+
+
         if (result.affectedRows === 0) {
             return res.status(404).json({ 
                 message: `No se pudo actualizar, id_visit: ${id_visit} no encontrado`,
-                message2: `Foto actualizada en ${tabla} con clave: ${id_vit}` 
+                message2: `Foto actualizada en ${tabla} con clave: ${id_vit} `
             });
         }
 
@@ -1319,7 +1336,7 @@ const darSalidaVisitante = async (req, res) => {
             error: error.message 
         });
     }
-};
+}
 
 const darSalidaOper = async (req, res) => {
     console.log('q', req.body);

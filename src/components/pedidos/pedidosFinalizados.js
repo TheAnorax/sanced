@@ -140,31 +140,43 @@ function Finalizados() {
     setEditBahiaMode(true);
   };
 
-  const exportarMotivosAExcel = () => {
-    if (
-      !motivosData ||
-      !motivosData.resultados ||
-      motivosData.resultados.length === 0
-    ) {
-      Swal.fire("Sin datos", "No hay datos para exportar.", "info");
-      return;
-    }
+ const exportarMotivosAExcel = () => {
+  if (
+    !motivosData ||
+    !motivosData.resultados ||
+    motivosData.resultados.length === 0
+  ) {
+    Swal.fire("Sin datos", "No hay datos para exportar.", "info");
+    return;
+  }
 
-    const worksheet = XLSX.utils.json_to_sheet(motivosData.resultados);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Motivos");
+  // 🔹 FORMATEO DE FECHAS
+  const datosFormateados = motivosData.resultados.map((row) => ({
+    ...row,
+    created_at: row.created_at
+      ? dayjs(row.created_at).format("YYYY-MM-DD")
+      : "",
+  }));
 
-    const fechaInicio = rangoInicio.format("YYYY-MM-DD");
-    const fechaFin = rangoFin.format("YYYY-MM-DD");
+  const worksheet = XLSX.utils.json_to_sheet(datosFormateados);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Motivos");
 
-    const excelBuffer = XLSX.write(workbook, {
-      bookType: "xlsx",
-      type: "array",
-    });
-    const blob = new Blob([excelBuffer], { type: "application/octet-stream" });
+  const fechaInicio = rangoInicio.format("YYYY-MM-DD");
+  const fechaFin = rangoFin.format("YYYY-MM-DD");
 
-    saveAs(blob, `Motivos_${fechaInicio}_a_${fechaFin}.xlsx`);
-  };
+  const excelBuffer = XLSX.write(workbook, {
+    bookType: "xlsx",
+    type: "array",
+  });
+
+  const blob = new Blob([excelBuffer], {
+    type: "application/octet-stream",
+  });
+
+  saveAs(blob, `Motivos_${fechaInicio}_a_${fechaFin}.xlsx`);
+};
+
 
   const handleSaveBahias = async () => {
     const combined = selectedBahias.map((b) => b.bahia).join(", ");
@@ -1932,6 +1944,7 @@ function Finalizados() {
             <MenuItem value="2023">2023</MenuItem>
             <MenuItem value="2024">2024</MenuItem>
             <MenuItem value="2025">2025</MenuItem>
+            <MenuItem value="2025">2026</MenuItem>
           </Select>
         </FormControl>
 

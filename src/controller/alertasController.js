@@ -15,30 +15,30 @@ const generarHorariosAleatorios = async (inicioHora = 7, finHora = 13) => {
 };
 
 const inicializarAlertas = async (io) => {
-  // 🔹 Generar horarios de prueba al iniciar
+  //  Generar horarios de prueba al iniciar
   alertasManana = await generarHorariosAleatorios(7, 13);
   alertasTarde = await generarHorariosAleatorios(14, 19);
   alertasNoche = await generarHorariosAleatorios(20, 6);
 
-  console.log("✅ Horarios iniciales generados:");
-  console.log("🌞 Mañana:", alertasManana);
-  console.log("🌇 Tarde:", alertasTarde);
-  console.log("🌇 Noche:", alertasNoche);
+  console.log(" Horarios iniciales generados:");
+  console.log(" Mañana:", alertasManana);
+  console.log(" Tarde:", alertasTarde);
+  console.log(" Noche:", alertasNoche);
 
-  // 🔁 Cron jobs para producción
+  //  Cron jobs para producción
   cron.schedule('0 7 * * *', async () => {
     alertasManana = await generarHorariosAleatorios(7, 13);
-    console.log('🌞 Horarios de la mañana generados:', alertasManana);
+    console.log(' Horarios de la mañana generados:', alertasManana);
   });
 
   cron.schedule('0 14 * * *', async () => {
     alertasTarde = await generarHorariosAleatorios(14, 19);
-    console.log('🌇 Horarios de la tarde generados:', alertasTarde);
+    console.log(' Horarios de la tarde generados:', alertasTarde);
   });
 
   cron.schedule('0 19 * * *', async () => {
     alertasNoche = await generarHorariosAleatorios(14, 19);
-    console.log('🌇 Horarios de la noche generados:', alertasNoche);
+    console.log(' Horarios de la noche generados:', alertasNoche);
   });
 
   cron.schedule('* * * * *', () => {
@@ -46,15 +46,15 @@ const inicializarAlertas = async (io) => {
     const horaActual = now.toTimeString().slice(0, 5);
 
     if (alertasManana.includes(horaActual)) {
-      io.emit('alerta', { mensaje: `🌞 ¡Alerta de la mañana a las ${horaActual}!` });
+      io.emit('alerta', { mensaje: ` ¡Alerta de la mañana a las ${horaActual}!` });
     }
 
     if (alertasTarde.includes(horaActual)) {
-      io.emit('alerta', { mensaje: `🌇 ¡Alerta de la tarde a las ${horaActual}!` });
+      io.emit('alerta', { mensaje: ` ¡Alerta de la tarde a las ${horaActual}!` });
     }
 
     if (alertasNoche.includes(horaActual)) {
-      io.emit('alerta', { mensaje: `🌇 ¡Alerta de la noche a las ${horaActual}!` });
+      io.emit('alerta', { mensaje: ` ¡Alerta de la noche a las ${horaActual}!` });
     }
   });
 };

@@ -34,7 +34,7 @@ router.post("/solicitudes", guardarSolicitudes);
 
 router.patch("/solicitudes/:folio", actualizarSolicitud);
 
-router.delete("/solicitudes/:folio", eliminarSolicitud); // ✅ esta es la nueva ruta
+router.delete("/solicitudes/:folio", eliminarSolicitud); //  esta es la nueva ruta
 
 router.delete(
   "/solicitudes/:folio/producto/:codigo",

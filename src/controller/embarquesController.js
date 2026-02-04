@@ -23,9 +23,9 @@ FROM pedido_embarque p
 LEFT JOIN paqueteria pq 
   ON p.pedido = pq.\`NO ORDEN\`
  AND p.tipo = pq.\`tipo_original\`
-WHERE p.estado = 'E'
+WHERE p.estado = 'E'  
   AND p.id_usuario_paqueteria IS NULL
-
+  
 GROUP BY p.pedido, p.tipo
 ORDER BY p.registro_embarque DESC;
 `);

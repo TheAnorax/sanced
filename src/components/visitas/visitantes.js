@@ -249,7 +249,7 @@ function Visitantes() {
   const paqueteriasAct = transportistas.filter((trans) => trans.tipo === 'PAQUETERIA / TRANSPORTE');
   const transportistasAct = transportistas.filter((trans) => trans.tipo === ('TRANSPORTISTA', 'ENTREGA DE EVIDENCIAS'));
   const proveedor = transportistas.filter((trans) => trans.tipo === 'PROVEEDOR');
-  const proveedorImp = visitantes.filter((trans) => trans.tipo === 'PROVEEDOR (IMPORTACIONES/NACIONALES)');
+  const proveedorImp = visitantes.filter((trans) => trans.tipo === 'PROVEEDOR (IMPORTACIONES/NACIONALES)', 'CANDIDATO (ENTREVISTA)', 'PROVEEDOR DULCES');
   const clienteRecoge = transportistas.filter((trans) => trans.tipo === 'CLIENTE RECOGE');
 
   const datosFiltradosVisitantes = filtro === 'visitantes' || filtro === 'todos' ? visitantes : [];
@@ -2997,6 +2997,102 @@ function Visitantes() {
     }
   };
 
+  // const handleGenerateImage = async () => {
+  //   const idVisit = selectedVisita.id_visit;
+  //   const id_catv = selectedVisita.id_catv;
+  //   const estado = "A";
+  //   if (!selectedVisita) {
+  //     console.error("selectedVisita no está definida");
+  //     return;
+  //   }
+  //   const nombre =
+  //     selectedVisita.tipo === "PROVEEDOR (IMPORTACIONES/NACIONALES)"
+  //       ? selectedVisita.nombre_com_acomp || "PROVEEDOR"
+  //       : selectedVisita.nombre_completo;
+
+  //   const empresa =
+  //     selectedVisita.id_catv === 2 || selectedVisita.id_catv === 4 || selectedVisita.id_catv === 13
+  //       ? "NO APLICA"
+  //       : selectedVisita.id_catv === 1
+  //       ? "COLABORADOR SANTUL"
+  //       : selectedVisita.id_catv === 7 || selectedVisita.id_catv === 11
+  //       ? selectedVisita.paqueteria
+  //       : selectedVisita.empresa;
+
+  //   const vehiculo =
+  //     selectedVisita.tipo === "PROVEEDOR (IMPORTACIONES/NACIONALES)"
+  //       ? selectedVisita.contenedor || "N/A"
+  //       : selectedVisita.placa === "" || selectedVisita.placa === null
+  //       ? "N/A"
+  //       : selectedVisita.placa;
+
+  //   const fechaVisita = formatDateToYMD(selectedVisita.reg_entrada);
+  //   const horaVisita = selectedVisita.hora_entrada;
+  //   const areaAcceso = selectedVisita.area;
+
+  //   const acompanantes = selectedVisita.nombre_acomp
+  //     ? selectedVisita.nombre_acomp.split(",").map((a) => a.trim()) // Suponiendo que vienen en un string separados por comas
+  //     : [];
+
+  //   const printContent = `
+  //     VISITA SANTUL - ${selectedVisita.clave_visit}
+  //     NOMBRE: ${nombre}
+  //     EMPRESA: ${empresa}
+  //     TIPO DE VISITA: ${selectedVisita.tipo}
+  //     AREA DE ACCESO: ${selectedVisita.area}
+  //   `;
+  //   const visitanteQRContent = `
+  //     NOMBRE: ${nombre}\n
+  //     EMPRESA: ${empresa}\n
+  //     PLACA O CONTENEDOR: ${vehiculo}\n
+  //     DÍA DE VISITA: ${fechaVisita}\n
+  //     HORA VISITA: ${horaVisita || '-'}\n
+  //     AREA DE ACCESO: ${areaAcceso}\n
+  //   `;
+
+  //   try {
+  //     console.log("Generando QR del visitante principal...");
+  //     const qrVisitante = await generateQRCode(visitanteQRContent);
+
+  //     // const qrAcompanantes = await Promise.all(
+  //     //   acompanantes.map(async (acompanante) => {
+  //     //     const qrContent = `
+  //     //       NOMBRE ACOMPAÑANTE: ${acompanante}\n
+  //     //       EMPRESA: ${empresa}\n
+  //     //       PLACA O CONTENEDOR: ${vehiculo}\n
+  //     //       DÍA DE VISITA: ${fechaVisita}\n
+  //     //       HORA VISITA: ${horaVisita || '-'}\n
+  //     //       AREA DE ACCESO: ${areaAcceso}\n
+  //     //     `;
+  //     //     return generateQRCode(qrContent);
+  //     //   })
+  //     // );
+  //     // const contentAcompanantes = await Promise.all(
+  //     //   acompanantes.map(async (acompanante) => {
+  //     //     const qrContent = `
+  //     //       VISITA SANTUL - ${selectedVisita.clave_visit}
+  //     //       NOM. ACOMPAÑANTE: ${acompanante}
+  //     //       EMPRESA: ${empresa}
+  //     //       TIPO DE VISITA: ${selectedVisita.tipo}
+  //     //       AREA DE ACCESO: ${areaAcceso}
+  //     //     `;
+  //     //     return generateQRCode(qrContent);
+  //     //   })
+  //     // );
+
+  //     // console.log("Conectando e imprimiendo...");
+  //     // await connectAndPrint(printContent, visitanteQRContent, qrAcompanantes, contentAcompanantes);
+
+  //     console.log("Impresión completada, actualizando datos...");
+  //     await darAcceso(idVisit, estado, id_catv);
+
+  //     console.log("Proceso completado.");
+  //   } catch (error) {
+  //     console.error("Error durante el proceso:", error);
+  //     setErrorMessageImp(error.message || "Ocurrió un error");
+  //   }
+  // };
+
   const handleGenerateImage = async () => {
     const idVisit = selectedVisita.id_visit;
     const id_catv = selectedVisita.id_catv;
@@ -3016,7 +3112,7 @@ function Visitantes() {
         : selectedVisita.id_catv === 1
         ? "COLABORADOR SANTUL"
         : selectedVisita.id_catv === 7 || selectedVisita.id_catv === 11
-        ? selectedVisita.paqueteria
+        ? selectedVisita.empresa
         : selectedVisita.empresa;
 
     const vehiculo =
@@ -3051,42 +3147,61 @@ function Visitantes() {
     `;
 
     try {
+      
       console.log("Generando QR del visitante principal...");
       const qrVisitante = await generateQRCode(visitanteQRContent);
 
-      // const qrAcompanantes = await Promise.all(
-      //   acompanantes.map(async (acompanante) => {
-      //     const qrContent = `
-      //       NOMBRE ACOMPAÑANTE: ${acompanante}\n
-      //       EMPRESA: ${empresa}\n
-      //       PLACA O CONTENEDOR: ${vehiculo}\n
-      //       DÍA DE VISITA: ${fechaVisita}\n
-      //       HORA VISITA: ${horaVisita || '-'}\n
-      //       AREA DE ACCESO: ${areaAcceso}\n
-      //     `;
-      //     return generateQRCode(qrContent);
-      //   })
-      // );
-      // const contentAcompanantes = await Promise.all(
-      //   acompanantes.map(async (acompanante) => {
-      //     const qrContent = `
-      //       VISITA SANTUL - ${selectedVisita.clave_visit}
-      //       NOM. ACOMPAÑANTE: ${acompanante}
-      //       EMPRESA: ${empresa}
-      //       TIPO DE VISITA: ${selectedVisita.tipo}
-      //       AREA DE ACCESO: ${areaAcceso}
-      //     `;
-      //     return generateQRCode(qrContent);
-      //   })
-      // );
+      const qrAcompanantes = await Promise.all(
+        acompanantes.map(async (acompanante) => {
+          const qrContent = `
+            NOMBRE ACOMPAÑANTE: ${acompanante}\n
+            EMPRESA: ${empresa}\n
+            PLACA O CONTENEDOR: ${vehiculo}\n
+            DÍA DE VISITA: ${fechaVisita}\n
+            HORA VISITA: ${horaVisita || '-'}\n
+            AREA DE ACCESO: ${areaAcceso}\n
+          `;
+          return generateQRCode(qrContent);
+        })
+      );
+      const contentAcompanantes = await Promise.all(
+        acompanantes.map(async (acompanante) => {
+          const qrContent = `
+            VISITA SANTUL - ${selectedVisita.clave_visit}
+            NOM. ACOMPAÑANTE: ${acompanante}
+            EMPRESA: ${empresa}
+            TIPO DE VISITA: ${selectedVisita.tipo}
+            AREA DE ACCESO: ${areaAcceso}
+          `;
+          return generateQRCode(qrContent);
+        })
+      );
 
-      // console.log("Conectando e imprimiendo...");
-      // await connectAndPrint(printContent, visitanteQRContent, qrAcompanantes, contentAcompanantes);
+      console.log("Conectando e imprimiendo...");
+      await connectAndPrint(printContent, visitanteQRContent, qrAcompanantes, contentAcompanantes);
 
       console.log("Impresión completada, actualizando datos...");
       await darAcceso(idVisit, estado, id_catv);
 
       console.log("Proceso completado.");
+      Swal.fire({
+        title: "Pase autorizado",
+        text: 'Se genero la etiqueta exitosamente.',
+        icon: "success",
+        // confirmButtonText: "Cerrar",
+        // confirmButtonColor: "#6dba27",
+       
+        didOpen: () => {
+          const swalContainer = document.querySelector('.swal2-container');
+          if (swalContainer) {
+            swalContainer.style.zIndex = '9999';
+          }
+        },
+        showConfirmButton: false,
+        timer: 2000
+      }).then(() => {
+        window.location.reload();
+      })
     } catch (error) {
       console.error("Error durante el proceso:", error);
       setErrorMessageImp(error.message || "Ocurrió un error");
@@ -3095,10 +3210,22 @@ function Visitantes() {
 
   const connectAndPrint = async (printContent, qrVisitante, qrAcompanantes, contentAcompanantes) => {
     try {
+      Swal.fire({
+        title: 'Espere...',
+        text: 'Estamos generando el pase de acceso.',
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+          const swalContainer = document.querySelector('.swal2-container');
+          if (swalContainer) {
+            swalContainer.style.zIndex = '9999';
+          }
+        }
+      });
       console.log("Solicitando dispositivo...");
 
       const device = await navigator.bluetooth.requestDevice({
-        filters: [{ name: "NLS-PP310-6654" }],
+        filters: [{ name: "NLS-PP310-EA91" }],
         optionalServices: ["49535343-fe7d-4ae5-8fa9-9fafd205e455"],
       });
 
@@ -3124,7 +3251,6 @@ function Visitantes() {
       qrAcompanantes.forEach((qr, index) => {
         commands = commands
           .initialize()
-          .newline()
           .align("center")
           .newline()
           .text("VISITA SANTUL")
@@ -3132,6 +3258,7 @@ function Visitantes() {
           .text(contentAcompanantes)
           .newline()
           .qrcode(qr, { size: 5 })
+          .newline()
           .newline()
           .newline();
       });
@@ -3147,6 +3274,19 @@ function Visitantes() {
       console.log("Impresión enviada correctamente.");
     } catch (error) {
       console.error("Error al imprimir:", error);
+      Swal.fire({
+        title: 'Opps...',
+        text: 'No se pudo generar la etiqueta.',
+        icon: "error",
+        confirmButtonText: "Cerrar",
+        confirmButtonColor: "#dd6b55",
+        didOpen: () => {
+          const swalContainer = document.querySelector('.swal2-container');
+          if (swalContainer) {
+            swalContainer.style.zIndex = '9999';
+          }
+        }
+      });
       throw error;
     }
   };
@@ -3154,125 +3294,6 @@ function Visitantes() {
   const generateQRCode = (content) => {
     return content; // Solo para prueba, aquí deberías generar el QR real
   };
-
-
-  // const handleGenerateImage = async () => {
-  //   const idVisit = selectedVisita.id_visit;
-  //   const estado = "A";
-
-  //   if (!selectedVisita) {
-  //     console.error("selectedVisita no está definida");
-  //     return;
-  //   }
-  
-  //   const nombre =
-  //     selectedVisita.tipo === "PROVEEDOR (IMPORTACIONES/NACIONALES)"
-  //       ? selectedVisita.nombre_com_acomp || 'PROVEEDOR'
-  //       : selectedVisita.nombre_completo;
-
-  //   const empresa =
-  //     selectedVisita.id_catv === 2 || selectedVisita.id_catv === 4 || selectedVisita.id_catv === 13
-  //       ? "NO APLICA"
-  //       : selectedVisita.id_catv === 1
-  //       ? "COLABORADOR SANTUL"
-  //       : selectedVisita.id_catv === 7 || selectedVisita.id_catv === 11
-  //       ? selectedVisita.paqueteria
-  //       : selectedVisita.empresa;
-
-  //   const vehiculo =
-  //     selectedVisita.tipo === "PROVEEDOR (IMPORTACIONES/NACIONALES)"
-  //       ? selectedVisita.contenedor || "N/A"
-  //       : selectedVisita.placa === "" || selectedVisita.placa === null
-  //       ? "N/A"
-  //       : selectedVisita.placa;
-
-  //   const printContent = `
-  //     VISITA SANTUL - ${selectedVisita.clave_visit}
-  //     NOMBRE: ${nombre}
-  //     EMPRESA: ${empresa}
-  //     TIPO DE VISITA: ${selectedVisita.tipo}
-  //     AREA DE ACCESO: ${selectedVisita.area}
-  //   `;
-
-  //   const printContentQR = `
-  //     NOMBRE: ${nombre}\n
-  //     EMPRESA: ${empresa}\n
-  //     PLACA O CONTENEDOR: ${vehiculo}\n
-  //     DÍA DE VISITA: ${formatDateToYMD(selectedVisita.reg_entrada)}\n
-  //     HORA VISITA: ${selectedVisita.hora_entrada}\n
-  //     ACOMPAÑANTE(S): ${selectedVisita.nombre_acomp}\n
-  //     AREA DE ACCESO: ${selectedVisita.area}\n
-  //   `;
-
-  //   try {
-  //     console.log("Generando QR...");
-  //     const qrCodeDataUrl = await generateQRCode(printContentQR);
-
-  //     console.log("Conectando e imprimiendo...");
-  //     await connectAndPrint(printContent, qrCodeDataUrl);
-
-  //     console.log("Impresión completada, actualizando datos...");
-  //     await darAcceso(idVisit, estado);
-
-  //     console.log("Proceso completado.");
-  //   } catch (error) {
-  //     console.error("Error durante el proceso:", error);
-  //     setErrorMessageImp(error.message || "Ocurrió un error");
-  //   }
-  // };
-
-  // const connectAndPrint = async (printContent, printContentQR) => {
-  //   try {
-  //     console.log("Solicitando dispositivo...");
-
-  //     // Filtrar dispositivos por nombre que contenga "Impresora"
-  //     const device = await navigator.bluetooth.requestDevice({
-  //       filters: [{ name: "NLS-PP310-EA20" }], // Cambia "Impresora" por el prefijo de tu dispositivo
-  //       optionalServices: ["49535343-fe7d-4ae5-8fa9-9fafd205e455"],
-  //     });
-
-  //     console.log("Dispositivo encontrado:", device);
-
-  //     const server = await device.gatt.connect();
-  //     console.log("Conectado al servidor GATT.");
-
-  //     const service = await server.getPrimaryService("49535343-fe7d-4ae5-8fa9-9fafd205e455");
-  //     console.log("Servicio obtenido:", service);
-
-  //     const characteristic = await service.getCharacteristic("49535343-8841-43f4-a8d4-ecbe34729bb3");
-  //     console.log("Característica obtenida:", characteristic);
-
-  //     const encoder = new EscPosEncoder();
-  //     const commands = encoder
-  //       .initialize()
-  //       .align("center")
-  //       .newline()
-  //       .text(printContent)
-  //       .newline()
-  //       .newline()
-  //       .qrcode(printContentQR, { size: 5 })
-  //       .newline()
-  //       .newline()
-  //       .cut()
-  //       .encode();
-
-  //     const chunkSize = 512;
-  //     for (let i = 0; i < commands.length; i += chunkSize) {
-  //       const chunk = commands.slice(i, i + chunkSize);
-  //       await characteristic.writeValue(new Uint8Array(chunk));
-  //     }
-
-  //     console.log("Impresión enviada correctamente.");
-  //   } catch (error) {
-  //     console.error("Error al imprimir:", error);
-  //     throw error; // Propaga el error para manejarlo en `handleGenerateImage`
-  //   }
-  // };
-
-  // const generateQRCode = (content) => {
-  //   return content;
-  // };
-
 
   const darSalida = async () => {
     try {
@@ -6099,7 +6120,7 @@ function Visitantes() {
                   </TableRow> 
                 </TableHead>
                 <TableBody>
-                  {datosFiltradosVisitantes.filter((row) => row.id_catv === 12 || ( row.est === 'A')).map((row, index) => {
+                  {datosFiltradosVisitantes.filter((row) => row.id_catv === 12 || row.id_catv === 2 || row.id_catv === 3 || row.id_catv === 14 || ( row.est === 'A')).map((row, index) => {
                     const tiempoTranscurrido = calcularTiempo(row.entrada_h);
                     const excedeTiempo = tiempoTranscurrido.includes('hr') && parseInt(tiempoTranscurrido.split('hr')[0]) >= 1;
 

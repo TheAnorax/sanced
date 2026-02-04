@@ -101,7 +101,7 @@ const getPlacedOrders = async (req, res) => {
       });
     }
 
-    // ✅ Formatear fechas
+    //  Formatear fechas
     const formattedRows = rows.map((row) => ({
       ...row,
       arribo: row.arribo
@@ -173,7 +173,7 @@ const getSaleArrive = async (req, res) => {
 const getSalesByStatus = async (req, res) => {
   try {
     const { fecha_inicio, NoCorto } = req.query;
-    const fechaDesde = fecha_inicio || "2025-06-01";
+    const fechaDesde = fecha_inicio || "2026-01-01";
 
     let codigoPedFilter = "";
     const params = [fechaDesde];
@@ -281,7 +281,7 @@ const getFactura = async (req, res) => {
       });
     }
 
-    // ✅ Función para formatear fecha como dd-mm-yyyy
+    //  Función para formatear fecha como dd-mm-yyyy
     const clean = (v) =>
       typeof v === "string" ? v.replace(/\s+/g, " ").trim() : v;
     const formatearFecha = (fecha) => {
@@ -292,7 +292,7 @@ const getFactura = async (req, res) => {
       return `${dia}-${mes}-${anio}`;
     };
 
-    // ✅ Limpiar dirección y formatear fecha
+    //  Limpiar dirección y formatear fecha
     const datos = rows.map((row) => ({
       clave_dir: row.clave_dir,
       nombre: row.nombre,orden: row.orden,

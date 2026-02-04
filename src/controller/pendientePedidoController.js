@@ -13,7 +13,7 @@ const getPedidos = async (req, res) => {
     );
 
     const groupedPedidos = rows.reduce((acc, pedido) => {
-      const key = `${pedido.pedido}-${pedido.tipo}`; // ✅ clave compuesta
+      const key = `${pedido.pedido}-${pedido.tipo}`; // clave compuesta
 
       if (!acc[key]) {
         acc[key] = {
@@ -363,7 +363,7 @@ const savePedidoSurtido = async (req, res) => {
             inicio_surtido = now;
             fin_surtido = now;
           
-            // ✅ Si la cantidad es menor que el mínimo vendible, no se puede surtir nada
+            //  Si la cantidad es menor que el mínimo vendible, no se puede surtir nada
             if (item.cantidad < item.pz_) {
               item_estado = 'B'; // no se envía nada
             } else {
@@ -523,7 +523,7 @@ const mergePedidos = async (req, res) => {
             inicio_surtido = now;
             fin_surtido = now;
             
-            // ✅ Si la cantidad es menor que el mínimo vendible, no se puede surtir nada
+            //  Si la cantidad es menor que el mínimo vendible, no se puede surtir nada
             if (item.cantidad < item.pz_) {
               item_estado = 'B'; // no se envía nada
             } else {

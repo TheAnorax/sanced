@@ -68,13 +68,13 @@ const corsOptions = {
     'http://localhost:9102', 
     'http://localhost:3000',
     'http://66.232.105.87:3000',
-    'http://sanced.santulconnect.com',
-    'https://sanced.santulconnect.com'
+    'http://sanced.santulconnect.com:3000',
+    'https://sanced.santulconnect.com:3000'
   ],
   credentials: true
 };
 
-app.use(cors(corsOptions)); // ✅ se aplica correctamente aquí
+app.use(cors(corsOptions)); //  se aplica correctamente aquí
 app.use(express.json());
 app.use('/api', authRoutes);
 app.use('/api/productos', productoRoutes); // Usar las rutas de productos
@@ -114,7 +114,7 @@ app.use('/api/repo_prob', repo_prob)
 app.use('/api/departamental', Departamental)
 app.use('/api/mercado-libre', Mercado)
 app.use('/api/Check-List',Check)
-
+ 
 
 inicializarAlertas(io);
 

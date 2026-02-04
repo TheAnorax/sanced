@@ -9,7 +9,7 @@ SELECT
   p.pedido,
   p.tipo,
   pq.routeName,
-  pq.\`NOMBRE DEL CLIENTE\` AS nombre_cliente,  -- ✅ Corregido
+  pq.\`NOMBRE DEL CLIENTE\` AS nombre_cliente,  --  Corregido
   p.codigo_ped,
   prod.des,
   prod._pz AS pieza,
@@ -119,7 +119,7 @@ const updatePedido = async (req, res) => {
  
       query += ' WHERE id_pedi = ?';
 
-      console.log('🔄 Ejecutando:', query, params); // Para depuración
+    // console.log('🔄 Ejecutando:', query, params); // Para depuración
 
       return pool.query(query, params);
     }); 
@@ -763,7 +763,7 @@ const updateUMLogic = async () => {
     }
 
     await connection.commit();
-    console.log("✅ Unidades actualizadas correctamente.");
+    console.log(" Unidades actualizadas correctamente.");
   } catch (error) {
     await connection.rollback();
     console.error("❌ Error durante la actualización de unidades:", error.message);

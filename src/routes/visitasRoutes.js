@@ -9,6 +9,7 @@ const { createVisita, darAccesoVisitante, getVisitas, getVisitasAct, getVisitant
     createVisitaOper,
     darSalidaOper,
     sendEmailEviden,
+    createVisitaManiobra,
 } = require('../controller/visitasController');
 const { obtenerHorarios } = require('../controller/alertasController');
 
@@ -76,6 +77,7 @@ router.post('/import/empleados', createEmpleadoExcel);
 router.get('/paqueterias', getPaqueterias);
 router.post('/create/visita/pq', createVisitaPaqueteria);
 router.post('/create/visita/et', createVisitaEntrevista);
+router.post('/create/visita/man', createVisitaManiobra);
 router.post('/send/visita/et', sendVisitEmail);
 router.put('/update/visita/pq/:clave_visit', updatePaqueteria);
 router.post('/create/visita/oper',upload.single('foto'), createVisitaOper);

@@ -141,6 +141,7 @@ function Visitantes() {
   const [errorSaveVeh, setErrorSaveVeh] = useState([]);
   const [errorVisita, setErrorVisita] = useState('');
   const [errorVisitaPaqueteria, setErrorVisitaPaqueteria] = useState('');
+  const [errorVisitaManiobra, setErrorVisitaManiobra] = useState('');
   const [errorVisitaOper, setErrorVisitaOper] = useState('');
   const [errorVisitaAcomp, setErrorVisitaAcomp] = useState('');
   const [errorVisitaAuto, setErrorVisitaAuto] = useState('');
@@ -166,6 +167,7 @@ function Visitantes() {
   const [openCreateTransp, setOpenCreateTransp] = useState(false);
   const [openCreateVisita, setOpenCreateVisita] = useState(false);
   const [openCreatePaqueteria, setOpenCreatePaqueteria] = useState(false);
+  const [openCreateManiobra, setOpenCreateManiobra] = useState(false);
   const [openCreateEntrevista, setOpenCreateEntrevista] = useState(false);
   const [openValidarVehiculo, setOpenValidarVehiculo] = useState(false);
   const [openGenerarAcceso, setOpenGenerarAcceso] = useState(false);
@@ -1505,6 +1507,10 @@ function Visitantes() {
     setOpenCreatePaqueteria(true);
   };
 
+  const handleClickOpenManiobra = () => {
+    setOpenCreateManiobra(true);
+  };
+
   const handleClickOpenEntrevista = () => {
     setOpenCreateEntrevista(true);
   };
@@ -1527,6 +1533,20 @@ function Visitantes() {
       marca:'',
       placa:'',
       acompanantesPaq:[]
+    })
+  };
+
+  const handleClickCloseManiobra = () => {
+    setOpenCreateManiobra(false);
+    setMan({
+      id_catv: '',
+      nombre: '',
+      apellidos: '',
+      empresaFin:'',
+      reg_entrada: '',
+      no_ine: '',
+      acompanantesPaq:[]
+  
     })
   };
 
@@ -2012,6 +2032,19 @@ function Visitantes() {
     formData.append('id_visit', selectedVisita.id_visit);
     formData.append('clave_visit', selectedVisita.clave_visit);
   
+    Swal.fire({
+      title: 'Espere...',
+      html: `Estamos actualizando la información.<p/>`,
+      allowOutsideClick: false,
+      didOpen: () => {
+        Swal.showLoading();
+        const swalContainer = document.querySelector('.swal2-container');
+        if (swalContainer) {
+          swalContainer.style.zIndex = '9999';
+        }
+      }
+    });
+
     try {
       const response = await axios.post(`${api}/create/acomp`, formData,  {
         headers: { 'Content-Type': 'application/json'},
@@ -2122,8 +2155,95 @@ function Visitantes() {
 
     const invitMayusculas = convertirATextoMayusculas(data);
     
+    Swal.fire({
+      title: 'Espere...',
+      html: `Estamos generando la visita.<p/>`,
+      allowOutsideClick: false,
+      didOpen: () => {
+        Swal.showLoading();
+        const swalContainer = document.querySelector('.swal2-container');
+        if (swalContainer) {
+          swalContainer.style.zIndex = '9999';
+        }
+      }
+    });
+
     try {
       const response = await axios.post(`${api}/create/visita/pq`, invitMayusculas);
+      let error = response.data.success;
+      if(error === true) {
+        setOpenCreatePaqueteria(false);
+        Swal.fire({
+          title:'Registro exitoso.',
+          icon: "success",
+          confirmButtonText: "CERRAR",
+          confirmButtonColor: "#6dba27",
+          didOpen: () => {
+            const swalContainer = document.querySelector('.swal2-container');
+            if (swalContainer) {
+              swalContainer.style.zIndex = '9999'; // Asegúrate que sea mayor al Dialog
+            }
+          }
+        }).then(() => {
+          window.location.reload();
+        })
+      } else {
+        Swal.fire({
+          title: "Error al guardar información",
+          icon: "error",
+          confirmButtonText: "CERRAR",
+          confirmButtonColor: "#FFA500",
+          didOpen: () => {
+            const swalContainer = document.querySelector('.swal2-container');
+            if (swalContainer) {
+              swalContainer.style.zIndex = '9999'; // Asegúrate que sea mayor al Dialog
+            }
+          }
+        }).then(() => {
+          //getLista()
+          //window.location.reload();
+        })
+      }   
+    } catch (error) {
+      console.error('Error al registrar visita:', error.response?.data || error.message);
+    }
+  };
+
+  const createVisitaManiobra = async () => {
+    let acompanantesManData = [];
+    let id_catv = man.id_catv;
+    let empresa = man.empresaFin;
+
+    if (checkedPaq) {
+      acompanantesManData = acompanantesPaq.map((acomp) => ({
+        nombre_acomp: acomp.nombre_acomp,
+        apellidos_acomp: acomp.apellidos_acomp,
+        no_ine_acomp: acomp.no_ine_acomp,
+      }));
+    }
+
+    const data = {
+      ...man,
+      empresa,
+      id_catv, 
+      acompanantesMan: acompanantesManData,
+    };
+
+    const invitMayusculas = convertirATextoMayusculas(data);
+    Swal.fire({
+      title: 'Espere...',
+      html: `Estamos generando la visita.<p/>`,
+      allowOutsideClick: false,
+      didOpen: () => {
+        Swal.showLoading();
+        const swalContainer = document.querySelector('.swal2-container');
+        if (swalContainer) {
+          swalContainer.style.zIndex = '9999';
+        }
+      }
+    });
+    try {
+      const response = await axios.post(`${api}/create/visita/man`, invitMayusculas);
       let error = response.data.success;
       if(error === true) {
         setOpenCreatePaqueteria(false);
@@ -2178,6 +2298,18 @@ function Visitantes() {
       acompanantesEnt: acompanantesEntData,
     };
     const invitMayusculas = convertirATextoMayusculas(data);
+    Swal.fire({
+      title: 'Espere...',
+      html: `Estamos generando la visita.<p/>`,
+      allowOutsideClick: false,
+      didOpen: () => {
+        Swal.showLoading();
+        const swalContainer = document.querySelector('.swal2-container');
+        if (swalContainer) {
+          swalContainer.style.zIndex = '9999';
+        }
+      }
+    });
     try {
       Swal.fire({
         title: 'Espere...',
@@ -2319,6 +2451,17 @@ function Visitantes() {
     no_ide:'',
   });
 
+  const [man, setMan] = useState({
+    id_catv: 6, 
+    nombre: '',
+    apellidos: '',
+    empresaFin:'',
+    no_ine: '',
+    no_licencia: '',
+    acompanantesPaq:[],
+    no_ide:'',
+  });
+
   const [upPaq, setUpPaq] = useState({
     clave_visit: '',
     area_per: 0,
@@ -2417,7 +2560,62 @@ function Visitantes() {
 
     setErrorVisitaPaqueteria(validationErrors);
     return isValid;
-  }
+  };
+
+  const validateVisitanteManiobra = () => { 
+    let validationErrors = {};
+    let isValid = true;
+
+    if(!man.empresaFin){
+      validationErrors.empresaFin = "Este campo es obligatorio.";
+      isValid = false;
+    }
+    if(!(man.nombre || '').trim()) {
+      validationErrors.nombre = "Este dato es obligatorio.";
+      isValid = false;
+    }
+    if (!(man.apellidos || '').trim()) {
+      validationErrors.apellidos = "Este dato es obligatorio.";
+      isValid = false;
+    } else if (
+      !/^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+(?:\s+[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+)+$/.test(man.apellidos.trim())
+    ) {
+      validationErrors.apellidos = "Debes ingresar los dos apellidos.";
+      isValid = false;
+    }
+    if(!(man.no_ide || '').trim()){
+      validationErrors.no_ide = "Este dato es obligatorio.";
+      isValid = false;
+    } else if(!/\d{6,}/.test(man.no_ide)){
+      validationErrors.no_ide = "Se requieren al menos 6 números.";
+      isValid = false;
+    }
+
+    if (checkedPaq) {
+      acompanantesPaq.forEach((acompanante, index) => {
+        if (!acompanante.nombre_acomp || !acompanante.nombre_acomp.trim()) {
+          validationErrors[`nombre_${index}`] = `El nombre del acompañante ${index + 1} es obligatorio.`;
+          isValid = false;
+        }
+        if (!acompanante.apellidos_acomp || !acompanante.apellidos_acomp.trim()) {
+          validationErrors[`apellidos_${index}`] = `Los apellidos del acompañante ${index + 1} son obligatorios.`;
+          isValid = false;
+        }
+        if (!acompanante.no_ine_acomp || !acompanante.no_ine_acomp.trim()) {
+          validationErrors[`no_ine_${index}`] = `El número de identidifación del acompañante ${index + 1} es obligatorio.`;
+          isValid = false;
+        }
+      });
+    }
+
+    if (!checkedIne && !checkedLic) {
+      validationErrors.checks = "Debes seleccionar al menos una opción (No. INE o No. Licencia).";
+      isValid = false;
+    }
+
+    setErrorVisitaManiobra(validationErrors);
+    return isValid;
+  };
 
   const createIngresaOper = async () => {
     if (!validateVisitanteOper() || !image) {
@@ -2591,6 +2789,14 @@ function Visitantes() {
     }
   };
 
+  const SaveVisitanteManiobra = () => {
+    if(validateVisitanteManiobra() ){
+      createVisitaManiobra();
+    }else{
+      console.log('error en la validacion')
+    }
+  };
+
   const handleDropdownChangePP = (value) => {
     console.log('value', value)
     setSelectedPaqueteria(value);
@@ -2609,8 +2815,33 @@ function Visitantes() {
     }));
   };
 
+  const inputChangeMan = (event) => {
+    const { name, value } = event.target;
+    
+    setMan((prevState) => ({
+      ...prevState,
+      [name]: value,
+    }));
+  };
+
   const handleCheckboxChangeIne = (type) => {
     setPaq((prevState) => ({
+      ...prevState,
+      no_ine: type === "ine" ? prevState.no_ide : "",
+      no_licencia: type === "lic" ? prevState.no_ide : "",
+    }));
+
+    if (type === "ine") {
+      setCheckedIne(true);
+      setCheckedLic(false);
+    } else {
+      setCheckedIne(false);
+      setCheckedLic(true);
+    }
+  };
+
+  const handleCheckboxChangeIneMan = (type) => {
+    setMan((prevState) => ({
       ...prevState,
       no_ine: type === "ine" ? prevState.no_ide : "",
       no_licencia: type === "lic" ? prevState.no_ide : "",
@@ -2658,6 +2889,18 @@ function Visitantes() {
     };
     const dataMayusculas = transformarAMayusculas(data);
 
+    Swal.fire({
+      title: 'Espere...',
+      html: `Estamos generando la visita.<p/>`,
+      allowOutsideClick: false,
+      didOpen: () => {
+        Swal.showLoading();
+        const swalContainer = document.querySelector('.swal2-container');
+        if (swalContainer) {
+          swalContainer.style.zIndex = '9999';
+        }
+      }
+    });
     try {
       const response = await axios.post(`${api}/create/visita`, dataMayusculas);
       let msg = response.data.error;
@@ -3094,8 +3337,21 @@ function Visitantes() {
   // };
 
   const handleGenerateImage = async () => {
+    console.log('visita', selectedVisita);
     const idVisit = selectedVisita.id_visit;
     const id_catv = selectedVisita.id_catv;
+
+    const fecha = new Date(selectedVisita.hora_llegada);
+
+    const formateada = fecha.toLocaleString("es-MX", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit"
+    });
+
     const estado = "A";
     if (!selectedVisita) {
       console.error("selectedVisita no está definida");
@@ -3130,12 +3386,14 @@ function Visitantes() {
       ? selectedVisita.nombre_acomp.split(",").map((a) => a.trim()) // Suponiendo que vienen en un string separados por comas
       : [];
 
+    const clave_vit = `${selectedVisita.clave_visit}`
+
     const printContent = `
-      VISITA SANTUL - ${selectedVisita.clave_visit}
-      NOMBRE: ${nombre}
-      EMPRESA: ${empresa}
-      TIPO DE VISITA: ${selectedVisita.tipo}
-      AREA DE ACCESO: ${selectedVisita.area}
+      NOMBRE:          ${nombre}
+      EMPRESA:         ${empresa}
+      TIPO DE VISITA:  ${selectedVisita.tipo}
+      AREA DE ACCESO:  ${selectedVisita.area}
+      ENTRADA:         ${formateada}
     `;
     const visitanteQRContent = `
       NOMBRE: ${nombre}\n
@@ -3164,21 +3422,22 @@ function Visitantes() {
           return generateQRCode(qrContent);
         })
       );
+
       const contentAcompanantes = await Promise.all(
         acompanantes.map(async (acompanante) => {
           const qrContent = `
-            VISITA SANTUL - ${selectedVisita.clave_visit}
-            NOM. ACOMPAÑANTE: ${acompanante}
-            EMPRESA: ${empresa}
-            TIPO DE VISITA: ${selectedVisita.tipo}
-            AREA DE ACCESO: ${areaAcceso}
+            NOMBRE:          ${acompanante}
+            EMPRESA:         ${empresa}
+            TIPO DE VISITA:  ${selectedVisita.tipo}
+            AREA DE ACCESO:  ${areaAcceso}
+            ENTRADA:         ${formateada}
           `;
           return generateQRCode(qrContent);
         })
       );
 
       console.log("Conectando e imprimiendo...");
-      await connectAndPrint(printContent, visitanteQRContent, qrAcompanantes, contentAcompanantes);
+      await connectAndPrint(printContent, clave_vit, visitanteQRContent, qrAcompanantes, contentAcompanantes); // conectar e imprimir etiqueta
 
       console.log("Impresión completada, actualizando datos...");
       await darAcceso(idVisit, estado, id_catv);
@@ -3208,7 +3467,8 @@ function Visitantes() {
     }
   };
 
-  const connectAndPrint = async (printContent, qrVisitante, qrAcompanantes, contentAcompanantes) => {
+
+  const connectAndPrint = async (printContent, clave_vit, qrVisitante, qrAcompanantes, contentAcompanantes) => {
     try {
       Swal.fire({
         title: 'Espere...',
@@ -3234,30 +3494,93 @@ function Visitantes() {
       const service = await server.getPrimaryService("49535343-fe7d-4ae5-8fa9-9fafd205e455");
       const characteristic = await service.getCharacteristic("49535343-8841-43f4-a8d4-ecbe34729bb3");
 
-      const encoder = new EscPosEncoder();
+       const encoder = new EscPosEncoder();
+      const line = "*".repeat(21);
+      const line2 = "-".repeat(42);
+      const nota = 'NOTA: ESTA ETIQUETA DEBE PERMANECER PEGADA DEL LADO DERECHO DEL PECHO DURANTE SU ESTANCIA EN LAS INSTALACIONES DE SANTUL HERRAMIENTAS.';
+
+      const margen = '  '; // 4 espacios (ideal para 70mm)
+
+      const contenidoConMargen = printContent
+        .split('\n')
+        .map(l => margen + l)
+        .join('\n');
+
+      // const contenidoConMargen2 = contentAcompanantes
+      //   .split('\n')
+      //   .map(l => margen + l)
+      //   .join('\n');
+
       let commands = encoder
         .initialize()
+        .newline()
         .align("center")
+        .size(2,2)
+        .bold(true)
+        .text("SANTUL   HERRAMIENTAS")
+        .bold(false)
+        .size(2,1)
         .newline()
-        .text("VISITA SANTUL")
+        .text(  line) 
         .newline()
-        .text(printContent)
+        .align("center")
+        .size(1,1)
         .newline()
-        .qrcode(qrVisitante, { size: 5 })
+        .bold(true)
+        .text(`VISITA SANTUL - ${clave_vit}`)
+        .bold(false)
+        .align("left")
+        .newline()
+        .newline()
+        .text(contenidoConMargen)
+        .newline()
+        .newline()
+        .text(line2)
+        .newline()
+        .bold(true)
+        .text(nota)
+        .bold(false)
+        .newline()
         .newline()
         .newline()
         .newline();
 
       qrAcompanantes.forEach((qr, index) => {
+        const contenidoConMargen2 = contentAcompanantes[index]
+          .split('\n')
+          .map(l => l.trim() ? margen + l : l)
+          .join('\n');
+
         commands = commands
           .initialize()
+          .newline()
           .align("center")
+          .size(2,2)
+          .bold(true)
+          .text("SANTUL   HERRAMIENTAS")
+          .bold(false)
+          .size(2,1)
           .newline()
-          .text("VISITA SANTUL")
+          .text(  line)
           .newline()
-          .text(contentAcompanantes)
+          .align("center")
+          .size(1,1)
           .newline()
-          .qrcode(qr, { size: 5 })
+          .bold(true)
+          .text(`VISITA SANTUL - ${clave_vit}`)
+          .bold(false)
+          .align("left")
+          .newline()
+          .newline()
+          .text(contenidoConMargen2)
+          .newline()
+          .newline()
+          .text(line2)
+          .newline()
+          .bold(true)
+          .text(nota)
+          .bold(false)
+          .newline()
           .newline()
           .newline()
           .newline();
@@ -3816,7 +4139,7 @@ function Visitantes() {
                 />
               </>
             )}
-            {(user?.role === 'POLIA' || user?.role === 'Admin' || user?.role === 'Master')  && (
+            {/* {(user?.role === 'POLIA' || user?.role === 'Admin' || user?.role === 'Master')  && (
               <TextField
                 label="Buscar placa"
                 value={searchQueryPlaca}
@@ -3842,37 +4165,75 @@ function Visitantes() {
                   ),
                   }}
                 />
-            )}
+            )}  */}
           </Box>
         </>
-        <Box display="flex" gap={isMobile ? 1 : 2} sx={{flexDirection: isMobile ? "column" : "row"}}>
-          {(user?.role === 'RH' || user?.role === 'Admin' || user?.role === 'Master') && ( 
-            <Button variant="contained" color="primary" startIcon={<PersonAddAlt />} onClick={handleClickOpenCreateIn} size={isMobile ? "small" : "medium"} >
-              Nuevo visitante
-            </Button>
-          )}
-          {(user?.role === 'CONTROL' || user?.role === 'Admin' || user?.role === 'Tran' || user?.role === 'Master') && (
-            <Button variant="contained" startIcon={<LocalShipping />} onClick={handleClickOpenCreateTransp} size={isMobile ? "small" : "medium"} > 
-              Nuevo transportista
-            </Button>
-          )}
-          {(user?.role === 'RH' || user?.role === 'Master' || user?.role === 'CONTROL' || user?.role === 'Tran' || user?.role === 'Nac' || user?.role === 'TRAFICO' || user?.role === 'Imp' || user?.role === 'Admin') && (
-            <>
-              <Button variant="contained" startIcon={<Schedule />} onClick={handleClickOpenCreateVisita} size={isMobile ? "small" : "medium"} >
-                Programar visita
+        <Box sx={{ '& button': { m: 1 }, flexDirection: "row" }} display='flex' gap={isMobile ? 1 : 2} mb={2}>
+          <Box sx={{ flexDirection: "row" }} mb={2}>
+            {(user?.role === 'RH' || user?.role === 'Master' || user?.role === 'CONTROL' || user?.role === 'Tran' || user?.role === 'Nac' || user?.role === 'TRAFICO' || user?.role === 'Imp' || user?.role === 'Admin') && (
+              <>
+                <Button variant="contained" 
+                  startIcon={<Schedule />} 
+                  onClick={handleClickOpenCreateVisita} 
+                  size={isMobile ? "small" : "medium"}>
+                  Agendar visita
+                </Button>
+              </>
+            )}
+            {(user?.role === 'RH' || user?.role === 'Admin' || user?.role === 'Master') && (
+              <Button
+                startIcon={<PersonAddAlt />}
+                variant="contained"
+                onClick={handleClickOpenCreateIn}
+                size={isMobile ? "small" : "medium"}
+              >
+                Visitante
               </Button>
-            </>
-          )}
-          {(user?.role === 'POLIB' || user?.role === 'Admin' || user?.role === 'Master') && (
-            <>
-              <Button variant="contained" color="primary" startIcon={<Person />} onClick={handleClickOpenEntrevista} size={isMobile ? "small" : "medium"} >
-                ENTREVISTA DE TRABAJO
-              </Button><p/>
-              <Button variant="contained" color="primary" startIcon={<LocalShipping />} onClick={handleClickOpenPaqueteria} size={isMobile ? "small" : "medium"} >
-                LLEGADA DE PAQUETERIA
+            )}
+            {(user?.role === 'CONTROL' || user?.role === 'Admin' || user?.role === 'Tran' || user?.role === 'Master') && (
+              <Button
+                startIcon={<LocalShipping />}
+                variant="contained"
+                onClick={handleClickOpenCreateTransp}
+                size={isMobile ? "small" : "medium"}
+              >
+                Transportista
               </Button>
-            </>
-          )}
+            )}
+          </Box>
+          <Box>
+            {(user?.role === 'POLIB' || user?.role === 'Admin' || user?.role === 'Master') && (
+              <>
+                {/* <ButtonGroup orientation="vertical" variant="contained" color="primary" style={{width:'60%'}} > */}
+                  <Button
+                    startIcon={<Person />}
+                    variant="contained"
+                    onClick={handleClickOpenEntrevista}
+                    size={isMobile ? "small" : "medium"}
+                  >
+                    ENTREVISTA
+                  </Button>
+                  <Button
+                    startIcon={<LocalShipping />}
+                    variant="contained"
+                    onClick={handleClickOpenPaqueteria}
+                    size={isMobile ? "small" : "medium"}
+                  >
+                    PAQUETERIA
+                  </Button>
+                  <Button
+                    startIcon={<LocalShipping />}
+                    variant="contained"
+                    onClick={handleClickOpenManiobra}
+                    size={isMobile ? "small" : "medium"}
+                  >
+                    MANIOBRISTA
+                  </Button>
+                {/* </ButtonGroup> */}
+              </>
+            )}
+          </Box>
+          
         </Box>
       </Box>
       {/**CARD DE EMPLEADOS */}
@@ -5990,6 +6351,170 @@ function Visitantes() {
             <Button variant="contained" color="error" onClick={SaveVisitantePaqueteria}>FINALIZAR</Button>
           </DialogActions>
       </Dialog>
+      {/**REGISTRAR MANIOBRISTAS */}
+      <Dialog open={openCreateManiobra} onClose={handleClickClosePaqueteria} maxWidth="md" fullWidth >
+        <DialogTitle>ENTRADA DE MANIOBRA</DialogTitle>
+          <DialogContent style={{margin:'5px'}}>
+            <Grid container spacing={2}>
+              <Grid item xs={4} sm={6}  style={{marginTop:'5px'}}>
+                <FormControl fullWidth sx={{ mb: 2 }}>
+                  <TextField
+                    id="empresaFin"
+                    name="empresaFin"
+                    label="Empresa"
+                    value={man.empresaFin}
+                    onChange={inputChangeMan}
+                    inputProps={{ style: { textTransform: 'uppercase' } }}
+                  />
+                  {errorVisitaManiobra.empresaFin && (
+                    <small style={{ color: 'red' }}>
+                      * {errorVisitaManiobra.empresaFin}
+                    </small>
+                  )}
+                </FormControl>
+                <FormControl fullWidth sx={{ mb: 2 }}>
+                  <TextField
+                    id="apellidos"
+                    name="apellidos"
+                    label="Apellidos"
+                    value={man.apellidos}
+                    onChange={inputChangeMan}
+                    inputProps={{ style: { textTransform: 'uppercase' } }}
+                  />
+                  <small>
+                    {errorVisitaManiobra.apellidos && (<span style={{color: 'red'}}>* {errorVisitaManiobra.apellidos}</span>)}
+                  </small>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} sm={6} style={{marginTop:'5px'}}>
+                <FormControl fullWidth sx={{ mb: 2 }}>
+                  <TextField
+                    id="nombre"
+                    name="nombre"
+                    label="Nombre (s)"
+                    value={man.nombre}
+                    onChange={inputChangeMan}
+                    inputProps={{ style: { textTransform: 'uppercase' } }}
+                  />
+                  <small>
+                    {errorVisitaManiobra.nombre && (<span style={{color: 'red'}}>* {errorVisitaManiobra.nombre}</span>)}
+                  </small>
+                </FormControl>
+                <FormControl fullWidth sx={{ mb: 2 }}>
+                  <TextField
+                    id="no_ide"
+                    name="no_ide"
+                    label="No. Identificación"
+                    value={man.no_ide}
+                    onChange={inputChangeMan}
+                    inputProps={{ style: { textTransform: 'uppercase' } }}
+                  />
+                  <small>
+                    {errorVisitaManiobra.no_ide && (
+                      <span style={{color: 'red'}}>* {errorVisitaManiobra.no_ide}</span>
+                    )}
+                  </small>
+                </FormControl>
+                {man.no_ide && ( 
+                  <>
+                    <FormControlLabel
+                      control={ <Checkbox size="small" checked={checkedIne} onChange={() => handleCheckboxChangeIneMan("ine")} /> }
+                      label="No. INE"
+                    />
+                    <FormControlLabel
+                      control={ <Checkbox size="small" checked={checkedLic} onChange={() => handleCheckboxChangeIneMan("lic")} /> }
+                      label="No. Licencia"
+                    /><br/>
+                    <small>
+                    {errorVisitaManiobra.checks && (
+                      <span style={{ color: 'red' }}>* {errorVisitaManiobra.checks}</span>
+                    )}
+                    </small>
+                  </>
+                )}
+              </Grid>
+              <Grid item xs={12} >
+                <FormControlLabel
+                  control={ <Checkbox checked={checkedPaq} onChange={(e) => setCheckedPaq(e.target.checked)} /> }
+                  label="Acompañantes"
+                />
+                {checkedPaq && (
+                  <Grid item xs={12}>
+                    {acompanantesPaq.map((acompanante, index) => (
+                      <div>
+                        <span>{`Datos de acompañante ${index + 1}`}</span><p/>
+                      <Grid container key={index} spacing={2} alignItems="center" sx={{ mb: 2 }} >
+                        <Grid item>
+                          <TextField
+                            fullWidth
+                            id={`nombre_acomp_${index}`}
+                            name={`nombre_acomp_${index}`}
+                            value={acompanante.nombre_acomp}
+                            onChange={(e) =>
+                              handleInputChangePaq(index, {
+                                ...acompanante,
+                                nombre_acomp: e.target.value,
+                              })
+                            }
+                            label={`Nombre de acompañante`}
+                            inputProps={{ style: { textTransform: 'uppercase' } }}
+                          />
+                        </Grid>
+                        <Grid item>
+                          <TextField
+                            fullWidth
+                            id={`apellidos_acomp_${index}`}
+                            name={`apellidos_acomp_${index}`}
+                            value={acompanante.apellidos_acomp}
+                            onChange={(e) =>
+                              handleInputChangePaq(index, {
+                                ...acompanante,
+                                apellidos_acomp: e.target.value,
+                              })
+                            }
+                            label={`Apellidos de acompañante`}
+                            inputProps={{ style: { textTransform: 'uppercase' } }}
+                          />
+                        </Grid>
+                        <Grid item>
+                          <TextField
+                            fullWidth
+                            id={`no_ine_acomp_${index}`}
+                            name={`no_ine_acomp_${index}`}
+                            value={acompanante.no_ine_acomp}
+                            onChange={(e) =>
+                              handleInputChangePaq(index, {
+                                ...acompanante,
+                                no_ine_acomp: e.target.value,
+                              })
+                            }
+                            label={`No. Identificación`}
+                            inputProps={{ style: { textTransform: 'uppercase' } }}
+                          />
+                        </Grid>
+                        <Grid item>
+                          <IconButton variant="contained" color="error" size="small" onClick={() => eliminarAcompanantePaq(index)} >
+                            <DeleteOutline/>
+                          </IconButton>
+                        </Grid>
+                      </Grid>
+                      </div>
+                    ))}
+                    {acompanantesPaq.length < 20 ? (
+                      <Button variant="outlined" onClick={agregarAcompanantePaq} startIcon={<Add />}>Otro acompañante</Button>
+                    ) : (
+                      <p style={{ color: "red" }}>Solo puedes agregar un máximo de 20 acompañantes</p>
+                    )}
+                  </Grid>
+                )}
+              </Grid>
+            </Grid>
+          </DialogContent>
+          <DialogActions>
+            <Button variant="outlined" onClick={handleClickCloseManiobra}>CANCELAR</Button>
+            <Button variant="contained" color="error" onClick={SaveVisitanteManiobra}>FINALIZAR</Button>
+          </DialogActions>
+      </Dialog>
       {/* Filtro debajo del buscador y botones */}
       {(user?.role === 'POLIB' || user?.role === 'POLIP' || user?.role === 'Admin') && (
         <div>
@@ -6120,7 +6645,7 @@ function Visitantes() {
                   </TableRow> 
                 </TableHead>
                 <TableBody>
-                  {datosFiltradosVisitantes.filter((row) => row.id_catv === 12 || row.id_catv === 2 || row.id_catv === 3 || row.id_catv === 14 || ( row.est === 'A')).map((row, index) => {
+                  {datosFiltradosVisitantes.filter((row) => row.id_catv === 12 || row.id_catv === 2 || row.id_catv === 3 || row.id_catv === 14 || row.id_catv === 6 || ( row.est === 'A')).map((row, index) => {
                     const tiempoTranscurrido = calcularTiempo(row.entrada_h);
                     const excedeTiempo = tiempoTranscurrido.includes('hr') && parseInt(tiempoTranscurrido.split('hr')[0]) >= 1;
 
@@ -6992,7 +7517,7 @@ function Visitantes() {
               </Grid>
             </Grid>
             <Grid container alignItems="center" spacing={1}>
-              <Grid item>
+              {/* <Grid item>
                 {selectedVisita && (
                   <QRCodeCanvas
                     value={`
@@ -7006,6 +7531,12 @@ function Visitantes() {
                     size={80} bgColor="#ffffff" fgColor="#000000" level="Q"
                   />
                 )}
+                </Grid> */}
+                <Grid item>
+                  {/* <AccountCircleOutlined style={{fontSize:'5rem'}}/> */}
+                  {/* <Avatar src={selectedVisita.foto ? `${foto}/${selectedVisita.foto}` : '/placeholder.png'} alt={selectedVisita.nombre_completo || 'Sin nombre'} sx={{ width: 85, height: 85, marginRight: '15px', objectFit: 'cover' }} /> */}
+                  <Avatar src={ imageUp ? URL.createObjectURL(imageUp) : selectedVisita?.foto ? `${foto}/${selectedVisita.foto}` : "/no-image.png"  } alt="preview" sx={{ width: 85, height: 85, marginRight: '15px', objectFit: 'cover' }}/>
+                  {/* <img src={typeof imageUp === "string" ? imageUp : URL.createObjectURL(imageUp)} alt="preview" style={{ width: "100%", height: "150%", borderRadius: 8 }} /> */}
                 </Grid>
                 <Grid item>
                   <Typography variant="body1" align="left"><strong>NOMBRE:</strong> {selectedVisita.id_catv === 4 ? 'NO APLICA' : selectedVisita.nombre_completo}</Typography>

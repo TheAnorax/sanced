@@ -10,6 +10,7 @@ const {
   actualizarDepartamentalPorVD,
   obtenerCedisDestinoPorCliente,
   obtenerSiguienteFolio,
+  obtenerClientesValidos,
 } = require("../controller/departamantalController");
 
 router.get("/plan", getpick7066);
@@ -29,5 +30,7 @@ router.put("/actualizar/VD/:VD", actualizarDepartamentalPorVD);
 router.get("/opciones/:cliente", obtenerCedisDestinoPorCliente);
 
 router.get("/siguiente-folio", obtenerSiguienteFolio);
+
+router.get("/clientes-validos", obtenerClientesValidos)
 
 module.exports = router;

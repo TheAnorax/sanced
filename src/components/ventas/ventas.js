@@ -3947,6 +3947,7 @@ function Tracking() {
                     <option value="">Selecciona</option>
 
                     <option value={2025}>2025</option>
+                    <option value={2026}>2026</option>
                   </select>
                 </div>
 
@@ -4340,6 +4341,7 @@ function Tracking() {
                     <option value="">Selecciona</option>
 
                     <option value={2025}>2025</option>
+                    <option value={2026}>2026</option>
                   </select>
                 </div>
 
@@ -4897,6 +4899,7 @@ function Tracking() {
                     <option value="">Selecciona</option>
 
                     <option value={2025}>2025</option>
+                    <option value={2026}>2026</option>
                   </select>
                 </div>
 

@@ -30,9 +30,8 @@ const getpick7066 = async (req, res) => {
     res.json({
       error: false,
       message: "Datos obtenidos",
-      data: rows
+      data: rows,
     });
-
   } catch (error) {
     console.error("❌ Error en getpick7066:", error);
     res.status(500).json({
@@ -354,6 +353,7 @@ const actualizarDepartamentalPorVD = async (req, res) => {
     ESTATUS,
     TIPO_DE_ENVIO,
     COMENTARIOS,
+    GUIA,
   } = req.body;
 
   if (!VD) {
@@ -402,7 +402,8 @@ const actualizarDepartamentalPorVD = async (req, res) => {
         EMPACADOR = ?,
         ESTATUS = ?,
         TIPO_DE_ENVIO = ?,
-        COMENTARIOS = ?
+        COMENTARIOS = ?,
+        GUIA = ?
       WHERE VD = ?
       `,
       [
@@ -422,6 +423,7 @@ const actualizarDepartamentalPorVD = async (req, res) => {
         ESTATUS,
         TIPO_DE_ENVIO,
         COMENTARIOS,
+        GUIA,
         VD,
       ]
     );
@@ -500,6 +502,27 @@ const obtenerSiguienteFolio = async (req, res) => {
   }
 };
 
+const obtenerClientesValidos = async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT DISTINCT CLIENTE
+      FROM departamental
+    `);
+
+    const clientes = rows.map(r => r.CLIENTE.toUpperCase().trim());
+
+    res.json({
+      ok: true,
+      data: clientes
+    });
+
+  } catch (error) {
+    console.error("Error clientes:", error);
+    res.status(500).json({ ok: false });
+  }
+};
+
+
 module.exports = {
   getpick7066,
   createPick7066,
@@ -510,4 +533,5 @@ module.exports = {
   actualizarDepartamentalPorVD,
   obtenerCedisDestinoPorCliente,
   obtenerSiguienteFolio,
+  obtenerClientesValidos
 };

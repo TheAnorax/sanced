@@ -40,7 +40,7 @@ router.use('/recibomonta', reciboMontaRoutes);
 router.use('/actualizarRecibo', reciboRoutes);
 router.use('/api/login', authRoutes);
 router.use('/api/loginInv', authRoutesInv);
-router.use('/embarques', embarquesRoutes);
+router.use('/embarques', embarquesRoutes); 
 router.use('/actualizarProducto', productoRoutes);
 router.use('/actualizarEmbarque', embarqueRoutes);
 router.use('/consultaUbicaciones', ubicacionesRoutes);

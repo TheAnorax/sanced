@@ -27,16 +27,14 @@ import {
   Snackbar,
   Alert,
   Tabs,
-  Tab
+  Tab,
 } from "@mui/material";
-
-
 
 function Departamental() {
   const [data, setData] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [year, setYear] = useState(new Date().getFullYear().toString());
-  const [mes, setMes] = useState("");   // vacío = todos los meses
+  const [mes, setMes] = useState(""); // vacío = todos los meses
   const [busqueda, setBusqueda] = useState("");
   const [openModal, setOpenModal] = useState(false);
 
@@ -50,14 +48,20 @@ function Departamental() {
   const [opcionesDestino, setOpcionesDestino] = useState([]);
 
   const [registrosExcel, setRegistrosExcel] = useState([]);
+
   const [cargandoExcel, setCargandoExcel] = useState(false);
 
-  const [tabExcel, setTabExcel] = useState("lista"); // lista | detalle
+  const [tabExcel, setTabExcel] = useState("lista");
+
   const [registroSeleccionado, setRegistroSeleccionado] = useState(null);
 
   const [tabModal, setTabModal] = useState(0);
 
+  const [tabVista, setTabVista] = useState(0);
 
+  const [clientesValidos, setClientesValidos] = useState([]);
+
+  const [opcionesPorCliente, setOpcionesPorCliente] = useState({});
 
   const camposObligatorios = [
     "FOLIO",
@@ -67,9 +71,8 @@ function Departamental() {
     "NO_DE_OC",
     "VD",
     "MONTO",
-    "FECHA_LLEGADA_OC"
+    "FECHA_LLEGADA_OC",
   ];
-
 
   const abrirNuevo = async () => {
     setModoEdicion(false);
@@ -83,7 +86,7 @@ function Departamental() {
       const siguienteFolio = res.data.siguienteFolio;
 
       setForm({
-        FOLIO: siguienteFolio,   // 👈 AQUÍ SE ASIGNA AUTOMÁTICO
+        FOLIO: siguienteFolio, // 👈 AQUÍ SE ASIGNA AUTOMÁTICO
         CLIENTE: "",
         CEDIS: "",
         DESTINO: "",
@@ -104,12 +107,10 @@ function Departamental() {
       });
 
       setOpenModal(true);
-
     } catch (error) {
       mostrarMensaje("Error al generar el folio", "error");
     }
   };
-
 
   const [snackbar, setSnackbar] = useState({
     open: false,
@@ -134,7 +135,8 @@ function Departamental() {
     ESTATUS: "",
     TIPO_DE_ENVIO: "",
     COMENTARIOS: "",
-    FOLIO: ""
+    FOLIO: "",
+    GUIA: "",
   });
 
   // ================================
@@ -146,14 +148,13 @@ function Departamental() {
     axios
       .get("http://66.232.105.87:3007/api/departamental/datos", {
         params: {
-          nombre: user?.name // 👈 aquí va Abigail Ruiz
-        }
+          nombre: user?.name, // 👈 aquí va Abigail Ruiz
+        },
       })
       .then((res) => setData(res.data.data))
       .catch((e) => console.error(e))
       .finally(() => setCargando(false));
   }, []);
-
 
   // ======Formato de fecha======
   const parseFecha = (rawFecha) => {
@@ -181,7 +182,6 @@ function Departamental() {
 
     return null;
   };
-
 
   // Filtrar por Año
   // ================================
@@ -221,25 +221,6 @@ function Departamental() {
     return true;
   });
 
-
-  // ================================
-  // Agrupar por cliente
-  // ================================
-  const agrupado = filtrados.reduce((acc, item) => {
-    const cliente = item.CLIENTE || "SIN CLIENTE";
-    if (!acc[cliente]) acc[cliente] = [];
-    acc[cliente].push(item);
-    return acc;
-  }, {});
-
-  if (cargando)
-    return (
-      <Box p={4} textAlign="center">
-        <CircularProgress />
-      </Box>
-    );
-
-  //ontener status o se agrega el nuevo status
   const obtenerEstatusAutomatico = (row) => {
     const estatusBD = row.ESTATUS;
     const fechaCita = row.FECHA_DE_CITA;
@@ -250,7 +231,12 @@ function Departamental() {
     }
 
     // Si no tiene estatus, se calcula
-    if (!fechaCita || fechaCita === "" || fechaCita === null || fechaCita === "-") {
+    if (
+      !fechaCita ||
+      fechaCita === "" ||
+      fechaCita === null ||
+      fechaCita === "-"
+    ) {
       return "EN PROCESO";
     }
 
@@ -272,6 +258,36 @@ function Departamental() {
     }
   };
 
+  const activosGlobal = filtrados.filter((p) => {
+    const est = obtenerEstatusAutomatico(p);
+    return est === "EN PROCESO" || est === "EN PROCESO DE SURTIDO";
+  });
+
+  const enviadosGlobal = filtrados.filter((p) => {
+    const est = obtenerEstatusAutomatico(p);
+    return est === "ENVIADO" || est === "EMBARCADO";
+  });
+
+  const canceladosGlobal = filtrados.filter(
+    (p) => obtenerEstatusAutomatico(p) === "CANCELADO"
+  );
+
+  useEffect(() => {
+    axios
+      .get("http://66.232.105.87:3007/api/departamental/clientes-validos")
+      .then((res) => setClientesValidos(res.data.data))
+      .catch((err) => console.error(err));
+  }, []);
+
+  if (cargando)
+    return (
+      <Box p={4} textAlign="center">
+        <CircularProgress />
+      </Box>
+    );
+
+  //ontener status o se agrega el nuevo status
+
   const resumenEstatus = filtrados.reduce(
     (acc, item) => {
       const estatus = obtenerEstatusAutomatico(item);
@@ -280,7 +296,8 @@ function Departamental() {
 
       if (estatus === "EN PROCESO") acc.enProceso += 1;
       else if (estatus === "EN PROCESO DE SURTIDO") acc.enProcesoCita += 1;
-      else if (estatus === "ENVIADO") acc.enviado += 1;
+      else if (estatus === "ENVIADO" || estatus === "EMBARCADO")
+        acc.enviado += 1;
       else if (estatus === "CANCELADO") acc.cancelado += 1;
 
       return acc;
@@ -299,34 +316,49 @@ function Departamental() {
   const esCancelado = form.ESTATUS === "CANCELADO";
 
   const handleGuardar = async () => {
-
-    // 🧹 LIMPIAR ERRORES
     setErrores({});
-
     const nuevosErrores = {};
 
-    // 🔴 SOLO validar obligatorios SI NO está cancelado
+    // 🔴 Validar obligatorios
     if (!esCancelado) {
       camposObligatorios.forEach((campo) => {
-        if (
-          !form[campo] ||
-          form[campo].toString().trim() === ""
-        ) {
+        if (!form[campo] || form[campo].toString().trim() === "") {
           nuevosErrores[campo] = "Campo obligatorio";
         }
       });
     }
 
-    // ❌ Si hay errores → detener
     if (Object.keys(nuevosErrores).length > 0) {
       setErrores(nuevosErrores);
-      mostrarMensaje(
-        "Completa los campos obligatorios",
-        "warning"
-      );
+      mostrarMensaje("Completa los campos obligatorios", "warning");
       return;
     }
 
+    // ===============================
+    // 🔒 VALIDACIONES DE CATÁLOGO
+    // ===============================
+
+    // Cliente válido
+    if (!clientesUnicos.includes(form.CLIENTE)) {
+      mostrarMensaje("Cliente no válido", "error");
+      return;
+    }
+
+    // CEDIS válido para ese cliente
+    if (form.CEDIS && !opcionesCedis.includes(form.CEDIS)) {
+      mostrarMensaje("CEDIS no válido para el cliente", "error");
+      return;
+    }
+
+    // Destino válido para ese cliente
+    if (form.DESTINO && !opcionesDestino.includes(form.DESTINO)) {
+      mostrarMensaje("Destino no válido para el cliente", "error");
+      return;
+    }
+
+    // ===============================
+    // GUARDAR
+    // ===============================
     try {
       const payload = {
         ...form,
@@ -349,11 +381,16 @@ function Departamental() {
 
       setOpenModal(false);
 
-      const refrescar = await axios.get(
-        "http://66.232.105.87:3007/api/departamental/datos"
-      );
-      setData(refrescar.data.data);
+      const user = JSON.parse(localStorage.getItem("user"));
 
+      const refrescar = await axios.get(
+        "http://66.232.105.87:3007/api/departamental/datos",
+        {
+          params: { nombre: user?.name },
+        }
+      );
+
+      setData(refrescar.data.data);
     } catch (error) {
       if (error.response && error.response.data) {
         const { campo, mensaje } = error.response.data;
@@ -375,14 +412,9 @@ function Departamental() {
   const clientesUnicos = [
     ...new Set(
       data
-        .map(d =>
-          d.CLIENTE
-            ?.toString()
-            .trim()
-            .toUpperCase()
-        )
+        .map((d) => d.CLIENTE?.toString().trim().toUpperCase())
         .filter(Boolean)
-    )
+    ),
   ].sort();
 
   const formatearMonto = (valor) => {
@@ -403,16 +435,10 @@ function Departamental() {
   const normalizarMonto = (valor) => {
     if (!valor) return 0;
 
-    return Number(
-      valor
-        .toString()
-        .replace(/\$/g, "")
-        .replace(/,/g, "")
-        .trim()
-    );
+    return Number(valor.toString().replace(/\$/g, "").replace(/,/g, "").trim());
   };
 
-  const abrirEditar = (row) => {
+  const abrirEditar = async (row) => {
     setModoEdicion(true);
 
     setForm({
@@ -433,8 +459,30 @@ function Departamental() {
       EMPACADOR: row.EMPACADOR || "",
       ESTATUS: row.ESTATUS || "",
       TIPO_DE_ENVIO: row.TIPO_DE_ENVIO || "",
-      COMENTARIOS: row.COMENTARIOS || ""
+      COMENTARIOS: row.COMENTARIOS || "",
+      GUIA: row.GUIA || "",
     });
+
+    // 🔥 IMPORTANTE: cargar opciones del cliente
+    if (row.CLIENTE) {
+      try {
+        const cliente = row.CLIENTE.trim().toUpperCase();
+
+        const res = await axios.get(
+          `http://66.232.105.87:3007/api/departamental/opciones/${cliente}`
+        );
+
+        const data = res.data.data || [];
+
+        setOpcionesCedis([...new Set(data.map((d) => d.CEDIS?.trim()))]);
+
+        setOpcionesDestino([...new Set(data.map((d) => d.DESTINO?.trim()))]);
+      } catch (error) {
+        console.error("Error cargando opciones del cliente:", error);
+        setOpcionesCedis([]);
+        setOpcionesDestino([]);
+      }
+    }
 
     setOpenModal(true);
   };
@@ -477,7 +525,7 @@ function Departamental() {
       ...form,
       CLIENTE: clienteNormalizado,
       CEDIS: "",
-      DESTINO: ""
+      DESTINO: "",
     });
 
     const res = await axios.get(
@@ -486,18 +534,12 @@ function Departamental() {
 
     const data = res.data.data;
 
-    setOpcionesCedis([
-      ...new Set(data.map(d => d.CEDIS?.trim()))
-    ]);
+    setOpcionesCedis([...new Set(data.map((d) => d.CEDIS?.trim()))]);
 
-    setOpcionesDestino([
-      ...new Set(data.map(d => d.DESTINO?.trim()))
-    ]);
+    setOpcionesDestino([...new Set(data.map((d) => d.DESTINO?.trim()))]);
   };
 
-
   const user = JSON.parse(localStorage.getItem("user"));
-
 
   const puedeEditar = user?.role === "Admin" || user?.role === "Muetras";
 
@@ -519,75 +561,232 @@ function Departamental() {
   ];
 
   const handleExcel = async (file) => {
-    if (!file || !form.CLIENTE) return;
+    if (!file) return;
 
-    const data = await file.arrayBuffer();
-    const workbook = XLSX.read(data);
+    const buffer = await file.arrayBuffer();
+    const workbook = XLSX.read(buffer);
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     const rows = XLSX.utils.sheet_to_json(sheet);
 
     const folioBase = Number(form.FOLIO);
 
-    const procesados = rows.map((row, index) => ({
-      FOLIO: folioBase + index,
-      CLIENTE: form.CLIENTE,          // 🔴 CLAVE
-      CEDIS: form.CEDIS,
-      DESTINO: form.DESTINO,
-      NO_DE_OC: row.NO_DE_OC || "",
-      VD: row.VD || "",
-      MONTO: row.MONTO || "",
-      FECHA_LLEGADA_OC: row.FECHA_LLEGADA_OC || "",
-    }));
+    // ✅ clientes válidos
+    const clientesValidosSet = new Set(
+      clientesValidos.map((c) => c.toString().toUpperCase().trim())
+    );
+
+    // ✅ Cache para no pedir opciones por cliente 500 veces
+    const opcionesCache = {}; // { "CHEDRAUI": [{CEDIS, DESTINO}, ...] }
+
+    const procesados = [];
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+
+      const clienteExcel = (row.CLIENTE || "").toString().toUpperCase().trim();
+      const cedisExcel = (row.CEDIS || "").toString().toUpperCase().trim();
+      const destinoExcel = (row.DESTINO || "").toString().toUpperCase().trim();
+
+      // ==========
+      // Validar CLIENTE
+      // ==========
+      const clienteValido = clientesValidosSet.has(clienteExcel);
+
+      let cedisValido = false;
+      let destinoValido = false;
+
+      // ==========
+      // Validar CEDIS/DESTINO solo si cliente es válido
+      // ==========
+      if (clienteValido) {
+        if (!opcionesCache[clienteExcel]) {
+          try {
+            const res = await axios.get(
+              `http://66.232.105.87:3007/api/departamental/opciones/${clienteExcel}`
+            );
+
+            opcionesCache[clienteExcel] = (res.data.data || []).map((x) => ({
+              CEDIS: (x.CEDIS || "").toUpperCase().trim(),
+              DESTINO: (x.DESTINO || "").toUpperCase().trim(),
+            }));
+          } catch (err) {
+            opcionesCache[clienteExcel] = [];
+          }
+        }
+
+        const combos = opcionesCache[clienteExcel];
+
+        // ✅ valida si existe esa combinación exacta
+        const existeCombo = combos.some(
+          (c) => c.CEDIS === cedisExcel && c.DESTINO === destinoExcel
+        );
+
+        if (existeCombo) {
+          cedisValido = true;
+          destinoValido = true;
+        } else {
+          // si no coincide la combinación, podrías permitir validar por separado
+          cedisValido = combos.some((c) => c.CEDIS === cedisExcel);
+          destinoValido = combos.some((c) => c.DESTINO === destinoExcel);
+        }
+      }
+
+      // ==========
+      // LIMPIAR lo inválido (pero NO eliminar el registro)
+      // ==========
+      const finalCliente = clienteValido ? clienteExcel : "";
+      const finalCedis = clienteValido && cedisValido ? cedisExcel : "";
+      const finalDestino = clienteValido && destinoValido ? destinoExcel : "";
+
+      // Mensaje para que en modal se vea qué falló
+      let motivo = "";
+      if (!clienteValido) motivo = "Cliente no registrado";
+      else if (!cedisValido && !destinoValido)
+        motivo = "CEDIS y DESTINO no coinciden con ese cliente";
+      else if (!cedisValido) motivo = "CEDIS no válido para ese cliente";
+      else if (!destinoValido) motivo = "DESTINO no válido para ese cliente";
+
+      // Opciones del cliente (si existe)
+      let opcionesCliente = [];
+
+      if (clienteValido) {
+        opcionesCliente = opcionesCache[clienteExcel] || [];
+      }
+
+      const cedisOpciones = [...new Set(opcionesCliente.map((x) => x.CEDIS))];
+
+      const destinoOpciones = [
+        ...new Set(opcionesCliente.map((x) => x.DESTINO)),
+      ];
+
+      procesados.push({
+        FOLIO: folioBase + i,
+        CLIENTE: finalCliente,
+        CEDIS: finalCedis,
+        DESTINO: finalDestino,
+        NO_DE_OC: row.NO_DE_OC || "",
+        VD: row.VD || "",
+        MONTO: row.MONTO || "",
+        FECHA_LLEGADA_OC: row.FECHA_LLEGADA_OC || "",
+
+        // 🔥 IMPORTANTE
+        __cedisOpciones: cedisOpciones,
+        __destinoOpciones: destinoOpciones,
+
+        __motivo: motivo,
+        __valido: motivo === "",
+      });
+    }
 
     setRegistrosExcel(procesados);
+
+    // Aviso general
+    const invalidos = procesados.filter((x) => !x.__valido).length;
+    if (invalidos > 0) {
+      mostrarMensaje(
+        `Se cargaron ${procesados.length} registros. ${invalidos} requieren corrección.`,
+        "warning"
+      );
+    } else {
+      mostrarMensaje(
+        `Se cargaron ${procesados.length} registros válidos.`,
+        "success"
+      );
+    }
   };
-
-
-  const actualizarRegistroExcel = (index, campo, valor) => {
-    const copia = [...registrosExcel];
-    copia[index] = {
-      ...copia[index],
-      [campo]: valor,
-    };
-    setRegistrosExcel(copia);
-  };
-
 
   const guardarExcel = async () => {
     try {
       for (const r of registrosExcel) {
-        await axios.post(
-          "http://66.232.105.87:3007/api/departamental/crear",
-          {
-            ...r,
-            MONTO: normalizarMonto(r.MONTO),
-          }
-        );
+        await axios.post("http://66.232.105.87:3007/api/departamental/crear", {
+          ...r,
+          MONTO: normalizarMonto(r.MONTO),
+        });
       }
 
       mostrarMensaje("Registros guardados correctamente", "success");
       setRegistrosExcel([]);
       setOpenModal(false);
-
     } catch (err) {
       mostrarMensaje("Error al guardar Excel", "error");
     }
   };
 
+  const handleClienteChangeExcel = async (index, cliente) => {
+    if (!cliente) return;
 
+    const clienteNormalizado = cliente.trim().toUpperCase();
 
+    try {
+      const res = await axios.get(
+        `http://66.232.105.87:3007/api/departamental/opciones/${clienteNormalizado}`
+      );
+
+      const data = res.data.data || [];
+
+      const cedis = [...new Set(data.map((d) => d.CEDIS?.trim()))];
+      const destinos = [...new Set(data.map((d) => d.DESTINO?.trim()))];
+
+      // 🔥 TODO en un solo setState (clave del problema)
+      setRegistrosExcel((prev) => {
+        const copia = [...prev];
+
+        copia[index] = {
+          ...copia[index],
+          CLIENTE: clienteNormalizado,
+          CEDIS: "",
+          DESTINO: "",
+          __cedisOpciones: cedis,
+          __destinoOpciones: destinos,
+        };
+
+        return copia;
+      });
+    } catch (error) {
+      console.error("Error cargando opciones Excel:", error);
+    }
+  };
+
+  const actualizarRegistroExcel = (index, campo, valor) => {
+    setRegistrosExcel((prev) => {
+      const copia = [...prev];
+
+      let valorNormalizado = valor;
+      if (typeof valor === "string") {
+        valorNormalizado = valor.trim().toUpperCase();
+      }
+
+      copia[index] = {
+        ...copia[index],
+        [campo]: valorNormalizado,
+      };
+
+      return copia;
+    });
+  };
+
+  let datosTab = [];
+
+  if (tabVista === 0) datosTab = activosGlobal;
+  if (tabVista === 1) datosTab = enviadosGlobal;
+  if (tabVista === 2) datosTab = canceladosGlobal;
+
+  // AHORA sí agrupar
+  const agrupado = datosTab.reduce((acc, item) => {
+    const cliente = item.CLIENTE || "SIN CLIENTE";
+    if (!acc[cliente]) acc[cliente] = [];
+    acc[cliente].push(item);
+    return acc;
+  }, {});
 
   return (
-
     <Box p={4}>
-
       <Typography variant="h4" align="center" gutterBottom>
         Panel Departamental
       </Typography>
 
       {/* ------------------ SELECT DE AÑO ------------------ */}
       <Box sx={{ display: "flex", mb: 3, gap: 2 }}>
-
         <Typography sx={{ mt: 1 }}>Cliente:</Typography>
 
         <Select
@@ -606,7 +805,6 @@ function Departamental() {
           ))}
         </Select>
 
-
         <Typography sx={{ mt: 1 }}>Año:</Typography>
 
         <Select
@@ -616,7 +814,6 @@ function Departamental() {
           sx={{ width: 120 }}
         >
           <MenuItem value="2026">2026</MenuItem>
-
         </Select>
 
         <Typography sx={{ mt: 1 }}>Mes:</Typography>
@@ -643,7 +840,6 @@ function Departamental() {
           <MenuItem value="12">Diciembre</MenuItem>
         </Select>
 
-
         <input
           type="text"
           placeholder="Folio o OC"
@@ -653,10 +849,9 @@ function Departamental() {
             padding: "6px 10px",
             borderRadius: 6,
             border: "1px solid #ccc",
-            minWidth: 180
+            minWidth: 180,
           }}
         />
-
       </Box>
 
       <Box
@@ -666,8 +861,8 @@ function Departamental() {
           gap: 4,
           mb: 3,
           flexWrap: "wrap",
-        }}>
-
+        }}
+      >
         <Typography sx={{ color: "#e53935", fontWeight: 700 }}>
           🔴 En Proceso: {resumenEstatus.enProceso}
         </Typography>
@@ -676,37 +871,30 @@ function Departamental() {
           🟠 En Proceso de Surtido: {resumenEstatus.enProcesoCita}
         </Typography>
 
-        <Typography sx={{ color: "#2e7d32", fontWeight: 700 }}>
-          🟢 Enviados: {resumenEstatus.enviado}
-        </Typography>
-
-        <Typography sx={{ color: "#616161", fontWeight: 700 }}>
-          ⚫ Cancelados: {resumenEstatus.cancelado}
-        </Typography>
-
         <Typography sx={{ fontWeight: 900 }}>
           📦 Total: {resumenEstatus.total}
         </Typography>
       </Box>
 
       {(user?.role === "Muetras" || user?.role === "Admin") && (
-        <Button
-          variant="contained"
-          onClick={abrirNuevo}
-        >
+        <Button variant="contained" onClick={abrirNuevo}>
           ➕ Nuevo Registro
         </Button>
       )}
 
-
-
-
+      <Tabs
+        value={tabVista}
+        onChange={(e, v) => setTabVista(v)}
+        sx={{ mt: 3, mb: 2 }}
+      >
+        <Tab label={` 📦 Activos (${activosGlobal.length})`} />
+        <Tab label={` 📤 Enviados y 📦 EMBARCADO (${enviadosGlobal.length})`} />
+        <Tab label={` ❌ Cancelados (${canceladosGlobal.length})`} />
+      </Tabs>
 
       {/* ------------------ BLOQUES POR CLIENTE ------------------ */}
       {Object.entries(agrupado).map(([cliente, pedidos]) => (
-
         <Box key={cliente} mt={4}>
-
           <Typography variant="h5" sx={{ fontWeight: 900, mb: 1 }}>
             🏪 {cliente}
           </Typography>
@@ -720,8 +908,8 @@ function Departamental() {
               overflowY: "auto",
               border: "1px solid #ddd",
               borderRadius: 1,
-            }}>
-
+            }}
+          >
             <Table size="small">
               <TableHead>
                 <TableRow>
@@ -744,73 +932,68 @@ function Departamental() {
                 </TableRow>
               </TableHead>
 
-
               <TableBody>
-                {pedidos
-                  .filter(p => obtenerEstatusAutomatico(p) !== "CANCELADO")
-                  .map((p, idx) => {
-                    const estatusFinal = obtenerEstatusAutomatico(p);
+                {pedidos.map((p, idx) => {
+                  const estatusFinal = obtenerEstatusAutomatico(p);
 
-                    return (
-                      <TableRow key={idx}>
-                        <TableCell>{p.FOLIO}</TableCell>
-                        <TableCell>{p.VD}</TableCell>
-                        <TableCell>{p.NO_DE_OC}</TableCell>
-                        <TableCell>{p.DESTINO}</TableCell>
+                  return (
+                    <TableRow key={idx}>
+                      <TableCell>{p.FOLIO}</TableCell>
+                      <TableCell>{p.VD}</TableCell>
+                      <TableCell>{p.NO_DE_OC}</TableCell>
+                      <TableCell>{p.DESTINO}</TableCell>
 
-                        <TableCell align="right" sx={{ fontWeight: 700 }}>
-                          {formatearMonto(p.MONTO)}
-                        </TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 700 }}>
+                        {formatearMonto(p.MONTO)}
+                      </TableCell>
 
-                        <TableCell>{formatearFechaISO(p.FECHA_LLEGADA_OC)}</TableCell>
-                        <TableCell>{formatearFechaISO(p.FECHA_CANCELACION)}</TableCell>
-                        <TableCell>{formatearFechaISO(p.FECHA_DE_CITA)}</TableCell>
-                        <TableCell>{p.HORA_CITA}</TableCell>
-                        <TableCell>{p.EMPACADOR}</TableCell>
-                        <TableCell>{formatearFechaISO(p.FECHA_DE_CARGA)}</TableCell>
-                        <TableCell>{p.HORA}</TableCell>
+                      <TableCell>
+                        {formatearFechaISO(p.FECHA_LLEGADA_OC)}
+                      </TableCell>
+                      <TableCell>
+                        {formatearFechaISO(p.FECHA_CANCELACION)}
+                      </TableCell>
+                      <TableCell>
+                        {formatearFechaISO(p.FECHA_DE_CITA)}
+                      </TableCell>
+                      <TableCell>{p.HORA_CITA}</TableCell>
+                      <TableCell>{p.EMPACADOR}</TableCell>
+                      <TableCell>
+                        {formatearFechaISO(p.FECHA_DE_CARGA)}
+                      </TableCell>
+                      <TableCell>{p.HORA}</TableCell>
 
-                        <TableCell
-                          sx={{
-                            color: obtenerColorEstatus(estatusFinal),
-                            fontWeight: 700,
-                          }}
+                      <TableCell
+                        sx={{
+                          color: obtenerColorEstatus(estatusFinal),
+                          fontWeight: 700,
+                        }}
+                      >
+                        {estatusFinal}
+                      </TableCell>
+
+                      <TableCell>{p.TIPO_DE_ENVIO}</TableCell>
+                      <TableCell>{p.COMENTARIOS}</TableCell>
+
+                      <TableCell>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          onClick={() => abrirEditar(p)}
                         >
-                          {estatusFinal}
-                        </TableCell>
-
-                        <TableCell>{p.TIPO_DE_ENVIO}</TableCell>
-                        <TableCell>{p.COMENTARIOS}</TableCell>
-
-                        <TableCell>
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            onClick={() => abrirEditar(p)}
-                          >
-                            Editar
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
+                          Editar
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
-
-
-
             </Table>
-
           </Paper>
 
           <Divider sx={{ mt: 3 }} />
-
         </Box>
-
       ))}
-
-
-
-
 
       {/* ------------------ Dialog de insercion / edicion ------------------ */}
 
@@ -820,7 +1003,6 @@ function Departamental() {
         maxWidth="200"
         fullWidth
       >
-
         <DialogTitle>
           {modoEdicion
             ? "Editar Registro Departamental"
@@ -842,32 +1024,40 @@ function Departamental() {
 
         {tabModal === 0 && (
           <DialogContent dividers>
-
             <Grid container spacing={2}>
-
               {/* ================= FOLIO ================= */}
               <Grid item xs={12}>
                 <TextField
                   label="FOLIO"
                   fullWidth
                   value={form.FOLIO || ""}
-                  disabled={!modoEdicion}   // 👈 SOLO editable en edición
+                  disabled={!modoEdicion} // 👈 SOLO editable en edición
                   error={!!errores.FOLIO}
                   helperText={errores.FOLIO}
                 />
-
-
               </Grid>
 
               {/* ================= CLIENTE ================= */}
               <Grid item xs={12} sm={6}>
-
                 <Autocomplete
                   disabled={disabledEdicion}
                   options={clientesUnicos}
                   value={form.CLIENTE || null}
-                  onChange={(e, value) => handleClienteChange(value)}
-                  isOptionEqualToValue={(option, value) => option === value}
+                  freeSolo={false}
+                  onChange={(e, value) => {
+                    if (!value) {
+                      setForm({ ...form, CLIENTE: "", CEDIS: "", DESTINO: "" });
+                      return;
+                    }
+
+                    // Validar que exista
+                    if (!clientesUnicos.includes(value)) {
+                      mostrarMensaje("Cliente no válido", "error");
+                      return;
+                    }
+
+                    handleClienteChange(value);
+                  }}
                   renderInput={(params) => (
                     <TextField
                       {...params}
@@ -878,7 +1068,6 @@ function Departamental() {
                     />
                   )}
                 />
-
               </Grid>
 
               {/* ================= CEDIS ================= */}
@@ -894,7 +1083,6 @@ function Departamental() {
                     <TextField {...params} label="CEDIS" fullWidth />
                   )}
                 />
-
               </Grid>
 
               {/* ================= DESTINO ================= */}
@@ -910,7 +1098,6 @@ function Departamental() {
                     <TextField {...params} label="DESTINO" fullWidth />
                   )}
                 />
-
               </Grid>
 
               {/* ================= NO DE OC ================= */}
@@ -927,7 +1114,6 @@ function Departamental() {
                     setErrores({ ...errores, NO_DE_OC: null });
                   }}
                 />
-
               </Grid>
 
               {/* ================= VD ================= */}
@@ -935,7 +1121,6 @@ function Departamental() {
                 <TextField
                   label="VD"
                   fullWidth
-
                   disabled={modoEdicion}
                   value={form.VD}
                   error={!!errores.VD}
@@ -945,7 +1130,6 @@ function Departamental() {
                     setErrores({ ...errores, VD: null });
                   }}
                 />
-
               </Grid>
 
               {/* ================= MONTO ================= */}
@@ -955,14 +1139,13 @@ function Departamental() {
                   fullWidth
                   disabled={disabledEdicion}
                   value={form.MONTO}
-                  onChange={(e) =>
-                    setForm({ ...form, MONTO: e.target.value })
-                  }
+                  onChange={(e) => setForm({ ...form, MONTO: e.target.value })}
                   InputProps={{
-                    startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                    startAdornment: (
+                      <InputAdornment position="start">$</InputAdornment>
+                    ),
                   }}
                 />
-
               </Grid>
 
               {/* ================= FECHA LLEGADA OC ================= */}
@@ -981,7 +1164,6 @@ function Departamental() {
                     setErrores({ ...errores, FECHA_LLEGADA_OC: null });
                   }}
                 />
-
               </Grid>
 
               <Grid item xs={12} sm={6}>
@@ -998,7 +1180,6 @@ function Departamental() {
                 />
               </Grid>
 
-
               {/* ================= FECHA DE CITA ================= */}
               {modoEdicion && (
                 <>
@@ -1013,8 +1194,6 @@ function Departamental() {
                       }
                     />
                   </Grid>
-
-
 
                   <Grid item xs={12} sm={6}>
                     <TextField
@@ -1042,7 +1221,6 @@ function Departamental() {
                       }
                     />
                   </Grid>
-
 
                   {/* ======================================================
                           👇👇👇 SOLO EN MODO EDICIÓN 👇👇👇
@@ -1099,7 +1277,6 @@ function Departamental() {
                     </TextField>
                   </Grid>
 
-
                   {/* ESTATUS */}
 
                   <Grid item xs={12} sm={6}>
@@ -1118,6 +1295,18 @@ function Departamental() {
                     </TextField>
                   </Grid>
 
+                  {(user?.role === "Muetras" || user?.role === "Admin") && (
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        label="GUÍA"
+                        fullWidth
+                        value={form.GUIA}
+                        onChange={(e) =>
+                          setForm({ ...form, GUIA: e.target.value })
+                        }
+                      />
+                    </Grid>
+                  )}
                 </>
               )}
 
@@ -1134,204 +1323,221 @@ function Departamental() {
                   }
                 />
               </Grid>
-
             </Grid>
-
           </DialogContent>
         )}
 
-        {tabModal === 1 && (user?.role === "Muetras" || user?.role === "Admin") && (
+        {tabModal === 1 &&
+          (user?.role === "Muetras" || user?.role === "Admin") && (
+            <DialogContent dividers>
+              {/* BOTÓN CARGAR */}
+              <Box mb={2} display="flex" gap={2}>
+                <Button variant="contained" component="label">
+                  📄 Cargar Excel
+                  <input
+                    type="file"
+                    hidden
+                    accept=".xlsx,.xls"
+                    onChange={(e) => handleExcel(e.target.files[0])}
+                  />
+                </Button>
 
-          <DialogContent dividers>
+                {!form.CLIENTE && (
+                  <Typography color="error" fontSize={12}>
+                    Primero selecciona un cliente
+                  </Typography>
+                )}
+              </Box>
 
-            {/* BOTÓN CARGAR */}
-            <Box mb={2} display="flex" gap={2}>
-              <Button
-                variant="contained"
-                component="label"
-                disabled={!form.CLIENTE}
-              >
-                📄 Cargar Excel
-                <input
-                  type="file"
-                  hidden
-                  accept=".xlsx,.xls"
-                  onChange={(e) => handleExcel(e.target.files[0])}
-                />
-              </Button>
-
-              {!form.CLIENTE && (
-                <Typography color="error" fontSize={12}>
-                  Primero selecciona un cliente
-                </Typography>
-              )}
-            </Box>
-
-            {/* TABLA */}
-            {registrosExcel.length > 0 && (
-              <TableContainer
-                component={Paper}
-                sx={{
-                  maxHeight: 500,
-                  overflow: "auto",
-                }}
-              >
-                <Table
-                  stickyHeader
-                  size="small"
-                  sx={{ tableLayout: "fixed" }}
+              {/* TABLA */}
+              {registrosExcel.length > 0 && (
+                <TableContainer
+                  component={Paper}
+                  sx={{
+                    maxHeight: 500,
+                    overflow: "auto",
+                  }}
                 >
-                  {/* ===== HEAD ===== */}
-                  <TableHead>
-                    <TableRow>
-                      <TableCell sx={{ width: 70 }}>Folio</TableCell>
-                      <TableCell sx={{ width: 180 }}>Cliente</TableCell>
-                      <TableCell sx={{ width: 140 }}>Cedis</TableCell>
-                      <TableCell sx={{ width: 160 }}>Destino</TableCell>
-                      <TableCell sx={{ width: 120 }}>OC</TableCell>
-                      <TableCell sx={{ width: 100 }}>VD</TableCell>
-                      <TableCell sx={{ width: 120 }}>Monto</TableCell>
-                      <TableCell sx={{ width: 120 }}>Fecha Llegada</TableCell>
-                      <TableCell sx={{ width: 120 }}>Fecha Cancelación</TableCell>
-                    </TableRow>
-                  </TableHead>
-
-                  {/* ===== BODY ===== */}
-                  <TableBody>
-                    {registrosExcel.map((r, i) => (
-                      <TableRow
-                        key={i}
-                        sx={{
-                          "& td": {
-                            padding: "6px 8px",
-                            verticalAlign: "middle",
-                          },
-                        }}
-                      >
-                        <TableCell>{r.FOLIO}</TableCell>
-
-                        {/* CLIENTE */}
-                        <TableCell>
-                          <Autocomplete
-                            size="small"
-                            options={clientesUnicos}
-                            value={r.CLIENTE || null}
-                            onChange={(e, v) =>
-                              actualizarRegistroExcel(i, "CLIENTE", v || "")
-                            }
-                            renderInput={(params) => (
-                              <TextField {...params} size="small" />
-                            )}
-                          />
-                        </TableCell>
-
-                        {/* CEDIS */}
-                        <TableCell>
-                          <Autocomplete
-                            size="small"
-                            options={opcionesCedis}
-                            value={r.CEDIS || null}
-                            onChange={(e, v) =>
-                              actualizarRegistroExcel(i, "CEDIS", v || "")
-                            }
-                            renderInput={(params) => (
-                              <TextField {...params} size="small" />
-                            )}
-                          />
-                        </TableCell>
-
-                        {/* DESTINO */}
-                        <TableCell>
-                          <Autocomplete
-                            size="small"
-                            options={opcionesDestino}
-                            value={r.DESTINO || null}
-                            onChange={(e, v) =>
-                              actualizarRegistroExcel(i, "DESTINO", v || "")
-                            }
-                            renderInput={(params) => (
-                              <TextField {...params} size="small" />
-                            )}
-                          />
-                        </TableCell>
-
-                        {/* OC */}
-                        <TableCell>
-                          <TextField
-                            size="small"
-                            value={r.NO_DE_OC}
-                            onChange={(e) =>
-                              actualizarRegistroExcel(i, "NO_DE_OC", e.target.value)
-                            }
-                          />
-                        </TableCell>
-
-                        {/* VD */}
-                        <TableCell>
-                          <TextField
-                            size="small"
-                            value={r.VD}
-                            onChange={(e) =>
-                              actualizarRegistroExcel(i, "VD", e.target.value)
-                            }
-                          />
-                        </TableCell>
-
-                        {/* MONTO */}
-                        <TableCell>
-                          <TextField
-                            size="small"
-                            value={r.MONTO}
-                            onChange={(e) =>
-                              actualizarRegistroExcel(i, "MONTO", e.target.value)
-                            }
-                          />
-                        </TableCell>
-
-                        {/* FECHA LLEGADA */}
-                        <TableCell>
-                          <TextField
-                            size="small"
-                            type="date"
-                            InputLabelProps={{ shrink: true }}
-                            value={r.FECHA_LLEGADA_OC}
-                            onChange={(e) =>
-                              actualizarRegistroExcel(
-                                i,
-                                "FECHA_LLEGADA_OC",
-                                e.target.value
-                              )
-                            }
-                          />
-                        </TableCell>
-
-                        {/* FECHA CANCELACIÓN */}
-                        <TableCell>
-                          <TextField
-                            size="small"
-                            type="date"
-                            InputLabelProps={{ shrink: true }}
-                            value={r.FECHA_CANCELACION || ""}
-                            onChange={(e) =>
-                              actualizarRegistroExcel(
-                                i,
-                                "FECHA_CANCELACION",
-                                e.target.value
-                              )
-                            }
-                          />
+                  <Table
+                    stickyHeader
+                    size="small"
+                    sx={{ tableLayout: "fixed" }}
+                  >
+                    {/* ===== HEAD ===== */}
+                    <TableHead>
+                      <TableRow>
+                        <TableCell sx={{ width: 70 }}>Folio</TableCell>
+                        <TableCell sx={{ width: 180 }}>Cliente</TableCell>
+                        <TableCell sx={{ width: 140 }}>Cedis</TableCell>
+                        <TableCell sx={{ width: 160 }}>Destino</TableCell>
+                        <TableCell sx={{ width: 120 }}>OC</TableCell>
+                        <TableCell sx={{ width: 100 }}>VD</TableCell>
+                        <TableCell sx={{ width: 120 }}>Monto</TableCell>
+                        <TableCell sx={{ width: 120 }}>Fecha Llegada</TableCell>
+                        <TableCell sx={{ width: 120 }}>
+                          Fecha Cancelación
                         </TableCell>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
-          </DialogContent>
-        )}
+                    </TableHead>
 
+                    {/* ===== BODY ===== */}
+                    <TableBody>
+                      {registrosExcel.map((r, i) => (
+                        <TableRow
+                          key={i}
+                          sx={{
+                            "& td": {
+                              padding: "6px 8px",
+                              verticalAlign: "middle",
+                            },
+                          }}
+                        >
+                          <TableCell>{r.FOLIO}</TableCell>
 
+                          {/* CLIENTE */}
+                          <TableCell>
+                            <Autocomplete
+                              options={clientesUnicos}
+                              value={r.CLIENTE || null}
+                              getOptionLabel={(option) => option || ""}
+                              isOptionEqualToValue={(option, value) =>
+                                option?.toUpperCase().trim() ===
+                                value?.toUpperCase().trim()
+                              }
+                              onChange={(e, value) => {
+                                if (!value) {
+                                  actualizarRegistroExcel(i, "CLIENTE", "");
+                                  return;
+                                }
 
+                                handleClienteChangeExcel(i, value);
+                              }}
+                              renderInput={(params) => (
+                                <TextField {...params} size="small" />
+                              )}
+                            />
+                          </TableCell>
+
+                          {/* CEDIS */}
+                          <TableCell>
+                            <Autocomplete
+                              options={r.__cedisOpciones || []}
+                              value={r.CEDIS || null}
+                              isOptionEqualToValue={(option, value) =>
+                                option === value
+                              }
+                              onChange={(e, value) =>
+                                actualizarRegistroExcel(i, "CEDIS", value || "")
+                              }
+                              renderInput={(params) => (
+                                <TextField {...params} size="small" />
+                              )}
+                            />
+                          </TableCell>
+
+                          {/* DESTINO */}
+                          <TableCell>
+                            <Autocomplete
+                              options={r.__destinoOpciones || []}
+                              value={r.DESTINO || null}
+                              isOptionEqualToValue={(option, value) =>
+                                option === value
+                              }
+                              onChange={(e, value) =>
+                                actualizarRegistroExcel(
+                                  i,
+                                  "DESTINO",
+                                  value || ""
+                                )
+                              }
+                              renderInput={(params) => (
+                                <TextField {...params} size="small" />
+                              )}
+                            />
+                          </TableCell>
+
+                          {/* OC */}
+                          <TableCell>
+                            <TextField
+                              size="small"
+                              value={r.NO_DE_OC}
+                              onChange={(e) =>
+                                actualizarRegistroExcel(
+                                  i,
+                                  "NO_DE_OC",
+                                  e.target.value
+                                )
+                              }
+                            />
+                          </TableCell>
+
+                          {/* VD */}
+                          <TableCell>
+                            <TextField
+                              size="small"
+                              value={r.VD}
+                              onChange={(e) =>
+                                actualizarRegistroExcel(i, "VD", e.target.value)
+                              }
+                            />
+                          </TableCell>
+
+                          {/* MONTO */}
+                          <TableCell>
+                            <TextField
+                              size="small"
+                              value={r.MONTO}
+                              onChange={(e) =>
+                                actualizarRegistroExcel(
+                                  i,
+                                  "MONTO",
+                                  e.target.value
+                                )
+                              }
+                            />
+                          </TableCell>
+
+                          {/* FECHA LLEGADA */}
+                          <TableCell>
+                            <TextField
+                              size="small"
+                              type="date"
+                              InputLabelProps={{ shrink: true }}
+                              value={r.FECHA_LLEGADA_OC}
+                              onChange={(e) =>
+                                actualizarRegistroExcel(
+                                  i,
+                                  "FECHA_LLEGADA_OC",
+                                  e.target.value
+                                )
+                              }
+                            />
+                          </TableCell>
+
+                          {/* FECHA CANCELACIÓN */}
+                          <TableCell>
+                            <TextField
+                              size="small"
+                              type="date"
+                              InputLabelProps={{ shrink: true }}
+                              value={r.FECHA_CANCELACION || ""}
+                              onChange={(e) =>
+                                actualizarRegistroExcel(
+                                  i,
+                                  "FECHA_CANCELACION",
+                                  e.target.value
+                                )
+                              }
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+            </DialogContent>
+          )}
 
         <DialogActions>
           <Button onClick={() => setOpenModal(false)}>Cancelar</Button>
@@ -1348,8 +1554,6 @@ function Departamental() {
             </Button>
           )}
         </DialogActions>
-
-
       </Dialog>
 
       <Snackbar
@@ -1367,10 +1571,7 @@ function Departamental() {
           {snackbar.message}
         </Alert>
       </Snackbar>
-
     </Box>
-
-
   );
 }
 

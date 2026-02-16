@@ -55,6 +55,7 @@ function Plansurtido() {
   // ==========================
   // 🔰 EXPORTAR PLAN DEL DÍA
   // ==========================
+
   const exportPlanDiaToExcel = () => {
     try {
       if (!resumen?.rutas?.length) {
@@ -94,6 +95,7 @@ function Plansurtido() {
   // ==========================
   // 🔰 EXPORTAR PLAN DE SURTIDO
   // ==========================
+
   const exportPlanSurtidoToExcel = () => {
     try {
       if (!data?.length) {
@@ -1358,13 +1360,17 @@ function Plansurtido() {
 
   return (
     <Box p={4}>
+
       <Typography variant="h4" align="center" gutterBottom>
         Planificación
       </Typography>
 
       <Tabs value={tabIndex} onChange={handleTabChange} centered>
+
         <Tab label="Plan del Día" />
+
         <Tab label="Plan de Surtido" />
+
       </Tabs>
 
       <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="es">
@@ -1495,6 +1501,7 @@ function Plansurtido() {
           )}
         </Box>
       )}
+      
 
       {/* Tab 1: Plan de Surtido */}
       {tabIndex === 1 && (
@@ -1675,6 +1682,8 @@ function Plansurtido() {
           )}
         </Box>
       )}
+
+
     </Box>
   );
 }

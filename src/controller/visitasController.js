@@ -65,6 +65,7 @@ const getVisitas = async (req, res) => {
             visitas.reg_salida,
             visitas.hora_entrada,
             visitas.entrada_h,
+            visitas.hora_llegada, 
             visitas.id_visit,
             visitas.est,
             visitas.personal,
@@ -80,6 +81,7 @@ const getVisitas = async (req, res) => {
             acomp.id_com,
             acomp.nombre_acomp,
             acomp.apellidos_acomp,
+            acomp.est,
             categorias_visitas.id_catv,
             categorias_visitas.tipo,
             vehiculo_per.id_vehpr,
@@ -94,7 +96,7 @@ const getVisitas = async (req, res) => {
         FROM visitas
         JOIN visitantes ON visitas.id_vit = visitantes.clave
         LEFT JOIN vehiculos ON visitas.id_vit = vehiculos.clave_con
-        LEFT JOIN acomp ON visitas.clave_visit = acomp.clave_visit
+        LEFT JOIN acomp ON visitas.clave_visit = acomp.clave_visit AND (acomp.est IS NULL OR acomp.est <> 'C')
         LEFT JOIN categorias_visitas ON visitantes.id_catv = categorias_visitas.id_catv
         LEFT JOIN vehiculo_per ON visitas.id_vit = vehiculo_per.id_vit
         LEFT JOIN contenedores_visitas ON visitas.id_vit = contenedores_visitas.id_cont
@@ -118,6 +120,7 @@ const getVisitas = async (req, res) => {
             visitas.reg_salida,
             visitas.hora_entrada,
             visitas.entrada_h,
+            visitas.hora_llegada, 
             visitas.id_visit,
             visitas.est,
             visitas.clave_visit,
@@ -144,7 +147,7 @@ const getVisitas = async (req, res) => {
         FROM visitas
         JOIN transportista ON visitas.id_vit = transportista.clave
         LEFT JOIN vehiculos ON visitas.id_vit = vehiculos.clave_con
-        LEFT JOIN acomp ON visitas.id_vit = acomp.id_vit
+        LEFT JOIN acomp ON visitas.id_vit = acomp.id_vit AND (acomp.est IS NULL OR acomp.est <> 'C')
         LEFT JOIN categorias_visitas ON transportista.id_catv = categorias_visitas.id_catv
         LEFT JOIN cortinas ON visitas.area_per = cortinas.id_cor
         LEFT JOIN vehiculos_fotos ON visitas.id_visit = vehiculos_fotos.id_visit
@@ -169,6 +172,7 @@ const getVisitas = async (req, res) => {
             categorias_visitas.tipo,
             visitas.id_vit, 
             visitas.entrada_h,
+            visitas.hora_llegada, 
             visitas.id_visit,
             visitas.acc_veh,
             visitas.motivo,
@@ -260,14 +264,14 @@ const getVisitasHoy = async (req, res) => {
         FROM visitas
         JOIN visitantes ON visitas.id_vit = visitantes.clave
         LEFT JOIN vehiculos ON visitas.id_vit = vehiculos.clave_con
-        LEFT JOIN acomp ON visitas.clave_visit = acomp.clave_visit
+        LEFT JOIN acomp ON visitas.clave_visit = acomp.clave_visit AND (acomp.est IS NULL OR acomp.est <> 'C')
         LEFT JOIN categorias_visitas ON visitantes.id_catv = categorias_visitas.id_catv
         LEFT JOIN vehiculo_per ON visitas.id_vit = vehiculo_per.id_vit
         LEFT JOIN contenedores_visitas ON visitas.id_vit = contenedores_visitas.id_cont
         LEFT JOIN areas ON visitas.area_per = areas.id_area
         WHERE DATE(visitas.reg_entrada) = CURRENT_DATE
             AND visitas.reg_salida IS NULL
-            AND visitas.est IS NULL
+            AND visitas.est IS NULL 
             GROUP BY visitas.id_visit
     `;
 
@@ -536,7 +540,7 @@ const createVisitaPaqueteria = async (req, res) => {
   const acc_veh = 'S';
   const llegada = 'S';
   const validar = 'S';
-  const personal = 'KARLA';
+  const personal = 'KARLA RAMIREZ';
 
   const cleanString = (str) => (typeof str === 'string' ? str.trim().replace(/\s+/g, ' ') : '');
   const cleanedNombre = cleanString(nombre);
@@ -657,6 +661,117 @@ const createVisitaPaqueteria = async (req, res) => {
         clavePersonalizada,
         claveVisita,
         transportistaId,
+        visitaId
+      }
+    });
+  } catch (error) {
+    console.error('Error en la operación:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Error del servidor al registrar la visita.',
+    });
+  }
+};
+
+const createVisitaManiobra = async (req, res) => {
+  console.log('Cuerpo de la solicitud:', req.body);
+  const { id_catv, nombre, apellidos, empresa, no_licencia, no_ine,  acompanantesMan} = req.body;
+
+  const registro = new Date();
+  const fechaRegistro = new Date(registro);
+  const anio = registro.getFullYear();
+  const mes = (registro.getMonth() + 1).toString().padStart(2, '0');
+  const dia = fechaRegistro.getDate().toString().padStart(2, '0');
+  const fechaFormato = `${anio}-${mes}-${dia}`;
+  const est = 'A';
+  const area_per = 11;
+  const llegada = 'S';
+  const personal = 'SUPERVISOR RECIBO';
+
+  const cleanString = (str) => (typeof str === 'string' ? str.trim().replace(/\s+/g, ' ') : '');
+  const cleanedNombre = cleanString(nombre);
+  const cleanedApellidos = cleanString(apellidos);
+  const cleanedEmpresa = cleanString(empresa);
+  const cleanedLicencia = cleanString(no_licencia);
+  const cleanedNoine = cleanString(no_ine);
+
+  const generarClave = (id_catv, dia, id_persona) => {
+    const prefijo = id_catv === 6 ? 'MN' : 'GEN';
+    return `${prefijo}${dia}${id_persona}`;
+  };
+
+  try {
+    let maniobraId;
+    let clavePersonalizada;
+
+    // Buscar si existe el transportista
+    const [existingManiobra] = await pool.query(`SELECT id_vit FROM visitantes WHERE nombre = ? AND apellidos = ?`,[cleanedNombre, cleanedApellidos]);
+
+    if (existingManiobra.length > 0) {
+      // Ya existe: actualizar información
+      maniobraId = existingManiobra[0].id_vit;
+      await pool.query(
+        `UPDATE visitantes
+         SET id_catv = ?, empresa = ?, no_licencia = ?, no_ine = ?, registro = ?, est = ?
+         WHERE id_vit = ?`,
+        [id_catv, cleanedEmpresa, cleanedLicencia, cleanedNoine, registro, est, maniobraId]
+      );
+    } else {
+      // Insertar nuevo transportista
+      const [insertManiobra] = await pool.query(
+        `INSERT INTO visitantes (id_catv, nombre, apellidos, empresa,no_licencia, no_ine, registro, est)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [id_catv, cleanedNombre, cleanedApellidos, cleanedEmpresa,cleanedLicencia, cleanedNoine, registro, est]
+      );
+      maniobraId = insertManiobra.insertId;
+    }
+
+    // Clave personalizada (si ya tiene, no la regeneramos)
+    const [resultClave] = await pool.query(`SELECT clave FROM visitantes WHERE id_vit = ?`,[maniobraId]);
+
+    clavePersonalizada = resultClave[0].clave;
+    if (!clavePersonalizada) {
+      clavePersonalizada = generarClave(id_catv, dia, maniobraId);
+      await pool.query(`UPDATE visitantes SET clave = ? WHERE id_vit = ?`, [clavePersonalizada, maniobraId]);
+    }
+
+    // Visita -- REVISAR QUE PARA MAIOBRA NO REGISTRE PLACAS NI VEHICULOS
+    const prefix = clavePersonalizada.substring(0, 3);
+    const random = Math.floor(1000 + Math.random() * 900).toString();
+    const claveVisita = `${prefix}${random}${maniobraId}`;
+    const [insertVisita] = await pool.query(
+      `INSERT INTO visitas (id_vit, reg_entrada, motivo, area_per, personal, clave_visit, llegada, hora_llegada)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [clavePersonalizada, fechaFormato, 'MANIOBRA', area_per, personal, claveVisita, llegada, registro]
+    );
+    const visitaId = insertVisita.insertId;
+
+    // Acompañantes
+    if (acompanantesMan && acompanantesMan.length > 0) {
+      const values = acompanantesMan.map(acomp => [
+        acomp.nombre_acomp?.toUpperCase() || '', 
+        acomp.apellidos_acomp?.toUpperCase() || '', 
+        acomp.no_ine_acomp, 
+        clavePersonalizada, 
+        visitaId, 
+        claveVisita
+      ]);
+      await pool.query(
+        `INSERT INTO acomp (nombre_acomp, apellidos_acomp, no_ine_acomp, id_vit, id_visit, clave_visit)
+         VALUES ?`,
+        [values]
+      );
+    }
+
+    return res.json({
+      success: true,
+      message: existingManiobra.length > 0
+        ? 'Maniobra actualizado y visita registrada correctamente.'
+        : 'Maniobra y visita registrados correctamente.',
+      data: {
+        clavePersonalizada,
+        claveVisita,
+        maniobraId,
         visitaId
       }
     });
@@ -1285,7 +1400,7 @@ const darSalidaVisitante = async (req, res) => {
         let tabla = null;
         
         
-        if (id_vit.startsWith('VT') || id_vit.startsWith('PR') || id_vit.startsWith('CL')) {
+        if (id_vit.startsWith('VT') || id_vit.startsWith('PR') || id_vit.startsWith('MN') || id_vit.startsWith('CL')) {
             tabla = 'visitantes';
         } else if (id_vit.startsWith('TR') || id_vit.startsWith('PQ') || id_vit.startsWith('VPR') || id_vit.startsWith('CR')) {
             tabla = 'transportista';
@@ -1345,13 +1460,14 @@ const darSalidaOper = async (req, res) => {
     const { est, id_usu_out, tiempo_visita } = req.body;
     const reg_salida = new Date();
     const estV = 'A';
+    // const acomp = await pool.query('SELECT id_com FROM acomp WHERE id_vit = ?', [id_visit]);
     const [[{ id_vit } = {}]] = await pool.query('SELECT id_vit FROM visitas WHERE id_visit = ?', [id_visit]);
 
     try {
         let tabla = null;
         const [rows] = await pool.query('SELECT * FROM visitas WHERE id_visit = ?', [id_visit]);
 
-        if (id_vit.startsWith('VT') || id_vit.startsWith('PR') || id_vit.startsWith('CL')) {
+        if (id_vit.startsWith('VT') || id_vit.startsWith('PR') || id_vit.startsWith('MN') || id_vit.startsWith('CL')) {
             tabla = 'visitantes';
         } else if (id_vit.startsWith('TR') || id_vit.startsWith('PQ') || id_vit.startsWith('VPR') || id_vit.startsWith('CR')) {
             tabla = 'transportista';
@@ -1362,6 +1478,8 @@ const darSalidaOper = async (req, res) => {
             await pool.query(`INSERT INTO visitas_vehiculos (id_vit_deja, reg_entrada, motivo, area_per, personal, entrada_h, est, id_usu_ac, clave_visit, hora_entrada, area_per2, motivo2) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                 [v.id_vit,  v.reg_entrada, v.motivo, v.area_per, v.personal, v.entrada_h, estV, v.id_usu_ac, v.clave_visit, v.hora_entrada, v.area_per2, v.motivo2]
             );
+
+            
         }
 
         } else {
@@ -2200,7 +2318,7 @@ const updateVisitante = async (req, res) => {
     const foto = req.file ? req.file.filename : null;
 
     let tabla = null;
-    if (clave.startsWith('VT') || clave.startsWith('PR') || clave.startsWith('CL') ) {
+    if (clave.startsWith('VT') || clave.startsWith('PR') || clave.startsWith('MN') || clave.startsWith('CL') ) {
         tabla = 'visitantes';
     } else if (clave.startsWith('TR') || clave.startsWith('PQ') || clave.startsWith('VPR') || clave.startsWith('CR')) {
         tabla = 'transportista';
@@ -2232,7 +2350,7 @@ const updateInfoVisitantes = async (req, res) => {
     const acc_dir = 'S';
 
     let tabla = null;
-    if (clave.startsWith('VT') || clave.startsWith('PR')) {
+    if (clave.startsWith('VT') || clave.startsWith('PR') || clave.startsWith('MN') || clave.startsWith('CL')) {
         tabla = 'visitantes';
     } else if (clave.startsWith('TR') || clave.startsWith('MN') || clave.startsWith('VPR') ||  clave.startsWith('CR') ||  clave.startsWith('PQ')) {
         tabla = 'transportista';
@@ -3963,6 +4081,6 @@ const createVisitaProveedor1 = async (req, res) => {
 module.exports = { createVisita, pasarValidar, pasarLlegada, darAccesoVisitante, registrarAcompañantes, getVisitas, getVisitasVehiculoValidado, getVisitasAct, getVisitasReporte, getVisitantes,getVisitanteId,
     createVisitante, getTransportistas, createTransportista, getCategorias, updateVisitante, createTransportistaExcel, darSalidaVisitante,  getCategoriasPP,
     getAllPermisos, permisosAutos, createMulta, multas, getMultaDetails, getMultaDetail, visitantesAll, getCategoriasMT, getAllVehiculos, createVehiculosExcel, updateInfoVisitantes,
-    updateClave, getConceptosMultas, getProveedores, createVisitaProveedor, actividadVigilancia, getActividadVigilancia, updateInfoVisitantesVehiculo,
+    updateClave, getConceptosMultas, getProveedores, createVisitaProveedor, actividadVigilancia, getActividadVigilancia, updateInfoVisitantesVehiculo, createVisitaManiobra,
     validacionVehiculo, validacionProveedor, pagarMulta, createEmpleado, updateEmpleado, desactivarEmpleado, getAreas, getAreasTransp, getEmpleados,createEmpleadoExcel, createVehiculo,
     getPaqueterias, getCortinas, createVisitaPaqueteria, cancelarVisita, getVisitasHoy, updatePaqueteria,createVisitaOper, darSalidaOper, createVisitaEntrevista, sendVisitEmail, sendEmailEviden, upload, uploadImgVehiculo,uploadImgPagos, }

@@ -645,8 +645,60 @@ ORDER BY num_client, pf.codigo_ped;
   }
 };
 
-// /controllers/facturas.js
+
+
+// const getObjClient = async (req, res) => {
+//   try {
+//     const query = `
+//       SELECT
+//         p.\`NUM. CLIENTE\` AS num_client,
+//         p.FECHA,
+//         pf.codigo_ped,
+//         pf.cant_surti,
+//         p.ESTADO
+//       FROM paqueteria p
+//       JOIN pedido_finalizado pf
+//         ON pf.pedido = p.\`no_orden_int\`
+//       WHERE p.FECHA >= '2026-01-01'
+//         AND p.FECHA <  '2026-01-'
+//       ORDER BY num_client, pf.codigo_ped;
+//     `;
+
+//     const [rows] = await pool.query(query);
+
+//     if (rows.length === 0) {
+//       return res.status(200).json({
+//         success: false,
+//         message: "No hay registros para enero de 2026.",
+//         datos: [],
+//       });
+//     }
+
+//     return res.status(200).json({
+//       success: true,
+//       total_resultados: rows.length,
+//       datos: rows,
+//     });
+
+//   } catch (error) {
+//     console.error("❌ Error en getObjClient:", error);
+//     return res.status(500).json({
+//       success: false,
+//       message: "Error interno al obtener los datos.",
+//       error: error.message,
+//     });
+//   }
+// };
+
+
+
 const dataFacturas = async (req, res) => {
+
+
+
+
+
+
   try {
     // Acepta params por query o body (sirve para GET o POST):
     const q = { ...(req.query || {}), ...(req.body || {}) };

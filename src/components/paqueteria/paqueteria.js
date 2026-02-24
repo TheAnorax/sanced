@@ -174,6 +174,7 @@ function Paqueteria() {
     { field: 'cliente', headerName: 'Cliente', width: 250,  renderCell: (params) => (params.value ? params.value : <span style={{ color: '#999', fontStyle: 'italic' }}>Sin asignar</span> ) },  
     { field: 'factura', headerName: 'Factura', width: 200,  renderCell: (params) => (params.value ? params.value : <span style={{ color: '#999', fontStyle: 'italic' }}>Sin Factura</span> ) },    
    { field: 'registro_embarque', headerName: 'Registro', width: 200 }, 
+   { field: 'observaciones', headerName: 'Observaciones', width: 250,  renderCell: (params) => (params.value ? params.value : <span style={{ color: '#999', fontStyle: 'italic' }}>Sin observaciones</span> ) },
     {
       field: 'usuario',
       headerName: 'Usuario de Paquetería',

@@ -548,7 +548,6 @@ function Departamental() {
   const empacadores = [
     "Mauricio Torres",
     "Ana Guerrero",
-    "Olivia García",
     "Berenize Sánchez",
     "Leonardo Butron",
     "Alan Resendiz",
@@ -556,8 +555,13 @@ function Departamental() {
     "Meryllin Olarte",
     "Gabriela Martinez",
     "Ivonne Montoya",
-    "Gustavo Gloria",
+    "Enrique velazquez ",
     "Alejandra",
+    "Enrique velazquez",
+    "Francisco ortiz",
+    "Francisco ortiz",
+    "Erick paredes",
+    "Gael rojas",
   ];
 
   const handleExcel = async (file) => {

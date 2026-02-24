@@ -1086,9 +1086,9 @@ function Transporte() {
 
       // 🚀 **Conservar observaciones**
       const observacionActual =
-        item.OBSERVACIONES && item.OBSERVACIONES.trim() !== ""
-          ? item.OBSERVACIONES
-          : observacionesPorRegistro[item["NUM. CLIENTE"]] || "";
+        observacionesPorRegistro[item["NUM. CLIENTE"]] ||
+        item.OBSERVACIONES ||
+        "";
 
       //  4. Agregar el pedido a la nueva ruta, asegurando que conserve las observaciones
       updatedGroupedData[newRoute].rows.push({
@@ -3760,11 +3760,24 @@ function Transporte() {
     setCurrentObservation(observacionesPorRegistro[clientId] || "");
   };
 
-  const handleSaveObservation = (clientId, newObservation) => {
-    setObservacionesPorRegistro((prev) => ({
-      ...prev,
-      [clientId]: newObservation,
-    }));
+  const handleSaveObservation = (cliente, value) => {
+    // Guardar en el mapa (como ya lo haces)
+    setObservacionesPorRegistro((prev) => {
+      const updated = {
+        ...prev,
+        [cliente]: value,
+      };
+
+      localStorage.setItem("observacionesPorRegistro", JSON.stringify(updated));
+      return updated;
+    });
+
+    // 🔥 AGREGAR ESTO (LA CLAVE)
+    setData((prev) =>
+      prev.map((row) =>
+        row["NUM. CLIENTE"] === cliente ? { ...row, OBSERVACIONES: value } : row
+      )
+    );
   };
 
   useEffect(() => {}, [observacionesPorRegistro, groupedData]);

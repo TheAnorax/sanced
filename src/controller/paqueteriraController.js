@@ -14,7 +14,8 @@ SELECT
   p.tipo,
   p.pedido,
   p.id_usuario_paqueteria,
-  p.registro_embarque,
+  p.registro_embarque,  
+  pq.OBSERVACIONES AS observaciones,
   pq.TOTAL AS monto,
   pq.routeName AS ruta,
   pq.\`NOMBRE DEL CLIENTE\` AS cliente,
@@ -60,6 +61,7 @@ ORDER BY p.registro_embarque DESC;
         registro_embarque: fechaHora, // 👈 ya formateado
         id_usuario_paqueteria: pedido.id_usuario_paqueteria,
         factura: pedido.factura,
+        observaciones: pedido.observaciones,
       };
     });
 

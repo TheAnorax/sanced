@@ -541,7 +541,7 @@ export const mainListItems = (user) => {
       text: "Check",
     },
     {
-      role: ["Admin","MASTER2","Dep","Master","Muetras"],
+      role: ["Admin","MASTER2","Dep","Master","Muetras","AdminTran","Tran"],
       path: "/dashboard/Departamental",
       icon: <FileUploadIcon />,
       text: "Departamental",

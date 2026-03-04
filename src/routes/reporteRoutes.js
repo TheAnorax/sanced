@@ -13,13 +13,13 @@
     router.get('/getPrduSurtidoPorRango', getPrduSurtidoPorRango);
 
     router.get('/getPrduPaqueteriaPorrango', getPrduPaqueteriaPorrango);
-    router.get('/getHstorico2024', getHstorico2024);
+    router.get('/getHstorico2024', getHstorico2024); 
     router.get('/getTop102024', getTop102024);
     router.get('/getTop102025', getTop102025);
     router.get('/getTopProductosPorEstado', getTopProductosPorEstado); 
     router.get('/getHistorico2025', getHistorico2025);
     router.get('/getHistorico2025final', getHistorico2025Final);
-    router.get('/getHistorico2025Paqueterias', getHistorico2025Transportes);
+    router.get('/getHistorico2025Transportes', getHistorico2025Transportes);
     router.get('/getFletesClientes', getFletesClientes);
     router.get('/getVentasPorMunicipio', getVentasPorMunicipio);
     router.get('/getCostoLogisticoMunicipio', getCostoLogisticoMunicipio);

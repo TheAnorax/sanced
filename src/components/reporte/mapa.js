@@ -442,7 +442,7 @@ useEffect(() => {
 
 
   useEffect(() => {
-  if (tabIndex !== 4) return;
+  if (tabIndex !== 5) return;
 
   const fetchFletesTransporte = async () => {
     try {
@@ -796,8 +796,8 @@ useEffect(() => {
         <Tab label="Histórico de Ventas 2024" />
         <Tab label="Top 10 Productos Más Vendidos" />
         <Tab label="Fletes por Cliente" />
-        {/* <Tab label="Fletes por Transporte" /> */}
-        <Tab label="Zona noreste" />
+        <Tab label="Zona noreste" />        
+        <Tab label="Fletes por Transporte" />
 
       </Tabs>
         {tabIndex === 0 && (
@@ -887,7 +887,7 @@ useEffect(() => {
           borderRadius: 2,
           boxShadow: 2,
           transition: 'transform 0.3s',
-          '&:hover': {
+          '&:hover': { 
             transform: 'scale(1.01)',
           },
         }}
@@ -1835,7 +1835,7 @@ useEffect(() => {
           </Paper>
         </Box>
         )}
-        {/* {tabIndex === 4 && (
+        {tabIndex === 5 && (
           <Box>
             <Typography variant="h6" fontWeight="bold" gutterBottom>
               🚚 Fletes por Transporte
@@ -1948,7 +1948,7 @@ useEffect(() => {
             )}
 
           </Box>
-        )} */}
+        )} 
 
 
 {tabIndex === 4 && (

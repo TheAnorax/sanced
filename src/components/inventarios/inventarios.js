@@ -43,7 +43,8 @@ import MySwal from "sweetalert2";
 import PlusOneIcon from "@mui/icons-material/PlusOne";
 import RemoveIcon from "@mui/icons-material/Remove"; // Ícono para disminuir
 import DeleteIcon from "@mui/icons-material/Delete"; // Ícono para eliminar
-
+import { Card, CardContent, Grid, Tooltip } from "@mui/material";
+import FileDownloadIcon from "@mui/icons-material/FileDownload";
 
 const parseUbi = (ubi) => {
   if (!ubi) return {};
@@ -208,7 +209,9 @@ function InventarioAdmin() {
   const [progresoPasillos, setProgresoPasillos] = useState([]);
   const [loadingProgreso, setLoadingProgreso] = useState(false);
 
-
+  const [openCapacidad, setOpenCapacidad] = useState(false);
+const [capacidadData, setCapacidadData] = useState(null);
+const [loadingCapacidad, setLoadingCapacidad] = useState(false);
   const [newUbi, setNewUbi] = useState({
     ubi: "",
     code_prod: "",
@@ -221,6 +224,45 @@ function InventarioAdmin() {
   });
 
 
+  useEffect(() => {
+  fetchCapacidadAlmacen();
+}, []);
+
+const fetchCapacidadAlmacen = async () => {
+  setLoadingCapacidad(true);
+  try {
+    const { data } = await axios.get(
+      "http://66.232.105.87:3007/api/inventarios/capacidad-almacen"
+    );
+    setCapacidadData(data);
+  } catch (error) {
+    console.error(error);
+  } finally {
+    setLoadingCapacidad(false);
+  }
+};
+const exportUbicacionesDisponibles = () => {
+  if (!capacidadData?.ubicaciones_disponibles?.length) {
+    Swal.fire("Info", "No hay ubicaciones disponibles", "info");
+    return;
+  }
+
+  const dataExcel = capacidadData.ubicaciones_disponibles.map((u) => ({
+    Ubicacion: u.ubi,
+    Codigo_Producto: u.code_prod || "",
+    Cantida: u.cant_stock || 0,
+    Pasillo: u.pasillo || "",
+    Seccion: u.seccion || "",
+    Nivel: u.nivel || "",
+    Almacen: u.almacen || "",
+    Tipo: u.tipo_ubi
+  }));
+  const ws = XLSX.utils.json_to_sheet(dataExcel);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Ubicaciones Disponibles");
+
+  XLSX.writeFile(wb, "Ubicaciones_Disponibles.xlsx");
+};
 
 const normalize = (val) =>
   parseInt(val, 10).toString();
@@ -774,7 +816,91 @@ const filteredInvApi = invApi.filter((row) => {
       Swal.fire("❌ Error", "Hubo un problema en la solicitud", "error");
     }
   };
-  ///////////////////////////////
+  //////////////////Alamacenamiento7050/////////////
+
+  const CODIGO_BLOQUEO = "bloqueo3312";
+
+const solicitarCodigoBloqueo = async (accionTexto) => {
+  const { value, isConfirmed } = await Swal.fire({
+    title: `${accionTexto} ubicación`,
+    text: "Ingresa el código de autorización",
+    input: "password",
+    inputPlaceholder: "Código...",
+    showCancelButton: true,
+    confirmButtonText: "Continuar",
+    cancelButtonText: "Cancelar",
+  });
+
+  if (!isConfirmed) return null;
+
+  return value; // ← devolver el código ingresado
+};
+
+/**
+ * Cambia bloqueado 0/1
+ * @param row -> params.row del DataGrid
+ * @param nuevoEstado -> 0 o 1
+ */
+const toggleBloqueoUbicacion = async (row, nuevoEstado) => {
+  const accionTexto = nuevoEstado === 1 ? "Bloquear" : "Desbloquear";
+
+  // 1) pedir código
+  const codigoIngresado = await solicitarCodigoBloqueo(accionTexto);
+if (!codigoIngresado) return;
+
+  // 2) confirmación (opcional pero recomendado)
+  const confirm = await Swal.fire({
+    title: `¿${accionTexto} esta ubicación?`,
+    html: `
+      <div style="text-align:left">
+        <b>Ubicación:</b> ${row.ubi}<br/>
+        <b>Código:</b> ${row.code_prod || "(sin código)"}<br/>
+        <b>Estado nuevo:</b> ${nuevoEstado === 1 ? "BLOQUEADO" : "Disponible"}
+      </div>
+    `,
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonText: `Sí, ${accionTexto}`,
+    cancelButtonText: "Cancelar",
+  });
+
+  if (!confirm.isConfirmed) return;
+
+  try {
+    // 3) pegar a backend
+    // 👇 Ajusta a TU endpoint real
+    const payload = {
+  id_ubi: row.id_ubi,
+  bloqueado: nuevoEstado,
+  user_id: user?.id_usu,
+  codigo: codigoIngresado   // ← AQUÍ estaba el problema
+};
+
+    await axios.put(
+      "http://66.232.105.87:3007/api/inventarios/bloquear-ubicacion",
+      payload
+    );
+
+    // 4) actualizar UI local
+    setInsumos((prev) =>
+      prev.map((item) =>
+        item.id_ubi === row.id_ubi ? { ...item, bloqueado: nuevoEstado } : item
+      )
+    );
+
+    // si también manejas originalInsumos para filtros:
+    setOriginalInsumos((prev) =>
+      prev.map((item) =>
+        item.id_ubi === row.id_ubi ? { ...item, bloqueado: nuevoEstado } : item
+      )
+    );
+
+    Swal.fire("✅ Listo", `Ubicación ${accionTexto.toLowerCase()}da correctamente`, "success");
+  } catch (err) {
+    console.error(err);
+    Swal.fire("❌ Error", err.response?.data?.message || "No se pudo actualizar el bloqueo", "error");
+  }
+};
 
   const exportUbi7050ToExcel = async () => {
     try {
@@ -1088,6 +1214,16 @@ const filteredInvApi = invApi.filter((row) => {
       const response = await axios.get(
         "http://66.232.105.87:3007/api/inventarios/inventarios/obtenerUbiAlma"
       );
+
+      const nuevosInsumos = response.data.resultado.list.map((insumo) => ({
+  id: insumo.id_ubi,
+  ...insumo,
+  bloqueado: Number(insumo.bloqueado), // <- importante
+  cant_stock: insumo.cant_stock ? Number(insumo.cant_stock) : null,
+  ingreso: insumo.ingreso
+    ? new Date(insumo.ingreso).toLocaleDateString("es-ES")
+    : null,
+}));
 
       if (response.data && !response.data.resultado.error) {
         const nuevosInsumos = response.data.resultado.list.map((insumo) => ({
@@ -1727,7 +1863,7 @@ const filteredInvApi = invApi.filter((row) => {
       ),
     },
     { field: "des", headerName: "Descripción", width: 300 },
-    { field: "ubi", headerName: "Ubicación", width: 200 },
+    { field: "ubi", headerName: "Ubicación", width: 100 },
     {
       field: "code_prod",
       headerName: "Código Producto",
@@ -1754,6 +1890,16 @@ const filteredInvApi = invApi.filter((row) => {
           ? new Date(params.value).toLocaleDateString("es-ES")
           : "Sin fecha",
     },
+    {
+      field: "bloqueado",
+      headerName: "Estado",
+      width: 120,
+      renderCell: (params) => (
+        params.value === 1
+          ? <span style={{ color: "red", fontWeight: "bold" }}>BLOQUEADO</span>
+          : <span style={{ color: "green" }}>Disponible</span>
+      )
+    },
 
     {
       field: "movimiento",
@@ -1773,40 +1919,53 @@ const filteredInvApi = invApi.filter((row) => {
       ),
     },
     {
-      field: "actions",
-      headerName: "Acciones",
-      width: 300,
-      renderCell: (params) => (
-        <Box display="flex" gap={1}>
-          <div>
-            {["Admin", "INV"].includes(user?.role) && (
-              <Button
-                color="primary"
-                onClick={() => {
-                  console.log(
-                    "Eliminando producto con 'id_ubi':",
-                    params.row.id_ubi
-                  ); // Aquí mostramos el id_ubi
-                  handleDelete(params.row.id_ubi); // Enviar id_ubi al backend para eliminar
-                }}
-                sx={{
-                  backgroundColor: "primary.main",
-                  color: "white",
-                  "&:hover": {
-                    backgroundColor: "primary.dark",
-                  },
-                  padding: "8px 16px",
-                  margin: "0 4px",
-                  borderRadius: "8px",
-                }}
-              >
-                Borrar
-              </Button>
-            )}
-          </div>
-        </Box>
-      ),
-    },
+  field: "actions",
+  headerName: "Acciones",
+  width: 420,
+  renderCell: (params) => (
+    <Box display="flex" gap={1} alignItems="center">
+      {["Admin", "INV"].includes(user?.role) && (
+        <>
+          {/* BLOQUEAR / DESBLOQUEAR */}
+          {params.row.bloqueado === 1 ? (
+            <Button
+              variant="contained"
+              color="success"
+              onClick={() => toggleBloqueoUbicacion(params.row, 0)}
+              sx={{ borderRadius: "8px" }}
+            >
+              Desbloquear
+            </Button>
+          ) : (
+            <Button
+              variant="contained"
+              color="error"
+              onClick={() => toggleBloqueoUbicacion(params.row, 1)}
+              sx={{ borderRadius: "8px" }}
+            >
+              Bloquear
+            </Button>
+          )}
+
+          {/* BORRAR */}
+          <Button
+            color="primary"
+            onClick={() => handleDelete(params.row.id_ubi)}
+            sx={{
+              backgroundColor: "primary.main",
+              color: "white",
+              "&:hover": { backgroundColor: "primary.dark" },
+              padding: "8px 16px",
+              borderRadius: "8px",
+            }}
+          >
+            Borrar
+          </Button>
+        </>
+      )}
+    </Box>
+  ),
+}
   ];
 
   const inventoryColumnsStatic = [
@@ -2240,45 +2399,108 @@ const filteredInvApi = invApi.filter((row) => {
         <center>
           <Typography variant="h6">Inventario 7050</Typography>
         </center>
-        <Box
-          sx={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: 2,
-            alignItems: "center",
-            justifyContent: "center",
-            mb: 2,
-          }}
+        <Grid container spacing={2} alignItems="stretch" sx={{ mb: 2 }}>
+
+  {/* BOTONES */}
+  <Grid item xs={12} md={8}>
+    <Box
+      sx={{
+        display: "flex",
+        flexWrap: "wrap",
+        gap: 2,
+        alignItems: "center",
+      }}
+    >
+      {["Admin", "INV"].includes(user?.role) && (
+        <Button
+          variant="contained"
+          onClick={handleOpenModalInsertUbi}
+          sx={{ backgroundColor: "green", color: "white" }}
         >
-          {["Admin", "INV"].includes(user?.role) && (
-            <Button
-              variant="contained"
-              onClick={handleOpenModalInsertUbi}
-              sx={{ backgroundColor: "green", color: "white" }}
-            >
-              Insertar Nueva Ubicación
-            </Button>
-          )}
-          <Button
-            onClick={exportUbi7050ToExcel}
-            variant="contained"
-            sx={{ backgroundColor: "green", color: "white" }}
-          >
-            Exportar 7050 a Excel
-          </Button>
+          Insertar Nueva Ubicación
+        </Button>
+      )}
 
-          <Button variant="contained" color="error" onClick={fetchImpares}>
-            Mostrar Impares
-          </Button>
+      <Button
+        onClick={exportUbi7050ToExcel}
+        variant="contained"
+        sx={{ backgroundColor: "green", color: "white" }}
+      >
+        Exportar 7050 a Excel
+      </Button>
 
-          <Button
-            variant="contained"
-            sx={{ backgroundColor: "#d46a6a", color: "white" }}
-            onClick={fetchPares}
-          >
-            Mostrar Pares
-          </Button>
+      <Button variant="contained" color="error" onClick={fetchImpares}>
+        Mostrar Impares
+      </Button>
+
+      <Button
+        variant="contained"
+        sx={{ backgroundColor: "#d46a6a", color: "white" }}
+        onClick={fetchPares}
+      >
+        Mostrar Pares
+      </Button>
+    </Box>
+  </Grid>
+
+  {/* CARD DE CAPACIDAD */}
+  <Grid item xs={12} md={4}>
+    <Card elevation={3} sx={{ height: "100%" }}>
+      <CardContent>
+        <Box display="flex" justifyContent="space-between" alignItems="center">
+          <Typography variant="subtitle1" fontWeight="bold">
+            Capacidad Almacén
+          </Typography>
+
+          <Tooltip title="Descargar ubicaciones disponibles">
+            <FileDownloadIcon
+              sx={{ cursor: "pointer", color: "green" }}
+              onClick={exportUbicacionesDisponibles}
+            />
+          </Tooltip>
         </Box>
+
+        {loadingCapacidad ? (
+          <Box display="flex" justifyContent="center" mt={2}>
+            <CircularProgress size={25} />
+          </Box>
+        ) : capacidadData && (
+          <>
+            <Typography variant="body2">
+              Total: <b>{capacidadData.resumen.total_ubicaciones}</b>
+            </Typography>
+
+            <Typography variant="body2" color="error">
+              Ocupadas: <b>{capacidadData.resumen.ocupadas}</b>
+            </Typography>
+
+            <Typography variant="body2" color="success.main">
+              Disponibles: <b>{capacidadData.resumen.disponibles}</b>
+            </Typography>
+
+            <Box mt={1}>
+              <Typography variant="body2">
+                Ocupación:
+                <b>
+                  {" "}
+                  {(
+                    (capacidadData.resumen.ocupadas /
+                      capacidadData.resumen.total_ubicaciones) *
+                    100
+                  ).toFixed(2)}
+                  %
+                </b>
+              </Typography>
+            </Box>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  </Grid>
+
+</Grid>
+
+
 
         {/*  <Button onClick={handleOpenDetailsModal}>Mostrar Detalles</Button> */}
 
@@ -2522,6 +2744,9 @@ const filteredInvApi = invApi.filter((row) => {
           getRowId={(row) => row.id}
           style={{ height: 800, width: "auto" }}
           getRowClassName={(params) => {
+            if (params.row.bloqueado === 1) {
+              return "ubicacion-bloqueada";
+            }
             if (params.row.cant_stock === 0) {
               return "stock-cero";
             }
@@ -2529,6 +2754,19 @@ const filteredInvApi = invApi.filter((row) => {
               return "stock-vacio";
             }
             return "";
+          }}
+          sx={{
+            "& .ubicacion-bloqueada": {
+              backgroundColor: "#ffe6e6",
+              color: "#b00020",
+              fontWeight: "bold"
+            },
+            "& .stock-cero": {
+              backgroundColor: "#fff3cd"
+            },
+            "& .stock-vacio": {
+              backgroundColor: "#f9f9f9"
+            }
           }}
         />
 

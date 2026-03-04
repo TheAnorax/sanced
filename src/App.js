@@ -48,6 +48,7 @@ import Departamental from "./components/departamental/departamental";
 import Mercado from "./components/Libre/Mercado_Libre";
 import Traspasos from "./components/traspaso/traspaso";
 import Check  from "./components/Check_equipo/check_list";
+import RhCedis from "./components/RH/rhcedis";
 
 
 
@@ -101,7 +102,7 @@ function App() {
             <Route path="Mercado-libre" element={<ProtectedRoute><Mercado /></ProtectedRoute>} />
             <Route path="Traspasos" element={<ProtectedRoute><Traspasos /></ProtectedRoute>} />
             <Route path="Check" element={<ProtectedRoute><Check /></ProtectedRoute>} />
-
+            <Route path="RH-CEDIS" element={<ProtectedRoute><RhCedis /></ProtectedRoute>} />
 
           </Route>
         </Routes>

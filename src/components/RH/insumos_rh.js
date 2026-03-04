@@ -213,4 +213,4 @@ function InsumosRH() {
     );
   }
 
-export default InsumosRH;
+export default InsumosRH; 

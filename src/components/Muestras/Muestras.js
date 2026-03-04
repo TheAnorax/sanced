@@ -1581,6 +1581,7 @@ function Muestras() {
             user?.role !== "Admin" &&
             user?.role !== "INV" &&
             user?.role !== "Master" &&
+            user?.role !== "Master2" &&
             user?.role !== "Mue" &&
             user?.role !== "Mues" &&
             user?.role !== "Audi" &&
@@ -1610,6 +1611,7 @@ function Muestras() {
             user?.role !== "Mues" &&
             user?.role !== "Nac" &&
             user?.role !== "AdminAudi" &&
+            user?.role !== "Master2" &&
             user?.role !== "Muetras"
           }
         />

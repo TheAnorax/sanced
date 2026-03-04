@@ -20,7 +20,9 @@ const {
   obtenerUbicacion,
   actualizarInventario,
   crearUbicacion,
-  obtenerProgresoPorPasillo
+  obtenerProgresoPorPasillo,
+  getCapacidadAlmacen,
+  bloquearUbicacion,
 } = require("../controller/inventariosController");
 
 router.get("/inventarios", getInventarios);
@@ -52,5 +54,7 @@ router.put("/actualizarInventario/:id_ubi", actualizarInventario);
 
 router.post("/crear-ubicacion", crearUbicacion);
 router.get("/progreso-pasillo", obtenerProgresoPorPasillo);
+router.get("/capacidad-almacen", getCapacidadAlmacen);
+router.put("/bloquear-ubicacion", bloquearUbicacion);
 
 module.exports = router;

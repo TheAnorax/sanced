@@ -426,8 +426,193 @@ const importTraspasosExcel = async (req, res) => {
 
 
 /* =========================
+   RH CEDIS
+   ========================= */
+/* =========================
+   PRODUCTIVIDAD POR ÁREA
+   ========================= */
+
+// helpers simples para fechas
+function isValidDateYYYYMMDD(s) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(s || ''));
+}
+
+function addOneDayYYYYMMDD(dateStr) {
+  const d = new Date(dateStr + "T00:00:00");
+  d.setDate(d.getDate() + 1);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+/**
+ * GET /api/RH/productividad?fecha_inicio=YYYY-MM-DD&fecha_fin=YYYY-MM-DD
+ * Regresa productividad para: SURTIDO, PAQUETERIA, EMBARQUES
+ */
+const getProductividadAreas = async (req, res) => {
+  try {
+    const { fecha_inicio, fecha_fin } = req.query;
+
+    if (!isValidDateYYYYMMDD(fecha_inicio) || !isValidDateYYYYMMDD(fecha_fin)) {
+      return res.status(400).json({
+        ok: false,
+        message: "Parámetros inválidos. Usa fecha_inicio y fecha_fin con formato YYYY-MM-DD",
+      });
+    }
+
+    if (fecha_inicio > fecha_fin) {
+      return res.status(400).json({
+        ok: false,
+        message: "fecha_inicio no puede ser mayor que fecha_fin",
+      });
+    }
+
+    // Rango: [inicio 00:00:00, fin+1día 00:00:00)
+    const start = `${fecha_inicio} 00:00:00`;
+    const end = `${addOneDayYYYYMMDD(fecha_fin)} 00:00:00`;
+
+    /* =========================
+       1) SURTIDO (resumen)
+       ========================= */
+    const querySurtido = `
+      SELECT 
+        DATE(resumen.inicio_surtido) AS fecha,
+        resumen.id_usuario_surtido AS id_usuario,
+        u.name AS nombre,
+        u.role,
+        COUNT(DISTINCT resumen.id_pedi) AS codigos,
+        SUM(resumen.cant_surti) AS piezas,
+        COUNT(DISTINCT resumen.pedido) AS pedidos,
+        ROUND(
+          SUM(TIMESTAMPDIFF(MINUTE, resumen.inicio_surtido, resumen.fin_surtido)) / 60,
+          2
+        ) AS horas
+      FROM (
+        SELECT id_pedi, pedido, cant_surti, inicio_surtido, fin_surtido, id_usuario_surtido
+        FROM pedido_surtido
+        WHERE cant_surti > 0
+          AND id_usuario_surtido IS NOT NULL
+          AND inicio_surtido >= ?
+          AND inicio_surtido < ?
+
+        UNION ALL
+
+        SELECT id_pedi, pedido, cant_surti, inicio_surtido, fin_surtido, id_usuario_surtido
+        FROM pedido_embarque
+        WHERE cant_surti > 0
+          AND id_usuario_surtido IS NOT NULL
+          AND inicio_surtido >= ?
+          AND inicio_surtido < ?
+
+        UNION ALL
+
+        SELECT id_pedi, pedido, cant_surti, inicio_surtido, fin_surtido, id_usuario_surtido
+        FROM pedido_finalizado
+        WHERE cant_surti > 0
+          AND id_usuario_surtido IS NOT NULL
+          AND inicio_surtido >= ?
+          AND inicio_surtido < ?
+      ) resumen
+      LEFT JOIN usuarios u ON u.id_usu = resumen.id_usuario_surtido
+      GROUP BY fecha, id_usuario, nombre, u.role
+      ORDER BY fecha DESC;
+    `;
+
+    const [surtido] = await pool.query(querySurtido, [start, end, start, end, start, end]);
+
+    /* =========================
+       2) PAQUETERÍA / EMBARQUES
+       Base: agrupa primero por pedido
+       ========================= */
+    const queryBasePaqEmb = `
+      SELECT 
+        resumen.fecha,
+        resumen.id_usuario,
+        u.name AS nombre,
+        u.role,
+
+        COUNT(resumen.pedido) AS pedidos,
+        SUM(resumen.codigos) AS codigos,
+        SUM(resumen.piezas) AS piezas,
+        SUM(resumen.horas) AS horas,
+
+        COUNT(p.no_orden_int) AS pedidos_facturados,
+        SUM(CAST(p.total_api AS DECIMAL(12,2))) AS monto_sin_iva,
+        SUM(p.totalIva) AS monto_con_iva
+
+      FROM (
+        SELECT
+          DATE(inicio_embarque) AS fecha,
+          id_usuario_paqueteria AS id_usuario,
+          pedido,
+
+          COUNT(DISTINCT id_pedi) AS codigos,
+          SUM(cant_surti) AS piezas,
+
+          ROUND(
+            SUM(TIMESTAMPDIFF(MINUTE, inicio_embarque, fin_embarque)) / 60,
+            2
+          ) AS horas
+
+        FROM (
+          SELECT id_pedi, pedido, cant_surti, inicio_embarque, fin_embarque, id_usuario_paqueteria
+          FROM pedido_embarque
+          WHERE cant_surti > 0
+            AND id_usuario_paqueteria IS NOT NULL
+            AND inicio_embarque >= ?
+            AND inicio_embarque < ?
+
+          UNION ALL
+
+          SELECT id_pedi, pedido, cant_surti, inicio_embarque, fin_embarque, id_usuario_paqueteria
+          FROM pedido_finalizado
+          WHERE cant_surti > 0
+            AND id_usuario_paqueteria IS NOT NULL
+            AND inicio_embarque >= ?
+            AND inicio_embarque < ?
+        ) base
+        GROUP BY DATE(inicio_embarque), id_usuario_paqueteria, pedido
+      ) resumen
+
+      INNER JOIN usuarios u ON u.id_usu = resumen.id_usuario
+      LEFT JOIN paqueteria p ON p.no_orden_int = resumen.pedido
+
+      WHERE u.role LIKE ?
+
+      GROUP BY resumen.fecha, resumen.id_usuario, u.name, u.role
+      ORDER BY resumen.fecha DESC;
+    `;
+
+    // paquetería (PQ%)
+    const [paqueteria] = await pool.query(queryBasePaqEmb, [start, end, start, end, "PQ%"]);
+
+    // embarques (EB%)
+    const [embarques] = await pool.query(queryBasePaqEmb, [start, end, start, end, "EB%"]);
+
+    return res.json({
+      ok: true,
+      rango: { fecha_inicio, fecha_fin },
+      surtido,
+      paqueteria,
+      embarques,
+    });
+
+  } catch (error) {
+    console.error("getProductividadAreas error:", error);
+    return res.status(500).json({
+      ok: false,
+      message: "Error al generar productividad",
+      error: error.message,
+    });
+  }
+};
+
+/* =========================
    EXPORTS
    ========================= */
+ 
+
 module.exports = {
   // CRUD RH
   getInsumosRH,
@@ -440,8 +625,13 @@ module.exports = {
   createTraspaso,
   Traspasos,
 
-  // Excel
+  // Excel 
   importTraspasosExcelMiddleware,
   excelToJson,
   importTraspasosExcel,
+
+    // RH CEDIS
+  getProductividadAreas
+
+  
 };

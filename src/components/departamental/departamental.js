@@ -559,7 +559,6 @@ function Departamental() {
     "Alejandra",
     "Enrique velazquez",
     "Francisco ortiz",
-    "Francisco ortiz",
     "Erick paredes",
     "Gael rojas",
   ];

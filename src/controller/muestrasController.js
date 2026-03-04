@@ -175,6 +175,7 @@ const guardarSolicitudes = async (req, res) => {
             "mauricio.sandler@santul.net",
             "analista.inventarios2@santul.net",
             "supervisor.inventarios@santul.net",
+            "analista.inventarios1@santul.net",
           ]
         : [
             "jonathan.alcantara@santul.net",
@@ -252,6 +253,7 @@ const actualizarSolicitud = async (req, res) => {
       "jonathan.alcantara@santul.net",
       "analista.inventarios2@santul.net",
       "supervisor.inventarios@santul.net",
+      "analista.inventarios1@santul.net",
     ];
 
     // 5) Si fue AUTORIZADO (1), enviar correo de autorización
@@ -333,6 +335,7 @@ const actualizarSolicitud = async (req, res) => {
           "jonathan.alcantara@santul.net",
           "analista.inventarios2@santul.net",
           "supervisor.inventarios@santul.net",
+          "analista.inventarios1@santul.net",
         ].filter(Boolean);
 
         // 🔹 Enviar correo
@@ -1035,6 +1038,7 @@ const enviarPendientesEmbarque = async () => {
         "analista.inventarios2@santul.net",
         "supervisor.inventarios@santul.net",
         "gerardo.rodriguez@santul.net",
+        "analista.inventarios1@santul.net",
       ],
       subject: " Solicitudes PENDIENTES de embarque",
       html,

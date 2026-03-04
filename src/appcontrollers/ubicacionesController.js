@@ -13,12 +13,14 @@ const consultaUbicaciones = async (req, res) => {
 
   const query = `
     SELECT 
-      prod.des,    
-      u.ubi,         
-      u.cant_stock 
-    FROM ubi_alma u
-    LEFT JOIN productos prod ON CAST(u.code_prod AS UNSIGNED) = CAST(prod.codigo_pro AS UNSIGNED)
-    WHERE u.code_prod = ?;
+  prod.des,    
+  u.ubi,         
+  u.cant_stock 
+FROM ubi_alma u
+LEFT JOIN productos prod 
+  ON CAST(u.code_prod AS UNSIGNED) = CAST(prod.codigo_pro AS UNSIGNED)
+WHERE u.code_prod = ?
+AND u.bloqueado = 0;
   `;
 
   let connection;

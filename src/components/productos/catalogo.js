@@ -713,8 +713,10 @@ const columnasMobile = [
                   gap: 1,
                   mb: 2,
                 }}
-              >
+              > {user?.role === "Admin" && (
                 <Stack direction="row" spacing={1}>
+
+                  
                   {modoEdicion ? (
                     <>
                       <Button
@@ -735,6 +737,7 @@ const columnasMobile = [
                       </Button>
                     </>
                   ) : (
+                     
                     <Button
                       variant="outlined"
                       startIcon={<EditIcon />}
@@ -744,6 +747,7 @@ const columnasMobile = [
                       Editar
                     </Button>
                   )}
+
                   <Button
                     variant="contained"
                     color="secondary"
@@ -772,7 +776,7 @@ const columnasMobile = [
                     </Box>
                   )}
                 </Stack>
-
+                  )}
                 {/* Tabs centrados bajo los botones */}
                 <Tabs
                   value={tab}

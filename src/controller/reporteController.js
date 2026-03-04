@@ -2081,7 +2081,7 @@ const getVentasPorMunicipio = async (req, res) => {
       error: error.message
     });
   }
-};
+}; 
 
 
 

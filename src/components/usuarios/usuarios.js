@@ -1,7637 +1,1274 @@
-  import React, { useState, useEffect, useContext } from "react";
-  import axios from "axios";
-  import {
-    Box,
-    Typography,
-    Table,
-    TableBody,
-    TableCell,
-    TableContainer,
-    TableHead,
-    TableRow,
-    Paper,
-    Button,
-    Modal,
-    Grid,
-    Checkbox,
-    FormControlLabel,
-    Divider,
-    Card,
-    CardContent,
-    TextField,
-    List,
-    ListItem,
-    ListItemText,
-    CardHeader,
-  } from "@mui/material";
-  import Barcode from "react-barcode";
-  import { UserContext } from "../context/UserContext";
-  import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-  import LockIcon from "@mui/icons-material/Lock";
-  import HighlightOffIcon from "@mui/icons-material/HighlightOff";
-  import { jsPDF } from "jspdf";
-  import "jspdf-autotable";
-  import QRCode from "qrcode";
+import React, {
+  useEffect,
+  useMemo,
+  useState,
+  useContext,
+  useCallback,
+} from "react";
+import axios from "axios";
+import {
+  Box,
+  Typography,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  Button,
+  Modal,
+  Grid,
+  Divider,
+  Card,
+  CardContent,
+  TextField,
+  CardHeader,
+  Chip,
+  Stack,
+} from "@mui/material";
+import { UserContext } from "../context/UserContext";
+import { jsPDF } from "jspdf";
+import "jspdf-autotable";
+import { QRCodeCanvas } from "qrcode.react";
+import PersonIcon from "@mui/icons-material/Person";
+import BadgeIcon from "@mui/icons-material/Badge";
 
-  const roleAccessMap = {
-    Master: [
-      "Dashboard",
-      "Usuarios",
-      "Productos",
-      "Surtiendo",
-      "Pedidos",
-      "Finalizados",
-      "Bahias",
-      "Ubicaciones",
-      "Compras",
-      "Producto a Recibir",
-      "Calidad",
-      "Inventarios",
-      "Insumos",
-      "Historial de Mov",
-      "Tareas",
-      "PQ",
-    ],
-    Control: [
-      "Dashboard",
-      "Usuarios",
-      "Productos",
-      "Pedidos Pendientes",
-      "Surtiendo",
-      "Pedidos",
-      "Finalizados",
-      "Plan",
-      "Bahias",
-      "Inventarios",
-    ],
-    Admin: [
-      "Dashboard",
-      "Usuarios",
-      "Productos",
-      "Pedidos Pendientes",
-      "Surtiendo",
-      "Pedidos",
-      "Finalizados",
-      "Paqueteria",
-      "Empacando",
-      "Embarques",
-      "Embarcando",
-      "Plan",
-      "Bahias",
-      "Ubicaciones",
-      "Compras",
-      "Producto a Recibir",
-      "Calidad",
-      "Inventarios",
-      "Reporte Recibo",
-      "Insumos",
-      "Muestras",
-      "Historial de Mov",
-      "Tareas",
-      "RH",
-      "PQ",
-      "Visitas",
-    ],
-    Paquet: [
-      "Dashboard",
-      "Productos",
-      "Finalizados",
-      "Paqueteria",
-      "Empacando",
-      "Bahias",
-      "Insumos",
-    ],
-    Embar: [
-      "Usuarios",
-      "Productos",
-      "Finalizados",
-      "Embarques",
-      "Embarcando",
-      "Bahias",
-    ],
-    Rep: ["Productos", "Finalizados"],
-    INV: [
-      "Productos",
-      "Producto a Recibir",
-      "Calidad",
-      "Inventarios",
-      "Reporte Recibo",
-      "Insumos",
-      "Historial de Mov",
-    ],
-    Imp: ["Productos", "Compras", "Reporte Recibo"],
-    Audi: ["Productos", "Finalizados", "Inventarios"],
-    Plan: ["Productos", "Compras", "Plan"],
-    VENT: ["Productos", "Pedidos"],
-    CON: ["Productos"],
-    Nac: ["Compras", "Reporte Recibo"],
-    Nac2: ["Compras", "Reporte Recibo"],
-    Ins: ["Compras", "Insumos"],
-    Recibo: ["Compras", "Producto a Recibir", "Reporte Recibo", "Insumos"],
-    MONTA6: ["Inventarios"],
-    ECOMERCE: ["Inventarios"],
-    Reporte: ["Reporte Recibo"],
-    Dep: ["Insumos"],
-    P: ["Insumos"],
-    RH: ["RH"],
-  };
+import EmailIcon from "@mui/icons-material/Email";
+import BusinessIcon from "@mui/icons-material/Business";
+import QrCodeIcon from "@mui/icons-material/QrCode";
+import CloseIcon from "@mui/icons-material/Close";
 
-  function Usuarios() {
-    const [usuariosPorTurno, setUsuariosPorTurno] = useState([]);
-    const [turno4Usuarios, setTurno4Usuarios] = useState([]); // Almacena usuarios del Turno 4
-    const [usuariosEmbarques, setUsuariosEmbarques] = useState([]); // Usuarios de Embarques
-    const [usuariosPaqueteria, setUsuariosPaqueteria] = useState([]);
-    const [usuariosMonta, setUsuariosMonta] = useState([]); // Usuarios con rol MONTA
-    const [usuariosAdmin, setUsuariosAdmin] = useState([]); // Usuarios con rol Admin
-    const [usuariosControl, setUsuariosControl] = useState([]); // Usuarios con rol Control
-    const [usuariosMaster, setUsuariosMaster] = useState([]); // Usuarios con rol Master
-    const [usuariosPaquet, setUsuariosPaquet] = useState([]); // Usuarios con rol Paquet
-    const [usuariosEmbar, setUsuariosEmbar] = useState([]); // Usuarios con rol Embar
-    const [usuariosRep, setUsuariosRep] = useState([]); // Usuarios con rol Rep
-    const [usuariosEti, setUsuariosEti] = useState([]); // Usuarios con rol Eti
-    const [usuariosNac, setUsuariosNac] = useState([]); // Usuarios con rol Nac
-    const [usuariosImp, setUsuariosImp] = useState([]); // Usuarios con rol Imp
-    const [usuariosPlan, setUsuariosPlan] = useState([]); // Usuarios con rol Plan
-    const [usuariosRecibo, setUsuariosRecibo] = useState([]); // Usuarios con rol Recibo
-    const [usuariosCali, setUsuariosCali] = useState([]); // Usuarios con rol Cali
-    const [usuariosInv, setUsuariosInv] = useState([]); // Usuarios con rol Inv
-    const [usuariosAudi, setUsuariosAudi] = useState([]); // Usuarios con rol Audi
-    const [usuariosVent, setUsuariosVent] = useState([]); // Usuarios con rol Vent
-    const [usuariosEcom, setUsuariosEcom] = useState([]); // Usuarios con rol Ecom
-    const [usuariosCon, setUsuariosCon] = useState([]); // Usuarios con rol Con
-    const [usuariosIns, setUsuariosIns] = useState([]); // Usuarios con rol Ins
-    const [usuariosPoli, setUsuariosPoli] = useState([]); // Usuarios con rol Poli
-    const [usuariosRH, setUsuariosRH] = useState([]); // Usuarios con rol RH
-    const [usuariosTrans, setUsuariosTrans] = useState([]); // Usuarios con rol Trans
-    const [usuariosUser, setUsuariosUser] = useState([]); // Usuarios con rol User
-    const [usuariosDep, setUsuariosDep] = useState([]); // Usuarios con rol Dep
-    const [selectedUser, setSelectedUser] = useState(null);
-    const [openModal, setOpenModal] = useState(false);
-    const [openModalUser, setOpenModalUser] = useState(false);
-    const [openAccessModal, setOpenAccessModal] = useState(false);
-    const [openPermissionsModal, setOpenPermissionsModal] = useState(false);
-    const [userPermissions, setUserPermissions] = useState([]);
-    const [accesos, setAccesos] = useState([]);
-    const [secciones, setSecciones] = useState([]);
-    const { user } = useContext(UserContext); // Usuario logueado
-    const [isEditMode, setIsEditMode] = useState(false); // Controla si el modal es para editar o crear
-    const [editModePermissions, setEditModePermissions] = useState(false); // Nuevo estado para activar/desactivar edición de permisos
-    const [editablePermissions, setEditablePermissions] = useState([]); // Estado para manejar permisos editables
-    const [inactivePermissions, setInactivePermissions] = useState([]); // Permisos inactivos
+/** =========================
+ *  CONFIG
+ *  ========================= */
+const API_BASE = "http://66.232.105.87:3007/api";
 
-    const [userForm, setUserForm] = useState({
-      email: "",
-      name: "",
-      password: "",
-      unidad: "",
-      role: "",
+// Etiquetas de “área” (reporte por área). Ajusta a tu gusto.
+const AREA_GROUPS = [
+  {    key: "WEB",    title: "Accesos Web (Turno 4)",    matcher: (u) => u?.turno === 4,  },
+  {    key: "ADMIN",    title: "Administradores",    matcher: (u) => includesAnyRole(u.role, ["Admin", "Master"]),  },
+  {    key: "CONTROL",    title: "Mesa de Control",    matcher: (u) => includesAnyRole(u.role, ["Admin", "Control"]),  },
+  {    key: "EMBAR",    title: "Embarques",    matcher: (u) => includesAnyRole(u.role, ["Admin", "Embar", "EB"]),  },
+  {    key: "PAQUET",    title: "Paquetería",    matcher: (u) => includesAnyRole(u.role, ["Admin", "Paquet", "PQ"]),  },
+  {    key: "MONTA",    title: "Montacargas",    matcher: (u) => includesAnyRole(u.role, ["Admin", "MONTA"]),  },
+  {    key: "INV",    title: "Inventario",    matcher: (u) => includesAnyRole(u.role, ["Admin", "INV"]),  },
+  {    key: "DEV",    title: "Desarrollo",    matcher: (u) => includesAnyRole(u.role, ["Admin", "Dep"]),  },
+];
+
+function includesAnyRole(roleString = "", tokens = []) {
+  const r = String(roleString || "");
+  return tokens.some((t) => r.includes(t));
+}
+
+/** =========================
+ *  HELPERS
+ *  ========================= */
+function flattenUsuariosPorTurno(data) {
+  // data: [{turno: number, usuarios: []}, ...]
+  const flat = [];
+  for (const grupo of data || []) {
+    for (const u of grupo.usuarios || []) {
+      flat.push({ ...u, turno: grupo.turno }); // 👈 guardo turno dentro del usuario
+    }
+  }
+  return flat;
+}
+
+function groupBy(arr, keyFn) {
+  return arr.reduce((acc, item) => {
+    const k = keyFn(item);
+    acc[k] = acc[k] || [];
+    acc[k].push(item);
+    return acc;
+  }, {});
+}
+
+/** =========================
+ *  SMALL UI COMPONENTS
+ *  ========================= */
+function SectionHeader({ title, count }) {
+  return (
+    <Box
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        mb: 2,
+      }}
+    >
+      <Typography variant="h5">{title}</Typography>
+      <Chip label={`${count} usuarios`} />
+    </Box>
+  );
+}
+
+function UserTable({
+  rows,
+  showRole = true,
+  showUnidad = true,
+  actionsLeft,
+  actionsRight,
+}) {
+  return (
+    <TableContainer
+      component={Paper}
+      sx={{
+        width: "100%",
+        maxHeight: "auto",
+        overflow: "auto",
+        borderRadius: 2,
+        boxShadow: 2,
+      }}
+    >
+      <Table
+        size="small"
+        stickyHeader
+        sx={{
+          minWidth: 650,
+          "& .MuiTableCell-head": {
+            backgroundColor: "#f4f6f8",
+            fontWeight: "bold",
+            fontSize: 13,
+          },
+          "& .MuiTableCell-body": {
+            fontSize: 12,
+            py: 0.8,
+          },
+          "& .MuiTableRow-root:hover": {
+            backgroundColor: "#f9fbff",
+          },
+        }}
+      >
+        <TableHead>
+          <TableRow>
+            <TableCell width={70}>ID</TableCell>
+            <TableCell>Nombre</TableCell>
+            {showRole && <TableCell width={140}>Rol</TableCell>}
+            {showUnidad && <TableCell width={120}>Unidad</TableCell>}
+            {actionsLeft && <TableCell width={120}>Acciones</TableCell>}
+            {actionsRight && <TableCell width={140}>Admin</TableCell>}
+          </TableRow>
+        </TableHead>
+
+        <TableBody>
+          {rows.map((u) => (
+            <TableRow key={u.id_usu}>
+              <TableCell>{u.id_usu}</TableCell>
+              <TableCell>
+                <Typography fontWeight={500}>
+                  {u.name}
+                </Typography>
+              </TableCell>
+
+              {showRole && (
+                <TableCell>
+                  <Chip
+                    label={u.role}
+                    size="small"
+                    color="primary"
+                    variant="outlined"
+                  />
+                </TableCell>
+              )}
+
+              {showUnidad && <TableCell>{u.unidad}</TableCell>}
+
+              {actionsLeft && <TableCell>{actionsLeft(u)}</TableCell>}
+              {actionsRight && <TableCell>{actionsRight(u)}</TableCell>}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  );
+}
+const generarPDFPorUsuarios = async (usuarios, titulo = "Credenciales") => {
+  if (!usuarios || usuarios.length === 0) {
+    alert("No hay usuarios para generar el PDF");
+    return;
+  }
+
+  const QRCode = await import("qrcode");
+
+  const doc = new jsPDF({
+    orientation: "portrait",
+    unit: "mm",
+    format: "A4",
+  });
+
+  // Medidas credencial
+  const credW = 54;
+  const credH = 86;
+
+  // Márgenes
+  const marginX = 10;
+  const marginY = 10;
+
+  // Espaciado
+  const gapX = 4;
+  const gapY = 4;
+
+  const pageWidth = 210;
+  const pageHeight = 297;
+
+  const cols = 3;
+  const rows = 3;
+
+  let index = 0;
+
+  for (let i = 0; i < usuarios.length; i++) {
+    const usuario = usuarios[i];
+
+    const col = index % cols;
+    const row = Math.floor(index / cols) % rows;
+
+    const x = marginX + col * (credW + gapX);
+    const y = marginY + row * (credH + gapY);
+
+    // Nueva página cada 9 credenciales
+    if (index > 0 && index % (cols * rows) === 0) {
+      doc.addPage();
+    }
+
+    // QR
+    const qrEmail = await QRCode.toDataURL(usuario.email || "");
+    const qrPass = await QRCode.toDataURL(usuario.password || "");
+
+    // Marco
+    doc.rect(x, y, credW, credH);
+
+    // Nombre
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    doc.text((usuario.name || "").toUpperCase(), x + credW / 2, y + 6, {
+      align: "center",
     });
 
-    useEffect(() => {
-      const fetchUsuarios = async () => {
-        try {
-          const response = await axios.get(
-            "http://66.232.105.87:3007/api/usuarios/usuarios" 
-          );
-          let usuariosFiltrados = response.data;
-
-          // Filtrar usuarios con el rol MONTA
-          const usuariosMontaFiltrados = usuariosFiltrados.flatMap((turno) =>
-            turno.usuarios.filter((usuario) => usuario.role.includes("MONTA"))
-          );
-          setUsuariosMonta(usuariosMontaFiltrados);
-
-          // Filtrar usuarios con el rol Admin
-          const setUsuariosAdminFiltrados = usuariosFiltrados.flatMap((turno) =>
-            turno.usuarios.filter((usuario) => usuario.role.includes("Admin"))
-          );
-          setUsuariosAdmin(setUsuariosAdminFiltrados);
-
-          // Filtrar usuarios con el rol Control
-          const setUsuariosControlFiltrados = usuariosFiltrados.flatMap((turno) =>
-            turno.usuarios.filter((usuario) => usuario.role.includes("Control"))
-          );
-          setUsuariosControl(setUsuariosControlFiltrados);
-
-          // Filtrar usuarios con el rol Master
-          const setUsuariosMasterFiltrados = usuariosFiltrados.flatMap((turno) =>
-            turno.usuarios.filter((usuario) => usuario.role.includes("Master"))
-          );
-          setUsuariosMaster(setUsuariosMasterFiltrados);
-
-          // Filtrar usuarios con el rol Paquet
-          const setUsuariosPaquetFiltrados = usuariosFiltrados.flatMap((turno) =>
-            turno.usuarios.filter(
-              (usuario) =>
-                usuario.role.includes("Paquet") || usuario.role.includes("PQ")
-            )
-          );
-          ;
-          setUsuariosPaquet(setUsuariosPaquetFiltrados);
-
-          // Filtrar usuarios con el rol Embar
-          const setUsuariosEmbarFiltrados = usuariosFiltrados.flatMap((turno) =>
-            turno.usuarios.filter((usuario) => usuario.role.includes("Embar"))
-          );
-          setUsuariosEmbar(setUsuariosEmbarFiltrados);
-
-          // Filtrar usuarios con el rol Reb
-          const setUsuariosRepFiltrados = usuariosFiltrados.flatMap((turno) =>
-            turno.usuarios.filter((usuario) => usuario.role.includes("Rep"))
-          );
-          setUsuariosRep(setUsuariosRepFiltrados);
-
-          // Filtrar usuarios con el rol Eti
-          const usuariosEtiFiltrados = usuariosFiltrados.flatMap((turno) =>
-            turno.usuarios.filter((usuario) => usuario.role.includes("Eti"))
-          );
-          setUsuariosEti(usuariosEtiFiltrados);
-
-          // Filtrar usuarios con el rol Nac
-          const setUsuariosNacFiltrados = usuariosFiltrados.flatMap((turno) =>
-            turno.usuarios.filter((usuario) => usuario.role.includes("Nac"))
-          );
-          setUsuariosNac(setUsuariosNacFiltrados);
-
-          // Filtrar usuarios con el rol Imp
-          const setUsuariosImpFiltrados = usuariosFiltrados.flatMap((turno) =>
-            turno.usuarios.filter((usuario) => usuario.role.includes("Imp"))
-          );
-          setUsuariosImp(setUsuariosImpFiltrados);
-
-          // Filtrar usuarios con el rol Plan
-          const setUsuariosPlanFiltrados = usuariosFiltrados.flatMap((turno) =>
-            turno.usuarios.filter((usuario) => usuario.role.includes("Plan"))
-          );
-          setUsuariosPlan(setUsuariosPlanFiltrados);
-
-          // Filtrar usuarios con el rol Recibo
-          const setUsuariosReciboFiltrados = usuariosFiltrados.flatMap((turno) =>
-            turno.usuarios.filter((usuario) => usuario.role.includes("Recibo"))
-          );
-          setUsuariosRecibo(setUsuariosReciboFiltrados);
-
-          // Filtrar usuarios con el rol Cali
-          const setUsuariosCaliFiltrados = usuariosFiltrados.flatMap((turno) =>
-            turno.usuarios.filter((usuario) => usuario.role.includes("CALI"))
-          );
-          setUsuariosCali(setUsuariosCaliFiltrados);
-
-          // Filtrar usuarios con el rol Inv
-          const setUsuariosInvFiltrados = usuariosFiltrados.flatMap((turno) =>
-            turno.usuarios.filter((usuario) => usuario.role.includes("INV"))
-          );
-          setUsuariosInv(setUsuariosInvFiltrados);
-
-          // Filtrar usuarios con el rol Audi
-          const setUsuariosAudiFiltrados = usuariosFiltrados.flatMap((turno) =>
-            turno.usuarios.filter((usuario) => usuario.role.includes("Audi"))
-          );
-          setUsuariosAudi(setUsuariosAudiFiltrados);
-
-          // Filtrar usuarios con el rol Vent
-          const setUsuariosVentFiltrados = usuariosFiltrados.flatMap((turno) =>
-            turno.usuarios.filter((usuario) => usuario.role.includes("VENT"))
-          );
-          setUsuariosVent(setUsuariosVentFiltrados);
-
-          // Filtrar usuarios con el rol Ecom
-          const usuariosEcomFiltrados = usuariosFiltrados.flatMap((turno) =>
-            turno.usuarios.filter((usuario) => usuario.role.includes("ECOMERCE"))
-          );
-          setUsuariosEcom(usuariosEcomFiltrados);
-
-          // Filtrar usuarios con el rol Con
-          const setUsuariosConFiltrados = usuariosFiltrados.flatMap((turno) =>
-            turno.usuarios.filter((usuario) => usuario.role.includes("CON"))
-          );
-          setUsuariosCon(setUsuariosConFiltrados);
-
-          // Filtrar usuarios con el rol Ins
-          const setUsuariosInsFiltrados = usuariosFiltrados.flatMap((turno) =>
-            turno.usuarios.filter((usuario) => usuario.role.includes("Ins"))
-          );
-          setUsuariosIns(setUsuariosInsFiltrados);
-
-          // Filtrar usuarios con el rol Poli
-          const setUsuariosPoliFiltrados = usuariosFiltrados.flatMap((turno) =>
-            turno.usuarios.filter((usuario) => usuario.role.includes("POLI"))
-          );
-          setUsuariosPoli(setUsuariosPoliFiltrados);
-
-          // Filtrar usuarios con el rol RH
-          const setUsuariosRHFiltrados = usuariosFiltrados.flatMap((turno) =>
-            turno.usuarios.filter((usuario) => usuario.role.includes("RH"))
-          );
-          setUsuariosRH(setUsuariosRHFiltrados);
-
-          // Filtrar usuarios con el rol Trans
-          const setUsuariosTransFiltrados = usuariosFiltrados.flatMap((turno) =>
-            turno.usuarios.filter((usuario) => usuario.role.includes("Trans"))
-          );
-          setUsuariosTrans(setUsuariosTransFiltrados);
-
-          // Filtrar usuarios con el rol User
-          const setUsuariosUserFiltrados = usuariosFiltrados.flatMap((turno) =>
-            turno.usuarios.filter((usuario) => usuario.role.includes("user"))
-          );
-          setUsuariosUser(setUsuariosUserFiltrados);
-
-          // Filtrar usuarios con el rol Dep
-          const setUsuariosDepFiltrados = usuariosFiltrados.flatMap((turno) =>
-            turno.usuarios.filter((usuario) => usuario.role.includes("Dep"))
-          );
-          setUsuariosDep(setUsuariosDepFiltrados);
-
-          if (user?.role === "Control") {
-            usuariosFiltrados = usuariosFiltrados.map((turnoData) => ({
-              ...turnoData,
-              usuarios: turnoData.usuarios.filter(
-                (usuario) =>
-                  usuario.role.includes("Pasillo") || usuario.role.includes("AV") // Incluye roles que contengan "Pasillo" o "AV"
-              ),
-            }));
-          }
-
-          // Filtrar los usuarios del Turno 4
-          const turno4 = usuariosFiltrados.find((turno) => turno.turno === 4);
-          if (turno4) {
-            setTurno4Usuarios(turno4.usuarios);
-            usuariosFiltrados = usuariosFiltrados.filter(
-              (turno) => turno.turno !== 4
-            );
-          }
-
-          if (user?.role === "Embar") {
-            usuariosFiltrados = usuariosFiltrados.map((turnoData) => ({
-              usuarios: turnoData.usuarios.filter(
-                (usuario) => usuario.role.includes("EB") // Incluye roles que contengan "Pasillo" o "AV"
-              ),
-            }));
-          }
-
-          // Filtrar usuarios de Embarques (rol que contiene "EMB")
-          const usuariosEmbarquesFiltrados = usuariosFiltrados.flatMap((turno) =>
-            turno.usuarios.filter((usuario) => usuario.role.includes("EB"))
-          );
-          setUsuariosEmbarques(usuariosEmbarquesFiltrados);
-
-          // Filtrar usuarios de Paquetería (rol que contiene "PQ")
-          const usuariosPaqueteriaFiltrados = usuariosFiltrados.flatMap((turno) =>
-            turno.usuarios.filter((usuario) => usuario.role.includes("PQ"))
-          );
-          setUsuariosPaqueteria(usuariosPaqueteriaFiltrados);
-
-          setUsuariosPorTurno(usuariosFiltrados); // Guardar los usuarios por turno
-        } catch (error) {
-          console.error("Error al obtener los datos de usuarios:", error);
-        }
-      };
-
-      // Obtener todas las secciones disponibles
-      const fetchSecciones = async () => {
-        try {
-          const response = await axios.get(
-            "http://66.232.105.87:3007/api/usuarios/secciones"
-          );
-          setSecciones(response.data);
-        } catch (error) {
-          console.error("Error al obtener las secciones:", error);
-        }
-      };
-
-      fetchUsuarios();
-      fetchSecciones();
-    }, [user]);
-
-    // Función para abrir el modal con los detalles del usuario
-    const handleOpenModalUsers = (usuario = null) => {
-      if (usuario) {
-        setIsEditMode(true);
-        setUserForm({
-          email: usuario.email,
-          name: usuario.name,
-          password: "", // Vaciar la contraseña al editar
-          unidad: usuario.unidad,
-          role: usuario.role,
-        });
-      } else {
-        setIsEditMode(false);
-        setUserForm({
-          email: "",
-          name: "",
-          password: "",
-          unidad: "",
-          role: "",
-        });
-      }
-      setSelectedUser(usuario);
-      setOpenModalUser(true);
-    };
-
-    // Función para abrir el modal con los detalles del usuario
-    const handleOpenModal = (usuario) => {
-      setSelectedUser(usuario);
-      setOpenModal(true);
-    };
-
-    const handleSaveUser = async () => {
-      try {
-        if (isEditMode) {
-          // Actualizar usuario
-          await axios.put(
-            `http://66.232.105.87:3007/api/usuarios/usuarios/${selectedUser.id_usu}`,
-            userForm
-          );
-          alert("Usuario actualizado correctamente");
-        } else {
-          // Crear nuevo usuario
-          await axios.post(
-            `http://66.232.105.87:3007/api/usuarios/usuarios`,
-            userForm
-          );
-          alert("Usuario creado correctamente");
-        }
-        setOpenModalUser(false);
-        //fetchUsuarios(); // Refrescar la lista de usuarios
-      } catch (error) {
-        console.error("Error al guardar el usuario:", error);
-        alert("Error al guardar el usuario");
-      }
-    };
-
-    const handleDeleteUser = async (id_usu) => {
-      const confirm = window.confirm(
-        "¿Estás seguro de que deseas eliminar este usuario?"
-      );
-      if (!confirm) return;
-
-      try {
-        await axios.delete(
-          `http://66.232.105.87:3007/api/usuarios/usuarios/${id_usu}`
-        );
-        alert("Usuario eliminado correctamente");
-        //fetchUsuarios(); // Refrescar la lista de usuarios
-      } catch (error) {
-        console.error("Error al eliminar el usuario:", error);
-        alert("Error al eliminar el usuario");
-      }
-    };
-
-    const handleCloseModal = () => {
-      setOpenModal(false);
-      setOpenModalUser(false);
-      setSelectedUser(null);
-    };
-
-    // Función para abrir el modal de administración de accesos del usuario
-    const handleOpenAccessModal = async (usuario) => {
-      setSelectedUser(usuario);
-      try {
-        const response = await axios.get(
-          `http://66.232.105.87:3007/api/usuarios/usuarios/${usuario.id_usu}/accesos`
-        );
-        console.log(response.data);
-        setAccesos(response.data); // Cargar accesos del usuario seleccionado
-        setOpenAccessModal(true);
-      } catch (error) {
-        console.error("Error al obtener los accesos del usuario:", error);
-      }
-    };
-
-    const handleCloseAccessModal = () => {
-      setOpenAccessModal(false);
-      setSelectedUser(null);
-      setAccesos([]);
-    };
-
-    // Toggle acceso (lectura/escritura)
-    const toggleAccess = (id_seccion, id_permiso) => {
-      const exists = accesos.find(
-        (access) =>
-          access.id_seccion === id_seccion && access.id_permiso === id_permiso
-      );
-      if (exists) {
-        setAccesos(
-          accesos.filter(
-            (access) =>
-              !(
-                access.id_seccion === id_seccion &&
-                access.id_permiso === id_permiso
-              )
-          )
-        );
-      } else {
-        setAccesos([...accesos, { id_seccion, id_permiso }]);
-      }
-    };
-
-    // Guardar los cambios de accesos
-    const handleSaveAccess = async () => {
-      try {
-        await axios.put(
-          `http://66.232.105.87:3007/api/usuarios/usuarios/${selectedUser.id_usu}/accesos`,
-          {
-            secciones: accesos,
-          }
-        );
-        alert("Accesos actualizados correctamente");
-        handleCloseAccessModal();
-      } catch (error) {
-        console.error("Error al actualizar los accesos:", error);
-        alert("Error al actualizar los accesos");
-      }
-    };
-
-    const toggleSection = (id_seccion) => {
-      const exists = accesos.some((access) => access.id_seccion === id_seccion);
-      if (exists) {
-        // Si ya existe la sección, eliminar todos sus permisos
-        setAccesos(accesos.filter((access) => access.id_seccion !== id_seccion));
-      } else {
-        // Si no existe, agregar la sección (sin permisos, solo habilitarla)
-        setAccesos([...accesos, { id_seccion, id_permiso: 0 }]); // id_permiso: 0 indica que no tiene permisos asignados
-      }
-    };
-
-    const handleOpenPermissionsModal = (usuario) => {
-      setSelectedUser(usuario);
-      setUserPermissions(roleAccessMap[usuario.role] || []); // Permisos activos actuales
-
-      // Permisos activos
-      setEditablePermissions(roleAccessMap[usuario.role] || []);
-
-      // Permisos inactivos
-      const allPermissions = Object.keys(roleAccessMap).flatMap(
-        (role) => roleAccessMap[role]
-      );
-      setInactivePermissions(
-        allPermissions.filter((perm) => !editablePermissions.includes(perm))
-      );
-
-      setEditModePermissions(false); // Comenzar en modo vista
-      setOpenPermissionsModal(true);
-    };
-
-    const toggleEditablePermission = (section) => {
-      setEditablePermissions(
-        (prev) =>
-          prev.includes(section)
-            ? prev.filter((permiso) => permiso !== section) // Desactivar permiso
-            : [...prev, section] // Activar permiso
-      );
-    };
-
-    const saveEditablePermissions = async () => {
-      try {
-        await axios.put(
-          `http://66.232.105.87:3007/api/usuarios/usuarios/${selectedUser.id_usu}/permisos`,
-          { permisos: editablePermissions }
-        );
-        alert("Permisos actualizados correctamente");
-        setOpenPermissionsModal(false);
-      } catch (error) {
-        console.error("Error al actualizar permisos:", error);
-        alert("Error al actualizar permisos");
-      }
-    };
-
-    const handleClosePermissionsModal = () => {
-      setOpenPermissionsModal(false);
-      setSelectedUser(null);
-      setUserPermissions([]);
-    };
-
-    const generarPDF = async () => {
-      try {
-        const response = await axios.get(
-          "http://66.232.105.87:3007/api/usuarios/usuarios"
-        );
-        const usuariosPorTurno = response.data;
-
-        if (!usuariosPorTurno.length) {
-          alert("No hay usuarios para generar el PDF");
-          return;
-        }
-
-        const doc = new jsPDF({
-          orientation: "portrait",
-          unit: "mm",
-          format: "A4",
-        });
-
-        let xPos = 10;
-        let yPos = 30;
-        let credencialesPorHoja = 0;
-
-        for (const grupo of usuariosPorTurno) {
-          let turnoActual = grupo.turno; // Se obtiene el número de turno
-          doc.addPage();
-          doc.setFontSize(14);
-          doc.text(`Surtido Turno ${turnoActual}`, 105, 15, { align: "center" });
-
-          for (const usuario of grupo.usuarios) {
-            const usuarioQR = await QRCode.toDataURL(usuario.email);
-            const passwordQR = await QRCode.toDataURL(usuario.password);
-
-            // 📌 Marco general de la credencial con línea normal
-            doc.setLineWidth(0.5);
-            doc.rect(xPos, yPos, 100, 60);
-
-            // 🏷 Nombre y Pasillo del usuario
-            doc.setFontSize(11);
-            doc.text(usuario.name.toUpperCase(), xPos + 50, yPos + 10, {
-              align: "center",
-            });
-            doc.setFontSize(9);
-            doc.text(`(${usuario.role})`, xPos + 50, yPos + 16, {
-              align: "center",
-            });
-
-            // 🔹 Usuario y Contraseña QR en una misma línea
-            doc.setFontSize(9);
-            doc.text("USUARIO", xPos + 25, yPos + 28, { align: "center" });
-            doc.text("CONTRASEÑA", xPos + 75, yPos + 28, { align: "center" });
-
-            doc.addImage(usuarioQR, "PNG", xPos + 10, yPos + 30, 25, 25);
-            doc.addImage(passwordQR, "PNG", xPos + 65, yPos + 30, 25, 25);
-
-            // 📌 Control de posición de credenciales
-            credencialesPorHoja++;
-            if (credencialesPorHoja % 2 === 0) {
-              xPos = 10;
-              yPos += 70;
-            } else {
-              xPos = 110;
-            }
-
-            // 📝 Cuando hay 4 credenciales en una hoja, se agrega una nueva
-            if (credencialesPorHoja % 4 === 0) {
-              doc.addPage();
-              xPos = 10;
-              yPos = 30;
-              doc.setFontSize(14);
-              doc.text(`Surtido Turno ${turnoActual}`, 105, 15, {
-                align: "center",
-              });
-            }
-          }
-        }
-
-        doc.save("Credenciales_Surtidos.pdf");
-      } catch (error) {
-        console.error("Error al generar el PDF", error);
-        alert("Error al generar el PDF");
-      }
-    };
-
-    return (
-      <Box sx={{ p: 3 }}>
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            mb: 3, // Espaciado inferior
-          }}
-        >
-          <Typography variant="h4">
-            Usuarios por Turno {user?.role} {user?.name}
-          </Typography>
-
-        
+    // Rol
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "normal");
+    doc.text(usuario.role || "", x + credW / 2, y + 11, {
+      align: "center",
+    });
+
+    // QR Usuario
+    doc.text("Usuario", x + credW / 2, y + 16, { align: "center" });
+    doc.addImage(qrEmail, "PNG", x + 12, y + 18, 30, 30);
+
+    // QR Password
+    doc.text("Contraseña", x + credW / 2, y + 52, { align: "center" });
+    doc.addImage(qrPass, "PNG", x + 12, y + 54, 30, 30);
+
+    index++;
+  }
+
+  doc.save(`${titulo}.pdf`);
+};
+
+function UserBarcodesModal({ open, onClose, user }) {
+  const qrUsuario = user?.email || "";
+  const qrPassword = user?.password || "";
+  const printRef = React.useRef(null);
+
+  const imprimirCredencialPDF = async () => {
+    if (!user) return;
+
+    const doc = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: [54, 86], // tamaño credencial real
+    });
+
+    // Generar QR como imagen
+    const canvasEmail = document.createElement("canvas");
+    const canvasPass = document.createElement("canvas");
+
+    const QRCode = await import("qrcode");
+
+    const qrEmail = await QRCode.toDataURL(user.email || "");
+    const qrPass = await QRCode.toDataURL(user.password || "");
+
+    // ===== Diseño =====
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text(user.name || "", 27, 8, { align: "center" });
+
+    doc.setFontSize(8);
+    doc.text(user.role || "", 27, 13, { align: "center" });
+
+    // QR Usuario
+    doc.text("Usuario", 27, 18, { align: "center" });
+    doc.addImage(qrEmail, "PNG", 12, 20, 30, 30);
+
+    // QR Password
+    doc.text("Contraseña", 27, 54, { align: "center" });
+    doc.addImage(qrPass, "PNG", 12, 56, 30, 30);
+
+    doc.save(`Credencial_${user.name}.pdf`);
+  };
+
+  return (
+    <Modal open={open} onClose={onClose}>
+      <Box
+        sx={{
+          position: "absolute",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          width: 760,
+          maxWidth: "95vw",
+          bgcolor: "#f5f6f8",
+          boxShadow: 24,
+          borderRadius: 3,
+          overflow: "hidden",
+        }}
+      >
+        {user && (
+          <>
+            {/* ===== Línea superior branding ===== */}
+            <Box sx={{ height: 6, bgcolor: "primary.main" }} />
+
+            {/* ===== Encabezado ===== */}
+            <Box sx={{ p: 3, bgcolor: "#ffffff" }}>
+              <Typography variant="h5" fontWeight="bold">
+                🔐 Credenciales de Acceso
+              </Typography>
+
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ mt: 0.5 }}
+              >
+                Escanee los códigos para iniciar sesión en el sistema
+              </Typography>
+            </Box>
+
+            <Divider />
+
+            {/* ===== Ficha de usuario ===== */}
+            <Box sx={{ p: 3, bgcolor: "#ffffff" }}>
+              <Grid container spacing={2}>
+                <Grid item xs={12} md={6}>
+                  <Chip
+                    icon={<PersonIcon />}
+                    label={`Usuario: ${user.name}`}
+                    sx={{ mr: 1, mb: 1 }}
+                  />
+                </Grid>
+
+                <Grid item xs={12} md={6}>
+                  <Chip
+                    icon={<BadgeIcon />}
+                    label={`Rol: ${user.role}`}
+                    sx={{ mr: 1, mb: 1 }}
+                  />
+                </Grid>
+
+                {user.unidad && (
+                  <Grid item xs={12} md={6}>
+                    <Chip
+                      icon={<BusinessIcon />}
+                      label={`Unidad: ${user.unidad}`}
+                      sx={{ mr: 1, mb: 1 }}
+                    />
+                  </Grid>
+                )}
+
+                <Grid item xs={12} md={6}>
+                  <Chip
+                    icon={<EmailIcon />}
+                    label={user.email}
+                    sx={{ mr: 1, mb: 1 }}
+                  />
+                </Grid>
+              </Grid>
+            </Box>
+
+            <Divider />
+
+            {/* ===== Contenido QR ===== */}
+            <Box sx={{ p: 4 }}>
+              <Grid container spacing={4} justifyContent="center">
+                {/* QR Usuario */}
+                <Grid item xs={12} md={6}>
+                  <Card
+                    sx={{
+                      textAlign: "center",
+                      borderRadius: 3,
+                      boxShadow: 3,
+                      height: "100%",
+                    }}
+                  >
+                    <CardHeader
+                      avatar={<QrCodeIcon color="primary" />}
+                      title="Identificación de Usuario"
+                      subheader="Escanear para identificar cuenta"
+                      sx={{ bgcolor: "grey.100" }}
+                    />
+                    <CardContent>
+                      <QRCodeCanvas
+                        value={qrUsuario}
+                        size={190}
+                        level="H"
+                        includeMargin
+                      />
+                    </CardContent>
+                  </Card>
+                </Grid>
+
+                {/* QR Password */}
+                <Grid item xs={12} md={6}>
+                  <Card
+                    sx={{
+                      textAlign: "center",
+                      borderRadius: 3,
+                      boxShadow: 3,
+                      height: "100%",
+                    }}
+                  >
+                    <CardHeader
+                      avatar={<QrCodeIcon color="secondary" />}
+                      title="Acceso al Sistema"
+                      subheader="Escanear para iniciar sesión"
+                      sx={{ bgcolor: "grey.100" }}
+                    />
+                    <CardContent>
+                      <QRCodeCanvas
+                        value={qrPassword}
+                        size={190}
+                        level="H"
+                        includeMargin
+                      />
+                    </CardContent>
+                  </Card>
+                </Grid>
+              </Grid>
+
+              {/* Botones */}
+              <Box
+                sx={{
+                  mt: 4,
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  gap: 2,
+                }}
+              >
+                <Button variant="outlined" onClick={imprimirCredencialPDF}>
+                  Descargar Credencial
+                </Button>
+
+                <Button
+                  variant="contained"
+                  color="error"
+                  startIcon={<CloseIcon />}
+                  onClick={onClose}
+                >
+                  Cerrar
+                </Button>
+              </Box>
+            </Box>
+          </>
+        )}
+
+        {/* ===== CONTENIDO OCULTO PARA IMPRESIÓN ===== */}
+        <Box sx={{ display: "none" }}>
+          <div ref={printRef}>
+            <div className="credencial">
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontSize: "12px", fontWeight: "bold" }}>
+                  {user?.name}
+                </div>
+
+                <div style={{ fontSize: "9px", marginBottom: "4mm" }}>
+                  {user?.role}
+                </div>
+
+                <QRCodeCanvas value={qrUsuario} size={140} level="H" />
+
+                <div style={{ fontSize: "8px", marginBottom: "3mm" }}>
+                  Usuario
+                </div>
+
+                <QRCodeCanvas value={qrPassword} size={140} level="H" />
+
+                <div style={{ fontSize: "8px" }}>Contraseña</div>
+              </div>
+            </div>
+          </div>
         </Box>
-          {(user?.role === "Master" || user?.role === "Admin") && (
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={() => handleOpenModalUsers(null)}
-            >
+      </Box>
+    </Modal>
+  );
+}
+
+function EditUserModal({ open, onClose, isEditMode, form, setForm, onSave }) {
+  return (
+    <Modal open={open} onClose={onClose}>
+      <Box
+        sx={{
+          position: "absolute",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          width: 520,
+          maxWidth: "95vw",
+          bgcolor: "background.paper",
+          boxShadow: 24,
+          p: 4,
+          borderRadius: 2,
+        }}
+      >
+        <Typography variant="h5" gutterBottom>
+          {isEditMode ? "Editar Usuario" : "Crear Usuario"}
+        </Typography>
+
+        <Divider sx={{ mb: 2 }} />
+
+        <TextField
+          label="Nombre"
+          fullWidth
+          value={form.name}
+          onChange={(e) => setForm({ ...form, name: e.target.value })}
+          sx={{ mb: 2 }}
+        />
+        <TextField
+          label="Correo"
+          fullWidth
+          value={form.email}
+          onChange={(e) => setForm({ ...form, email: e.target.value })}
+          sx={{ mb: 2 }}
+        />
+        <TextField
+          label="Contraseña"
+          type="password"
+          fullWidth
+          value={form.password}
+          onChange={(e) => setForm({ ...form, password: e.target.value })}
+          sx={{ mb: 2 }}
+          disabled={isEditMode}
+          helperText={
+            isEditMode
+              ? "Para cambiar contraseña, hazlo por flujo dedicado (si existe)."
+              : ""
+          }
+        />
+        <TextField
+          label="Unidad"
+          fullWidth
+          value={form.unidad}
+          onChange={(e) => setForm({ ...form, unidad: e.target.value })}
+          sx={{ mb: 2 }}
+        />
+        <TextField
+          label="Rol"
+          fullWidth
+          value={form.role}
+          onChange={(e) => setForm({ ...form, role: e.target.value })}
+          sx={{ mb: 2 }}
+        />
+
+        <Box sx={{ textAlign: "right" }}>
+          <Button variant="contained" color="primary" onClick={onSave}>
+            Guardar
+          </Button>
+          <Button
+            variant="contained"
+            color="secondary"
+            onClick={onClose}
+            sx={{ ml: 2 }}
+          >
+            Cancelar
+          </Button>
+        </Box>
+      </Box>
+    </Modal>
+  );
+}
+
+/** =========================
+ *  MAIN COMPONENT
+ *  ========================= */
+function Usuarios() {
+  const { user } = useContext(UserContext);
+
+  // DATA base
+  const [rawByTurno, setRawByTurno] = useState([]);
+  const [, setSecciones] = useState([]);
+
+  // UI selection
+  const [selectedUser, setSelectedUser] = useState(null);
+
+  const [openBarcodes, setOpenBarcodes] = useState(false);
+
+  const [openUserModal, setOpenUserModal] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [userForm, setUserForm] = useState({
+    email: "",
+    name: "",
+    password: "",
+    unidad: "",
+    role: "",
+  });
+
+  /** ========= FETCH ========= */
+  const fetchUsuarios = useCallback(async () => {
+    const res = await axios.get(`${API_BASE}/usuarios/usuarios`);
+    setRawByTurno(res.data || []);
+  }, []);
+
+  const fetchSecciones = useCallback(async () => {
+    const res = await axios.get(`${API_BASE}/usuarios/secciones`);
+    setSecciones(res.data || []);
+  }, []);
+
+  useEffect(() => {
+    fetchUsuarios().catch((e) => console.error("fetchUsuarios", e));
+    fetchSecciones().catch((e) => console.error("fetchSecciones", e));
+  }, [fetchUsuarios, fetchSecciones]);
+
+  /** ========= DERIVED DATA ========= */
+  const flatUsers = useMemo(
+    () => flattenUsuariosPorTurno(rawByTurno),
+    [rawByTurno],
+  );
+
+  // Turno 4 para “Accesos Web”
+  const turno4 = useMemo(
+    () => flatUsers.filter((u) => u.turno === 4),
+    [flatUsers],
+  );
+
+  // Turnos “operativos” (sin turno 4)
+  const flatWithoutTurno4 = useMemo(
+    () => flatUsers.filter((u) => u.turno !== 4),
+    [flatUsers],
+  );
+
+  // =========================
+  // FILTROS POR ÁREA
+  // =========================
+
+  // Paquetería: Paquet o PQ + número
+  const usuariosPaqueteria = useMemo(() => {
+    return flatUsers.filter((u) => {
+      const role = String(u.role || "").toUpperCase();
+      return role.includes("PAQUET") || /^PQ\d+/.test(role);
+    });
+  }, [flatUsers]);
+
+  // Embarques: Embar o EB + número
+  const usuariosEmbarques = useMemo(() => {
+    return flatUsers.filter((u) => {
+      const role = String(u.role || "").toUpperCase();
+      return role.includes("EMBAR") || /^EB\d+/.test(role);
+    });
+  }, [flatUsers]);
+
+  const usuariosMontacargas = useMemo(() => {
+    return flatUsers.filter((u) => {
+      const role = String(u.role || "").toUpperCase();
+      return role.includes("MONTACARGAS") || /^MONTA\d+/.test(role);
+    });
+  }, [flatUsers]);
+
+  // Filtrado por rol del usuario logueado (igual que tu lógica, pero limpio)
+  const visibleOperationalByTurn = useMemo(() => {
+    const grouped = groupBy(flatWithoutTurno4, (u) => u.turno);
+
+    // 🔹 ADMIN o MASTER → ver TODO
+    if (user?.role === "Admin" || user?.role === "Master") {
+      return Object.keys(grouped)
+        .map((k) => ({ turno: Number(k), usuarios: grouped[k] }))
+        .sort((a, b) => a.turno - b.turno);
+    }
+
+    // 🔹 CONTROL → solo Pasillo / AV
+    if (user?.role === "Control") {
+      Object.keys(grouped).forEach((k) => {
+        grouped[k] = grouped[k].filter((u) =>
+          includesAnyRole(u.role, ["Pasillo", "AV"]),
+        );
+      });
+    }
+
+    // 🔹 EMBAR → solo EB
+    if (user?.role === "Embar") {
+      Object.keys(grouped).forEach((k) => {
+        grouped[k] = grouped[k].filter((u) => includesAnyRole(u.role, ["EB"]));
+      });
+    }
+
+    return Object.keys(grouped)
+      .map((k) => ({ turno: Number(k), usuarios: grouped[k] }))
+      .sort((a, b) => a.turno - b.turno);
+  }, [flatWithoutTurno4, user?.role]);
+  // Reporte por área (conteos)
+  const areaReport = useMemo(() => {
+    return AREA_GROUPS.map((g) => {
+      const usersForArea = flatUsers.filter((u) => g.matcher(u));
+      return {
+        key: g.key,
+        title: g.title,
+        count: usersForArea.length,
+      };
+    });
+  }, [flatUsers]);
+
+  /** ========= ACTIONS ========= */
+  const openCreateUser = () => {
+    setIsEditMode(false);
+    setSelectedUser(null);
+    setUserForm({ email: "", name: "", password: "", unidad: "", role: "" });
+    setOpenUserModal(true);
+  };
+
+  const openEditUser = (u) => {
+    setIsEditMode(true);
+    setSelectedUser(u);
+    setUserForm({
+      email: u.email || "",
+      name: u.name || "",
+      password: "",
+      unidad: u.unidad || "",
+      role: u.role || "",
+    });
+    setOpenUserModal(true);
+  };
+
+  const saveUser = async () => {
+    try {
+      if (isEditMode && selectedUser?.id_usu) {
+        await axios.put(
+          `${API_BASE}/usuarios/usuarios/${selectedUser.id_usu}`,
+          userForm,
+        );
+        alert("Usuario actualizado correctamente");
+      } else {
+        await axios.post(`${API_BASE}/usuarios/usuarios`, userForm);
+        alert("Usuario creado correctamente");
+      }
+      setOpenUserModal(false);
+      await fetchUsuarios();
+    } catch (e) {
+      console.error("saveUser", e);
+      alert("Error al guardar el usuario");
+    }
+  };
+
+  const deleteUser = async (id_usu) => {
+    const confirm = window.confirm(
+      "¿Estás seguro de que deseas eliminar este usuario?",
+    );
+    if (!confirm) return;
+
+    try {
+      await axios.delete(`${API_BASE}/usuarios/usuarios/${id_usu}`);
+      alert("Usuario eliminado correctamente");
+      await fetchUsuarios();
+    } catch (e) {
+      console.error("deleteUser", e);
+      alert("Error al eliminar el usuario");
+    }
+  };
+
+  const openBarcodeModal = (u) => {
+    setSelectedUser(u);
+    setOpenBarcodes(true);
+  };
+
+  // PDF credenciales
+  const generarPDF = async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/usuarios/usuarios`);
+      const usuariosPorTurno = res.data || [];
+      if (!usuariosPorTurno.length) {
+        alert("No hay usuarios para generar el PDF");
+        return;
+      }
+
+      const doc = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "A4",
+      });
+
+      let xPos = 10;
+      let yPos = 30;
+      let credencialesPorHoja = 0;
+
+      for (const grupo of usuariosPorTurno) {
+        const turnoActual = grupo.turno;
+
+        doc.addPage();
+        doc.setFontSize(14);
+        doc.text(`Surtido Turno ${turnoActual}`, 105, 15, { align: "center" });
+
+        for (const usuario of grupo.usuarios || []) {
+          const usuarioQR = await QRCodeCanvas.toDataURL(usuario.email || "");
+          const passwordQR = await QRCodeCanvas.toDataURL(
+            usuario.password || "",
+          );
+
+          doc.setLineWidth(0.5);
+          doc.rect(xPos, yPos, 100, 60);
+
+          doc.setFontSize(11);
+          doc.text(
+            String(usuario.name || "").toUpperCase(),
+            xPos + 50,
+            yPos + 10,
+            { align: "center" },
+          );
+          doc.setFontSize(9);
+          doc.text(`(${usuario.role || ""})`, xPos + 50, yPos + 16, {
+            align: "center",
+          });
+
+          doc.setFontSize(9);
+          doc.text("USUARIO", xPos + 25, yPos + 28, { align: "center" });
+          doc.text("CONTRASEÑA", xPos + 75, yPos + 28, { align: "center" });
+
+          doc.addImage(usuarioQR, "PNG", xPos + 10, yPos + 30, 25, 25);
+          doc.addImage(passwordQR, "PNG", xPos + 65, yPos + 30, 25, 25);
+
+          credencialesPorHoja++;
+          if (credencialesPorHoja % 2 === 0) {
+            xPos = 10;
+            yPos += 70;
+          } else {
+            xPos = 110;
+          }
+
+          if (credencialesPorHoja % 4 === 0) {
+            doc.addPage();
+            xPos = 10;
+            yPos = 30;
+            doc.setFontSize(14);
+            doc.text(`Surtido Turno ${turnoActual}`, 105, 15, {
+              align: "center",
+            });
+          }
+        }
+      }
+
+      doc.save("Credenciales_Surtidos.pdf");
+    } catch (e) {
+      console.error("generarPDF", e);
+      alert("Error al generar el PDF");
+    }
+  };
+
+  /** ========= RENDER ========= */
+  return (
+    <Box sx={{ p: 3 }}>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          mb: 2,
+        }}
+      >
+        <Box>
+          <Typography variant="h4">Usuarios</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Logueado: {user?.name} ({user?.role})
+          </Typography>
+        </Box>
+
+        <Stack direction="row" spacing={1}>
+          {( user?.role === "Admin") && (
+            <Button variant="contained" onClick={openCreateUser}>
               Crear Usuario
             </Button>
           )}
-
-          <Button variant="contained" color="primary" onClick={generarPDF}>
-            Descargar PDF de Accesos
-          </Button>
-        {/* Mostrar tabla "Accesos Web" solo a los administradores */}
-        {(user?.role === "Admin" || user?.role === "Master") &&
-          turno4Usuarios.length > 0 && (
-            <Box sx={{ mb: 5 }}>
-              <Typography variant="h5" sx={{ mb: 2 }}>
-                Accesos Web
-              </Typography>
-              <TableContainer component={Paper}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>ID</TableCell>
-                      <TableCell>Nombre</TableCell>
-                      <TableCell>Pasillo</TableCell>
-                      <TableCell>Unidad de Negocio</TableCell>
-                      <TableCell>Accesos</TableCell>
-                      {(user?.role === "Master" || user?.role === "Admin") && (
-                        <TableCell>Acciones</TableCell>
-                      )}
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {turno4Usuarios.map((usuario) => (
-                      <TableRow key={usuario.id_usu}>
-                        <TableCell>{usuario.id_usu}</TableCell>
-                        <TableCell>{usuario.name}</TableCell>
-                        <TableCell>{usuario.role}</TableCell>
-                        <TableCell>{usuario.unidad}</TableCell>
-
-                        <TableCell>
-                          <Button
-                            variant="contained"
-                            ml="3px"
-                            color="info"
-                            onClick={() => handleOpenPermissionsModal(usuario)}
-                          >
-                            Permisos Vistas
-                          </Button>
-                        </TableCell>
-                        <TableCell>
-                          {(user?.role === "Master" ||
-                            user?.role === "Admin") && (
-                            <Button
-                              variant="contained"
-                              color="primary"
-                              onClick={() => handleOpenModalUsers(usuario)}
-                              sx={{ mr: 1 }}
-                            >
-                              Editar
-                            </Button>
-                          )}
-                          {(user?.role === "Master" ||
-                            user?.role === "Admin") && (
-                            <Button
-                              variant="contained"
-                              color="error"
-                              onClick={() => handleDeleteUser(usuario.id_usu)}
-                            >
-                              Eliminar
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Box>
-          )}
-
-        {/* Muestra todas las tablas de turno, si se modifica, todas las demas tendran el mismo cambio */}
-
-        {/* Mostrar tablas separadas para cada turno */}
-        {usuariosPorTurno.map(
-          (turnoData, index) =>
-            (user?.role === "Control" || user?.role === "Admin") && (
-              <Box key={index} sx={{ mb: 5 }}>
-                <Typography variant="h5" sx={{ mb: 2 }}>
-                  Surtido Turno {turnoData.turno}
-                </Typography>
-                <TableContainer component={Paper}>
-                  <Table>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>ID</TableCell>
-                        <TableCell>Nombre</TableCell>
-                        <TableCell>Pasillo</TableCell>
-                        <TableCell>Unidad de Negocio</TableCell>
-                        <TableCell>Acciones</TableCell>
-                        {(user?.role === "Master" || user?.role === "Admin") && (
-                          <TableCell>Acciones</TableCell>
-                        )}
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {turnoData.usuarios.map((usuario) => (
-                        <TableRow key={usuario.id_usu}>
-                          <TableCell>{usuario.id_usu}</TableCell>
-                          <TableCell>{usuario.name}</TableCell>
-                          <TableCell>{usuario.role}</TableCell>
-                          <TableCell>{usuario.unidad}</TableCell>
-                          <TableCell>
-                            <Button
-                              variant="contained"
-                              color="primary"
-                              onClick={() => handleOpenModal(usuario)}
-                            >
-                              Ver Accesos
-                            </Button>
-
-                            {/* Mostrar el botón de "Administrar Accesos" solo si el usuario tiene el rol de "master" o "admin" */}
-                          </TableCell>
-                          <TableCell>
-                            {(user?.role === "Master" ||
-                              user?.role === "Admin"   ||
-                              user?.role === "Control") && (
-                              <Button
-                                variant="contained"
-                                color="primary"
-                                onClick={() => handleOpenModalUsers(usuario)}
-                                sx={{ mr: 1 }}
-                              >
-                                Editar
-                              </Button>
-                            )}
-                            {(user?.role === "Master" ||
-                              user?.role === "Admin") && (
-                              <Button
-                                variant="contained"
-                                color="error"
-                                onClick={() => handleDeleteUser(usuario.id_usu)}
-                              >
-                                Eliminar
-                              </Button>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              </Box>
-            ) 
-        )}
-
-        {/* Mostrar tablas separadas para cada turno */}
-        {(user?.role === "Embar" || user?.role === "Admin") && usuariosEmbarques.length > 0 && (
-          <Box sx={{ mb: 5 }}>
-            <Typography variant="h5" sx={{ mb: 2 }}>
-              Usuarios de Embarques
-            </Typography>
-            <TableContainer component={Paper}>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>ID</TableCell>
-                    <TableCell>Nombre</TableCell>
-                    <TableCell>Rol</TableCell>
-                    <TableCell>Unidad de Negocio</TableCell>
-                    <TableCell>Acciones</TableCell>
-                    {(user?.role === "Master" || user?.role === "Admin") && (
-                      <TableCell>Acciones</TableCell>
-                    )}
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {usuariosEmbarques.map((usuario) => (
-                    <TableRow key={usuario.id_usu}>
-                      <TableCell>{usuario.id_usu}</TableCell>
-                      <TableCell>{usuario.name}</TableCell>
-                      <TableCell>{usuario.role}</TableCell>
-                      <TableCell>{usuario.unidad}</TableCell>
-                      <TableCell>
-                        <Button
-                          variant="contained"
-                          color="primary"
-                          onClick={() => handleOpenModal(usuario)}
-                        >
-                          Ver Accesos
-                        </Button>
-                      </TableCell>
-                      <TableCell>
-                        {(user?.role === "Master" || user?.role === "Admin") && (
-                          <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={() => handleOpenModalUsers(usuario)}
-                            sx={{ mr: 1 }}
-                          >
-                            Editar
-                          </Button>
-                        )}
-                        {(user?.role === "Master" || user?.role === "Admin") && (
-                          <Button
-                            variant="contained"
-                            color="error"
-                            onClick={() => handleDeleteUser(usuario.id_usu)}
-                          >
-                            Eliminar
-                          </Button>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Box>
-        )}
-
-        {/* Tabla para usuarios de Paquetería */}
-        {/* {usuariosPaqueteria.length > 0 && (
-          <Box sx={{ mb: 5 }}>
-            <Typography variant="h5" sx={{ mb: 2 }}>
-              Usuarios de Paquetería
-            </Typography>
-            <TableContainer component={Paper}>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>ID</TableCell>
-                    <TableCell>Nombre</TableCell>
-                    <TableCell>Rol</TableCell>
-                    <TableCell>Unidad de Negocio</TableCell>
-                    <TableCell>Acciones</TableCell>
-                    {(user?.role === "Master" || user?.role === "Admin") && (
-                      <TableCell>Acciones</TableCell>
-                    )}
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {usuariosPaqueteria.map((usuario) => (
-                    <TableRow key={usuario.id_usu}>
-                      <TableCell>{usuario.id_usu}</TableCell>
-                      <TableCell>{usuario.name}</TableCell>
-                      <TableCell>{usuario.role}</TableCell>
-                      <TableCell>{usuario.unidad}</TableCell>
-                      <TableCell>
-                        <Button
-                          variant="contained"
-                          color="primary"
-                          onClick={() => handleOpenModal(usuario)}
-                        >
-                          Ver Accesos
-                        </Button>
-                      </TableCell>
-                      <TableCell>
-                        {(user?.role === "Master" || user?.role === "Admin") && (
-                          <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={() => handleOpenModalUsers(usuario)}
-                            sx={{ mr: 1 }}
-                          >
-                            Editar
-                          </Button>
-                        )}
-                        {(user?.role === "Master" || user?.role === "Admin") && (
-                          <Button
-                            variant="contained"
-                            color="error"
-                            onClick={() => handleDeleteUser(usuario.id_usu)}
-                          >
-                            Eliminar
-                          </Button>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Box>
-        )} */}
-        
-        {/* Tabla para usuarios con rol MONTA */}
-        {(user?.role === "Admin" || user?.role === "Master") &&
-          usuariosMonta.length > 0 && (
-            <Box sx={{ mb: 5 }}>
-              <Typography variant="h5" sx={{ mb: 2 }}>
-                Usuarios Montacargas
-              </Typography>
-              <TableContainer component={Paper}>
-                <Table>
-                  <TableHead>
-                    {user?.role === "Master" || user?.role === "Admin" ? (
-                      <TableRow>
-                        <TableCell>ID</TableCell>
-                        <TableCell>Nombre</TableCell>
-                        <TableCell>Rol</TableCell>
-                        <TableCell>Unidad de Negocio</TableCell>
-                        <TableCell>Acciones</TableCell>
-                      </TableRow>
-                    ) : (
-                      <TableRow>
-                        <TableCell>ID</TableCell>
-                        <TableCell>Nombre</TableCell>
-                        <TableCell>Rol</TableCell>
-                        <TableCell>Unidad de Negocio</TableCell>
-                      </TableRow>
-                    )}
-                  </TableHead>
-                  <TableBody>
-                    {usuariosMonta.map((usuario) => (
-                      <TableRow key={usuario.id_usu}>
-                        <TableCell>{usuario.id_usu}</TableCell>
-                        <TableCell>{usuario.name}</TableCell>
-                        <TableCell>{usuario.role}</TableCell>
-                        <TableCell>{usuario.unidad}</TableCell>
-                        {user?.role === "Admin" && (
-                          <TableCell>
-                            <Button
-                              variant="contained"
-                              color="primary"
-                              onClick={() => handleOpenModal(usuario)}
-                            >
-                              Ver Accesos
-                            </Button>
-                          </TableCell>
-                        )}
-                        <TableCell>
-                          {(user?.role === "Master" ||
-                            user?.role === "Admin") && (
-                            <Button
-                              variant="contained"
-                              color="primary"
-                              onClick={() => handleOpenModalUsers(usuario)}
-                              sx={{ mr: 1 }}
-                            >
-                              Editar
-                            </Button>
-                          )}
-                          {(user?.role === "Master" ||
-                            user?.role === "Admin") && (
-                            <Button
-                              variant="contained"
-                              color="error"
-                              onClick={() => handleDeleteUser(usuario.id_usu)}
-                            >
-                              Eliminar
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-
-              <Modal
-                open={openPermissionsModal}
-                onClose={handleClosePermissionsModal}
-              >
-                <Box
-                  sx={{
-                    position: "absolute",
-                    top: "50%",
-                    left: "50%",
-                    transform: "translate(-50%, -50%)",
-                    width: "90vw",
-                    maxWidth: "1200px",
-                    maxHeight: "85vh",
-                    overflowY: "auto",
-                    bgcolor: "background.paper",
-                    boxShadow: 24,
-                    p: 4,
-                    borderRadius: 2,
-                  }}
-                >
-                  {selectedUser && (
-                    <>
-                      {/* Encabezado */}
-                      <Typography
-                        variant="h4"
-                        gutterBottom
-                        sx={{
-                          textAlign: "center",
-                          fontWeight: "bold",
-                          color: "primary.main",
-                        }}
-                      >
-                        Permisos de {selectedUser.name} ({selectedUser.role})
-                      </Typography>
-                      <Divider sx={{ my: 2 }} />
-
-                      {/* Botón para alternar entre Modo Vista y Edición */}
-                      <Box sx={{ textAlign: "right", mb: 2 }}>
-                        <Button
-                          variant="contained"
-                          color={editModePermissions ? "warning" : "primary"}
-                          onClick={() =>
-                            setEditModePermissions(!editModePermissions)
-                          }
-                        >
-                          {editModePermissions
-                            ? "Cancelar Edición"
-                            : "Editar Permisos"}
-                        </Button>
-                      </Box>
-
-                      {/* MODO VISTA */}
-                      {!editModePermissions ? (
-                        <Grid container spacing={2}>
-                          {userPermissions.map((seccion, index) => (
-                            <Grid item xs={12} sm={6} md={3} key={index}>
-                              <Card
-                                variant="outlined"
-                                sx={{ textAlign: "center" }}
-                              >
-                                <CardHeader
-                                  title={seccion}
-                                  sx={{
-                                    backgroundColor: "primary.light",
-                                    color: "white",
-                                    borderRadius: "8px 8px 0 0",
-                                  }}
-                                />
-                                <CardContent>
-                                  <CheckCircleIcon
-                                    color="success"
-                                    sx={{ fontSize: 40 }}
-                                  />
-                                  <Typography>Acceso Autorizado</Typography>
-                                </CardContent>
-                              </Card>
-                            </Grid>
-                          ))}
-                        </Grid>
-                      ) : (
-                        /* MODO EDICIÓN */
-                        <>
-                          <Typography variant="h6" sx={{ mb: 2 }}>
-                            Permisos Activos
-                          </Typography>
-                          <Grid container spacing={2}>
-                            {editablePermissions.map((seccion, index) => (
-                              <Grid item xs={12} sm={6} md={3} key={index}>
-                                <Card
-                                  variant="outlined"
-                                  sx={{
-                                    borderRadius: 2,
-                                    textAlign: "center",
-                                    boxShadow: 1,
-                                    backgroundColor: "success.light",
-                                  }}
-                                >
-                                  <CardHeader
-                                    title={seccion}
-                                    sx={{
-                                      backgroundColor: "success.dark",
-                                      color: "white",
-                                      borderRadius: "8px 8px 0 0",
-                                    }}
-                                  />
-                                  <CardContent>
-                                    <FormControlLabel
-                                      control={
-                                        <Checkbox
-                                          checked={editablePermissions.includes(
-                                            seccion
-                                          )}
-                                          onChange={() =>
-                                            toggleEditablePermission(seccion)
-                                          }
-                                        />
-                                      }
-                                      label="Habilitar"
-                                    />
-                                  </CardContent>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-
-                          <Divider sx={{ my: 3 }} />
-
-                          {/* Permisos Inactivos */}
-                          <Typography variant="h6" sx={{ mb: 2 }}>
-                            Permisos Inactivos
-                          </Typography>
-                          <Grid container spacing={2}>
-                            {inactivePermissions.map((seccion, index) => (
-                              <Grid item xs={12} sm={6} md={3} key={index}>
-                                <Card
-                                  variant="outlined"
-                                  sx={{
-                                    borderRadius: 2,
-                                    textAlign: "center",
-                                    boxShadow: 1,
-                                    backgroundColor: "grey.300",
-                                  }}
-                                >
-                                  <CardHeader
-                                    title={seccion}
-                                    sx={{
-                                      backgroundColor: "grey.500",
-                                      color: "white",
-                                      borderRadius: "8px 8px 0 0",
-                                    }}
-                                  />
-                                  <CardContent>
-                                    <FormControlLabel
-                                      control={
-                                        <Checkbox
-                                          checked={editablePermissions.includes(
-                                            seccion
-                                          )}
-                                          onChange={() =>
-                                            toggleEditablePermission(seccion)
-                                          }
-                                        />
-                                      }
-                                      label="Habilitar"
-                                    />
-                                  </CardContent>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-                        </>
-                      )}
-
-                      {/* Botones de Acción */}
-                      <Box sx={{ mt: 4, textAlign: "right" }}>
-                        {editModePermissions && (
-                          <Button
-                            variant="contained"
-                            color="success"
-                            onClick={saveEditablePermissions}
-                            sx={{ mr: 2 }}
-                          >
-                            Guardar Permisos
-                          </Button>
-                        )}
-                        <Button
-                          variant="contained"
-                          color="secondary"
-                          onClick={handleClosePermissionsModal}
-                        >
-                          Cerrar
-                        </Button>
-                      </Box>
-                    </>
-                  )}
-                </Box>
-              </Modal>
-            </Box>
-          )}
-
-        {/* Tabla para usuarios con rol Admin */}
-        {(user?.role === "Admin" || user?.role === "Master") &&
-          usuariosAdmin.length > 0 && (
-            <Box sx={{ mb: 5 }}>
-              <Typography variant="h5" sx={{ mb: 2 }}>
-                Usuarios Administradores
-              </Typography>
-              <TableContainer component={Paper}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>ID</TableCell>
-                      <TableCell>Nombre</TableCell>
-                      <TableCell>Rol</TableCell>
-                      <TableCell>Unidad de Negocio</TableCell>
-                      <TableCell>Acciones</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {usuariosAdmin.map((usuario) => (
-                      <TableRow key={usuario.id_usu}>
-                        <TableCell>{usuario.id_usu}</TableCell>
-                        <TableCell>{usuario.name}</TableCell>
-                        <TableCell>{usuario.role}</TableCell>
-                        <TableCell>{usuario.unidad}</TableCell>
-                        <TableCell>
-                          <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={() => handleOpenModal(usuario)}
-                          >
-                            Ver Accesos
-                          </Button>
-                        </TableCell>
-
-                        <TableCell>
-                          {(user?.role === "Master" ||
-                            user?.role === "Admin") && (
-                            <Button
-                              variant="contained"
-                              color="primary"
-                              onClick={() => handleOpenModalUsers(usuario)}
-                              sx={{ mr: 1 }}
-                            >
-                              Editar
-                            </Button>
-                          )}
-                          {(user?.role === "Master" ||
-                            user?.role === "Admin") && (
-                            <Button
-                              variant="contained"
-                              color="error"
-                              onClick={() => handleDeleteUser(usuario.id_usu)}
-                            >
-                              Eliminar
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-
-              <Modal
-                open={openPermissionsModal}
-                onClose={handleClosePermissionsModal}
-              >
-                <Box
-                  sx={{
-                    position: "absolute",
-                    top: "50%",
-                    left: "50%",
-                    transform: "translate(-50%, -50%)",
-                    width: "90vw",
-                    maxWidth: "1200px",
-                    maxHeight: "85vh",
-                    overflowY: "auto",
-                    bgcolor: "background.paper",
-                    boxShadow: 24,
-                    p: 4,
-                    borderRadius: 2,
-                  }}
-                >
-                  {selectedUser && (
-                    <>
-                      {/* Encabezado */}
-                      <Typography
-                        variant="h4"
-                        gutterBottom
-                        sx={{
-                          textAlign: "center",
-                          fontWeight: "bold",
-                          color: "primary.main",
-                        }}
-                      >
-                        Permisos de {selectedUser.name} ({selectedUser.role})
-                      </Typography>
-                      <Divider sx={{ my: 2 }} />
-
-                      {/* Botón para alternar entre Modo Vista y Edición */}
-                      <Box sx={{ textAlign: "right", mb: 2 }}>
-                        <Button
-                          variant="contained"
-                          color={editModePermissions ? "warning" : "primary"}
-                          onClick={() =>
-                            setEditModePermissions(!editModePermissions)
-                          }
-                        >
-                          {editModePermissions
-                            ? "Cancelar Edición"
-                            : "Editar Permisos"}
-                        </Button>
-                      </Box>
-
-                      {/* MODO VISTA */}
-                      {!editModePermissions ? (
-                        <Grid container spacing={2}>
-                          {userPermissions.map((seccion, index) => (
-                            <Grid item xs={12} sm={6} md={3} key={index}>
-                              <Card
-                                variant="outlined"
-                                sx={{ textAlign: "center" }}
-                              >
-                                <CardHeader
-                                  title={seccion}
-                                  sx={{
-                                    backgroundColor: "primary.light",
-                                    color: "white",
-                                    borderRadius: "8px 8px 0 0",
-                                  }}
-                                />
-                                <CardContent>
-                                  <CheckCircleIcon
-                                    color="success"
-                                    sx={{ fontSize: 40 }}
-                                  />
-                                  <Typography>Acceso Autorizado</Typography>
-                                </CardContent>
-                              </Card>
-                            </Grid>
-                          ))}
-                        </Grid>
-                      ) : (
-                        /* MODO EDICIÓN */
-                        <>
-                          <Typography variant="h6" sx={{ mb: 2 }}>
-                            Permisos Activos
-                          </Typography>
-                          <Grid container spacing={2}>
-                            {editablePermissions.map((seccion, index) => (
-                              <Grid item xs={12} sm={6} md={3} key={index}>
-                                <Card
-                                  variant="outlined"
-                                  sx={{
-                                    borderRadius: 2,
-                                    textAlign: "center",
-                                    boxShadow: 1,
-                                    backgroundColor: "success.light",
-                                  }}
-                                >
-                                  <CardHeader
-                                    title={seccion}
-                                    sx={{
-                                      backgroundColor: "success.dark",
-                                      color: "white",
-                                      borderRadius: "8px 8px 0 0",
-                                    }}
-                                  />
-                                  <CardContent>
-                                    <FormControlLabel
-                                      control={
-                                        <Checkbox
-                                          checked={editablePermissions.includes(
-                                            seccion
-                                          )}
-                                          onChange={() =>
-                                            toggleEditablePermission(seccion)
-                                          }
-                                        />
-                                      }
-                                      label="Habilitar"
-                                    />
-                                  </CardContent>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-
-                          <Divider sx={{ my: 3 }} />
-
-                          {/* Permisos Inactivos */}
-                          <Typography variant="h6" sx={{ mb: 2 }}>
-                            Permisos Inactivos
-                          </Typography>
-                          <Grid container spacing={2}>
-                            {inactivePermissions.map((seccion, index) => (
-                              <Grid item xs={12} sm={6} md={3} key={index}>
-                                <Card
-                                  variant="outlined"
-                                  sx={{
-                                    borderRadius: 2,
-                                    textAlign: "center",
-                                    boxShadow: 1,
-                                    backgroundColor: "grey.300",
-                                  }}
-                                >
-                                  <CardHeader
-                                    title={seccion}
-                                    sx={{
-                                      backgroundColor: "grey.500",
-                                      color: "white",
-                                      borderRadius: "8px 8px 0 0",
-                                    }}
-                                  />
-                                  <CardContent>
-                                    <FormControlLabel
-                                      control={
-                                        <Checkbox
-                                          checked={editablePermissions.includes(
-                                            seccion
-                                          )}
-                                          onChange={() =>
-                                            toggleEditablePermission(seccion)
-                                          }
-                                        />
-                                      }
-                                      label="Habilitar"
-                                    />
-                                  </CardContent>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-                        </>
-                      )}
-
-                      {/* Botones de Acción */}
-                      <Box sx={{ mt: 4, textAlign: "right" }}>
-                        {editModePermissions && (
-                          <Button
-                            variant="contained"
-                            color="success"
-                            onClick={saveEditablePermissions}
-                            sx={{ mr: 2 }}
-                          >
-                            Guardar Permisos
-                          </Button>
-                        )}
-                        <Button
-                          variant="contained"
-                          color="secondary"
-                          onClick={handleClosePermissionsModal}
-                        >
-                          Cerrar
-                        </Button>
-                      </Box>
-                    </>
-                  )}
-                </Box>
-              </Modal>
-            </Box>
-          )}
-
-        {/* Tabla para usuarios con rol Control */}
-        {(user?.role === "Control" ||
-          user?.role === "Admin" ||
-          user?.role === "Master") &&
-          usuariosControl.length > 0 && (
-            <Box sx={{ mb: 5 }}>
-              <Typography variant="h5" sx={{ mb: 2 }}>
-                Usuarios de Mesa de Control
-              </Typography>
-              <TableContainer component={Paper}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>ID</TableCell>
-                      <TableCell>Nombre</TableCell>
-                      <TableCell>Rol</TableCell>
-                      <TableCell>Unidad de Negocio</TableCell>
-                      <TableCell>Acciones</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {usuariosControl.map((usuario) => (
-                      <TableRow key={usuario.id_usu}>
-                        <TableCell>{usuario.id_usu}</TableCell>
-                        <TableCell>{usuario.name}</TableCell>
-                        <TableCell>{usuario.role}</TableCell>
-                        <TableCell>{usuario.unidad}</TableCell>
-                        <TableCell>
-                          <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={() => handleOpenModal(usuario)}
-                          >
-                            Ver Accesos
-                          </Button>
-                        </TableCell>
-                        <TableCell>
-                          {(user?.role === "Master" ||
-                            user?.role === "Admin") && (
-                            <Button
-                              variant="contained"
-                              color="primary"
-                              onClick={() => handleOpenModalUsers(usuario)}
-                              sx={{ mr: 1 }}
-                            >
-                              Editar
-                            </Button>
-                          )}
-                          {(user?.role === "Master" ||
-                            user?.role === "Admin") && (
-                            <Button
-                              variant="contained"
-                              color="error"
-                              onClick={() => handleDeleteUser(usuario.id_usu)}
-                            >
-                              Eliminar
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-
-              <Modal
-                open={openPermissionsModal}
-                onClose={handleClosePermissionsModal}
-              >
-                <Box
-                  sx={{
-                    position: "absolute",
-                    top: "50%",
-                    left: "50%",
-                    transform: "translate(-50%, -50%)",
-                    width: "90vw",
-                    maxWidth: "1200px",
-                    maxHeight: "85vh",
-                    overflowY: "auto",
-                    bgcolor: "background.paper",
-                    boxShadow: 24,
-                    p: 4,
-                    borderRadius: 2,
-                  }}
-                >
-                  {selectedUser && (
-                    <>
-                      {/* Encabezado */}
-                      <Typography
-                        variant="h4"
-                        gutterBottom
-                        sx={{
-                          textAlign: "center",
-                          fontWeight: "bold",
-                          color: "primary.main",
-                        }}
-                      >
-                        Permisos de {selectedUser.name} ({selectedUser.role})
-                      </Typography>
-                      <Divider sx={{ my: 2 }} />
-
-                      {/* Botón para alternar entre Modo Vista y Edición */}
-                      <Box sx={{ textAlign: "right", mb: 2 }}>
-                        <Button
-                          variant="contained"
-                          color={editModePermissions ? "warning" : "primary"}
-                          onClick={() =>
-                            setEditModePermissions(!editModePermissions)
-                          }
-                        >
-                          {editModePermissions
-                            ? "Cancelar Edición"
-                            : "Editar Permisos"}
-                        </Button>
-                      </Box>
-
-                      {/* MODO VISTA */}
-                      {!editModePermissions ? (
-                        <Grid container spacing={2}>
-                          {userPermissions.map((seccion, index) => (
-                            <Grid item xs={12} sm={6} md={3} key={index}>
-                              <Card
-                                variant="outlined"
-                                sx={{ textAlign: "center" }}
-                              >
-                                <CardHeader
-                                  title={seccion}
-                                  sx={{
-                                    backgroundColor: "primary.light",
-                                    color: "white",
-                                    borderRadius: "8px 8px 0 0",
-                                  }}
-                                />
-                                <CardContent>
-                                  <CheckCircleIcon
-                                    color="success"
-                                    sx={{ fontSize: 40 }}
-                                  />
-                                  <Typography>Acceso Autorizado</Typography>
-                                </CardContent>
-                              </Card>
-                            </Grid>
-                          ))}
-                        </Grid>
-                      ) : (
-                        /* MODO EDICIÓN */
-                        <>
-                          <Typography variant="h6" sx={{ mb: 2 }}>
-                            Permisos Activos
-                          </Typography>
-                          <Grid container spacing={2}>
-                            {editablePermissions.map((seccion, index) => (
-                              <Grid item xs={12} sm={6} md={3} key={index}>
-                                <Card
-                                  variant="outlined"
-                                  sx={{
-                                    borderRadius: 2,
-                                    textAlign: "center",
-                                    boxShadow: 1,
-                                    backgroundColor: "success.light",
-                                  }}
-                                >
-                                  <CardHeader
-                                    title={seccion}
-                                    sx={{
-                                      backgroundColor: "success.dark",
-                                      color: "white",
-                                      borderRadius: "8px 8px 0 0",
-                                    }}
-                                  />
-                                  <CardContent>
-                                    <FormControlLabel
-                                      control={
-                                        <Checkbox
-                                          checked={editablePermissions.includes(
-                                            seccion
-                                          )}
-                                          onChange={() =>
-                                            toggleEditablePermission(seccion)
-                                          }
-                                        />
-                                      }
-                                      label="Habilitar"
-                                    />
-                                  </CardContent>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-
-                          <Divider sx={{ my: 3 }} />
-
-                          {/* Permisos Inactivos */}
-                          <Typography variant="h6" sx={{ mb: 2 }}>
-                            Permisos Inactivos
-                          </Typography>
-                          <Grid container spacing={2}>
-                            {inactivePermissions.map((seccion, index) => (
-                              <Grid item xs={12} sm={6} md={3} key={index}>
-                                <Card
-                                  variant="outlined"
-                                  sx={{
-                                    borderRadius: 2,
-                                    textAlign: "center",
-                                    boxShadow: 1,
-                                    backgroundColor: "grey.300",
-                                  }}
-                                >
-                                  <CardHeader
-                                    title={seccion}
-                                    sx={{
-                                      backgroundColor: "grey.500",
-                                      color: "white",
-                                      borderRadius: "8px 8px 0 0",
-                                    }}
-                                  />
-                                  <CardContent>
-                                    <FormControlLabel
-                                      control={
-                                        <Checkbox
-                                          checked={editablePermissions.includes(
-                                            seccion
-                                          )}
-                                          onChange={() =>
-                                            toggleEditablePermission(seccion)
-                                          }
-                                        />
-                                      }
-                                      label="Habilitar"
-                                    />
-                                  </CardContent>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-                        </>
-                      )}
-
-                      {/* Botones de Acción */}
-                      <Box sx={{ mt: 4, textAlign: "right" }}>
-                        {editModePermissions && (
-                          <Button
-                            variant="contained"
-                            color="success"
-                            onClick={saveEditablePermissions}
-                            sx={{ mr: 2 }}
-                          >
-                            Guardar Permisos
-                          </Button>
-                        )}
-                        <Button
-                          variant="contained"
-                          color="secondary"
-                          onClick={handleClosePermissionsModal}
-                        >
-                          Cerrar
-                        </Button>
-                      </Box>
-                    </>
-                  )}
-                </Box>
-              </Modal>
-            </Box>
-          )}
-
-        {/* Tabla para usuarios con rol Master */}
-        {(user?.role === "Admin" || user?.role === "Master") &&
-          usuariosMaster.length > 0 && (
-            <Box sx={{ mb: 5 }}>
-              <Typography variant="h5" sx={{ mb: 2 }}>
-                Dueños
-              </Typography>
-              <TableContainer component={Paper}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>ID</TableCell>
-                      <TableCell>Nombre</TableCell>
-                      <TableCell>Rol</TableCell>
-                      <TableCell>Unidad de Negocio</TableCell>
-                      <TableCell>Acciones</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {usuariosMaster.map((usuario) => (
-                      <TableRow key={usuario.id_usu}>
-                        <TableCell>{usuario.id_usu}</TableCell>
-                        <TableCell>{usuario.name}</TableCell>
-                        <TableCell>{usuario.role}</TableCell>
-                        <TableCell>{usuario.unidad}</TableCell>
-                        <TableCell>
-                          <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={() => handleOpenModal(usuario)}
-                          >
-                            Ver Accesos
-                          </Button>
-                        </TableCell>
-                        <TableCell>
-                          {(user?.role === "Master" ||
-                            user?.role === "Admin") && (
-                            <Button
-                              variant="contained"
-                              color="primary"
-                              onClick={() => handleOpenModalUsers(usuario)}
-                              sx={{ mr: 1 }}
-                            >
-                              Editar
-                            </Button>
-                          )}
-                          {(user?.role === "Master" ||
-                            user?.role === "Admin") && (
-                            <Button
-                              variant="contained"
-                              color="error"
-                              onClick={() => handleDeleteUser(usuario.id_usu)}
-                            >
-                              Eliminar
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-
-              <Modal
-                open={openPermissionsModal}
-                onClose={handleClosePermissionsModal}
-              >
-                <Box
-                  sx={{
-                    position: "absolute",
-                    top: "50%",
-                    left: "50%",
-                    transform: "translate(-50%, -50%)",
-                    width: "90vw",
-                    maxWidth: "1200px",
-                    maxHeight: "85vh",
-                    overflowY: "auto",
-                    bgcolor: "background.paper",
-                    boxShadow: 24,
-                    p: 4,
-                    borderRadius: 2,
-                  }}
-                >
-                  {selectedUser && (
-                    <>
-                      {/* Encabezado */}
-                      <Typography
-                        variant="h4"
-                        gutterBottom
-                        sx={{
-                          textAlign: "center",
-                          fontWeight: "bold",
-                          color: "primary.main",
-                        }}
-                      >
-                        Permisos de {selectedUser.name} ({selectedUser.role})
-                      </Typography>
-                      <Divider sx={{ my: 2 }} />
-
-                      {/* Botón para alternar entre Modo Vista y Edición */}
-                      <Box sx={{ textAlign: "right", mb: 2 }}>
-                        <Button
-                          variant="contained"
-                          color={editModePermissions ? "warning" : "primary"}
-                          onClick={() =>
-                            setEditModePermissions(!editModePermissions)
-                          }
-                        >
-                          {editModePermissions
-                            ? "Cancelar Edición"
-                            : "Editar Permisos"}
-                        </Button>
-                      </Box>
-
-                      {/* MODO VISTA */}
-                      {!editModePermissions ? (
-                        <Grid container spacing={2}>
-                          {userPermissions.map((seccion, index) => (
-                            <Grid item xs={12} sm={6} md={3} key={index}>
-                              <Card
-                                variant="outlined"
-                                sx={{ textAlign: "center" }}
-                              >
-                                <CardHeader
-                                  title={seccion}
-                                  sx={{
-                                    backgroundColor: "primary.light",
-                                    color: "white",
-                                    borderRadius: "8px 8px 0 0",
-                                  }}
-                                />
-                                <CardContent>
-                                  <CheckCircleIcon
-                                    color="success"
-                                    sx={{ fontSize: 40 }}
-                                  />
-                                  <Typography>Acceso Autorizado</Typography>
-                                </CardContent>
-                              </Card>
-                            </Grid>
-                          ))}
-                        </Grid>
-                      ) : (
-                        /* MODO EDICIÓN */
-                        <>
-                          <Typography variant="h6" sx={{ mb: 2 }}>
-                            Permisos Activos
-                          </Typography>
-                          <Grid container spacing={2}>
-                            {editablePermissions.map((seccion, index) => (
-                              <Grid item xs={12} sm={6} md={3} key={index}>
-                                <Card
-                                  variant="outlined"
-                                  sx={{
-                                    borderRadius: 2,
-                                    textAlign: "center",
-                                    boxShadow: 1,
-                                    backgroundColor: "success.light",
-                                  }}
-                                >
-                                  <CardHeader
-                                    title={seccion}
-                                    sx={{
-                                      backgroundColor: "success.dark",
-                                      color: "white",
-                                      borderRadius: "8px 8px 0 0",
-                                    }}
-                                  />
-                                  <CardContent>
-                                    <FormControlLabel
-                                      control={
-                                        <Checkbox
-                                          checked={editablePermissions.includes(
-                                            seccion
-                                          )}
-                                          onChange={() =>
-                                            toggleEditablePermission(seccion)
-                                          }
-                                        />
-                                      }
-                                      label="Habilitar"
-                                    />
-                                  </CardContent>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-
-                          <Divider sx={{ my: 3 }} />
-
-                          {/* Permisos Inactivos */}
-                          <Typography variant="h6" sx={{ mb: 2 }}>
-                            Permisos Inactivos
-                          </Typography>
-                          <Grid container spacing={2}>
-                            {inactivePermissions.map((seccion, index) => (
-                              <Grid item xs={12} sm={6} md={3} key={index}>
-                                <Card
-                                  variant="outlined"
-                                  sx={{
-                                    borderRadius: 2,
-                                    textAlign: "center",
-                                    boxShadow: 1,
-                                    backgroundColor: "grey.300",
-                                  }}
-                                >
-                                  <CardHeader
-                                    title={seccion}
-                                    sx={{
-                                      backgroundColor: "grey.500",
-                                      color: "white",
-                                      borderRadius: "8px 8px 0 0",
-                                    }}
-                                  />
-                                  <CardContent>
-                                    <FormControlLabel
-                                      control={
-                                        <Checkbox
-                                          checked={editablePermissions.includes(
-                                            seccion
-                                          )}
-                                          onChange={() =>
-                                            toggleEditablePermission(seccion)
-                                          }
-                                        />
-                                      }
-                                      label="Habilitar"
-                                    />
-                                  </CardContent>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-                        </>
-                      )}
-
-                      {/* Botones de Acción */}
-                      <Box sx={{ mt: 4, textAlign: "right" }}>
-                        {editModePermissions && (
-                          <Button
-                            variant="contained"
-                            color="success"
-                            onClick={saveEditablePermissions}
-                            sx={{ mr: 2 }}
-                          >
-                            Guardar Permisos
-                          </Button>
-                        )}
-                        <Button
-                          variant="contained"
-                          color="secondary"
-                          onClick={handleClosePermissionsModal}
-                        >
-                          Cerrar
-                        </Button>
-                      </Box>
-                    </>
-                  )}
-                </Box>
-              </Modal>
-            </Box>
-          )}
-
-        {/* Tabla para usuarios con rol Paquet */}
-        {(user?.role === "Paquet" ||
-          user?.role === "Admin" ||
-          user?.role === "Master") &&
-          usuariosPaquet.length > 0 && (
-            <Box sx={{ mb: 5 }}>
-              <Typography variant="h5" sx={{ mb: 2 }}>
-                Usuarios de Paqueteria
-              </Typography>
-              <TableContainer component={Paper}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>ID</TableCell>
-                      <TableCell>Nombre</TableCell>
-                      <TableCell>Rol</TableCell>
-                      <TableCell>Unidad de Negocio</TableCell>
-                      <TableCell>Acciones</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {usuariosPaquet.map((usuario) => (
-                      <TableRow key={usuario.id_usu}>
-                        <TableCell>{usuario.id_usu}</TableCell>
-                        <TableCell>{usuario.name}</TableCell>
-                        <TableCell>{usuario.role}</TableCell>
-                        <TableCell>{usuario.unidad}</TableCell>
-                        <TableCell>
-                          <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={() => handleOpenModal(usuario)}
-                          >
-                            Ver Accesos
-                          </Button>
-                        </TableCell>
-                        <TableCell>
-                          {(user?.role === "Master" ||
-                            user?.role === "Admin") && (
-                            <Button
-                              variant="contained"
-                              color="primary"
-                              onClick={() => handleOpenModalUsers(usuario)}
-                              sx={{ mr: 1 }}
-                            >
-                              Editar
-                            </Button>
-                          )}
-                          {(user?.role === "Master" ||
-                            user?.role === "Admin") && (
-                            <Button
-                              variant="contained"
-                              color="error"
-                              onClick={() => handleDeleteUser(usuario.id_usu)}
-                            >
-                              Eliminar
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-
-              <Modal
-                open={openPermissionsModal}
-                onClose={handleClosePermissionsModal}
-              >
-                <Box
-                  sx={{
-                    position: "absolute",
-                    top: "50%",
-                    left: "50%",
-                    transform: "translate(-50%, -50%)",
-                    width: "90vw",
-                    maxWidth: "1200px",
-                    maxHeight: "85vh",
-                    overflowY: "auto",
-                    bgcolor: "background.paper",
-                    boxShadow: 24,
-                    p: 4,
-                    borderRadius: 2,
-                  }}
-                >
-                  {selectedUser && (
-                    <>
-                      {/* Encabezado */}
-                      <Typography
-                        variant="h4"
-                        gutterBottom
-                        sx={{
-                          textAlign: "center",
-                          fontWeight: "bold",
-                          color: "primary.main",
-                        }}
-                      >
-                        Permisos de {selectedUser.name} ({selectedUser.role})
-                      </Typography>
-                      <Divider sx={{ my: 2 }} />
-
-                      {/* Botón para alternar entre Modo Vista y Edición */}
-                      <Box sx={{ textAlign: "right", mb: 2 }}>
-                        <Button
-                          variant="contained"
-                          color={editModePermissions ? "warning" : "primary"}
-                          onClick={() =>
-                            setEditModePermissions(!editModePermissions)
-                          }
-                        >
-                          {editModePermissions
-                            ? "Cancelar Edición"
-                            : "Editar Permisos"}
-                        </Button>
-                      </Box>
-
-                      {/* MODO VISTA */}
-                      {!editModePermissions ? (
-                        <Grid container spacing={2}>
-                          {userPermissions.map((seccion, index) => (
-                            <Grid item xs={12} sm={6} md={3} key={index}>
-                              <Card
-                                variant="outlined"
-                                sx={{ textAlign: "center" }}
-                              >
-                                <CardHeader
-                                  title={seccion}
-                                  sx={{
-                                    backgroundColor: "primary.light",
-                                    color: "white",
-                                    borderRadius: "8px 8px 0 0",
-                                  }}
-                                />
-                                <CardContent>
-                                  <CheckCircleIcon
-                                    color="success"
-                                    sx={{ fontSize: 40 }}
-                                  />
-                                  <Typography>Acceso Autorizado</Typography>
-                                </CardContent>
-                              </Card>
-                            </Grid>
-                          ))}
-                        </Grid>
-                      ) : (
-                        /* MODO EDICIÓN */
-                        <>
-                          <Typography variant="h6" sx={{ mb: 2 }}>
-                            Permisos Activos
-                          </Typography>
-                          <Grid container spacing={2}>
-                            {editablePermissions.map((seccion, index) => (
-                              <Grid item xs={12} sm={6} md={3} key={index}>
-                                <Card
-                                  variant="outlined"
-                                  sx={{
-                                    borderRadius: 2,
-                                    textAlign: "center",
-                                    boxShadow: 1,
-                                    backgroundColor: "success.light",
-                                  }}
-                                >
-                                  <CardHeader
-                                    title={seccion}
-                                    sx={{
-                                      backgroundColor: "success.dark",
-                                      color: "white",
-                                      borderRadius: "8px 8px 0 0",
-                                    }}
-                                  />
-                                  <CardContent>
-                                    <FormControlLabel
-                                      control={
-                                        <Checkbox
-                                          checked={editablePermissions.includes(
-                                            seccion
-                                          )}
-                                          onChange={() =>
-                                            toggleEditablePermission(seccion)
-                                          }
-                                        />
-                                      }
-                                      label="Habilitar"
-                                    />
-                                  </CardContent>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-
-                          <Divider sx={{ my: 3 }} />
-
-                          {/* Permisos Inactivos */}
-                          <Typography variant="h6" sx={{ mb: 2 }}>
-                            Permisos Inactivos
-                          </Typography>
-                          <Grid container spacing={2}>
-                            {inactivePermissions.map((seccion, index) => (
-                              <Grid item xs={12} sm={6} md={3} key={index}>
-                                <Card
-                                  variant="outlined"
-                                  sx={{
-                                    borderRadius: 2,
-                                    textAlign: "center",
-                                    boxShadow: 1,
-                                    backgroundColor: "grey.300",
-                                  }}
-                                >
-                                  <CardHeader
-                                    title={seccion}
-                                    sx={{
-                                      backgroundColor: "grey.500",
-                                      color: "white",
-                                      borderRadius: "8px 8px 0 0",
-                                    }}
-                                  />
-                                  <CardContent>
-                                    <FormControlLabel
-                                      control={
-                                        <Checkbox
-                                          checked={editablePermissions.includes(
-                                            seccion
-                                          )}
-                                          onChange={() =>
-                                            toggleEditablePermission(seccion)
-                                          }
-                                        />
-                                      }
-                                      label="Habilitar"
-                                    />
-                                  </CardContent>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-                        </>
-                      )}
-
-                      {/* Botones de Acción */}
-                      <Box sx={{ mt: 4, textAlign: "right" }}>
-                        {editModePermissions && (
-                          <Button
-                            variant="contained"
-                            color="success"
-                            onClick={saveEditablePermissions}
-                            sx={{ mr: 2 }}
-                          >
-                            Guardar Permisos
-                          </Button>
-                        )}
-                        <Button
-                          variant="contained"
-                          color="secondary"
-                          onClick={handleClosePermissionsModal}
-                        >
-                          Cerrar
-                        </Button>
-                      </Box>
-                    </>
-                  )}
-                </Box>
-              </Modal>
-            </Box>
-          )}
-
-        {/* Tabla para usuarios con rol Embarque */}
-        {(user?.role === "Embar" ||
-          user?.role === "Admin" ||
-          user?.role === "Master") &&
-          usuariosEmbar.length > 0 && (
-            <Box sx={{ mb: 5 }}>
-              <Typography variant="h5" sx={{ mb: 2 }}>
-                Usuarios de Embarques
-              </Typography>
-              <TableContainer component={Paper}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>ID</TableCell>
-                      <TableCell>Nombre</TableCell>
-                      <TableCell>Rol</TableCell>
-                      <TableCell>Unidad de Negocio</TableCell>
-                      <TableCell>Acciones</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {usuariosEmbar.map((usuario) => (
-                      <TableRow key={usuario.id_usu}>
-                        <TableCell>{usuario.id_usu}</TableCell>
-                        <TableCell>{usuario.name}</TableCell>
-                        <TableCell>{usuario.role}</TableCell>
-                        <TableCell>{usuario.unidad}</TableCell>
-                        <TableCell>
-                          <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={() => handleOpenModal(usuario)}
-                          >
-                            Ver Accesos
-                          </Button>
-                        </TableCell>
-                        <TableCell>
-                          {(user?.role === "Master" ||
-                            user?.role === "Admin") && (
-                            <Button
-                              variant="contained"
-                              color="primary"
-                              onClick={() => handleOpenModalUsers(usuario)}
-                              sx={{ mr: 1 }}
-                            >
-                              Editar
-                            </Button>
-                          )}
-                          {(user?.role === "Master" ||
-                            user?.role === "Admin") && (
-                            <Button
-                              variant="contained"
-                              color="error"
-                              onClick={() => handleDeleteUser(usuario.id_usu)}
-                            >
-                              Eliminar
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-
-              <Modal
-                open={openPermissionsModal}
-                onClose={handleClosePermissionsModal}
-              >
-                <Box
-                  sx={{
-                    position: "absolute",
-                    top: "50%",
-                    left: "50%",
-                    transform: "translate(-50%, -50%)",
-                    width: "90vw",
-                    maxWidth: "1200px",
-                    maxHeight: "85vh",
-                    overflowY: "auto",
-                    bgcolor: "background.paper",
-                    boxShadow: 24,
-                    p: 4,
-                    borderRadius: 2,
-                  }}
-                >
-                  {selectedUser && (
-                    <>
-                      {/* Encabezado */}
-                      <Typography
-                        variant="h4"
-                        gutterBottom
-                        sx={{
-                          textAlign: "center",
-                          fontWeight: "bold",
-                          color: "primary.main",
-                        }}
-                      >
-                        Permisos de {selectedUser.name} ({selectedUser.role})
-                      </Typography>
-                      <Divider sx={{ my: 2 }} />
-
-                      {/* Botón para alternar entre Modo Vista y Edición */}
-                      <Box sx={{ textAlign: "right", mb: 2 }}>
-                        <Button
-                          variant="contained"
-                          color={editModePermissions ? "warning" : "primary"}
-                          onClick={() =>
-                            setEditModePermissions(!editModePermissions)
-                          }
-                        >
-                          {editModePermissions
-                            ? "Cancelar Edición"
-                            : "Editar Permisos"}
-                        </Button>
-                      </Box>
-
-                      {/* MODO VISTA */}
-                      {!editModePermissions ? (
-                        <Grid container spacing={2}>
-                          {userPermissions.map((seccion, index) => (
-                            <Grid item xs={12} sm={6} md={3} key={index}>
-                              <Card
-                                variant="outlined"
-                                sx={{ textAlign: "center" }}
-                              >
-                                <CardHeader
-                                  title={seccion}
-                                  sx={{
-                                    backgroundColor: "primary.light",
-                                    color: "white",
-                                    borderRadius: "8px 8px 0 0",
-                                  }}
-                                />
-                                <CardContent>
-                                  <CheckCircleIcon
-                                    color="success"
-                                    sx={{ fontSize: 40 }}
-                                  />
-                                  <Typography>Acceso Autorizado</Typography>
-                                </CardContent>
-                              </Card>
-                            </Grid>
-                          ))}
-                        </Grid>
-                      ) : (
-                        /* MODO EDICIÓN */
-                        <>
-                          <Typography variant="h6" sx={{ mb: 2 }}>
-                            Permisos Activos
-                          </Typography>
-                          <Grid container spacing={2}>
-                            {editablePermissions.map((seccion, index) => (
-                              <Grid item xs={12} sm={6} md={3} key={index}>
-                                <Card
-                                  variant="outlined"
-                                  sx={{
-                                    borderRadius: 2,
-                                    textAlign: "center",
-                                    boxShadow: 1,
-                                    backgroundColor: "success.light",
-                                  }}
-                                >
-                                  <CardHeader
-                                    title={seccion}
-                                    sx={{
-                                      backgroundColor: "success.dark",
-                                      color: "white",
-                                      borderRadius: "8px 8px 0 0",
-                                    }}
-                                  />
-                                  <CardContent>
-                                    <FormControlLabel
-                                      control={
-                                        <Checkbox
-                                          checked={editablePermissions.includes(
-                                            seccion
-                                          )}
-                                          onChange={() =>
-                                            toggleEditablePermission(seccion)
-                                          }
-                                        />
-                                      }
-                                      label="Habilitar"
-                                    />
-                                  </CardContent>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-
-                          <Divider sx={{ my: 3 }} />
-
-                          {/* Permisos Inactivos */}
-                          <Typography variant="h6" sx={{ mb: 2 }}>
-                            Permisos Inactivos
-                          </Typography>
-                          <Grid container spacing={2}>
-                            {inactivePermissions.map((seccion, index) => (
-                              <Grid item xs={12} sm={6} md={3} key={index}>
-                                <Card
-                                  variant="outlined"
-                                  sx={{
-                                    borderRadius: 2,
-                                    textAlign: "center",
-                                    boxShadow: 1,
-                                    backgroundColor: "grey.300",
-                                  }}
-                                >
-                                  <CardHeader
-                                    title={seccion}
-                                    sx={{
-                                      backgroundColor: "grey.500",
-                                      color: "white",
-                                      borderRadius: "8px 8px 0 0",
-                                    }}
-                                  />
-                                  <CardContent>
-                                    <FormControlLabel
-                                      control={
-                                        <Checkbox
-                                          checked={editablePermissions.includes(
-                                            seccion
-                                          )}
-                                          onChange={() =>
-                                            toggleEditablePermission(seccion)
-                                          }
-                                        />
-                                      }
-                                      label="Habilitar"
-                                    />
-                                  </CardContent>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-                        </>
-                      )}
-
-                      {/* Botones de Acción */}
-                      <Box sx={{ mt: 4, textAlign: "right" }}>
-                        {editModePermissions && (
-                          <Button
-                            variant="contained"
-                            color="success"
-                            onClick={saveEditablePermissions}
-                            sx={{ mr: 2 }}
-                          >
-                            Guardar Permisos
-                          </Button>
-                        )}
-                        <Button
-                          variant="contained"
-                          color="secondary"
-                          onClick={handleClosePermissionsModal}
-                        >
-                          Cerrar
-                        </Button>
-                      </Box>
-                    </>
-                  )}
-                </Box>
-              </Modal>
-            </Box>
-          )}
-
-        {/* Tabla para usuarios con rol Rep */}
-        {(user?.role === "Admin" || user?.role === "Master") &&
-          usuariosRep.length > 0 && (
-            <Box sx={{ mb: 5 }}>
-              <Typography variant="h5" sx={{ mb: 2 }}>
-                Usuarios de Reporte
-              </Typography>
-              <TableContainer component={Paper}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>ID</TableCell>
-                      <TableCell>Nombre</TableCell>
-                      <TableCell>Rol</TableCell>
-                      <TableCell>Unidad de Negocio</TableCell>
-                      <TableCell>Acciones</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {usuariosRep.map((usuario) => (
-                      <TableRow key={usuario.id_usu}>
-                        <TableCell>{usuario.id_usu}</TableCell>
-                        <TableCell>{usuario.name}</TableCell>
-                        <TableCell>{usuario.role}</TableCell>
-                        <TableCell>{usuario.unidad}</TableCell>
-                        <TableCell>
-                          <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={() => handleOpenModal(usuario)}
-                          >
-                            Ver Accesos
-                          </Button>
-                        </TableCell>
-                        <TableCell>
-                          {(user?.role === "Master" ||
-                            user?.role === "Admin") && (
-                            <Button
-                              variant="contained"
-                              color="primary"
-                              onClick={() => handleOpenModalUsers(usuario)}
-                              sx={{ mr: 1 }}
-                            >
-                              Editar
-                            </Button>
-                          )}
-                          {(user?.role === "Master" ||
-                            user?.role === "Admin") && (
-                            <Button
-                              variant="contained"
-                              color="error"
-                              onClick={() => handleDeleteUser(usuario.id_usu)}
-                            >
-                              Eliminar
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-
-              <Modal
-                open={openPermissionsModal}
-                onClose={handleClosePermissionsModal}
-              >
-                <Box
-                  sx={{
-                    position: "absolute",
-                    top: "50%",
-                    left: "50%",
-                    transform: "translate(-50%, -50%)",
-                    width: "90vw",
-                    maxWidth: "1200px",
-                    maxHeight: "85vh",
-                    overflowY: "auto",
-                    bgcolor: "background.paper",
-                    boxShadow: 24,
-                    p: 4,
-                    borderRadius: 2,
-                  }}
-                >
-                  {selectedUser && (
-                    <>
-                      {/* Encabezado */}
-                      <Typography
-                        variant="h4"
-                        gutterBottom
-                        sx={{
-                          textAlign: "center",
-                          fontWeight: "bold",
-                          color: "primary.main",
-                        }}
-                      >
-                        Permisos de {selectedUser.name} ({selectedUser.role})
-                      </Typography>
-                      <Divider sx={{ my: 2 }} />
-
-                      {/* Botón para alternar entre Modo Vista y Edición */}
-                      <Box sx={{ textAlign: "right", mb: 2 }}>
-                        <Button
-                          variant="contained"
-                          color={editModePermissions ? "warning" : "primary"}
-                          onClick={() =>
-                            setEditModePermissions(!editModePermissions)
-                          }
-                        >
-                          {editModePermissions
-                            ? "Cancelar Edición"
-                            : "Editar Permisos"}
-                        </Button>
-                      </Box>
-
-                      {/* MODO VISTA */}
-                      {!editModePermissions ? (
-                        <Grid container spacing={2}>
-                          {userPermissions.map((seccion, index) => (
-                            <Grid item xs={12} sm={6} md={3} key={index}>
-                              <Card
-                                variant="outlined"
-                                sx={{ textAlign: "center" }}
-                              >
-                                <CardHeader
-                                  title={seccion}
-                                  sx={{
-                                    backgroundColor: "primary.light",
-                                    color: "white",
-                                    borderRadius: "8px 8px 0 0",
-                                  }}
-                                />
-                                <CardContent>
-                                  <CheckCircleIcon
-                                    color="success"
-                                    sx={{ fontSize: 40 }}
-                                  />
-                                  <Typography>Acceso Autorizado</Typography>
-                                </CardContent>
-                              </Card>
-                            </Grid>
-                          ))}
-                        </Grid>
-                      ) : (
-                        /* MODO EDICIÓN */
-                        <>
-                          <Typography variant="h6" sx={{ mb: 2 }}>
-                            Permisos Activos
-                          </Typography>
-                          <Grid container spacing={2}>
-                            {editablePermissions.map((seccion, index) => (
-                              <Grid item xs={12} sm={6} md={3} key={index}>
-                                <Card
-                                  variant="outlined"
-                                  sx={{
-                                    borderRadius: 2,
-                                    textAlign: "center",
-                                    boxShadow: 1,
-                                    backgroundColor: "success.light",
-                                  }}
-                                >
-                                  <CardHeader
-                                    title={seccion}
-                                    sx={{
-                                      backgroundColor: "success.dark",
-                                      color: "white",
-                                      borderRadius: "8px 8px 0 0",
-                                    }}
-                                  />
-                                  <CardContent>
-                                    <FormControlLabel
-                                      control={
-                                        <Checkbox
-                                          checked={editablePermissions.includes(
-                                            seccion
-                                          )}
-                                          onChange={() =>
-                                            toggleEditablePermission(seccion)
-                                          }
-                                        />
-                                      }
-                                      label="Habilitar"
-                                    />
-                                  </CardContent>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-
-                          <Divider sx={{ my: 3 }} />
-
-                          {/* Permisos Inactivos */}
-                          <Typography variant="h6" sx={{ mb: 2 }}>
-                            Permisos Inactivos
-                          </Typography>
-                          <Grid container spacing={2}>
-                            {inactivePermissions.map((seccion, index) => (
-                              <Grid item xs={12} sm={6} md={3} key={index}>
-                                <Card
-                                  variant="outlined"
-                                  sx={{
-                                    borderRadius: 2,
-                                    textAlign: "center",
-                                    boxShadow: 1,
-                                    backgroundColor: "grey.300",
-                                  }}
-                                >
-                                  <CardHeader
-                                    title={seccion}
-                                    sx={{
-                                      backgroundColor: "grey.500",
-                                      color: "white",
-                                      borderRadius: "8px 8px 0 0",
-                                    }}
-                                  />
-                                  <CardContent>
-                                    <FormControlLabel
-                                      control={
-                                        <Checkbox
-                                          checked={editablePermissions.includes(
-                                            seccion
-                                          )}
-                                          onChange={() =>
-                                            toggleEditablePermission(seccion)
-                                          }
-                                        />
-                                      }
-                                      label="Habilitar"
-                                    />
-                                  </CardContent>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-                        </>
-                      )}
-
-                      {/* Botones de Acción */}
-                      <Box sx={{ mt: 4, textAlign: "right" }}>
-                        {editModePermissions && (
-                          <Button
-                            variant="contained"
-                            color="success"
-                            onClick={saveEditablePermissions}
-                            sx={{ mr: 2 }}
-                          >
-                            Guardar Permisos
-                          </Button>
-                        )}
-                        <Button
-                          variant="contained"
-                          color="secondary"
-                          onClick={handleClosePermissionsModal}
-                        >
-                          Cerrar
-                        </Button>
-                      </Box>
-                    </>
-                  )}
-                </Box>
-              </Modal>
-            </Box>
-          )}
-
-        {/* Tabla para usuarios con rol Eti */}
-        {(user?.role === "Admin" || user?.role === "Master") &&
-          usuariosEti.length > 0 && (
-            <Box sx={{ mb: 5 }}>
-              <Typography variant="h5" sx={{ mb: 2 }}>
-                Usuarios de Eti
-              </Typography>
-              <TableContainer component={Paper}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>ID</TableCell>
-                      <TableCell>Nombre</TableCell>
-                      <TableCell>Rol</TableCell>
-                      <TableCell>Unidad de Negocio</TableCell>
-                      <TableCell>Acciones</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {usuariosEti.map((usuario) => (
-                      <TableRow key={usuario.id_usu}>
-                        <TableCell>{usuario.id_usu}</TableCell>
-                        <TableCell>{usuario.name}</TableCell>
-                        <TableCell>{usuario.role}</TableCell>
-                        <TableCell>{usuario.unidad}</TableCell>
-                        <TableCell>
-                          <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={() => handleOpenModal(usuario)}
-                          >
-                            Ver Accesos
-                          </Button>
-                        </TableCell>
-                        <TableCell>
-                          {(user?.role === "Master" ||
-                            user?.role === "Admin") && (
-                            <Button
-                              variant="contained"
-                              color="primary"
-                              onClick={() => handleOpenModalUsers(usuario)}
-                              sx={{ mr: 1 }}
-                            >
-                              Editar
-                            </Button>
-                          )}
-                          {(user?.role === "Master" ||
-                            user?.role === "Admin") && (
-                            <Button
-                              variant="contained"
-                              color="error"
-                              onClick={() => handleDeleteUser(usuario.id_usu)}
-                            >
-                              Eliminar
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-
-              <Modal
-                open={openPermissionsModal}
-                onClose={handleClosePermissionsModal}
-              >
-                <Box
-                  sx={{
-                    position: "absolute",
-                    top: "50%",
-                    left: "50%",
-                    transform: "translate(-50%, -50%)",
-                    width: "90vw",
-                    maxWidth: "1200px",
-                    maxHeight: "85vh",
-                    overflowY: "auto",
-                    bgcolor: "background.paper",
-                    boxShadow: 24,
-                    p: 4,
-                    borderRadius: 2,
-                  }}
-                >
-                  {selectedUser && (
-                    <>
-                      {/* Encabezado */}
-                      <Typography
-                        variant="h4"
-                        gutterBottom
-                        sx={{
-                          textAlign: "center",
-                          fontWeight: "bold",
-                          color: "primary.main",
-                        }}
-                      >
-                        Permisos de {selectedUser.name} ({selectedUser.role})
-                      </Typography>
-                      <Divider sx={{ my: 2 }} />
-
-                      {/* Botón para alternar entre Modo Vista y Edición */}
-                      <Box sx={{ textAlign: "right", mb: 2 }}>
-                        <Button
-                          variant="contained"
-                          color={editModePermissions ? "warning" : "primary"}
-                          onClick={() =>
-                            setEditModePermissions(!editModePermissions)
-                          }
-                        >
-                          {editModePermissions
-                            ? "Cancelar Edición"
-                            : "Editar Permisos"}
-                        </Button>
-                      </Box>
-
-                      {/* MODO VISTA */}
-                      {!editModePermissions ? (
-                        <Grid container spacing={2}>
-                          {userPermissions.map((seccion, index) => (
-                            <Grid item xs={12} sm={6} md={3} key={index}>
-                              <Card
-                                variant="outlined"
-                                sx={{ textAlign: "center" }}
-                              >
-                                <CardHeader
-                                  title={seccion}
-                                  sx={{
-                                    backgroundColor: "primary.light",
-                                    color: "white",
-                                    borderRadius: "8px 8px 0 0",
-                                  }}
-                                />
-                                <CardContent>
-                                  <CheckCircleIcon
-                                    color="success"
-                                    sx={{ fontSize: 40 }}
-                                  />
-                                  <Typography>Acceso Autorizado</Typography>
-                                </CardContent>
-                              </Card>
-                            </Grid>
-                          ))}
-                        </Grid>
-                      ) : (
-                        /* MODO EDICIÓN */
-                        <>
-                          <Typography variant="h6" sx={{ mb: 2 }}>
-                            Permisos Activos
-                          </Typography>
-                          <Grid container spacing={2}>
-                            {editablePermissions.map((seccion, index) => (
-                              <Grid item xs={12} sm={6} md={3} key={index}>
-                                <Card
-                                  variant="outlined"
-                                  sx={{
-                                    borderRadius: 2,
-                                    textAlign: "center",
-                                    boxShadow: 1,
-                                    backgroundColor: "success.light",
-                                  }}
-                                >
-                                  <CardHeader
-                                    title={seccion}
-                                    sx={{
-                                      backgroundColor: "success.dark",
-                                      color: "white",
-                                      borderRadius: "8px 8px 0 0",
-                                    }}
-                                  />
-                                  <CardContent>
-                                    <FormControlLabel
-                                      control={
-                                        <Checkbox
-                                          checked={editablePermissions.includes(
-                                            seccion
-                                          )}
-                                          onChange={() =>
-                                            toggleEditablePermission(seccion)
-                                          }
-                                        />
-                                      }
-                                      label="Habilitar"
-                                    />
-                                  </CardContent>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-
-                          <Divider sx={{ my: 3 }} />
-
-                          {/* Permisos Inactivos */}
-                          <Typography variant="h6" sx={{ mb: 2 }}>
-                            Permisos Inactivos
-                          </Typography>
-                          <Grid container spacing={2}>
-                            {inactivePermissions.map((seccion, index) => (
-                              <Grid item xs={12} sm={6} md={3} key={index}>
-                                <Card
-                                  variant="outlined"
-                                  sx={{
-                                    borderRadius: 2,
-                                    textAlign: "center",
-                                    boxShadow: 1,
-                                    backgroundColor: "grey.300",
-                                  }}
-                                >
-                                  <CardHeader
-                                    title={seccion}
-                                    sx={{
-                                      backgroundColor: "grey.500",
-                                      color: "white",
-                                      borderRadius: "8px 8px 0 0",
-                                    }}
-                                  />
-                                  <CardContent>
-                                    <FormControlLabel
-                                      control={
-                                        <Checkbox
-                                          checked={editablePermissions.includes(
-                                            seccion
-                                          )}
-                                          onChange={() =>
-                                            toggleEditablePermission(seccion)
-                                          }
-                                        />
-                                      }
-                                      label="Habilitar"
-                                    />
-                                  </CardContent>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-                        </>
-                      )}
-
-                      {/* Botones de Acción */}
-                      <Box sx={{ mt: 4, textAlign: "right" }}>
-                        {editModePermissions && (
-                          <Button
-                            variant="contained"
-                            color="success"
-                            onClick={saveEditablePermissions}
-                            sx={{ mr: 2 }}
-                          >
-                            Guardar Permisos
-                          </Button>
-                        )}
-                        <Button
-                          variant="contained"
-                          color="secondary"
-                          onClick={handleClosePermissionsModal}
-                        >
-                          Cerrar
-                        </Button>
-                      </Box>
-                    </>
-                  )}
-                </Box>
-              </Modal>
-            </Box>
-          )}
-
-        {/* Tabla para usuarios con rol Nac */}
-        {(user?.role === "Admin" || user?.role === "Master") &&
-          usuariosNac.length > 0 && (
-            <Box sx={{ mb: 5 }}>
-              <Typography variant="h5" sx={{ mb: 2 }}>
-                Usuarios Nac
-              </Typography>
-              <TableContainer component={Paper}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>ID</TableCell>
-                      <TableCell>Nombre</TableCell>
-                      <TableCell>Rol</TableCell>
-                      <TableCell>Unidad de Negocio</TableCell>
-                      <TableCell>Acciones</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {usuariosNac.map((usuario) => (
-                      <TableRow key={usuario.id_usu}>
-                        <TableCell>{usuario.id_usu}</TableCell>
-                        <TableCell>{usuario.name}</TableCell>
-                        <TableCell>{usuario.role}</TableCell>
-                        <TableCell>{usuario.unidad}</TableCell>
-                        <TableCell>
-                          <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={() => handleOpenModal(usuario)}
-                          >
-                            Ver Accesos
-                          </Button>
-                        </TableCell>
-                        <TableCell>
-                          {(user?.role === "Master" ||
-                            user?.role === "Admin") && (
-                            <Button
-                              variant="contained"
-                              color="primary"
-                              onClick={() => handleOpenModalUsers(usuario)}
-                              sx={{ mr: 1 }}
-                            >
-                              Editar
-                            </Button>
-                          )}
-                          {(user?.role === "Master" ||
-                            user?.role === "Admin") && (
-                            <Button
-                              variant="contained"
-                              color="error"
-                              onClick={() => handleDeleteUser(usuario.id_usu)}
-                            >
-                              Eliminar
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-
-              <Modal
-                open={openPermissionsModal}
-                onClose={handleClosePermissionsModal}
-              >
-                <Box
-                  sx={{
-                    position: "absolute",
-                    top: "50%",
-                    left: "50%",
-                    transform: "translate(-50%, -50%)",
-                    width: "90vw",
-                    maxWidth: "1200px",
-                    maxHeight: "85vh",
-                    overflowY: "auto",
-                    bgcolor: "background.paper",
-                    boxShadow: 24,
-                    p: 4,
-                    borderRadius: 2,
-                  }}
-                >
-                  {selectedUser && (
-                    <>
-                      {/* Encabezado */}
-                      <Typography
-                        variant="h4"
-                        gutterBottom
-                        sx={{
-                          textAlign: "center",
-                          fontWeight: "bold",
-                          color: "primary.main",
-                        }}
-                      >
-                        Permisos de {selectedUser.name} ({selectedUser.role})
-                      </Typography>
-                      <Divider sx={{ my: 2 }} />
-
-                      {/* Botón para alternar entre Modo Vista y Edición */}
-                      <Box sx={{ textAlign: "right", mb: 2 }}>
-                        <Button
-                          variant="contained"
-                          color={editModePermissions ? "warning" : "primary"}
-                          onClick={() =>
-                            setEditModePermissions(!editModePermissions)
-                          }
-                        >
-                          {editModePermissions
-                            ? "Cancelar Edición"
-                            : "Editar Permisos"}
-                        </Button>
-                      </Box>
-
-                      {/* MODO VISTA */}
-                      {!editModePermissions ? (
-                        <Grid container spacing={2}>
-                          {userPermissions.map((seccion, index) => (
-                            <Grid item xs={12} sm={6} md={3} key={index}>
-                              <Card
-                                variant="outlined"
-                                sx={{ textAlign: "center" }}
-                              >
-                                <CardHeader
-                                  title={seccion}
-                                  sx={{
-                                    backgroundColor: "primary.light",
-                                    color: "white",
-                                    borderRadius: "8px 8px 0 0",
-                                  }}
-                                />
-                                <CardContent>
-                                  <CheckCircleIcon
-                                    color="success"
-                                    sx={{ fontSize: 40 }}
-                                  />
-                                  <Typography>Acceso Autorizado</Typography>
-                                </CardContent>
-                              </Card>
-                            </Grid>
-                          ))}
-                        </Grid>
-                      ) : (
-                        /* MODO EDICIÓN */
-                        <>
-                          <Typography variant="h6" sx={{ mb: 2 }}>
-                            Permisos Activos
-                          </Typography>
-                          <Grid container spacing={2}>
-                            {editablePermissions.map((seccion, index) => (
-                              <Grid item xs={12} sm={6} md={3} key={index}>
-                                <Card
-                                  variant="outlined"
-                                  sx={{
-                                    borderRadius: 2,
-                                    textAlign: "center",
-                                    boxShadow: 1,
-                                    backgroundColor: "success.light",
-                                  }}
-                                >
-                                  <CardHeader
-                                    title={seccion}
-                                    sx={{
-                                      backgroundColor: "success.dark",
-                                      color: "white",
-                                      borderRadius: "8px 8px 0 0",
-                                    }}
-                                  />
-                                  <CardContent>
-                                    <FormControlLabel
-                                      control={
-                                        <Checkbox
-                                          checked={editablePermissions.includes(
-                                            seccion
-                                          )}
-                                          onChange={() =>
-                                            toggleEditablePermission(seccion)
-                                          }
-                                        />
-                                      }
-                                      label="Habilitar"
-                                    />
-                                  </CardContent>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-
-                          <Divider sx={{ my: 3 }} />
-
-                          {/* Permisos Inactivos */}
-                          <Typography variant="h6" sx={{ mb: 2 }}>
-                            Permisos Inactivos
-                          </Typography>
-                          <Grid container spacing={2}>
-                            {inactivePermissions.map((seccion, index) => (
-                              <Grid item xs={12} sm={6} md={3} key={index}>
-                                <Card
-                                  variant="outlined"
-                                  sx={{
-                                    borderRadius: 2,
-                                    textAlign: "center",
-                                    boxShadow: 1,
-                                    backgroundColor: "grey.300",
-                                  }}
-                                >
-                                  <CardHeader
-                                    title={seccion}
-                                    sx={{
-                                      backgroundColor: "grey.500",
-                                      color: "white",
-                                      borderRadius: "8px 8px 0 0",
-                                    }}
-                                  />
-                                  <CardContent>
-                                    <FormControlLabel
-                                      control={
-                                        <Checkbox
-                                          checked={editablePermissions.includes(
-                                            seccion
-                                          )}
-                                          onChange={() =>
-                                            toggleEditablePermission(seccion)
-                                          }
-                                        />
-                                      }
-                                      label="Habilitar"
-                                    />
-                                  </CardContent>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-                        </>
-                      )}
-
-                      {/* Botones de Acción */}
-                      <Box sx={{ mt: 4, textAlign: "right" }}>
-                        {editModePermissions && (
-                          <Button
-                            variant="contained"
-                            color="success"
-                            onClick={saveEditablePermissions}
-                            sx={{ mr: 2 }}
-                          >
-                            Guardar Permisos
-                          </Button>
-                        )}
-                        <Button
-                          variant="contained"
-                          color="secondary"
-                          onClick={handleClosePermissionsModal}
-                        >
-                          Cerrar
-                        </Button>
-                      </Box>
-                    </>
-                  )}
-                </Box>
-              </Modal>
-            </Box>
-          )}
-
-        {/* Tabla para usuarios con rol Imp */}
-        {(user?.role === "Admin" || user?.role === "Master") &&
-          usuariosImp.length > 0 && (
-            <Box sx={{ mb: 5 }}>
-              <Typography variant="h5" sx={{ mb: 2 }}>
-                Usuarios Imp
-              </Typography>
-              <TableContainer component={Paper}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>ID</TableCell>
-                      <TableCell>Nombre</TableCell>
-                      <TableCell>Rol</TableCell>
-                      <TableCell>Unidad de Negocio</TableCell>
-                      <TableCell>Acciones</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {usuariosImp.map((usuario) => (
-                      <TableRow key={usuario.id_usu}>
-                        <TableCell>{usuario.id_usu}</TableCell>
-                        <TableCell>{usuario.name}</TableCell>
-                        <TableCell>{usuario.role}</TableCell>
-                        <TableCell>{usuario.unidad}</TableCell>
-                        <TableCell>
-                          <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={() => handleOpenModal(usuario)}
-                          >
-                            Ver Accesos
-                          </Button>
-                        </TableCell>
-                        <TableCell>
-                          {(user?.role === "Master" ||
-                            user?.role === "Admin") && (
-                            <Button
-                              variant="contained"
-                              color="primary"
-                              onClick={() => handleOpenModalUsers(usuario)}
-                              sx={{ mr: 1 }}
-                            >
-                              Editar
-                            </Button>
-                          )}
-                          {(user?.role === "Master" ||
-                            user?.role === "Admin") && (
-                            <Button
-                              variant="contained"
-                              color="error"
-                              onClick={() => handleDeleteUser(usuario.id_usu)}
-                            >
-                              Eliminar
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-
-              <Modal
-                open={openPermissionsModal}
-                onClose={handleClosePermissionsModal}
-              >
-                <Box
-                  sx={{
-                    position: "absolute",
-                    top: "50%",
-                    left: "50%",
-                    transform: "translate(-50%, -50%)",
-                    width: "90vw",
-                    maxWidth: "1200px",
-                    maxHeight: "85vh",
-                    overflowY: "auto",
-                    bgcolor: "background.paper",
-                    boxShadow: 24,
-                    p: 4,
-                    borderRadius: 2,
-                  }}
-                >
-                  {selectedUser && (
-                    <>
-                      {/* Encabezado */}
-                      <Typography
-                        variant="h4"
-                        gutterBottom
-                        sx={{
-                          textAlign: "center",
-                          fontWeight: "bold",
-                          color: "primary.main",
-                        }}
-                      >
-                        Permisos de {selectedUser.name} ({selectedUser.role})
-                      </Typography>
-                      <Divider sx={{ my: 2 }} />
-
-                      {/* Botón para alternar entre Modo Vista y Edición */}
-                      <Box sx={{ textAlign: "right", mb: 2 }}>
-                        <Button
-                          variant="contained"
-                          color={editModePermissions ? "warning" : "primary"}
-                          onClick={() =>
-                            setEditModePermissions(!editModePermissions)
-                          }
-                        >
-                          {editModePermissions
-                            ? "Cancelar Edición"
-                            : "Editar Permisos"}
-                        </Button>
-                      </Box>
-
-                      {/* MODO VISTA */}
-                      {!editModePermissions ? (
-                        <Grid container spacing={2}>
-                          {userPermissions.map((seccion, index) => (
-                            <Grid item xs={12} sm={6} md={3} key={index}>
-                              <Card
-                                variant="outlined"
-                                sx={{ textAlign: "center" }}
-                              >
-                                <CardHeader
-                                  title={seccion}
-                                  sx={{
-                                    backgroundColor: "primary.light",
-                                    color: "white",
-                                    borderRadius: "8px 8px 0 0",
-                                  }}
-                                />
-                                <CardContent>
-                                  <CheckCircleIcon
-                                    color="success"
-                                    sx={{ fontSize: 40 }}
-                                  />
-                                  <Typography>Acceso Autorizado</Typography>
-                                </CardContent>
-                              </Card>
-                            </Grid>
-                          ))}
-                        </Grid>
-                      ) : (
-                        /* MODO EDICIÓN */
-                        <>
-                          <Typography variant="h6" sx={{ mb: 2 }}>
-                            Permisos Activos
-                          </Typography>
-                          <Grid container spacing={2}>
-                            {editablePermissions.map((seccion, index) => (
-                              <Grid item xs={12} sm={6} md={3} key={index}>
-                                <Card
-                                  variant="outlined"
-                                  sx={{
-                                    borderRadius: 2,
-                                    textAlign: "center",
-                                    boxShadow: 1,
-                                    backgroundColor: "success.light",
-                                  }}
-                                >
-                                  <CardHeader
-                                    title={seccion}
-                                    sx={{
-                                      backgroundColor: "success.dark",
-                                      color: "white",
-                                      borderRadius: "8px 8px 0 0",
-                                    }}
-                                  />
-                                  <CardContent>
-                                    <FormControlLabel
-                                      control={
-                                        <Checkbox
-                                          checked={editablePermissions.includes(
-                                            seccion
-                                          )}
-                                          onChange={() =>
-                                            toggleEditablePermission(seccion)
-                                          }
-                                        />
-                                      }
-                                      label="Habilitar"
-                                    />
-                                  </CardContent>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-
-                          <Divider sx={{ my: 3 }} />
-
-                          {/* Permisos Inactivos */}
-                          <Typography variant="h6" sx={{ mb: 2 }}>
-                            Permisos Inactivos
-                          </Typography>
-                          <Grid container spacing={2}>
-                            {inactivePermissions.map((seccion, index) => (
-                              <Grid item xs={12} sm={6} md={3} key={index}>
-                                <Card
-                                  variant="outlined"
-                                  sx={{
-                                    borderRadius: 2,
-                                    textAlign: "center",
-                                    boxShadow: 1,
-                                    backgroundColor: "grey.300",
-                                  }}
-                                >
-                                  <CardHeader
-                                    title={seccion}
-                                    sx={{
-                                      backgroundColor: "grey.500",
-                                      color: "white",
-                                      borderRadius: "8px 8px 0 0",
-                                    }}
-                                  />
-                                  <CardContent>
-                                    <FormControlLabel
-                                      control={
-                                        <Checkbox
-                                          checked={editablePermissions.includes(
-                                            seccion
-                                          )}
-                                          onChange={() =>
-                                            toggleEditablePermission(seccion)
-                                          }
-                                        />
-                                      }
-                                      label="Habilitar"
-                                    />
-                                  </CardContent>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-                        </>
-                      )}
-
-                      {/* Botones de Acción */}
-                      <Box sx={{ mt: 4, textAlign: "right" }}>
-                        {editModePermissions && (
-                          <Button
-                            variant="contained"
-                            color="success"
-                            onClick={saveEditablePermissions}
-                            sx={{ mr: 2 }}
-                          >
-                            Guardar Permisos
-                          </Button>
-                        )}
-                        <Button
-                          variant="contained"
-                          color="secondary"
-                          onClick={handleClosePermissionsModal}
-                        >
-                          Cerrar
-                        </Button>
-                      </Box>
-                    </>
-                  )}
-                </Box>
-              </Modal>
-            </Box>
-          )}
-
-        {/* Tabla para usuarios con rol Plan */}
-        {(user?.role === "Admin" || user?.role === "Master") &&
-          usuariosPlan.length > 0 && (
-            <Box sx={{ mb: 5 }}>
-              <Typography variant="h5" sx={{ mb: 2 }}>
-                Usuarios Plan
-              </Typography>
-              <TableContainer component={Paper}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>ID</TableCell>
-                      <TableCell>Nombre</TableCell>
-                      <TableCell>Rol</TableCell>
-                      <TableCell>Unidad de Negocio</TableCell>
-                      <TableCell>Acciones</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {usuariosPlan.map((usuario) => (
-                      <TableRow key={usuario.id_usu}>
-                        <TableCell>{usuario.id_usu}</TableCell>
-                        <TableCell>{usuario.name}</TableCell>
-                        <TableCell>{usuario.role}</TableCell>
-                        <TableCell>{usuario.unidad}</TableCell>
-                        <TableCell>
-                          <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={() => handleOpenModal(usuario)}
-                          >
-                            Ver Accesos
-                          </Button>
-                        </TableCell>
-                        <TableCell>
-                          {(user?.role === "Master" ||
-                            user?.role === "Admin") && (
-                            <Button
-                              variant="contained"
-                              color="primary"
-                              onClick={() => handleOpenModalUsers(usuario)}
-                              sx={{ mr: 1 }}
-                            >
-                              Editar
-                            </Button>
-                          )}
-                          {(user?.role === "Master" ||
-                            user?.role === "Admin") && (
-                            <Button
-                              variant="contained"
-                              color="error"
-                              onClick={() => handleDeleteUser(usuario.id_usu)}
-                            >
-                              Eliminar
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-
-              <Modal
-                open={openPermissionsModal}
-                onClose={handleClosePermissionsModal}
-              >
-                <Box
-                  sx={{
-                    position: "absolute",
-                    top: "50%",
-                    left: "50%",
-                    transform: "translate(-50%, -50%)",
-                    width: "90vw",
-                    maxWidth: "1200px",
-                    maxHeight: "85vh",
-                    overflowY: "auto",
-                    bgcolor: "background.paper",
-                    boxShadow: 24,
-                    p: 4,
-                    borderRadius: 2,
-                  }}
-                >
-                  {selectedUser && (
-                    <>
-                      {/* Encabezado */}
-                      <Typography
-                        variant="h4"
-                        gutterBottom
-                        sx={{
-                          textAlign: "center",
-                          fontWeight: "bold",
-                          color: "primary.main",
-                        }}
-                      >
-                        Permisos de {selectedUser.name} ({selectedUser.role})
-                      </Typography>
-                      <Divider sx={{ my: 2 }} />
-
-                      {/* Botón para alternar entre Modo Vista y Edición */}
-                      <Box sx={{ textAlign: "right", mb: 2 }}>
-                        <Button
-                          variant="contained"
-                          color={editModePermissions ? "warning" : "primary"}
-                          onClick={() =>
-                            setEditModePermissions(!editModePermissions)
-                          }
-                        >
-                          {editModePermissions
-                            ? "Cancelar Edición"
-                            : "Editar Permisos"}
-                        </Button>
-                      </Box>
-
-                      {/* MODO VISTA */}
-                      {!editModePermissions ? (
-                        <Grid container spacing={2}>
-                          {userPermissions.map((seccion, index) => (
-                            <Grid item xs={12} sm={6} md={3} key={index}>
-                              <Card
-                                variant="outlined"
-                                sx={{ textAlign: "center" }}
-                              >
-                                <CardHeader
-                                  title={seccion}
-                                  sx={{
-                                    backgroundColor: "primary.light",
-                                    color: "white",
-                                    borderRadius: "8px 8px 0 0",
-                                  }}
-                                />
-                                <CardContent>
-                                  <CheckCircleIcon
-                                    color="success"
-                                    sx={{ fontSize: 40 }}
-                                  />
-                                  <Typography>Acceso Autorizado</Typography>
-                                </CardContent>
-                              </Card>
-                            </Grid>
-                          ))}
-                        </Grid>
-                      ) : (
-                        /* MODO EDICIÓN */
-                        <>
-                          <Typography variant="h6" sx={{ mb: 2 }}>
-                            Permisos Activos
-                          </Typography>
-                          <Grid container spacing={2}>
-                            {editablePermissions.map((seccion, index) => (
-                              <Grid item xs={12} sm={6} md={3} key={index}>
-                                <Card
-                                  variant="outlined"
-                                  sx={{
-                                    borderRadius: 2,
-                                    textAlign: "center",
-                                    boxShadow: 1,
-                                    backgroundColor: "success.light",
-                                  }}
-                                >
-                                  <CardHeader
-                                    title={seccion}
-                                    sx={{
-                                      backgroundColor: "success.dark",
-                                      color: "white",
-                                      borderRadius: "8px 8px 0 0",
-                                    }}
-                                  />
-                                  <CardContent>
-                                    <FormControlLabel
-                                      control={
-                                        <Checkbox
-                                          checked={editablePermissions.includes(
-                                            seccion
-                                          )}
-                                          onChange={() =>
-                                            toggleEditablePermission(seccion)
-                                          }
-                                        />
-                                      }
-                                      label="Habilitar"
-                                    />
-                                  </CardContent>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-
-                          <Divider sx={{ my: 3 }} />
-
-                          {/* Permisos Inactivos */}
-                          <Typography variant="h6" sx={{ mb: 2 }}>
-                            Permisos Inactivos
-                          </Typography>
-                          <Grid container spacing={2}>
-                            {inactivePermissions.map((seccion, index) => (
-                              <Grid item xs={12} sm={6} md={3} key={index}>
-                                <Card
-                                  variant="outlined"
-                                  sx={{
-                                    borderRadius: 2,
-                                    textAlign: "center",
-                                    boxShadow: 1,
-                                    backgroundColor: "grey.300",
-                                  }}
-                                >
-                                  <CardHeader
-                                    title={seccion}
-                                    sx={{
-                                      backgroundColor: "grey.500",
-                                      color: "white",
-                                      borderRadius: "8px 8px 0 0",
-                                    }}
-                                  />
-                                  <CardContent>
-                                    <FormControlLabel
-                                      control={
-                                        <Checkbox
-                                          checked={editablePermissions.includes(
-                                            seccion
-                                          )}
-                                          onChange={() =>
-                                            toggleEditablePermission(seccion)
-                                          }
-                                        />
-                                      }
-                                      label="Habilitar"
-                                    />
-                                  </CardContent>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-                        </>
-                      )}
-
-                      {/* Botones de Acción */}
-                      <Box sx={{ mt: 4, textAlign: "right" }}>
-                        {editModePermissions && (
-                          <Button
-                            variant="contained"
-                            color="success"
-                            onClick={saveEditablePermissions}
-                            sx={{ mr: 2 }}
-                          >
-                            Guardar Permisos
-                          </Button>
-                        )}
-                        <Button
-                          variant="contained"
-                          color="secondary"
-                          onClick={handleClosePermissionsModal}
-                        >
-                          Cerrar
-                        </Button>
-                      </Box>
-                    </>
-                  )}
-                </Box>
-              </Modal>
-            </Box>
-          )}
-
-        {/* Tabla para usuarios con rol Recib */}
-        {(user?.role === "Admin" || user?.role === "Master") &&
-          usuariosRecibo.length > 0 && (
-            <Box sx={{ mb: 5 }}>
-              <Typography variant="h5" sx={{ mb: 2 }}>
-                Usuarios Recibo
-              </Typography>
-              <TableContainer component={Paper}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>ID</TableCell>
-                      <TableCell>Nombre</TableCell>
-                      <TableCell>Rol</TableCell>
-                      <TableCell>Unidad de Negocio</TableCell>
-                      <TableCell>Acciones</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {usuariosRecibo.map((usuario) => (
-                      <TableRow key={usuario.id_usu}>
-                        <TableCell>{usuario.id_usu}</TableCell>
-                        <TableCell>{usuario.name}</TableCell>
-                        <TableCell>{usuario.role}</TableCell>
-                        <TableCell>{usuario.unidad}</TableCell>
-                        <TableCell>
-                          <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={() => handleOpenModal(usuario)}
-                          >
-                            Ver Accesos
-                          </Button>
-                        </TableCell>
-                        <TableCell>
-                          {(user?.role === "Master" ||
-                            user?.role === "Admin") && (
-                            <Button
-                              variant="contained"
-                              color="primary"
-                              onClick={() => handleOpenModalUsers(usuario)}
-                              sx={{ mr: 1 }}
-                            >
-                              Editar
-                            </Button>
-                          )}
-                          {(user?.role === "Master" ||
-                            user?.role === "Admin") && (
-                            <Button
-                              variant="contained"
-                              color="error"
-                              onClick={() => handleDeleteUser(usuario.id_usu)}
-                            >
-                              Eliminar
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-
-              <Modal
-                open={openPermissionsModal}
-                onClose={handleClosePermissionsModal}
-              >
-                <Box
-                  sx={{
-                    position: "absolute",
-                    top: "50%",
-                    left: "50%",
-                    transform: "translate(-50%, -50%)",
-                    width: "90vw",
-                    maxWidth: "1200px",
-                    maxHeight: "85vh",
-                    overflowY: "auto",
-                    bgcolor: "background.paper",
-                    boxShadow: 24,
-                    p: 4,
-                    borderRadius: 2,
-                  }}
-                >
-                  {selectedUser && (
-                    <>
-                      {/* Encabezado */}
-                      <Typography
-                        variant="h4"
-                        gutterBottom
-                        sx={{
-                          textAlign: "center",
-                          fontWeight: "bold",
-                          color: "primary.main",
-                        }}
-                      >
-                        Permisos de {selectedUser.name} ({selectedUser.role})
-                      </Typography>
-                      <Divider sx={{ my: 2 }} />
-
-                      {/* Botón para alternar entre Modo Vista y Edición */}
-                      <Box sx={{ textAlign: "right", mb: 2 }}>
-                        <Button
-                          variant="contained"
-                          color={editModePermissions ? "warning" : "primary"}
-                          onClick={() =>
-                            setEditModePermissions(!editModePermissions)
-                          }
-                        >
-                          {editModePermissions
-                            ? "Cancelar Edición"
-                            : "Editar Permisos"}
-                        </Button>
-                      </Box>
-
-                      {/* MODO VISTA */}
-                      {!editModePermissions ? (
-                        <Grid container spacing={2}>
-                          {userPermissions.map((seccion, index) => (
-                            <Grid item xs={12} sm={6} md={3} key={index}>
-                              <Card
-                                variant="outlined"
-                                sx={{ textAlign: "center" }}
-                              >
-                                <CardHeader
-                                  title={seccion}
-                                  sx={{
-                                    backgroundColor: "primary.light",
-                                    color: "white",
-                                    borderRadius: "8px 8px 0 0",
-                                  }}
-                                />
-                                <CardContent>
-                                  <CheckCircleIcon
-                                    color="success"
-                                    sx={{ fontSize: 40 }}
-                                  />
-                                  <Typography>Acceso Autorizado</Typography>
-                                </CardContent>
-                              </Card>
-                            </Grid>
-                          ))}
-                        </Grid>
-                      ) : (
-                        /* MODO EDICIÓN */
-                        <>
-                          <Typography variant="h6" sx={{ mb: 2 }}>
-                            Permisos Activos
-                          </Typography>
-                          <Grid container spacing={2}>
-                            {editablePermissions.map((seccion, index) => (
-                              <Grid item xs={12} sm={6} md={3} key={index}>
-                                <Card
-                                  variant="outlined"
-                                  sx={{
-                                    borderRadius: 2,
-                                    textAlign: "center",
-                                    boxShadow: 1,
-                                    backgroundColor: "success.light",
-                                  }}
-                                >
-                                  <CardHeader
-                                    title={seccion}
-                                    sx={{
-                                      backgroundColor: "success.dark",
-                                      color: "white",
-                                      borderRadius: "8px 8px 0 0",
-                                    }}
-                                  />
-                                  <CardContent>
-                                    <FormControlLabel
-                                      control={
-                                        <Checkbox
-                                          checked={editablePermissions.includes(
-                                            seccion
-                                          )}
-                                          onChange={() =>
-                                            toggleEditablePermission(seccion)
-                                          }
-                                        />
-                                      }
-                                      label="Habilitar"
-                                    />
-                                  </CardContent>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-
-                          <Divider sx={{ my: 3 }} />
-
-                          {/* Permisos Inactivos */}
-                          <Typography variant="h6" sx={{ mb: 2 }}>
-                            Permisos Inactivos
-                          </Typography>
-                          <Grid container spacing={2}>
-                            {inactivePermissions.map((seccion, index) => (
-                              <Grid item xs={12} sm={6} md={3} key={index}>
-                                <Card
-                                  variant="outlined"
-                                  sx={{
-                                    borderRadius: 2,
-                                    textAlign: "center",
-                                    boxShadow: 1,
-                                    backgroundColor: "grey.300",
-                                  }}
-                                >
-                                  <CardHeader
-                                    title={seccion}
-                                    sx={{
-                                      backgroundColor: "grey.500",
-                                      color: "white",
-                                      borderRadius: "8px 8px 0 0",
-                                    }}
-                                  />
-                                  <CardContent>
-                                    <FormControlLabel
-                                      control={
-                                        <Checkbox
-                                          checked={editablePermissions.includes(
-                                            seccion
-                                          )}
-                                          onChange={() =>
-                                            toggleEditablePermission(seccion)
-                                          }
-                                        />
-                                      }
-                                      label="Habilitar"
-                                    />
-                                  </CardContent>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-                        </>
-                      )}
-
-                      {/* Botones de Acción */}
-                      <Box sx={{ mt: 4, textAlign: "right" }}>
-                        {editModePermissions && (
-                          <Button
-                            variant="contained"
-                            color="success"
-                            onClick={saveEditablePermissions}
-                            sx={{ mr: 2 }}
-                          >
-                            Guardar Permisos
-                          </Button>
-                        )}
-                        <Button
-                          variant="contained"
-                          color="secondary"
-                          onClick={handleClosePermissionsModal}
-                        >
-                          Cerrar
-                        </Button>
-                      </Box>
-                    </>
-                  )}
-                </Box>
-              </Modal>
-            </Box>
-          )}
-
-        {/* Tabla para usuarios con rol Cali */}
-        {(user?.role === "Admin" || user?.role === "Master") &&
-          usuariosCali.length > 0 && (
-            <Box sx={{ mb: 5 }}>
-              <Typography variant="h5" sx={{ mb: 2 }}>
-                Usuarios de Calidad
-              </Typography>
-              <TableContainer component={Paper}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>ID</TableCell>
-                      <TableCell>Nombre</TableCell>
-                      <TableCell>Rol</TableCell>
-                      <TableCell>Unidad de Negocio</TableCell>
-                      <TableCell>Acciones</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {usuariosCali.map((usuario) => (
-                      <TableRow key={usuario.id_usu}>
-                        <TableCell>{usuario.id_usu}</TableCell>
-                        <TableCell>{usuario.name}</TableCell>
-                        <TableCell>{usuario.role}</TableCell>
-                        <TableCell>{usuario.unidad}</TableCell>
-                        <TableCell>
-                          <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={() => handleOpenModal(usuario)}
-                          >
-                            Ver Accesos
-                          </Button>
-                        </TableCell>
-                        <TableCell>
-                          {(user?.role === "Master" ||
-                            user?.role === "Admin") && (
-                            <Button
-                              variant="contained"
-                              color="primary"
-                              onClick={() => handleOpenModalUsers(usuario)}
-                              sx={{ mr: 1 }}
-                            >
-                              Editar
-                            </Button>
-                          )}
-                          {(user?.role === "Master" ||
-                            user?.role === "Admin") && (
-                            <Button
-                              variant="contained"
-                              color="error"
-                              onClick={() => handleDeleteUser(usuario.id_usu)}
-                            >
-                              Eliminar
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-
-              <Modal
-                open={openPermissionsModal}
-                onClose={handleClosePermissionsModal}
-              >
-                <Box
-                  sx={{
-                    position: "absolute",
-                    top: "50%",
-                    left: "50%",
-                    transform: "translate(-50%, -50%)",
-                    width: "90vw",
-                    maxWidth: "1200px",
-                    maxHeight: "85vh",
-                    overflowY: "auto",
-                    bgcolor: "background.paper",
-                    boxShadow: 24,
-                    p: 4,
-                    borderRadius: 2,
-                  }}
-                >
-                  {selectedUser && (
-                    <>
-                      {/* Encabezado */}
-                      <Typography
-                        variant="h4"
-                        gutterBottom
-                        sx={{
-                          textAlign: "center",
-                          fontWeight: "bold",
-                          color: "primary.main",
-                        }}
-                      >
-                        Permisos de {selectedUser.name} ({selectedUser.role})
-                      </Typography>
-                      <Divider sx={{ my: 2 }} />
-
-                      {/* Botón para alternar entre Modo Vista y Edición */}
-                      <Box sx={{ textAlign: "right", mb: 2 }}>
-                        <Button
-                          variant="contained"
-                          color={editModePermissions ? "warning" : "primary"}
-                          onClick={() =>
-                            setEditModePermissions(!editModePermissions)
-                          }
-                        >
-                          {editModePermissions
-                            ? "Cancelar Edición"
-                            : "Editar Permisos"}
-                        </Button>
-                      </Box>
-
-                      {/* MODO VISTA */}
-                      {!editModePermissions ? (
-                        <Grid container spacing={2}>
-                          {userPermissions.map((seccion, index) => (
-                            <Grid item xs={12} sm={6} md={3} key={index}>
-                              <Card
-                                variant="outlined"
-                                sx={{ textAlign: "center" }}
-                              >
-                                <CardHeader
-                                  title={seccion}
-                                  sx={{
-                                    backgroundColor: "primary.light",
-                                    color: "white",
-                                    borderRadius: "8px 8px 0 0",
-                                  }}
-                                />
-                                <CardContent>
-                                  <CheckCircleIcon
-                                    color="success"
-                                    sx={{ fontSize: 40 }}
-                                  />
-                                  <Typography>Acceso Autorizado</Typography>
-                                </CardContent>
-                              </Card>
-                            </Grid>
-                          ))}
-                        </Grid>
-                      ) : (
-                        /* MODO EDICIÓN */
-                        <>
-                          <Typography variant="h6" sx={{ mb: 2 }}>
-                            Permisos Activos
-                          </Typography>
-                          <Grid container spacing={2}>
-                            {editablePermissions.map((seccion, index) => (
-                              <Grid item xs={12} sm={6} md={3} key={index}>
-                                <Card
-                                  variant="outlined"
-                                  sx={{
-                                    borderRadius: 2,
-                                    textAlign: "center",
-                                    boxShadow: 1,
-                                    backgroundColor: "success.light",
-                                  }}
-                                >
-                                  <CardHeader
-                                    title={seccion}
-                                    sx={{
-                                      backgroundColor: "success.dark",
-                                      color: "white",
-                                      borderRadius: "8px 8px 0 0",
-                                    }}
-                                  />
-                                  <CardContent>
-                                    <FormControlLabel
-                                      control={
-                                        <Checkbox
-                                          checked={editablePermissions.includes(
-                                            seccion
-                                          )}
-                                          onChange={() =>
-                                            toggleEditablePermission(seccion)
-                                          }
-                                        />
-                                      }
-                                      label="Habilitar"
-                                    />
-                                  </CardContent>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-
-                          <Divider sx={{ my: 3 }} />
-
-                          {/* Permisos Inactivos */}
-                          <Typography variant="h6" sx={{ mb: 2 }}>
-                            Permisos Inactivos
-                          </Typography>
-                          <Grid container spacing={2}>
-                            {inactivePermissions.map((seccion, index) => (
-                              <Grid item xs={12} sm={6} md={3} key={index}>
-                                <Card
-                                  variant="outlined"
-                                  sx={{
-                                    borderRadius: 2,
-                                    textAlign: "center",
-                                    boxShadow: 1,
-                                    backgroundColor: "grey.300",
-                                  }}
-                                >
-                                  <CardHeader
-                                    title={seccion}
-                                    sx={{
-                                      backgroundColor: "grey.500",
-                                      color: "white",
-                                      borderRadius: "8px 8px 0 0",
-                                    }}
-                                  />
-                                  <CardContent>
-                                    <FormControlLabel
-                                      control={
-                                        <Checkbox
-                                          checked={editablePermissions.includes(
-                                            seccion
-                                          )}
-                                          onChange={() =>
-                                            toggleEditablePermission(seccion)
-                                          }
-                                        />
-                                      }
-                                      label="Habilitar"
-                                    />
-                                  </CardContent>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-                        </>
-                      )}
-
-                      {/* Botones de Acción */}
-                      <Box sx={{ mt: 4, textAlign: "right" }}>
-                        {editModePermissions && (
-                          <Button
-                            variant="contained"
-                            color="success"
-                            onClick={saveEditablePermissions}
-                            sx={{ mr: 2 }}
-                          >
-                            Guardar Permisos
-                          </Button>
-                        )}
-                        <Button
-                          variant="contained"
-                          color="secondary"
-                          onClick={handleClosePermissionsModal}
-                        >
-                          Cerrar
-                        </Button>
-                      </Box>
-                    </>
-                  )}
-                </Box>
-              </Modal>
-            </Box>
-          )}
-
-        {/* Tabla para usuarios con rol Inv */}
-        {(user?.role === "Admin" || user?.role === "Master") &&
-          usuariosInv.length > 0 && (
-            <Box sx={{ mb: 5 }}>
-              <Typography variant="h5" sx={{ mb: 2 }}>
-                Usuarios de Inventario
-              </Typography>
-              <TableContainer component={Paper}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>ID</TableCell>
-                      <TableCell>Nombre</TableCell>
-                      <TableCell>Rol</TableCell>
-                      <TableCell>Unidad de Negocio</TableCell>
-                      <TableCell>Acciones</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {usuariosInv.map((usuario) => (
-                      <TableRow key={usuario.id_usu}>
-                        <TableCell>{usuario.id_usu}</TableCell>
-                        <TableCell>{usuario.name}</TableCell>
-                        <TableCell>{usuario.role}</TableCell>
-                        <TableCell>{usuario.unidad}</TableCell>
-                        <TableCell>
-                          <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={() => handleOpenModal(usuario)}
-                          >
-                            Ver Accesos
-                          </Button>
-                        </TableCell>
-                        <TableCell>
-                          {(user?.role === "Master" ||
-                            user?.role === "Admin") && (
-                            <Button
-                              variant="contained"
-                              color="primary"
-                              onClick={() => handleOpenModalUsers(usuario)}
-                              sx={{ mr: 1 }}
-                            >
-                              Editar
-                            </Button>
-                          )}
-                          {(user?.role === "Master" ||
-                            user?.role === "Admin") && (
-                            <Button
-                              variant="contained"
-                              color="error"
-                              onClick={() => handleDeleteUser(usuario.id_usu)}
-                            >
-                              Eliminar
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-
-              <Modal
-                open={openPermissionsModal}
-                onClose={handleClosePermissionsModal}
-              >
-                <Box
-                  sx={{
-                    position: "absolute",
-                    top: "50%",
-                    left: "50%",
-                    transform: "translate(-50%, -50%)",
-                    width: "90vw",
-                    maxWidth: "1200px",
-                    maxHeight: "85vh",
-                    overflowY: "auto",
-                    bgcolor: "background.paper",
-                    boxShadow: 24,
-                    p: 4,
-                    borderRadius: 2,
-                  }}
-                >
-                  {selectedUser && (
-                    <>
-                      {/* Encabezado */}
-                      <Typography
-                        variant="h4"
-                        gutterBottom
-                        sx={{
-                          textAlign: "center",
-                          fontWeight: "bold",
-                          color: "primary.main",
-                        }}
-                      >
-                        Permisos de {selectedUser.name} ({selectedUser.role})
-                      </Typography>
-                      <Divider sx={{ my: 2 }} />
-
-                      {/* Botón para alternar entre Modo Vista y Edición */}
-                      <Box sx={{ textAlign: "right", mb: 2 }}>
-                        <Button
-                          variant="contained"
-                          color={editModePermissions ? "warning" : "primary"}
-                          onClick={() =>
-                            setEditModePermissions(!editModePermissions)
-                          }
-                        >
-                          {editModePermissions
-                            ? "Cancelar Edición"
-                            : "Editar Permisos"}
-                        </Button>
-                      </Box>
-
-                      {/* MODO VISTA */}
-                      {!editModePermissions ? (
-                        <Grid container spacing={2}>
-                          {userPermissions.map((seccion, index) => (
-                            <Grid item xs={12} sm={6} md={3} key={index}>
-                              <Card
-                                variant="outlined"
-                                sx={{ textAlign: "center" }}
-                              >
-                                <CardHeader
-                                  title={seccion}
-                                  sx={{
-                                    backgroundColor: "primary.light",
-                                    color: "white",
-                                    borderRadius: "8px 8px 0 0",
-                                  }}
-                                />
-                                <CardContent>
-                                  <CheckCircleIcon
-                                    color="success"
-                                    sx={{ fontSize: 40 }}
-                                  />
-                                  <Typography>Acceso Autorizado</Typography>
-                                </CardContent>
-                              </Card>
-                            </Grid>
-                          ))}
-                        </Grid>
-                      ) : (
-                        /* MODO EDICIÓN */
-                        <>
-                          <Typography variant="h6" sx={{ mb: 2 }}>
-                            Permisos Activos
-                          </Typography>
-                          <Grid container spacing={2}>
-                            {editablePermissions.map((seccion, index) => (
-                              <Grid item xs={12} sm={6} md={3} key={index}>
-                                <Card
-                                  variant="outlined"
-                                  sx={{
-                                    borderRadius: 2,
-                                    textAlign: "center",
-                                    boxShadow: 1,
-                                    backgroundColor: "success.light",
-                                  }}
-                                >
-                                  <CardHeader
-                                    title={seccion}
-                                    sx={{
-                                      backgroundColor: "success.dark",
-                                      color: "white",
-                                      borderRadius: "8px 8px 0 0",
-                                    }}
-                                  />
-                                  <CardContent>
-                                    <FormControlLabel
-                                      control={
-                                        <Checkbox
-                                          checked={editablePermissions.includes(
-                                            seccion
-                                          )}
-                                          onChange={() =>
-                                            toggleEditablePermission(seccion)
-                                          }
-                                        />
-                                      }
-                                      label="Habilitar"
-                                    />
-                                  </CardContent>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-
-                          <Divider sx={{ my: 3 }} />
-
-                          {/* Permisos Inactivos */}
-                          <Typography variant="h6" sx={{ mb: 2 }}>
-                            Permisos Inactivos
-                          </Typography>
-                          <Grid container spacing={2}>
-                            {inactivePermissions.map((seccion, index) => (
-                              <Grid item xs={12} sm={6} md={3} key={index}>
-                                <Card
-                                  variant="outlined"
-                                  sx={{
-                                    borderRadius: 2,
-                                    textAlign: "center",
-                                    boxShadow: 1,
-                                    backgroundColor: "grey.300",
-                                  }}
-                                >
-                                  <CardHeader
-                                    title={seccion}
-                                    sx={{
-                                      backgroundColor: "grey.500",
-                                      color: "white",
-                                      borderRadius: "8px 8px 0 0",
-                                    }}
-                                  />
-                                  <CardContent>
-                                    <FormControlLabel
-                                      control={
-                                        <Checkbox
-                                          checked={editablePermissions.includes(
-                                            seccion
-                                          )}
-                                          onChange={() =>
-                                            toggleEditablePermission(seccion)
-                                          }
-                                        />
-                                      }
-                                      label="Habilitar"
-                                    />
-                                  </CardContent>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-                        </>
-                      )}
-
-                      {/* Botones de Acción */}
-                      <Box sx={{ mt: 4, textAlign: "right" }}>
-                        {editModePermissions && (
-                          <Button
-                            variant="contained"
-                            color="success"
-                            onClick={saveEditablePermissions}
-                            sx={{ mr: 2 }}
-                          >
-                            Guardar Permisos
-                          </Button>
-                        )}
-                        <Button
-                          variant="contained"
-                          color="secondary"
-                          onClick={handleClosePermissionsModal}
-                        >
-                          Cerrar
-                        </Button>
-                      </Box>
-                    </>
-                  )}
-                </Box>
-              </Modal>
-            </Box>
-          )}
-
-        {/* Tabla para usuarios con rol Audi */}
-        {(user?.role === "Admin" || user?.role === "Master") &&
-          usuariosAudi.length > 0 && (
-            <Box sx={{ mb: 5 }}>
-              <Typography variant="h5" sx={{ mb: 2 }}>
-                Usuarios de Auditoria
-              </Typography>
-              <TableContainer component={Paper}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>ID</TableCell>
-                      <TableCell>Nombre</TableCell>
-                      <TableCell>Rol</TableCell>
-                      <TableCell>Unidad de Negocio</TableCell>
-                      <TableCell>Acciones</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {usuariosAudi.map((usuario) => (
-                      <TableRow key={usuario.id_usu}>
-                        <TableCell>{usuario.id_usu}</TableCell>
-                        <TableCell>{usuario.name}</TableCell>
-                        <TableCell>{usuario.role}</TableCell>
-                        <TableCell>{usuario.unidad}</TableCell>
-                        <TableCell>
-                          <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={() => handleOpenModal(usuario)}
-                          >
-                            Ver Accesos
-                          </Button>
-                        </TableCell>
-                        <TableCell>
-                          {(user?.role === "Master" ||
-                            user?.role === "Admin") && (
-                            <Button
-                              variant="contained"
-                              color="primary"
-                              onClick={() => handleOpenModalUsers(usuario)}
-                              sx={{ mr: 1 }}
-                            >
-                              Editar
-                            </Button>
-                          )}
-                          {(user?.role === "Master" ||
-                            user?.role === "Admin") && (
-                            <Button
-                              variant="contained"
-                              color="error"
-                              onClick={() => handleDeleteUser(usuario.id_usu)}
-                            >
-                              Eliminar
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-
-              <Modal
-                open={openPermissionsModal}
-                onClose={handleClosePermissionsModal}
-              >
-                <Box
-                  sx={{
-                    position: "absolute",
-                    top: "50%",
-                    left: "50%",
-                    transform: "translate(-50%, -50%)",
-                    width: "90vw",
-                    maxWidth: "1200px",
-                    maxHeight: "85vh",
-                    overflowY: "auto",
-                    bgcolor: "background.paper",
-                    boxShadow: 24,
-                    p: 4,
-                    borderRadius: 2,
-                  }}
-                >
-                  {selectedUser && (
-                    <>
-                      {/* Encabezado */}
-                      <Typography
-                        variant="h4"
-                        gutterBottom
-                        sx={{
-                          textAlign: "center",
-                          fontWeight: "bold",
-                          color: "primary.main",
-                        }}
-                      >
-                        Permisos de {selectedUser.name} ({selectedUser.role})
-                      </Typography>
-                      <Divider sx={{ my: 2 }} />
-
-                      {/* Botón para alternar entre Modo Vista y Edición */}
-                      <Box sx={{ textAlign: "right", mb: 2 }}>
-                        <Button
-                          variant="contained"
-                          color={editModePermissions ? "warning" : "primary"}
-                          onClick={() =>
-                            setEditModePermissions(!editModePermissions)
-                          }
-                        >
-                          {editModePermissions
-                            ? "Cancelar Edición"
-                            : "Editar Permisos"}
-                        </Button>
-                      </Box>
-
-                      {/* MODO VISTA */}
-                      {!editModePermissions ? (
-                        <Grid container spacing={2}>
-                          {userPermissions.map((seccion, index) => (
-                            <Grid item xs={12} sm={6} md={3} key={index}>
-                              <Card
-                                variant="outlined"
-                                sx={{ textAlign: "center" }}
-                              >
-                                <CardHeader
-                                  title={seccion}
-                                  sx={{
-                                    backgroundColor: "primary.light",
-                                    color: "white",
-                                    borderRadius: "8px 8px 0 0",
-                                  }}
-                                />
-                                <CardContent>
-                                  <CheckCircleIcon
-                                    color="success"
-                                    sx={{ fontSize: 40 }}
-                                  />
-                                  <Typography>Acceso Autorizado</Typography>
-                                </CardContent>
-                              </Card>
-                            </Grid>
-                          ))}
-                        </Grid>
-                      ) : (
-                        /* MODO EDICIÓN */
-                        <>
-                          <Typography variant="h6" sx={{ mb: 2 }}>
-                            Permisos Activos
-                          </Typography>
-                          <Grid container spacing={2}>
-                            {editablePermissions.map((seccion, index) => (
-                              <Grid item xs={12} sm={6} md={3} key={index}>
-                                <Card
-                                  variant="outlined"
-                                  sx={{
-                                    borderRadius: 2,
-                                    textAlign: "center",
-                                    boxShadow: 1,
-                                    backgroundColor: "success.light",
-                                  }}
-                                >
-                                  <CardHeader
-                                    title={seccion}
-                                    sx={{
-                                      backgroundColor: "success.dark",
-                                      color: "white",
-                                      borderRadius: "8px 8px 0 0",
-                                    }}
-                                  />
-                                  <CardContent>
-                                    <FormControlLabel
-                                      control={
-                                        <Checkbox
-                                          checked={editablePermissions.includes(
-                                            seccion
-                                          )}
-                                          onChange={() =>
-                                            toggleEditablePermission(seccion)
-                                          }
-                                        />
-                                      }
-                                      label="Habilitar"
-                                    />
-                                  </CardContent>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-
-                          <Divider sx={{ my: 3 }} />
-
-                          {/* Permisos Inactivos */}
-                          <Typography variant="h6" sx={{ mb: 2 }}>
-                            Permisos Inactivos
-                          </Typography>
-                          <Grid container spacing={2}>
-                            {inactivePermissions.map((seccion, index) => (
-                              <Grid item xs={12} sm={6} md={3} key={index}>
-                                <Card
-                                  variant="outlined"
-                                  sx={{
-                                    borderRadius: 2,
-                                    textAlign: "center",
-                                    boxShadow: 1,
-                                    backgroundColor: "grey.300",
-                                  }}
-                                >
-                                  <CardHeader
-                                    title={seccion}
-                                    sx={{
-                                      backgroundColor: "grey.500",
-                                      color: "white",
-                                      borderRadius: "8px 8px 0 0",
-                                    }}
-                                  />
-                                  <CardContent>
-                                    <FormControlLabel
-                                      control={
-                                        <Checkbox
-                                          checked={editablePermissions.includes(
-                                            seccion
-                                          )}
-                                          onChange={() =>
-                                            toggleEditablePermission(seccion)
-                                          }
-                                        />
-                                      }
-                                      label="Habilitar"
-                                    />
-                                  </CardContent>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-                        </>
-                      )}
-
-                      {/* Botones de Acción */}
-                      <Box sx={{ mt: 4, textAlign: "right" }}>
-                        {editModePermissions && (
-                          <Button
-                            variant="contained"
-                            color="success"
-                            onClick={saveEditablePermissions}
-                            sx={{ mr: 2 }}
-                          >
-                            Guardar Permisos
-                          </Button>
-                        )}
-                        <Button
-                          variant="contained"
-                          color="secondary"
-                          onClick={handleClosePermissionsModal}
-                        >
-                          Cerrar
-                        </Button>
-                      </Box>
-                    </>
-                  )}
-                </Box>
-              </Modal>
-            </Box>
-          )}
-
-        {/* Tabla para usuarios con rol Vent */}
-        {(user?.role === "Admin" || user?.role === "Master") &&
-          usuariosVent.length > 0 && (
-            <Box sx={{ mb: 5 }}>
-              <Typography variant="h5" sx={{ mb: 2 }}>
-                Usuarios de Ventas
-              </Typography>
-              <TableContainer component={Paper}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>ID</TableCell>
-                      <TableCell>Nombre</TableCell>
-                      <TableCell>Rol</TableCell>
-                      <TableCell>Unidad de Negocio</TableCell>
-                      <TableCell>Acciones</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {usuariosVent.map((usuario) => (
-                      <TableRow key={usuario.id_usu}>
-                        <TableCell>{usuario.id_usu}</TableCell>
-                        <TableCell>{usuario.name}</TableCell>
-                        <TableCell>{usuario.role}</TableCell>
-                        <TableCell>{usuario.unidad}</TableCell>
-                        <TableCell>
-                          <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={() => handleOpenModal(usuario)}
-                          >
-                            Ver Accesos
-                          </Button>
-                        </TableCell>
-                        <TableCell>
-                          {(user?.role === "Master" ||
-                            user?.role === "Admin") && (
-                            <Button
-                              variant="contained"
-                              color="primary"
-                              onClick={() => handleOpenModalUsers(usuario)}
-                              sx={{ mr: 1 }}
-                            >
-                              Editar
-                            </Button>
-                          )}
-                          {(user?.role === "Master" ||
-                            user?.role === "Admin") && (
-                            <Button
-                              variant="contained"
-                              color="error"
-                              onClick={() => handleDeleteUser(usuario.id_usu)}
-                            >
-                              Eliminar
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-
-              <Modal
-                open={openPermissionsModal}
-                onClose={handleClosePermissionsModal}
-              >
-                <Box
-                  sx={{
-                    position: "absolute",
-                    top: "50%",
-                    left: "50%",
-                    transform: "translate(-50%, -50%)",
-                    width: "90vw",
-                    maxWidth: "1200px",
-                    maxHeight: "85vh",
-                    overflowY: "auto",
-                    bgcolor: "background.paper",
-                    boxShadow: 24,
-                    p: 4,
-                    borderRadius: 2,
-                  }}
-                >
-                  {selectedUser && (
-                    <>
-                      {/* Encabezado */}
-                      <Typography
-                        variant="h4"
-                        gutterBottom
-                        sx={{
-                          textAlign: "center",
-                          fontWeight: "bold",
-                          color: "primary.main",
-                        }}
-                      >
-                        Permisos de {selectedUser.name} ({selectedUser.role})
-                      </Typography>
-                      <Divider sx={{ my: 2 }} />
-
-                      {/* Botón para alternar entre Modo Vista y Edición */}
-                      <Box sx={{ textAlign: "right", mb: 2 }}>
-                        <Button
-                          variant="contained"
-                          color={editModePermissions ? "warning" : "primary"}
-                          onClick={() =>
-                            setEditModePermissions(!editModePermissions)
-                          }
-                        >
-                          {editModePermissions
-                            ? "Cancelar Edición"
-                            : "Editar Permisos"}
-                        </Button>
-                      </Box>
-
-                      {/* MODO VISTA */}
-                      {!editModePermissions ? (
-                        <Grid container spacing={2}>
-                          {userPermissions.map((seccion, index) => (
-                            <Grid item xs={12} sm={6} md={3} key={index}>
-                              <Card
-                                variant="outlined"
-                                sx={{ textAlign: "center" }}
-                              >
-                                <CardHeader
-                                  title={seccion}
-                                  sx={{
-                                    backgroundColor: "primary.light",
-                                    color: "white",
-                                    borderRadius: "8px 8px 0 0",
-                                  }}
-                                />
-                                <CardContent>
-                                  <CheckCircleIcon
-                                    color="success"
-                                    sx={{ fontSize: 40 }}
-                                  />
-                                  <Typography>Acceso Autorizado</Typography>
-                                </CardContent>
-                              </Card>
-                            </Grid>
-                          ))}
-                        </Grid>
-                      ) : (
-                        /* MODO EDICIÓN */
-                        <>
-                          <Typography variant="h6" sx={{ mb: 2 }}>
-                            Permisos Activos
-                          </Typography>
-                          <Grid container spacing={2}>
-                            {editablePermissions.map((seccion, index) => (
-                              <Grid item xs={12} sm={6} md={3} key={index}>
-                                <Card
-                                  variant="outlined"
-                                  sx={{
-                                    borderRadius: 2,
-                                    textAlign: "center",
-                                    boxShadow: 1,
-                                    backgroundColor: "success.light",
-                                  }}
-                                >
-                                  <CardHeader
-                                    title={seccion}
-                                    sx={{
-                                      backgroundColor: "success.dark",
-                                      color: "white",
-                                      borderRadius: "8px 8px 0 0",
-                                    }}
-                                  />
-                                  <CardContent>
-                                    <FormControlLabel
-                                      control={
-                                        <Checkbox
-                                          checked={editablePermissions.includes(
-                                            seccion
-                                          )}
-                                          onChange={() =>
-                                            toggleEditablePermission(seccion)
-                                          }
-                                        />
-                                      }
-                                      label="Habilitar"
-                                    />
-                                  </CardContent>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-
-                          <Divider sx={{ my: 3 }} />
-
-                          {/* Permisos Inactivos */}
-                          <Typography variant="h6" sx={{ mb: 2 }}>
-                            Permisos Inactivos
-                          </Typography>
-                          <Grid container spacing={2}>
-                            {inactivePermissions.map((seccion, index) => (
-                              <Grid item xs={12} sm={6} md={3} key={index}>
-                                <Card
-                                  variant="outlined"
-                                  sx={{
-                                    borderRadius: 2,
-                                    textAlign: "center",
-                                    boxShadow: 1,
-                                    backgroundColor: "grey.300",
-                                  }}
-                                >
-                                  <CardHeader
-                                    title={seccion}
-                                    sx={{
-                                      backgroundColor: "grey.500",
-                                      color: "white",
-                                      borderRadius: "8px 8px 0 0",
-                                    }}
-                                  />
-                                  <CardContent>
-                                    <FormControlLabel
-                                      control={
-                                        <Checkbox
-                                          checked={editablePermissions.includes(
-                                            seccion
-                                          )}
-                                          onChange={() =>
-                                            toggleEditablePermission(seccion)
-                                          }
-                                        />
-                                      }
-                                      label="Habilitar"
-                                    />
-                                  </CardContent>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-                        </>
-                      )}
-
-                      {/* Botones de Acción */}
-                      <Box sx={{ mt: 4, textAlign: "right" }}>
-                        {editModePermissions && (
-                          <Button
-                            variant="contained"
-                            color="success"
-                            onClick={saveEditablePermissions}
-                            sx={{ mr: 2 }}
-                          >
-                            Guardar Permisos
-                          </Button>
-                        )}
-                        <Button
-                          variant="contained"
-                          color="secondary"
-                          onClick={handleClosePermissionsModal}
-                        >
-                          Cerrar
-                        </Button>
-                      </Box>
-                    </>
-                  )}
-                </Box>
-              </Modal>
-            </Box>
-          )}
-
-        {/* Tabla para usuarios con rol Ecomerce */}
-        {(user?.role === "Admin" || user?.role === "Master") &&
-          usuariosEcom.length > 0 && (
-            <Box sx={{ mb: 5 }}>
-              <Typography variant="h5" sx={{ mb: 2 }}>
-                Usuarios de Ecomerce
-              </Typography>
-              <TableContainer component={Paper}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>ID</TableCell>
-                      <TableCell>Nombre</TableCell>
-                      <TableCell>Rol</TableCell>
-                      <TableCell>Unidad de Negocio</TableCell>
-                      <TableCell>Acciones</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {usuariosEcom.map((usuario) => (
-                      <TableRow key={usuario.id_usu}>
-                        <TableCell>{usuario.id_usu}</TableCell>
-                        <TableCell>{usuario.name}</TableCell>
-                        <TableCell>{usuario.role}</TableCell>
-                        <TableCell>{usuario.unidad}</TableCell>
-                        <TableCell>
-                          <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={() => handleOpenModal(usuario)}
-                          >
-                            Ver Accesos
-                          </Button>
-                        </TableCell>
-                        <TableCell>
-                          {(user?.role === "Master" ||
-                            user?.role === "Admin") && (
-                            <Button
-                              variant="contained"
-                              color="primary"
-                              onClick={() => handleOpenModalUsers(usuario)}
-                              sx={{ mr: 1 }}
-                            >
-                              Editar
-                            </Button>
-                          )}
-                          {(user?.role === "Master" ||
-                            user?.role === "Admin") && (
-                            <Button
-                              variant="contained"
-                              color="error"
-                              onClick={() => handleDeleteUser(usuario.id_usu)}
-                            >
-                              Eliminar
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-
-              <Modal
-                open={openPermissionsModal}
-                onClose={handleClosePermissionsModal}
-              >
-                <Box
-                  sx={{
-                    position: "absolute",
-                    top: "50%",
-                    left: "50%",
-                    transform: "translate(-50%, -50%)",
-                    width: "90vw",
-                    maxWidth: "1200px",
-                    maxHeight: "85vh",
-                    overflowY: "auto",
-                    bgcolor: "background.paper",
-                    boxShadow: 24,
-                    p: 4,
-                    borderRadius: 2,
-                  }}
-                >
-                  {selectedUser && (
-                    <>
-                      {/* Encabezado */}
-                      <Typography
-                        variant="h4"
-                        gutterBottom
-                        sx={{
-                          textAlign: "center",
-                          fontWeight: "bold",
-                          color: "primary.main",
-                        }}
-                      >
-                        Permisos de {selectedUser.name} ({selectedUser.role})
-                      </Typography>
-                      <Divider sx={{ my: 2 }} />
-
-                      {/* Botón para alternar entre Modo Vista y Edición */}
-                      <Box sx={{ textAlign: "right", mb: 2 }}>
-                        <Button
-                          variant="contained"
-                          color={editModePermissions ? "warning" : "primary"}
-                          onClick={() =>
-                            setEditModePermissions(!editModePermissions)
-                          }
-                        >
-                          {editModePermissions
-                            ? "Cancelar Edición"
-                            : "Editar Permisos"}
-                        </Button>
-                      </Box>
-
-                      {/* MODO VISTA */}
-                      {!editModePermissions ? (
-                        <Grid container spacing={2}>
-                          {userPermissions.map((seccion, index) => (
-                            <Grid item xs={12} sm={6} md={3} key={index}>
-                              <Card
-                                variant="outlined"
-                                sx={{ textAlign: "center" }}
-                              >
-                                <CardHeader
-                                  title={seccion}
-                                  sx={{
-                                    backgroundColor: "primary.light",
-                                    color: "white",
-                                    borderRadius: "8px 8px 0 0",
-                                  }}
-                                />
-                                <CardContent>
-                                  <CheckCircleIcon
-                                    color="success"
-                                    sx={{ fontSize: 40 }}
-                                  />
-                                  <Typography>Acceso Autorizado</Typography>
-                                </CardContent>
-                              </Card>
-                            </Grid>
-                          ))}
-                        </Grid>
-                      ) : (
-                        /* MODO EDICIÓN */
-                        <>
-                          <Typography variant="h6" sx={{ mb: 2 }}>
-                            Permisos Activos
-                          </Typography>
-                          <Grid container spacing={2}>
-                            {editablePermissions.map((seccion, index) => (
-                              <Grid item xs={12} sm={6} md={3} key={index}>
-                                <Card
-                                  variant="outlined"
-                                  sx={{
-                                    borderRadius: 2,
-                                    textAlign: "center",
-                                    boxShadow: 1,
-                                    backgroundColor: "success.light",
-                                  }}
-                                >
-                                  <CardHeader
-                                    title={seccion}
-                                    sx={{
-                                      backgroundColor: "success.dark",
-                                      color: "white",
-                                      borderRadius: "8px 8px 0 0",
-                                    }}
-                                  />
-                                  <CardContent>
-                                    <FormControlLabel
-                                      control={
-                                        <Checkbox
-                                          checked={editablePermissions.includes(
-                                            seccion
-                                          )}
-                                          onChange={() =>
-                                            toggleEditablePermission(seccion)
-                                          }
-                                        />
-                                      }
-                                      label="Habilitar"
-                                    />
-                                  </CardContent>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-
-                          <Divider sx={{ my: 3 }} />
-
-                          {/* Permisos Inactivos */}
-                          <Typography variant="h6" sx={{ mb: 2 }}>
-                            Permisos Inactivos
-                          </Typography>
-                          <Grid container spacing={2}>
-                            {inactivePermissions.map((seccion, index) => (
-                              <Grid item xs={12} sm={6} md={3} key={index}>
-                                <Card
-                                  variant="outlined"
-                                  sx={{
-                                    borderRadius: 2,
-                                    textAlign: "center",
-                                    boxShadow: 1,
-                                    backgroundColor: "grey.300",
-                                  }}
-                                >
-                                  <CardHeader
-                                    title={seccion}
-                                    sx={{
-                                      backgroundColor: "grey.500",
-                                      color: "white",
-                                      borderRadius: "8px 8px 0 0",
-                                    }}
-                                  />
-                                  <CardContent>
-                                    <FormControlLabel
-                                      control={
-                                        <Checkbox
-                                          checked={editablePermissions.includes(
-                                            seccion
-                                          )}
-                                          onChange={() =>
-                                            toggleEditablePermission(seccion)
-                                          }
-                                        />
-                                      }
-                                      label="Habilitar"
-                                    />
-                                  </CardContent>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-                        </>
-                      )}
-
-                      {/* Botones de Acción */}
-                      <Box sx={{ mt: 4, textAlign: "right" }}>
-                        {editModePermissions && (
-                          <Button
-                            variant="contained"
-                            color="success"
-                            onClick={saveEditablePermissions}
-                            sx={{ mr: 2 }}
-                          >
-                            Guardar Permisos
-                          </Button>
-                        )}
-                        <Button
-                          variant="contained"
-                          color="secondary"
-                          onClick={handleClosePermissionsModal}
-                        >
-                          Cerrar
-                        </Button>
-                      </Box>
-                    </>
-                  )}
-                </Box>
-              </Modal>
-            </Box>
-          )}
-
-        {/* Tabla para usuarios con rol Con */}
-        {(user?.role === "Admin" || user?.role === "Master") &&
-          usuariosCon.length > 0 && (
-            <Box sx={{ mb: 5 }}>
-              <Typography variant="h5" sx={{ mb: 2 }}>
-                Usuarios Con
-              </Typography>
-              <TableContainer component={Paper}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>ID</TableCell>
-                      <TableCell>Nombre</TableCell>
-                      <TableCell>Rol</TableCell>
-                      <TableCell>Unidad de Negocio</TableCell>
-                      <TableCell>Acciones</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {usuariosCon.map((usuario) => (
-                      <TableRow key={usuario.id_usu}>
-                        <TableCell>{usuario.id_usu}</TableCell>
-                        <TableCell>{usuario.name}</TableCell>
-                        <TableCell>{usuario.role}</TableCell>
-                        <TableCell>{usuario.unidad}</TableCell>
-                        <TableCell>
-                          <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={() => handleOpenModal(usuario)}
-                          >
-                            Ver Accesos
-                          </Button>
-                        </TableCell>
-                        <TableCell>
-                          {(user?.role === "Master" ||
-                            user?.role === "Admin") && (
-                            <Button
-                              variant="contained"
-                              color="primary"
-                              onClick={() => handleOpenModalUsers(usuario)}
-                              sx={{ mr: 1 }}
-                            >
-                              Editar
-                            </Button>
-                          )}
-                          {(user?.role === "Master" ||
-                            user?.role === "Admin") && (
-                            <Button
-                              variant="contained"
-                              color="error"
-                              onClick={() => handleDeleteUser(usuario.id_usu)}
-                            >
-                              Eliminar
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-
-              <Modal
-                open={openPermissionsModal}
-                onClose={handleClosePermissionsModal}
-              >
-                <Box
-                  sx={{
-                    position: "absolute",
-                    top: "50%",
-                    left: "50%",
-                    transform: "translate(-50%, -50%)",
-                    width: "90vw",
-                    maxWidth: "1200px",
-                    maxHeight: "85vh",
-                    overflowY: "auto",
-                    bgcolor: "background.paper",
-                    boxShadow: 24,
-                    p: 4,
-                    borderRadius: 2,
-                  }}
-                >
-                  {selectedUser && (
-                    <>
-                      {/* Encabezado */}
-                      <Typography
-                        variant="h4"
-                        gutterBottom
-                        sx={{
-                          textAlign: "center",
-                          fontWeight: "bold",
-                          color: "primary.main",
-                        }}
-                      >
-                        Permisos de {selectedUser.name} ({selectedUser.role})
-                      </Typography>
-                      <Divider sx={{ my: 2 }} />
-
-                      {/* Botón para alternar entre Modo Vista y Edición */}
-                      <Box sx={{ textAlign: "right", mb: 2 }}>
-                        <Button
-                          variant="contained"
-                          color={editModePermissions ? "warning" : "primary"}
-                          onClick={() =>
-                            setEditModePermissions(!editModePermissions)
-                          }
-                        >
-                          {editModePermissions
-                            ? "Cancelar Edición"
-                            : "Editar Permisos"}
-                        </Button>
-                      </Box>
-
-                      {/* MODO VISTA */}
-                      {!editModePermissions ? (
-                        <Grid container spacing={2}>
-                          {userPermissions.map((seccion, index) => (
-                            <Grid item xs={12} sm={6} md={3} key={index}>
-                              <Card
-                                variant="outlined"
-                                sx={{ textAlign: "center" }}
-                              >
-                                <CardHeader
-                                  title={seccion}
-                                  sx={{
-                                    backgroundColor: "primary.light",
-                                    color: "white",
-                                    borderRadius: "8px 8px 0 0",
-                                  }}
-                                />
-                                <CardContent>
-                                  <CheckCircleIcon
-                                    color="success"
-                                    sx={{ fontSize: 40 }}
-                                  />
-                                  <Typography>Acceso Autorizado</Typography>
-                                </CardContent>
-                              </Card>
-                            </Grid>
-                          ))}
-                        </Grid>
-                      ) : (
-                        /* MODO EDICIÓN */
-                        <>
-                          <Typography variant="h6" sx={{ mb: 2 }}>
-                            Permisos Activos
-                          </Typography>
-                          <Grid container spacing={2}>
-                            {editablePermissions.map((seccion, index) => (
-                              <Grid item xs={12} sm={6} md={3} key={index}>
-                                <Card
-                                  variant="outlined"
-                                  sx={{
-                                    borderRadius: 2,
-                                    textAlign: "center",
-                                    boxShadow: 1,
-                                    backgroundColor: "success.light",
-                                  }}
-                                >
-                                  <CardHeader
-                                    title={seccion}
-                                    sx={{
-                                      backgroundColor: "success.dark",
-                                      color: "white",
-                                      borderRadius: "8px 8px 0 0",
-                                    }}
-                                  />
-                                  <CardContent>
-                                    <FormControlLabel
-                                      control={
-                                        <Checkbox
-                                          checked={editablePermissions.includes(
-                                            seccion
-                                          )}
-                                          onChange={() =>
-                                            toggleEditablePermission(seccion)
-                                          }
-                                        />
-                                      }
-                                      label="Habilitar"
-                                    />
-                                  </CardContent>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-
-                          <Divider sx={{ my: 3 }} />
-
-                          {/* Permisos Inactivos */}
-                          <Typography variant="h6" sx={{ mb: 2 }}>
-                            Permisos Inactivos
-                          </Typography>
-                          <Grid container spacing={2}>
-                            {inactivePermissions.map((seccion, index) => (
-                              <Grid item xs={12} sm={6} md={3} key={index}>
-                                <Card
-                                  variant="outlined"
-                                  sx={{
-                                    borderRadius: 2,
-                                    textAlign: "center",
-                                    boxShadow: 1,
-                                    backgroundColor: "grey.300",
-                                  }}
-                                >
-                                  <CardHeader
-                                    title={seccion}
-                                    sx={{
-                                      backgroundColor: "grey.500",
-                                      color: "white",
-                                      borderRadius: "8px 8px 0 0",
-                                    }}
-                                  />
-                                  <CardContent>
-                                    <FormControlLabel
-                                      control={
-                                        <Checkbox
-                                          checked={editablePermissions.includes(
-                                            seccion
-                                          )}
-                                          onChange={() =>
-                                            toggleEditablePermission(seccion)
-                                          }
-                                        />
-                                      }
-                                      label="Habilitar"
-                                    />
-                                  </CardContent>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-                        </>
-                      )}
-
-                      {/* Botones de Acción */}
-                      <Box sx={{ mt: 4, textAlign: "right" }}>
-                        {editModePermissions && (
-                          <Button
-                            variant="contained"
-                            color="success"
-                            onClick={saveEditablePermissions}
-                            sx={{ mr: 2 }}
-                          >
-                            Guardar Permisos
-                          </Button>
-                        )}
-                        <Button
-                          variant="contained"
-                          color="secondary"
-                          onClick={handleClosePermissionsModal}
-                        >
-                          Cerrar
-                        </Button>
-                      </Box>
-                    </>
-                  )}
-                </Box>
-              </Modal>
-            </Box>
-          )}
-
-        {/* Tabla para usuarios con rol Ins */}
-        {(user?.role === "Admin" || user?.role === "Master") &&
-          usuariosIns.length > 0 && (
-            <Box sx={{ mb: 5 }}>
-              <Typography variant="h5" sx={{ mb: 2 }}>
-                Usuarios de Ins
-              </Typography>
-              <TableContainer component={Paper}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>ID</TableCell>
-                      <TableCell>Nombre</TableCell>
-                      <TableCell>Rol</TableCell>
-                      <TableCell>Unidad de Negocio</TableCell>
-                      <TableCell>Acciones</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {usuariosIns.map((usuario) => (
-                      <TableRow key={usuario.id_usu}>
-                        <TableCell>{usuario.id_usu}</TableCell>
-                        <TableCell>{usuario.name}</TableCell>
-                        <TableCell>{usuario.role}</TableCell>
-                        <TableCell>{usuario.unidad}</TableCell>
-                        <TableCell>
-                          <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={() => handleOpenModal(usuario)}
-                          >
-                            Ver Accesos
-                          </Button>
-                        </TableCell>
-                        <TableCell>
-                          {(user?.role === "Master" ||
-                            user?.role === "Admin") && (
-                            <Button
-                              variant="contained"
-                              color="primary"
-                              onClick={() => handleOpenModalUsers(usuario)}
-                              sx={{ mr: 1 }}
-                            >
-                              Editar
-                            </Button>
-                          )}
-                          {(user?.role === "Master" ||
-                            user?.role === "Admin") && (
-                            <Button
-                              variant="contained"
-                              color="error"
-                              onClick={() => handleDeleteUser(usuario.id_usu)}
-                            >
-                              Eliminar
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-
-              <Modal
-                open={openPermissionsModal}
-                onClose={handleClosePermissionsModal}
-              >
-                <Box
-                  sx={{
-                    position: "absolute",
-                    top: "50%",
-                    left: "50%",
-                    transform: "translate(-50%, -50%)",
-                    width: "90vw",
-                    maxWidth: "1200px",
-                    maxHeight: "85vh",
-                    overflowY: "auto",
-                    bgcolor: "background.paper",
-                    boxShadow: 24,
-                    p: 4,
-                    borderRadius: 2,
-                  }}
-                >
-                  {selectedUser && (
-                    <>
-                      {/* Encabezado */}
-                      <Typography
-                        variant="h4"
-                        gutterBottom
-                        sx={{
-                          textAlign: "center",
-                          fontWeight: "bold",
-                          color: "primary.main",
-                        }}
-                      >
-                        Permisos de {selectedUser.name} ({selectedUser.role})
-                      </Typography>
-                      <Divider sx={{ my: 2 }} />
-
-                      {/* Botón para alternar entre Modo Vista y Edición */}
-                      <Box sx={{ textAlign: "right", mb: 2 }}>
-                        <Button
-                          variant="contained"
-                          color={editModePermissions ? "warning" : "primary"}
-                          onClick={() =>
-                            setEditModePermissions(!editModePermissions)
-                          }
-                        >
-                          {editModePermissions
-                            ? "Cancelar Edición"
-                            : "Editar Permisos"}
-                        </Button>
-                      </Box>
-
-                      {/* MODO VISTA */}
-                      {!editModePermissions ? (
-                        <Grid container spacing={2}>
-                          {userPermissions.map((seccion, index) => (
-                            <Grid item xs={12} sm={6} md={3} key={index}>
-                              <Card
-                                variant="outlined"
-                                sx={{ textAlign: "center" }}
-                              >
-                                <CardHeader
-                                  title={seccion}
-                                  sx={{
-                                    backgroundColor: "primary.light",
-                                    color: "white",
-                                    borderRadius: "8px 8px 0 0",
-                                  }}
-                                />
-                                <CardContent>
-                                  <CheckCircleIcon
-                                    color="success"
-                                    sx={{ fontSize: 40 }}
-                                  />
-                                  <Typography>Acceso Autorizado</Typography>
-                                </CardContent>
-                              </Card>
-                            </Grid>
-                          ))}
-                        </Grid>
-                      ) : (
-                        /* MODO EDICIÓN */
-                        <>
-                          <Typography variant="h6" sx={{ mb: 2 }}>
-                            Permisos Activos
-                          </Typography>
-                          <Grid container spacing={2}>
-                            {editablePermissions.map((seccion, index) => (
-                              <Grid item xs={12} sm={6} md={3} key={index}>
-                                <Card
-                                  variant="outlined"
-                                  sx={{
-                                    borderRadius: 2,
-                                    textAlign: "center",
-                                    boxShadow: 1,
-                                    backgroundColor: "success.light",
-                                  }}
-                                >
-                                  <CardHeader
-                                    title={seccion}
-                                    sx={{
-                                      backgroundColor: "success.dark",
-                                      color: "white",
-                                      borderRadius: "8px 8px 0 0",
-                                    }}
-                                  />
-                                  <CardContent>
-                                    <FormControlLabel
-                                      control={
-                                        <Checkbox
-                                          checked={editablePermissions.includes(
-                                            seccion
-                                          )}
-                                          onChange={() =>
-                                            toggleEditablePermission(seccion)
-                                          }
-                                        />
-                                      }
-                                      label="Habilitar"
-                                    />
-                                  </CardContent>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-
-                          <Divider sx={{ my: 3 }} />
-
-                          {/* Permisos Inactivos */}
-                          <Typography variant="h6" sx={{ mb: 2 }}>
-                            Permisos Inactivos
-                          </Typography>
-                          <Grid container spacing={2}>
-                            {inactivePermissions.map((seccion, index) => (
-                              <Grid item xs={12} sm={6} md={3} key={index}>
-                                <Card
-                                  variant="outlined"
-                                  sx={{
-                                    borderRadius: 2,
-                                    textAlign: "center",
-                                    boxShadow: 1,
-                                    backgroundColor: "grey.300",
-                                  }}
-                                >
-                                  <CardHeader
-                                    title={seccion}
-                                    sx={{
-                                      backgroundColor: "grey.500",
-                                      color: "white",
-                                      borderRadius: "8px 8px 0 0",
-                                    }}
-                                  />
-                                  <CardContent>
-                                    <FormControlLabel
-                                      control={
-                                        <Checkbox
-                                          checked={editablePermissions.includes(
-                                            seccion
-                                          )}
-                                          onChange={() =>
-                                            toggleEditablePermission(seccion)
-                                          }
-                                        />
-                                      }
-                                      label="Habilitar"
-                                    />
-                                  </CardContent>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-                        </>
-                      )}
-
-                      {/* Botones de Acción */}
-                      <Box sx={{ mt: 4, textAlign: "right" }}>
-                        {editModePermissions && (
-                          <Button
-                            variant="contained"
-                            color="success"
-                            onClick={saveEditablePermissions}
-                            sx={{ mr: 2 }}
-                          >
-                            Guardar Permisos
-                          </Button>
-                        )}
-                        <Button
-                          variant="contained"
-                          color="secondary"
-                          onClick={handleClosePermissionsModal}
-                        >
-                          Cerrar
-                        </Button>
-                      </Box>
-                    </>
-                  )}
-                </Box>
-              </Modal>
-            </Box>
-          )}
-
-        {/* Tabla para usuarios con rol Poli */}
-        {(user?.role === "Admin" || user?.role === "Master") &&
-          usuariosPoli.length > 0 && (
-            <Box sx={{ mb: 5 }}>
-              <Typography variant="h5" sx={{ mb: 2 }}>
-                Policias
-              </Typography>
-              <TableContainer component={Paper}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>ID</TableCell>
-                      <TableCell>Nombre</TableCell>
-                      <TableCell>Rol</TableCell>
-                      <TableCell>Unidad de Negocio</TableCell>
-                      <TableCell>Acciones</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {usuariosPoli.map((usuario) => (
-                      <TableRow key={usuario.id_usu}>
-                        <TableCell>{usuario.id_usu}</TableCell>
-                        <TableCell>{usuario.name}</TableCell>
-                        <TableCell>{usuario.role}</TableCell>
-                        <TableCell>{usuario.unidad}</TableCell>
-                        <TableCell>
-                          <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={() => handleOpenModal(usuario)}
-                          >
-                            Ver Accesos
-                          </Button>
-                        </TableCell>
-                        <TableCell>
-                          {(user?.role === "Master" ||
-                            user?.role === "Admin") && (
-                            <Button
-                              variant="contained"
-                              color="primary"
-                              onClick={() => handleOpenModalUsers(usuario)}
-                              sx={{ mr: 1 }}
-                            >
-                              Editar
-                            </Button>
-                          )}
-                          {(user?.role === "Master" ||
-                            user?.role === "Admin") && (
-                            <Button
-                              variant="contained"
-                              color="error"
-                              onClick={() => handleDeleteUser(usuario.id_usu)}
-                            >
-                              Eliminar
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-
-              <Modal
-                open={openPermissionsModal}
-                onClose={handleClosePermissionsModal}
-              >
-                <Box
-                  sx={{
-                    position: "absolute",
-                    top: "50%",
-                    left: "50%",
-                    transform: "translate(-50%, -50%)",
-                    width: "90vw",
-                    maxWidth: "1200px",
-                    maxHeight: "85vh",
-                    overflowY: "auto",
-                    bgcolor: "background.paper",
-                    boxShadow: 24,
-                    p: 4,
-                    borderRadius: 2,
-                  }}
-                >
-                  {selectedUser && (
-                    <>
-                      {/* Encabezado */}
-                      <Typography
-                        variant="h4"
-                        gutterBottom
-                        sx={{
-                          textAlign: "center",
-                          fontWeight: "bold",
-                          color: "primary.main",
-                        }}
-                      >
-                        Permisos de {selectedUser.name} ({selectedUser.role})
-                      </Typography>
-                      <Divider sx={{ my: 2 }} />
-
-                      {/* Botón para alternar entre Modo Vista y Edición */}
-                      <Box sx={{ textAlign: "right", mb: 2 }}>
-                        <Button
-                          variant="contained"
-                          color={editModePermissions ? "warning" : "primary"}
-                          onClick={() =>
-                            setEditModePermissions(!editModePermissions)
-                          }
-                        >
-                          {editModePermissions
-                            ? "Cancelar Edición"
-                            : "Editar Permisos"}
-                        </Button>
-                      </Box>
-
-                      {/* MODO VISTA */}
-                      {!editModePermissions ? (
-                        <Grid container spacing={2}>
-                          {userPermissions.map((seccion, index) => (
-                            <Grid item xs={12} sm={6} md={3} key={index}>
-                              <Card
-                                variant="outlined"
-                                sx={{ textAlign: "center" }}
-                              >
-                                <CardHeader
-                                  title={seccion}
-                                  sx={{
-                                    backgroundColor: "primary.light",
-                                    color: "white",
-                                    borderRadius: "8px 8px 0 0",
-                                  }}
-                                />
-                                <CardContent>
-                                  <CheckCircleIcon
-                                    color="success"
-                                    sx={{ fontSize: 40 }}
-                                  />
-                                  <Typography>Acceso Autorizado</Typography>
-                                </CardContent>
-                              </Card>
-                            </Grid>
-                          ))}
-                        </Grid>
-                      ) : (
-                        /* MODO EDICIÓN */
-                        <>
-                          <Typography variant="h6" sx={{ mb: 2 }}>
-                            Permisos Activos
-                          </Typography>
-                          <Grid container spacing={2}>
-                            {editablePermissions.map((seccion, index) => (
-                              <Grid item xs={12} sm={6} md={3} key={index}>
-                                <Card
-                                  variant="outlined"
-                                  sx={{
-                                    borderRadius: 2,
-                                    textAlign: "center",
-                                    boxShadow: 1,
-                                    backgroundColor: "success.light",
-                                  }}
-                                >
-                                  <CardHeader
-                                    title={seccion}
-                                    sx={{
-                                      backgroundColor: "success.dark",
-                                      color: "white",
-                                      borderRadius: "8px 8px 0 0",
-                                    }}
-                                  />
-                                  <CardContent>
-                                    <FormControlLabel
-                                      control={
-                                        <Checkbox
-                                          checked={editablePermissions.includes(
-                                            seccion
-                                          )}
-                                          onChange={() =>
-                                            toggleEditablePermission(seccion)
-                                          }
-                                        />
-                                      }
-                                      label="Habilitar"
-                                    />
-                                  </CardContent>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-
-                          <Divider sx={{ my: 3 }} />
-
-                          {/* Permisos Inactivos */}
-                          <Typography variant="h6" sx={{ mb: 2 }}>
-                            Permisos Inactivos
-                          </Typography>
-                          <Grid container spacing={2}>
-                            {inactivePermissions.map((seccion, index) => (
-                              <Grid item xs={12} sm={6} md={3} key={index}>
-                                <Card
-                                  variant="outlined"
-                                  sx={{
-                                    borderRadius: 2,
-                                    textAlign: "center",
-                                    boxShadow: 1,
-                                    backgroundColor: "grey.300",
-                                  }}
-                                >
-                                  <CardHeader
-                                    title={seccion}
-                                    sx={{
-                                      backgroundColor: "grey.500",
-                                      color: "white",
-                                      borderRadius: "8px 8px 0 0",
-                                    }}
-                                  />
-                                  <CardContent>
-                                    <FormControlLabel
-                                      control={
-                                        <Checkbox
-                                          checked={editablePermissions.includes(
-                                            seccion
-                                          )}
-                                          onChange={() =>
-                                            toggleEditablePermission(seccion)
-                                          }
-                                        />
-                                      }
-                                      label="Habilitar"
-                                    />
-                                  </CardContent>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-                        </>
-                      )}
-
-                      {/* Botones de Acción */}
-                      <Box sx={{ mt: 4, textAlign: "right" }}>
-                        {editModePermissions && (
-                          <Button
-                            variant="contained"
-                            color="success"
-                            onClick={saveEditablePermissions}
-                            sx={{ mr: 2 }}
-                          >
-                            Guardar Permisos
-                          </Button>
-                        )}
-                        <Button
-                          variant="contained"
-                          color="secondary"
-                          onClick={handleClosePermissionsModal}
-                        >
-                          Cerrar
-                        </Button>
-                      </Box>
-                    </>
-                  )}
-                </Box>
-              </Modal>
-            </Box>
-          )}
-
-        {/* Tabla para usuarios con rol RH */}
-        {(user?.role === "Admin" || user?.role === "Master") &&
-          usuariosRH.length > 0 && (
-            <Box sx={{ mb: 5 }}>
-              <Typography variant="h5" sx={{ mb: 2 }}>
-                Usuarios de Recursos Humanos
-              </Typography>
-              <TableContainer component={Paper}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>ID</TableCell>
-                      <TableCell>Nombre</TableCell>
-                      <TableCell>Rol</TableCell>
-                      <TableCell>Unidad de Negocio</TableCell>
-                      <TableCell>Acciones</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {usuariosRH.map((usuario) => (
-                      <TableRow key={usuario.id_usu}>
-                        <TableCell>{usuario.id_usu}</TableCell>
-                        <TableCell>{usuario.name}</TableCell>
-                        <TableCell>{usuario.role}</TableCell>
-                        <TableCell>{usuario.unidad}</TableCell>
-                        <TableCell>
-                          <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={() => handleOpenModal(usuario)}
-                          >
-                            Ver Accesos
-                          </Button>
-                        </TableCell>
-                        <TableCell>
-                          {(user?.role === "Master" ||
-                            user?.role === "Admin") && (
-                            <Button
-                              variant="contained"
-                              color="primary"
-                              onClick={() => handleOpenModalUsers(usuario)}
-                              sx={{ mr: 1 }}
-                            >
-                              Editar
-                            </Button>
-                          )}
-                          {(user?.role === "Master" ||
-                            user?.role === "Admin") && (
-                            <Button
-                              variant="contained"
-                              color="error"
-                              onClick={() => handleDeleteUser(usuario.id_usu)}
-                            >
-                              Eliminar
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-
-              <Modal
-                open={openPermissionsModal}
-                onClose={handleClosePermissionsModal}
-              >
-                <Box
-                  sx={{
-                    position: "absolute",
-                    top: "50%",
-                    left: "50%",
-                    transform: "translate(-50%, -50%)",
-                    width: "90vw",
-                    maxWidth: "1200px",
-                    maxHeight: "85vh",
-                    overflowY: "auto",
-                    bgcolor: "background.paper",
-                    boxShadow: 24,
-                    p: 4,
-                    borderRadius: 2,
-                  }}
-                >
-                  {selectedUser && (
-                    <>
-                      {/* Encabezado */}
-                      <Typography
-                        variant="h4"
-                        gutterBottom
-                        sx={{
-                          textAlign: "center",
-                          fontWeight: "bold",
-                          color: "primary.main",
-                        }}
-                      >
-                        Permisos de {selectedUser.name} ({selectedUser.role})
-                      </Typography>
-                      <Divider sx={{ my: 2 }} />
-
-                      {/* Botón para alternar entre Modo Vista y Edición */}
-                      <Box sx={{ textAlign: "right", mb: 2 }}>
-                        <Button
-                          variant="contained"
-                          color={editModePermissions ? "warning" : "primary"}
-                          onClick={() =>
-                            setEditModePermissions(!editModePermissions)
-                          }
-                        >
-                          {editModePermissions
-                            ? "Cancelar Edición"
-                            : "Editar Permisos"}
-                        </Button>
-                      </Box>
-
-                      {/* MODO VISTA */}
-                      {!editModePermissions ? (
-                        <Grid container spacing={2}>
-                          {userPermissions.map((seccion, index) => (
-                            <Grid item xs={12} sm={6} md={3} key={index}>
-                              <Card
-                                variant="outlined"
-                                sx={{ textAlign: "center" }}
-                              >
-                                <CardHeader
-                                  title={seccion}
-                                  sx={{
-                                    backgroundColor: "primary.light",
-                                    color: "white",
-                                    borderRadius: "8px 8px 0 0",
-                                  }}
-                                />
-                                <CardContent>
-                                  <CheckCircleIcon
-                                    color="success"
-                                    sx={{ fontSize: 40 }}
-                                  />
-                                  <Typography>Acceso Autorizado</Typography>
-                                </CardContent>
-                              </Card>
-                            </Grid>
-                          ))}
-                        </Grid>
-                      ) : (
-                        /* MODO EDICIÓN */
-                        <>
-                          <Typography variant="h6" sx={{ mb: 2 }}>
-                            Permisos Activos
-                          </Typography>
-                          <Grid container spacing={2}>
-                            {editablePermissions.map((seccion, index) => (
-                              <Grid item xs={12} sm={6} md={3} key={index}>
-                                <Card
-                                  variant="outlined"
-                                  sx={{
-                                    borderRadius: 2,
-                                    textAlign: "center",
-                                    boxShadow: 1,
-                                    backgroundColor: "success.light",
-                                  }}
-                                >
-                                  <CardHeader
-                                    title={seccion}
-                                    sx={{
-                                      backgroundColor: "success.dark",
-                                      color: "white",
-                                      borderRadius: "8px 8px 0 0",
-                                    }}
-                                  />
-                                  <CardContent>
-                                    <FormControlLabel
-                                      control={
-                                        <Checkbox
-                                          checked={editablePermissions.includes(
-                                            seccion
-                                          )}
-                                          onChange={() =>
-                                            toggleEditablePermission(seccion)
-                                          }
-                                        />
-                                      }
-                                      label="Habilitar"
-                                    />
-                                  </CardContent>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-
-                          <Divider sx={{ my: 3 }} />
-
-                          {/* Permisos Inactivos */}
-                          <Typography variant="h6" sx={{ mb: 2 }}>
-                            Permisos Inactivos
-                          </Typography>
-                          <Grid container spacing={2}>
-                            {inactivePermissions.map((seccion, index) => (
-                              <Grid item xs={12} sm={6} md={3} key={index}>
-                                <Card
-                                  variant="outlined"
-                                  sx={{
-                                    borderRadius: 2,
-                                    textAlign: "center",
-                                    boxShadow: 1,
-                                    backgroundColor: "grey.300",
-                                  }}
-                                >
-                                  <CardHeader
-                                    title={seccion}
-                                    sx={{
-                                      backgroundColor: "grey.500",
-                                      color: "white",
-                                      borderRadius: "8px 8px 0 0",
-                                    }}
-                                  />
-                                  <CardContent>
-                                    <FormControlLabel
-                                      control={
-                                        <Checkbox
-                                          checked={editablePermissions.includes(
-                                            seccion
-                                          )}
-                                          onChange={() =>
-                                            toggleEditablePermission(seccion)
-                                          }
-                                        />
-                                      }
-                                      label="Habilitar"
-                                    />
-                                  </CardContent>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-                        </>
-                      )}
-
-                      {/* Botones de Acción */}
-                      <Box sx={{ mt: 4, textAlign: "right" }}>
-                        {editModePermissions && (
-                          <Button
-                            variant="contained"
-                            color="success"
-                            onClick={saveEditablePermissions}
-                            sx={{ mr: 2 }}
-                          >
-                            Guardar Permisos
-                          </Button>
-                        )}
-                        <Button
-                          variant="contained"
-                          color="secondary"
-                          onClick={handleClosePermissionsModal}
-                        >
-                          Cerrar
-                        </Button>
-                      </Box>
-                    </>
-                  )}
-                </Box>
-              </Modal>
-            </Box>
-          )}
-
-        {/* Tabla para usuarios con rol Trans */}
-        {(user?.role === "Admin" || user?.role === "Master") &&
-          usuariosTrans.length > 0 && (
-            <Box sx={{ mb: 5 }}>
-              <Typography variant="h5" sx={{ mb: 2 }}>
-                Usuarios de Transporte
-              </Typography>
-              <TableContainer component={Paper}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>ID</TableCell>
-                      <TableCell>Nombre</TableCell>
-                      <TableCell>Rol</TableCell>
-                      <TableCell>Unidad de Negocio</TableCell>
-                      <TableCell>Acciones</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {usuariosTrans.map((usuario) => (
-                      <TableRow key={usuario.id_usu}>
-                        <TableCell>{usuario.id_usu}</TableCell>
-                        <TableCell>{usuario.name}</TableCell>
-                        <TableCell>{usuario.role}</TableCell>
-                        <TableCell>{usuario.unidad}</TableCell>
-                        <TableCell>
-                          <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={() => handleOpenModal(usuario)}
-                          >
-                            Ver Accesos
-                          </Button>
-                        </TableCell>
-                        <TableCell>
-                          {(user?.role === "Master" ||
-                            user?.role === "Admin") && (
-                            <Button
-                              variant="contained"
-                              color="primary"
-                              onClick={() => handleOpenModalUsers(usuario)}
-                              sx={{ mr: 1 }}
-                            >
-                              Editar
-                            </Button>
-                          )}
-                          {(user?.role === "Master" ||
-                            user?.role === "Admin") && (
-                            <Button
-                              variant="contained"
-                              color="error"
-                              onClick={() => handleDeleteUser(usuario.id_usu)}
-                            >
-                              Eliminar
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-
-              <Modal
-                open={openPermissionsModal}
-                onClose={handleClosePermissionsModal}
-              >
-                <Box
-                  sx={{
-                    position: "absolute",
-                    top: "50%",
-                    left: "50%",
-                    transform: "translate(-50%, -50%)",
-                    width: "90vw",
-                    maxWidth: "1200px",
-                    maxHeight: "85vh",
-                    overflowY: "auto",
-                    bgcolor: "background.paper",
-                    boxShadow: 24,
-                    p: 4,
-                    borderRadius: 2,
-                  }}
-                >
-                  {selectedUser && (
-                    <>
-                      {/* Encabezado */}
-                      <Typography
-                        variant="h4"
-                        gutterBottom
-                        sx={{
-                          textAlign: "center",
-                          fontWeight: "bold",
-                          color: "primary.main",
-                        }}
-                      >
-                        Permisos de {selectedUser.name} ({selectedUser.role})
-                      </Typography>
-                      <Divider sx={{ my: 2 }} />
-
-                      {/* Botón para alternar entre Modo Vista y Edición */}
-                      <Box sx={{ textAlign: "right", mb: 2 }}>
-                        <Button
-                          variant="contained"
-                          color={editModePermissions ? "warning" : "primary"}
-                          onClick={() =>
-                            setEditModePermissions(!editModePermissions)
-                          }
-                        >
-                          {editModePermissions
-                            ? "Cancelar Edición"
-                            : "Editar Permisos"}
-                        </Button>
-                      </Box>
-
-                      {/* MODO VISTA */}
-                      {!editModePermissions ? (
-                        <Grid container spacing={2}>
-                          {userPermissions.map((seccion, index) => (
-                            <Grid item xs={12} sm={6} md={3} key={index}>
-                              <Card
-                                variant="outlined"
-                                sx={{ textAlign: "center" }}
-                              >
-                                <CardHeader
-                                  title={seccion}
-                                  sx={{
-                                    backgroundColor: "primary.light",
-                                    color: "white",
-                                    borderRadius: "8px 8px 0 0",
-                                  }}
-                                />
-                                <CardContent>
-                                  <CheckCircleIcon
-                                    color="success"
-                                    sx={{ fontSize: 40 }}
-                                  />
-                                  <Typography>Acceso Autorizado</Typography>
-                                </CardContent>
-                              </Card>
-                            </Grid>
-                          ))}
-                        </Grid>
-                      ) : (
-                        /* MODO EDICIÓN */
-                        <>
-                          <Typography variant="h6" sx={{ mb: 2 }}>
-                            Permisos Activos
-                          </Typography>
-                          <Grid container spacing={2}>
-                            {editablePermissions.map((seccion, index) => (
-                              <Grid item xs={12} sm={6} md={3} key={index}>
-                                <Card
-                                  variant="outlined"
-                                  sx={{
-                                    borderRadius: 2,
-                                    textAlign: "center",
-                                    boxShadow: 1,
-                                    backgroundColor: "success.light",
-                                  }}
-                                >
-                                  <CardHeader
-                                    title={seccion}
-                                    sx={{
-                                      backgroundColor: "success.dark",
-                                      color: "white",
-                                      borderRadius: "8px 8px 0 0",
-                                    }}
-                                  />
-                                  <CardContent>
-                                    <FormControlLabel
-                                      control={
-                                        <Checkbox
-                                          checked={editablePermissions.includes(
-                                            seccion
-                                          )}
-                                          onChange={() =>
-                                            toggleEditablePermission(seccion)
-                                          }
-                                        />
-                                      }
-                                      label="Habilitar"
-                                    />
-                                  </CardContent>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-
-                          <Divider sx={{ my: 3 }} />
-
-                          {/* Permisos Inactivos */}
-                          <Typography variant="h6" sx={{ mb: 2 }}>
-                            Permisos Inactivos
-                          </Typography>
-                          <Grid container spacing={2}>
-                            {inactivePermissions.map((seccion, index) => (
-                              <Grid item xs={12} sm={6} md={3} key={index}>
-                                <Card
-                                  variant="outlined"
-                                  sx={{
-                                    borderRadius: 2,
-                                    textAlign: "center",
-                                    boxShadow: 1,
-                                    backgroundColor: "grey.300",
-                                  }}
-                                >
-                                  <CardHeader
-                                    title={seccion}
-                                    sx={{
-                                      backgroundColor: "grey.500",
-                                      color: "white",
-                                      borderRadius: "8px 8px 0 0",
-                                    }}
-                                  />
-                                  <CardContent>
-                                    <FormControlLabel
-                                      control={
-                                        <Checkbox
-                                          checked={editablePermissions.includes(
-                                            seccion
-                                          )}
-                                          onChange={() =>
-                                            toggleEditablePermission(seccion)
-                                          }
-                                        />
-                                      }
-                                      label="Habilitar"
-                                    />
-                                  </CardContent>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-                        </>
-                      )}
-
-                      {/* Botones de Acción */}
-                      <Box sx={{ mt: 4, textAlign: "right" }}>
-                        {editModePermissions && (
-                          <Button
-                            variant="contained"
-                            color="success"
-                            onClick={saveEditablePermissions}
-                            sx={{ mr: 2 }}
-                          >
-                            Guardar Permisos
-                          </Button>
-                        )}
-                        <Button
-                          variant="contained"
-                          color="secondary"
-                          onClick={handleClosePermissionsModal}
-                        >
-                          Cerrar
-                        </Button>
-                      </Box>
-                    </>
-                  )}
-                </Box>
-              </Modal>
-            </Box>
-          )}
-
-        {/* Tabla para usuarios con rol User */}
-        {(user?.role === "Admin" || user?.role === "Master") &&
-          usuariosUser.length > 0 && (
-            <Box sx={{ mb: 5 }}>
-              <Typography variant="h5" sx={{ mb: 2 }}>
-                Usuarios
-              </Typography>
-              <TableContainer component={Paper}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>ID</TableCell>
-                      <TableCell>Nombre</TableCell>
-                      <TableCell>Rol</TableCell>
-                      <TableCell>Unidad de Negocio</TableCell>
-                      <TableCell>Acciones</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {usuariosUser.map((usuario) => (
-                      <TableRow key={usuario.id_usu}>
-                        <TableCell>{usuario.id_usu}</TableCell>
-                        <TableCell>{usuario.name}</TableCell>
-                        <TableCell>{usuario.role}</TableCell>
-                        <TableCell>{usuario.unidad}</TableCell>
-                        <TableCell>
-                          <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={() => handleOpenModal(usuario)}
-                          >
-                            Ver Accesos
-                          </Button>
-                        </TableCell>
-                        <TableCell>
-                          {(user?.role === "Master" ||
-                            user?.role === "Admin") && (
-                            <Button
-                              variant="contained"
-                              color="primary"
-                              onClick={() => handleOpenModalUsers(usuario)}
-                              sx={{ mr: 1 }}
-                            >
-                              Editar
-                            </Button>
-                          )}
-                          {(user?.role === "Master" ||
-                            user?.role === "Admin") && (
-                            <Button
-                              variant="contained"
-                              color="error"
-                              onClick={() => handleDeleteUser(usuario.id_usu)}
-                            >
-                              Eliminar
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-
-              <Modal
-                open={openPermissionsModal}
-                onClose={handleClosePermissionsModal}
-              >
-                <Box
-                  sx={{
-                    position: "absolute",
-                    top: "50%",
-                    left: "50%",
-                    transform: "translate(-50%, -50%)",
-                    width: "90vw",
-                    maxWidth: "1200px",
-                    maxHeight: "85vh",
-                    overflowY: "auto",
-                    bgcolor: "background.paper",
-                    boxShadow: 24,
-                    p: 4,
-                    borderRadius: 2,
-                  }}
-                >
-                  {selectedUser && (
-                    <>
-                      {/* Encabezado */}
-                      <Typography
-                        variant="h4"
-                        gutterBottom
-                        sx={{
-                          textAlign: "center",
-                          fontWeight: "bold",
-                          color: "primary.main",
-                        }}
-                      >
-                        Permisos de {selectedUser.name} ({selectedUser.role})
-                      </Typography>
-                      <Divider sx={{ my: 2 }} />
-
-                      {/* Botón para alternar entre Modo Vista y Edición */}
-                      <Box sx={{ textAlign: "right", mb: 2 }}>
-                        <Button
-                          variant="contained"
-                          color={editModePermissions ? "warning" : "primary"}
-                          onClick={() =>
-                            setEditModePermissions(!editModePermissions)
-                          }
-                        >
-                          {editModePermissions
-                            ? "Cancelar Edición"
-                            : "Editar Permisos"}
-                        </Button>
-                      </Box>
-
-                      {/* MODO VISTA */}
-                      {!editModePermissions ? (
-                        <Grid container spacing={2}>
-                          {userPermissions.map((seccion, index) => (
-                            <Grid item xs={12} sm={6} md={3} key={index}>
-                              <Card
-                                variant="outlined"
-                                sx={{ textAlign: "center" }}
-                              >
-                                <CardHeader
-                                  title={seccion}
-                                  sx={{
-                                    backgroundColor: "primary.light",
-                                    color: "white",
-                                    borderRadius: "8px 8px 0 0",
-                                  }}
-                                />
-                                <CardContent>
-                                  <CheckCircleIcon
-                                    color="success"
-                                    sx={{ fontSize: 40 }}
-                                  />
-                                  <Typography>Acceso Autorizado</Typography>
-                                </CardContent>
-                              </Card>
-                            </Grid>
-                          ))}
-                        </Grid>
-                      ) : (
-                        /* MODO EDICIÓN */
-                        <>
-                          <Typography variant="h6" sx={{ mb: 2 }}>
-                            Permisos Activos
-                          </Typography>
-                          <Grid container spacing={2}>
-                            {editablePermissions.map((seccion, index) => (
-                              <Grid item xs={12} sm={6} md={3} key={index}>
-                                <Card
-                                  variant="outlined"
-                                  sx={{
-                                    borderRadius: 2,
-                                    textAlign: "center",
-                                    boxShadow: 1,
-                                    backgroundColor: "success.light",
-                                  }}
-                                >
-                                  <CardHeader
-                                    title={seccion}
-                                    sx={{
-                                      backgroundColor: "success.dark",
-                                      color: "white",
-                                      borderRadius: "8px 8px 0 0",
-                                    }}
-                                  />
-                                  <CardContent>
-                                    <FormControlLabel
-                                      control={
-                                        <Checkbox
-                                          checked={editablePermissions.includes(
-                                            seccion
-                                          )}
-                                          onChange={() =>
-                                            toggleEditablePermission(seccion)
-                                          }
-                                        />
-                                      }
-                                      label="Habilitar"
-                                    />
-                                  </CardContent>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-
-                          <Divider sx={{ my: 3 }} />
-
-                          {/* Permisos Inactivos */}
-                          <Typography variant="h6" sx={{ mb: 2 }}>
-                            Permisos Inactivos
-                          </Typography>
-                          <Grid container spacing={2}>
-                            {inactivePermissions.map((seccion, index) => (
-                              <Grid item xs={12} sm={6} md={3} key={index}>
-                                <Card
-                                  variant="outlined"
-                                  sx={{
-                                    borderRadius: 2,
-                                    textAlign: "center",
-                                    boxShadow: 1,
-                                    backgroundColor: "grey.300",
-                                  }}
-                                >
-                                  <CardHeader
-                                    title={seccion}
-                                    sx={{
-                                      backgroundColor: "grey.500",
-                                      color: "white",
-                                      borderRadius: "8px 8px 0 0",
-                                    }}
-                                  />
-                                  <CardContent>
-                                    <FormControlLabel
-                                      control={
-                                        <Checkbox
-                                          checked={editablePermissions.includes(
-                                            seccion
-                                          )}
-                                          onChange={() =>
-                                            toggleEditablePermission(seccion)
-                                          }
-                                        />
-                                      }
-                                      label="Habilitar"
-                                    />
-                                  </CardContent>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-                        </>
-                      )}
-
-                      {/* Botones de Acción */}
-                      <Box sx={{ mt: 4, textAlign: "right" }}>
-                        {editModePermissions && (
-                          <Button
-                            variant="contained"
-                            color="success"
-                            onClick={saveEditablePermissions}
-                            sx={{ mr: 2 }}
-                          >
-                            Guardar Permisos
-                          </Button>
-                        )}
-                        <Button
-                          variant="contained"
-                          color="secondary"
-                          onClick={handleClosePermissionsModal}
-                        >
-                          Cerrar
-                        </Button>
-                      </Box>
-                    </>
-                  )}
-                </Box>
-              </Modal>
-            </Box>
-          )}
-
-        {/* Tabla para usuarios con rol Dep */}
-        {(user?.role === "Admin" || user?.role === "Master") &&
-          usuariosDep.length > 0 && (
-            <Box sx={{ mb: 5 }}>
-              <Typography variant="h5" sx={{ mb: 2 }}>
-                Usuarios de Desarrollo
-              </Typography>
-              <TableContainer component={Paper}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>ID</TableCell>
-                      <TableCell>Nombre</TableCell>
-                      <TableCell>Rol</TableCell>
-                      <TableCell>Unidad de Negocio</TableCell>
-                      <TableCell>Acciones</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {usuariosDep.map((usuario) => (
-                      <TableRow key={usuario.id_usu}>
-                        <TableCell>{usuario.id_usu}</TableCell>
-                        <TableCell>{usuario.name}</TableCell>
-                        <TableCell>{usuario.role}</TableCell>
-                        <TableCell>{usuario.unidad}</TableCell>
-                        <TableCell>
-                          <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={() => handleOpenModal(usuario)}
-                          >
-                            Ver Accesos
-                          </Button>
-                        </TableCell>
-                        <TableCell>
-                          {(user?.role === "Master" ||
-                            user?.role === "Admin") && (
-                            <Button
-                              variant="contained"
-                              color="primary"
-                              onClick={() => handleOpenModalUsers(usuario)}
-                              sx={{ mr: 1 }}
-                            >
-                              Editar
-                            </Button>
-                          )}
-                          {(user?.role === "Master" ||
-                            user?.role === "Admin") && (
-                            <Button
-                              variant="contained"
-                              color="error"
-                              onClick={() => handleDeleteUser(usuario.id_usu)}
-                            >
-                              Eliminar
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-
-              <Modal
-                open={openPermissionsModal}
-                onClose={handleClosePermissionsModal}
-              >
-                <Box
-                  sx={{
-                    position: "absolute",
-                    top: "50%",
-                    left: "50%",
-                    transform: "translate(-50%, -50%)",
-                    width: "90vw",
-                    maxWidth: "1200px",
-                    maxHeight: "85vh",
-                    overflowY: "auto",
-                    bgcolor: "background.paper",
-                    boxShadow: 24,
-                    p: 4,
-                    borderRadius: 2,
-                  }}
-                >
-                  {selectedUser && (
-                    <>
-                      {/* Encabezado */}
-                      <Typography
-                        variant="h4"
-                        gutterBottom
-                        sx={{
-                          textAlign: "center",
-                          fontWeight: "bold",
-                          color: "primary.main",
-                        }}
-                      >
-                        Permisos de {selectedUser.name} ({selectedUser.role})
-                      </Typography>
-                      <Divider sx={{ my: 2 }} />
-
-                      {/* Botón para alternar entre Modo Vista y Edición */}
-                      <Box sx={{ textAlign: "right", mb: 2 }}>
-                        <Button
-                          variant="contained"
-                          color={editModePermissions ? "warning" : "primary"}
-                          onClick={() =>
-                            setEditModePermissions(!editModePermissions)
-                          }
-                        >
-                          {editModePermissions
-                            ? "Cancelar Edición"
-                            : "Editar Permisos"}
-                        </Button>
-                      </Box>
-
-                      {/* MODO VISTA */}
-                      {!editModePermissions ? (
-                        <Grid container spacing={2}>
-                          {userPermissions.map((seccion, index) => (
-                            <Grid item xs={12} sm={6} md={3} key={index}>
-                              <Card
-                                variant="outlined"
-                                sx={{ textAlign: "center" }}
-                              >
-                                <CardHeader
-                                  title={seccion}
-                                  sx={{
-                                    backgroundColor: "primary.light",
-                                    color: "white",
-                                    borderRadius: "8px 8px 0 0",
-                                  }}
-                                />
-                                <CardContent>
-                                  <CheckCircleIcon
-                                    color="success"
-                                    sx={{ fontSize: 40 }}
-                                  />
-                                  <Typography>Acceso Autorizado</Typography>
-                                </CardContent>
-                              </Card>
-                            </Grid>
-                          ))}
-                        </Grid>
-                      ) : (
-                        /* MODO EDICIÓN */
-                        <>
-                          <Typography variant="h6" sx={{ mb: 2 }}>
-                            Permisos Activos
-                          </Typography>
-                          <Grid container spacing={2}>
-                            {editablePermissions.map((seccion, index) => (
-                              <Grid item xs={12} sm={6} md={3} key={index}>
-                                <Card
-                                  variant="outlined"
-                                  sx={{
-                                    borderRadius: 2,
-                                    textAlign: "center",
-                                    boxShadow: 1,
-                                    backgroundColor: "success.light",
-                                  }}
-                                >
-                                  <CardHeader
-                                    title={seccion}
-                                    sx={{
-                                      backgroundColor: "success.dark",
-                                      color: "white",
-                                      borderRadius: "8px 8px 0 0",
-                                    }}
-                                  />
-                                  <CardContent>
-                                    <FormControlLabel
-                                      control={
-                                        <Checkbox
-                                          checked={editablePermissions.includes(
-                                            seccion
-                                          )}
-                                          onChange={() =>
-                                            toggleEditablePermission(seccion)
-                                          }
-                                        />
-                                      }
-                                      label="Habilitar"
-                                    />
-                                  </CardContent>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-
-                          <Divider sx={{ my: 3 }} />
-
-                          {/* Permisos Inactivos */}
-                          <Typography variant="h6" sx={{ mb: 2 }}>
-                            Permisos Inactivos
-                          </Typography>
-                          <Grid container spacing={2}>
-                            {inactivePermissions.map((seccion, index) => (
-                              <Grid item xs={12} sm={6} md={3} key={index}>
-                                <Card
-                                  variant="outlined"
-                                  sx={{
-                                    borderRadius: 2,
-                                    textAlign: "center",
-                                    boxShadow: 1,
-                                    backgroundColor: "grey.300",
-                                  }}
-                                >
-                                  <CardHeader
-                                    title={seccion}
-                                    sx={{
-                                      backgroundColor: "grey.500",
-                                      color: "white",
-                                      borderRadius: "8px 8px 0 0",
-                                    }}
-                                  />
-                                  <CardContent>
-                                    <FormControlLabel
-                                      control={
-                                        <Checkbox
-                                          checked={editablePermissions.includes(
-                                            seccion
-                                          )}
-                                          onChange={() =>
-                                            toggleEditablePermission(seccion)
-                                          }
-                                        />
-                                      }
-                                      label="Habilitar"
-                                    />
-                                  </CardContent>
-                                </Card>
-                              </Grid>
-                            ))}
-                          </Grid>
-                        </>
-                      )}
-
-                      {/* Botones de Acción */}
-                      <Box sx={{ mt: 4, textAlign: "right" }}>
-                        {editModePermissions && (
-                          <Button
-                            variant="contained"
-                            color="success"
-                            onClick={saveEditablePermissions}
-                            sx={{ mr: 2 }}
-                          >
-                            Guardar Permisos
-                          </Button>
-                        )}
-                        <Button
-                          variant="contained"
-                          color="secondary"
-                          onClick={handleClosePermissionsModal}
-                        >
-                          Cerrar
-                        </Button>
-                      </Box>
-                    </>
-                  )}
-                </Box>
-              </Modal>
-            </Box>
-          )}
-
-        {/* Modal para mostrar los detalles del usuario */}
-        <Modal open={openModal} onClose={handleCloseModal}>
-          <Box
-            sx={{
-              position: "absolute",
-              top: "50%",
-              left: "50%",
-              transform: "translate(-50%, -50%)",
-              width: 600, // Ajusta el ancho para que sea mayor
-              bgcolor: "background.paper",
-              boxShadow: 24,
-              p: 4,
-              borderRadius: 2,
-            }}
-          >
-            {selectedUser && (
-              <>
-                <Typography variant="h5" gutterBottom>
-                  Detalles del Usuario
-                </Typography>
-                <Grid container spacing={2}>
-                  <Grid item xs={12}>
-                    <Typography>
-                      <strong>Pasillo:</strong> {selectedUser.role}
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={12}>
-                    <Typography>
-                      <strong>Nombre:</strong> {selectedUser.name}
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={12}>
-                    <Typography>
-                      <strong>Correo:</strong> {selectedUser.email}
-                    </Typography>
-                    {/* Código de barras para el correo */}
-                    <Barcode value={selectedUser.email} width={1.5} />{" "}
-                    {/* Ajusta el ancho del código de barras */}
-                  </Grid>
-                  <Grid item xs={12}>
-                    <Typography>
-                      <strong>Contraseña:</strong>
-                    </Typography>
-                    {/* Código de barras para la contraseña */}
-                    <Barcode value={selectedUser.password} width={1.5} />{" "}
-                    {/* Ajusta el ancho del código de barras */}
-                  </Grid>
-                </Grid>
-                <Box sx={{ mt: 3, textAlign: "right" }}>
-                  <Button
-                    variant="contained"
-                    color="secondary"
-                    onClick={handleCloseModal}
-                  >
-                    Cerrar
-                  </Button>
-                </Box>
-              </>
-            )}
-          </Box>
-        </Modal>
-        {/* Modal para mostrar los detalles del usuario */}
-        <Modal open={openModal} onClose={handleCloseModal}>
-          <Box
-            sx={{
-              position: "absolute",
-              top: "50%",
-              left: "50%",
-              transform: "translate(-50%, -50%)",
-              width: 600,
-              bgcolor: "background.paper",
-              boxShadow: 24,
-              p: 4,
-              borderRadius: 2,
-            }}
-          >
-            {selectedUser && (
-              <>
-                <Typography variant="h5" gutterBottom>
-                  Detalles del Usuario
-                </Typography>
-                <Grid container spacing={2}>
-                  <Grid item xs={12}>
-                    <Typography>
-                      <strong>Pasillo:</strong> {selectedUser.role}
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={12}>
-                    <Typography>
-                      <strong>Nombre:</strong> {selectedUser.name}
-                    </Typography>
-                  </Grid>
-                  <Grid item xs={12}>
-                    <Typography>
-                      <strong>Correo:</strong> {selectedUser.email}
-                    </Typography>
-                    <Barcode value={selectedUser.email} width={1.5} />
-                  </Grid>
-                  <Grid item xs={12}>
-                    <Typography>
-                      <strong>Contraseña:</strong>
-                    </Typography>
-                    <Barcode value={selectedUser.password} width={1.5} />
-                  </Grid>
-                </Grid>
-                <Box sx={{ mt: 3, textAlign: "right" }}>
-                  <Button
-                    variant="contained"
-                    color="secondary"
-                    onClick={handleCloseModal}
-                  >
-                    Cerrar
-                  </Button>
-                </Box>
-              </>
-            )}
-          </Box>
-        </Modal>
-        <Modal open={openAccessModal} onClose={handleCloseAccessModal}>
-          <Box
-            sx={{
-              position: "absolute",
-              top: "50%",
-              left: "50%",
-              transform: "translate(-50%, -50%)",
-              width: "90%",
-              bgcolor: "background.paper",
-              boxShadow: 24,
-              p: 4,
-              borderRadius: 2,
-            }}
-          >
-            {selectedUser && (
-              <>
-                <Typography variant="h5" gutterBottom>
-                  Administrar Accesos para {selectedUser.name}
-                </Typography>
-                <Divider sx={{ mb: 3 }} />
-                <Grid container spacing={3}>
-                  {secciones.map((seccion) => {
-                    const isEnabled = accesos.some(
-                      (access) => access.id_seccion === seccion.id_seccion
-                    ); // Verifica si la sección está habilitada
-
-                    return (
-                      <Grid item xs={12} sm={12} md={2} key={seccion.id_seccion}>
-                        <Card variant="outlined">
-                          <CardContent>
-                            <Typography variant="h6" gutterBottom>
-                              {seccion.name}{" "}
-                              <FormControlLabel
-                                control={
-                                  <Checkbox
-                                    checked={isEnabled}
-                                    onChange={() =>
-                                      toggleSection(seccion.id_seccion)
-                                    } // Toggle para habilitar o deshabilitar la sección
-                                  />
-                                }
-                              />
-                            </Typography>
-
-                            {/* Checkbox para habilitar/deshabilitar la sección */}
-
-                            {/* Checkbox de Lectura, habilitado solo si la sección está habilitada */}
-                            <FormControlLabel
-                              control={
-                                <Checkbox
-                                  checked={accesos.some(
-                                    (access) =>
-                                      access.id_seccion === seccion.id_seccion &&
-                                      access.id_permiso === 1
-                                  )}
-                                  onChange={() =>
-                                    toggleAccess(seccion.id_seccion, 1)
-                                  }
-                                  disabled={!isEnabled} // Deshabilitado si la sección no está habilitada
-                                />
-                              }
-                              label="Lectura"
-                            />
-
-                            {/* Checkbox de Escritura, habilitado solo si la sección está habilitada */}
-                            <FormControlLabel
-                              control={
-                                <Checkbox
-                                  checked={accesos.some(
-                                    (access) =>
-                                      access.id_seccion === seccion.id_seccion &&
-                                      access.id_permiso === 2
-                                  )}
-                                  onChange={() =>
-                                    toggleAccess(seccion.id_seccion, 2)
-                                  }
-                                  disabled={!isEnabled} // Deshabilitado si la sección no está habilitada
-                                />
-                              }
-                              label="Escritura"
-                            />
-                          </CardContent>
-                        </Card>
-                      </Grid>
-                    );
-                  })}
-                </Grid>
-                <Box sx={{ mt: 3, textAlign: "right" }}>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={handleSaveAccess}
-                  >
-                    Guardar Cambios
-                  </Button>
-                  <Button
-                    variant="contained"
-                    color="secondary"
-                    onClick={handleCloseAccessModal}
-                    sx={{ ml: 2 }}
-                  >
-                    Cerrar
-                  </Button>
-                </Box>
-              </>
-            )}
-          </Box>
-        </Modal>
-        <Modal open={openModalUser} onClose={handleCloseModal}>
-          <Box
-            sx={{
-              position: "absolute",
-              top: "50%",
-              left: "50%",
-              transform: "translate(-50%, -50%)",
-              width: 500,
-              bgcolor: "background.paper",
-              boxShadow: 24,
-              p: 4,
-              borderRadius: 2,
-            }}
-          >
-            <Typography variant="h5" gutterBottom>
-              {isEditMode ? "Editar Usuario" : "Crear Usuario"}
-            </Typography>
-            <form>
-              <TextField
-                label="Nombre"
-                fullWidth
-                value={userForm.name}
-                onChange={(e) =>
-                  setUserForm({ ...userForm, name: e.target.value })
-                }
-                sx={{ mb: 2 }}
-              />
-              <TextField
-                label="Correo Electrónico"
-                fullWidth
-                value={userForm.email}
-                onChange={(e) =>
-                  setUserForm({ ...userForm, email: e.target.value })
-                }
-                sx={{ mb: 2 }}
-              />
-              <TextField
-                label="Contraseña"
-                type="password"
-                fullWidth
-                value={userForm.password}
-                onChange={(e) =>
-                  setUserForm({ ...userForm, password: e.target.value })
-                }
-                sx={{ mb: 2 }}
-                disabled={isEditMode} // Solo habilitar en modo creación
-              />
-              <TextField
-                label="Unidad"
-                fullWidth
-                value={userForm.unidad}
-                onChange={(e) =>
-                  setUserForm({ ...userForm, unidad: e.target.value })
-                }
-                sx={{ mb: 2 }}
-              />
-              <TextField
-                label="Rol"
-                fullWidth
-                value={userForm.role}
-                onChange={(e) =>
-                  setUserForm({ ...userForm, role: e.target.value })
-                }
-                sx={{ mb: 2 }}
-              />
-              <Box sx={{ textAlign: "right" }}>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={handleSaveUser}
-                >
-                  Guardar
-                </Button>
-                <Button
-                  variant="contained"
-                  color="secondary"
-                  onClick={handleCloseModal}
-                  sx={{ ml: 2 }}
-                >
-                  Cancelar
-                </Button>
-              </Box>
-            </form>
-          </Box>
-        </Modal>
+        </Stack>
       </Box>
-    );
-  }
 
-  export default Usuarios;
+      {/* ===== Reporte por Área ===== */}
+      {(user?.role === "Admin" || user?.role === "Master") &&
+        turno4.length > 0 && (
+          <Box sx={{ mb: 4 }}>
+            <Typography variant="h6" sx={{ mb: 1 }}>
+              Reporte por área
+            </Typography>
+            <Grid container spacing={2}>
+              {areaReport.map((a) => (
+                <Grid item xs={12} sm={6} md={3} key={a.key}>
+                  <Card variant="outlined">
+                    <CardHeader title={a.title} />
+                    <CardContent>
+                      <Typography variant="h4">{a.count}</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        usuarios
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
+          </Box>
+        )}
+      {/* ===== Accesos Web (Turno 4) ===== */}
+      {(user?.role === "Admin" || user?.role === "Master") &&
+        turno4.length > 0 && (
+          <Box sx={{ mb: 5 }}>
+            <SectionHeader title="Accesos Web" count={turno4.length} />
+            <UserTable
+              rows={turno4}
+              actionsLeft={(u) => (
+                <Stack direction="row" spacing={1}>
+                  <Button
+                    size="small"
+                    variant="contained"
+                    onClick={() => openBarcodeModal(u)}
+                  >
+                    Accesos
+                  </Button>
+                </Stack>
+              )}
+              actionsRight={(u) => (
+                <Stack direction="row" spacing={1}>
+                  {user?.role === "Admin" && (
+                    <Button
+                      size="small"
+                      variant="contained"
+                      onClick={() => openEditUser(u)}
+                    >
+                      Editar
+                    </Button>
+                  )}
+                  {user?.role === "Admin" && (
+                    <Button
+                      size="small"
+                      variant="contained"
+                      color="error"
+                      onClick={() => deleteUser(u.id_usu)}
+                    >
+                      Eliminar
+                    </Button>
+                  )}
+                </Stack>
+              )}
+            />
+          </Box>
+        )}
+
+      {/* ===== Usuarios Operativos por Turno ===== */}
+      {(user?.role === "Control" || user?.role === "Admin" || user?.role === "Master" ) &&
+        visibleOperationalByTurn.map((g) => (
+          <Box key={g.turno} sx={{ mb: 5 }}>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                mb: 2,
+              }}
+            >
+              <Typography variant="h5">Surtido Turno {g.turno}</Typography>
+
+              <Stack direction="row" spacing={1}>
+                <Chip label={`${g.usuarios.length} usuarios`} />
+
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() =>
+                    generarPDFPorUsuarios(
+                      g.usuarios,
+                      `Credenciales_Turno_${g.turno}`,
+                    )
+                  }
+                >
+                  Descargar Credenciales
+                </Button>
+              </Stack>
+            </Box>
+            <UserTable
+              rows={g.usuarios}
+              actionsLeft={(u) => (
+                <Stack direction="row" spacing={1}>
+                  <Button
+                    size="small"
+                    variant="contained"
+                    onClick={() => openBarcodeModal(u)}
+                  >
+                    Accesos
+                  </Button>
+                </Stack>
+              )}
+              actionsRight={(u) => (
+                <Stack direction="row" spacing={1}>
+                  {(user?.role === "Master" ||
+                    user?.role === "Admin" ||
+                    user?.role === "Control") && (
+                    <Button
+                      size="small"
+                      variant="contained"
+                      onClick={() => openEditUser(u)}
+                    >
+                      Editar
+                    </Button>
+                  )}
+                  {user?.role === "Admin" && (
+                    <Button
+                      size="small"
+                      variant="contained"
+                      color="error"
+                      onClick={() => deleteUser(u.id_usu)}
+                    >
+                      Eliminar
+                    </Button>
+                  )}
+                </Stack>
+              )}
+            />
+          </Box>
+        ))}
+
+      {/* ===== Usuarios Paquetería ===== */}
+
+      {(user?.role === "Admin" ||
+        user?.role === "Master" ||
+        user?.role === "Paquet") &&
+        usuariosPaqueteria.length > 0 && (
+          <Box sx={{ mb: 5 }}>
+            <Box
+              sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}
+            >
+              <Typography variant="h5">Usuarios de Paquetería</Typography>
+
+              <Stack direction="row" spacing={1}>
+                <Chip label={`${usuariosPaqueteria.length} usuarios`} />
+
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() =>
+                    generarPDFPorUsuarios(
+                      usuariosPaqueteria,
+                      "Credenciales_Paqueteria",
+                    )
+                  }
+                >
+                  Descargar Credenciales
+                </Button>
+              </Stack>
+            </Box>
+
+            <UserTable
+              rows={usuariosPaqueteria}
+              actionsLeft={(u) => (
+                <Stack direction="row" spacing={1}>
+                  <Button
+                    size="small"
+                    variant="contained"
+                    onClick={() => openBarcodeModal(u)}
+                  >
+                    Accesos
+                  </Button>
+                </Stack>
+              )}
+              actionsRight={(u) => (
+                <Stack direction="row" spacing={1}>
+                  {user?.role === "Admin" && (
+                    <Button
+                      size="small"
+                      variant="contained"
+                      onClick={() => openEditUser(u)}
+                    >
+                      Editar
+                    </Button>
+                  )}
+                  {user?.role === "Admin" && (
+                    <Button
+                      size="small"
+                      variant="contained"
+                      color="error"
+                      onClick={() => deleteUser(u.id_usu)}
+                    >
+                      Eliminar
+                    </Button>
+                  )}
+                </Stack>
+              )}
+            />
+          </Box>
+        )}
+
+      {/* ===== Usuarios Embarques ===== */}
+      {(user?.role === "Admin" ||
+        user?.role === "Master" ||
+        user?.role === "Embar") &&
+        usuariosEmbarques.length > 0 && (
+          <Box sx={{ mb: 5 }}>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                mb: 2,
+              }}
+            >
+              <Typography variant="h5">Usuarios de Embarques</Typography>
+
+              <Stack direction="row" spacing={1}>
+                <Chip label={`${usuariosEmbarques.length} usuarios`} />
+
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() =>
+                    generarPDFPorUsuarios(
+                      usuariosEmbarques,
+                      "Credenciales_Embarques",
+                    )
+                  }
+                >
+                  Descargar Credenciales
+                </Button>
+              </Stack>
+            </Box>
+
+            <UserTable
+              rows={usuariosEmbarques}
+              actionsLeft={(u) => (
+                <Stack direction="row" spacing={1}>
+                  <Button
+                    size="small"
+                    variant="contained"
+                    onClick={() => openBarcodeModal(u)}
+                  >
+                    Accesos
+                  </Button>
+                </Stack>
+              )}
+              actionsRight={(u) => (
+                <Stack direction="row" spacing={1}>
+                  {user?.role === "Admin" && (
+                    <Button
+                      size="small"
+                      variant="contained"
+                      onClick={() => openEditUser(u)}
+                    >
+                      Editar
+                    </Button>
+                  )}
+                  {user?.role === "Admin" && (
+                    <Button
+                      size="small"
+                      variant="contained"
+                      color="error"
+                      onClick={() => deleteUser(u.id_usu)}
+                    >
+                      Eliminar
+                    </Button>
+                  )}
+                </Stack>
+              )}
+            />
+          </Box>
+        )}
+
+      {/* ===== Usuarios Montacargas ===== */}
+      {(user?.role === "Admin" ||
+        user?.role === "Master" ||
+        user?.role === "MONT") &&
+        usuariosMontacargas.length > 0 && (
+          <Box sx={{ mb: 5 }}>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                mb: 2,
+              }}
+            >
+              <Typography variant="h5">Usuarios de Montacargas</Typography>
+
+              <Stack direction="row" spacing={1}>
+                <Chip label={`${usuariosMontacargas.length} usuarios`} />
+
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() =>
+                    generarPDFPorUsuarios(
+                      usuariosMontacargas,
+                      "Credenciales_Montacargas",
+                    )
+                  }
+                >
+                  Descargar Credenciales
+                </Button>
+              </Stack>
+            </Box>
+
+            <UserTable
+              rows={usuariosMontacargas}
+              actionsLeft={(u) => (
+                <Stack direction="row" spacing={1}>
+                  <Button
+                    size="small"
+                    variant="contained"
+                    onClick={() => openBarcodeModal(u)}
+                  >
+                    Accesos
+                  </Button>
+                </Stack>
+              )}
+              actionsRight={(u) => (
+                <Stack direction="row" spacing={1}>
+                  {user?.role === "Admin" && (
+                    <Button
+                      size="small"
+                      variant="contained"
+                      onClick={() => openEditUser(u)}
+                    >
+                      Editar
+                    </Button>
+                  )}
+                  {user?.role === "Admin" && (
+                    <Button
+                      size="small"
+                      variant="contained"
+                      color="error"
+                      onClick={() => deleteUser(u.id_usu)}
+                    >
+                      Eliminar
+                    </Button>
+                  )}
+                </Stack>
+              )}
+            />
+          </Box>
+        )}
+
+      {/* ===== Modales ===== */}
+      <UserBarcodesModal
+        open={openBarcodes}
+        onClose={() => {
+          setOpenBarcodes(false);
+          setSelectedUser(null);
+        }}
+        user={selectedUser}
+      />
+
+      <EditUserModal
+        open={openUserModal}
+        onClose={() => {
+          setOpenUserModal(false);
+          setSelectedUser(null);
+        }}
+        isEditMode={isEditMode}
+        form={userForm}
+        setForm={setUserForm}
+        onSave={saveUser}
+      />
+    </Box>
+  );
+}
+
+export default Usuarios;

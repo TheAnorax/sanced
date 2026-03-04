@@ -408,6 +408,7 @@ const obtenerUbiAlma = async (req, res) => {
         u.ingreso, 
         u.nivel,
         u.caducidad,
+        bloqueado,
         CASE 
           WHEN u.pasillo REGEXP '^[0-9]+$' THEN 'Almacen' 
           WHEN u.pasillo REGEXP 'AV' THEN 'Picking'
@@ -432,6 +433,73 @@ const obtenerUbiAlma = async (req, res) => {
         message: "Error al obtener las ubicaciones",
         details: error.message,
       },
+    });
+  }
+};
+
+const bloquearUbicacion = async (req, res) => {
+  try {
+    const { id_ubi, bloqueado, codigo, user_id } = req.body;
+
+    // 1. Validar código de autorización
+    const CODIGO_BLOQUEO = "bloqueo3312";
+
+    if (codigo !== CODIGO_BLOQUEO) {
+      return res.status(403).json({
+        success: false,
+        message: "Código de autorización incorrecto",
+      });
+    }
+
+    // 2. Validaciones básicas
+    if (!id_ubi) {
+      return res.status(400).json({
+        success: false,
+        message: "id_ubi es requerido",
+      });
+    }
+
+    if (bloqueado !== 0 && bloqueado !== 1) {
+      return res.status(400).json({
+        success: false,
+        message: "Valor de bloqueado inválido",
+      });
+    }
+
+    // 3. Actualizar ubicación
+    const sql = `
+      UPDATE ubi_alma
+      SET bloqueado = ?, 
+          fecha_bloqueo = NOW(),
+          usuario_bloqueo = ?
+      WHERE id_ubi = ?
+    `;
+
+    const [result] = await pool.query(sql, [
+      bloqueado,
+      user_id || null,
+      id_ubi,
+    ]);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Ubicación no encontrada",
+      });
+    }
+
+    return res.json({
+      success: true,
+      message:
+        bloqueado === 1
+          ? "Ubicación bloqueada correctamente"
+          : "Ubicación desbloqueada correctamente",
+    });
+  } catch (error) {
+    console.error("Error al bloquear ubicación:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error del servidor",
     });
   }
 };
@@ -915,6 +983,86 @@ const obtenerProgresoPorPasillo = async (req, res) => {
   }
 };
 
+// ==========================================
+// CAPACIDAD DE ALMACÉN + UBICACIONES LIBRES
+// ==========================================
+const getCapacidadAlmacen = async (req, res) => {
+  try {
+    // 1️⃣ Resumen general
+    const [resumen] = await pool.query(`
+      SELECT 
+        COUNT(*) AS total_ubicaciones,
+
+        SUM(
+          CASE 
+            WHEN code_prod IS NOT NULL 
+            AND TRIM(code_prod) <> '' 
+            AND cant_stock IS NOT NULL 
+            AND TRIM(cant_stock) <> '' 
+            AND cant_stock <> '0'
+            THEN 1 ELSE 0 
+          END
+        ) AS ocupadas,
+
+        SUM(
+          CASE 
+            WHEN code_prod IS NULL 
+            OR TRIM(code_prod) = '' 
+            OR cant_stock IS NULL 
+            OR TRIM(cant_stock) = '' 
+            OR cant_stock = '0'
+            THEN 1 ELSE 0 
+          END
+        ) AS disponibles
+
+      FROM ubi_alma
+      WHERE tipo_ubi = 'Almacenamiento'
+      AND bloqueado = 0
+    `);
+
+    // 2️⃣ Ubicaciones disponibles (para Excel o tabla)
+    const [ubicacionesDisponibles] = await pool.query(`
+     
+ SELECT 
+        id_ubi,
+        ubi,
+        code_prod,
+        cant_stock
+        pasillo,
+        seccion,
+        nivel,
+        almacen,
+        estado,
+        tipo_ubi
+      FROM ubi_alma
+      WHERE tipo_ubi = 'Almacenamiento'
+      AND bloqueado = 0
+      AND (
+            code_prod IS NULL 
+            OR TRIM(code_prod) = ''
+          )
+      AND (
+            cant_stock IS NULL 
+            OR TRIM(cant_stock) = '' 
+            OR cant_stock = '0'
+          )
+      ORDER BY pasillo+0, seccion+0, nivel+0
+    `);
+
+    res.json({
+      resumen: resumen[0],
+      ubicaciones_disponibles: ubicacionesDisponibles,
+    });
+
+  } catch (error) {
+    console.error("❌ Error en getCapacidadAlmacen:", error);
+    res.status(500).json({
+      error: "Error obteniendo capacidad del almacén",
+      detalle: error.message,
+    });
+  }
+};
+
 module.exports = {
   getInventarios,
   autorizarRecibo,
@@ -936,4 +1084,6 @@ module.exports = {
   actualizarInventario,
   crearUbicacion,
   obtenerProgresoPorPasillo,
+  getCapacidadAlmacen,
+  bloquearUbicacion
 };

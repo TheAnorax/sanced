@@ -3,7 +3,7 @@ const express = require('express');
 const {
   getInsumosRH, createInsumo, updateInsumo, deleteInsumo,
   buscarProducto, createTraspaso, Traspasos,
-  excelToJson, importTraspasosExcel, importTraspasosExcelMiddleware,
+  excelToJson, importTraspasosExcel, importTraspasosExcelMiddleware,getProductividadAreas
 } = require('../controller/rhController');
 
 const router = express.Router();
@@ -23,4 +23,7 @@ router.get('/ObtenerTraspaso', Traspasos);
 router.post('/excel-to-json', importTraspasosExcelMiddleware, excelToJson);
 router.post('/import-excel', importTraspasosExcelMiddleware, importTraspasosExcel);
 
-module.exports = router;
+// rh cedis
+router.get("/productividad", getProductividadAreas);
+
+module.exports = router; 

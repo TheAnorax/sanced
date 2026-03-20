@@ -272,6 +272,21 @@ function Departamental() {
     return "EN PROCESO DE SURTIDO";
   };
 
+  const normalizarEstatus = (estatus) => {
+    if (!estatus) return "";
+    return estatus.toString().trim().toUpperCase();
+  };
+
+  const obtenerEstatusFinal = (row) => {
+    const estatusBD = normalizarEstatus(row.ESTATUS);
+
+    if (estatusBD) return estatusBD;
+
+    if (!row.FECHA_DE_CITA) return "EN PROCESO";
+
+    return "EN PROCESO DE SURTIDO";
+  };
+
   const obtenerColorEstatus = (estatus) => {
     switch (estatus) {
       case "EN PROCESO":
@@ -288,18 +303,24 @@ function Departamental() {
   };
 
   const activosGlobal = filtrados.filter((p) => {
-    const est = obtenerEstatusAutomatico(p);
+    const est = obtenerEstatusFinal(p);
     return est === "EN PROCESO" || est === "EN PROCESO DE SURTIDO";
   });
 
   const enviadosGlobal = filtrados.filter((p) => {
-    const est = obtenerEstatusAutomatico(p);
-    return est === "ENVIADO" || est === "EMBARCADO";
+    const est = obtenerEstatusFinal(p);
+    return est === "ENVIADO";
   });
 
-  const canceladosGlobal = filtrados.filter(
-    (p) => obtenerEstatusAutomatico(p) === "CANCELADO"
-  );
+  const embarcadosGlobal = filtrados.filter((p) => {
+    const est = obtenerEstatusFinal(p);
+    return est === "EMBARCADO";
+  });
+
+  const canceladosGlobal = filtrados.filter((p) => {
+    const est = obtenerEstatusFinal(p);
+    return est === "CANCELADO";
+  });
 
   useEffect(() => {
     axios
@@ -850,8 +871,9 @@ function Departamental() {
   let datosTab = [];
 
   if (tabVista === 0) datosTab = activosGlobal;
-  if (tabVista === 1) datosTab = enviadosGlobal;
-  if (tabVista === 2) datosTab = canceladosGlobal;
+  if (tabVista === 1) datosTab = embarcadosGlobal;
+  if (tabVista === 2) datosTab = enviadosGlobal
+  if (tabVista === 3) datosTab = canceladosGlobal;
 
   // AHORA sí agrupar
   const agrupado = datosTab.reduce((acc, item) => {
@@ -996,6 +1018,7 @@ function Departamental() {
 
 
   return (
+
     <Box p={4}>
       <Typography variant="h4" align="center" gutterBottom>
         Panel Departamental
@@ -1113,7 +1136,8 @@ function Departamental() {
         sx={{ mt: 3, mb: 2 }}
       >
         <Tab label={` 📦 Activos (${activosGlobal.length})`} />
-        <Tab label={` 📤 Enviados y 📦 EMBARCADO (${enviadosGlobal.length})`} />
+        <Tab label={`🚚 Embarcados (${embarcadosGlobal.length})`} />
+        <Tab label={`📤 Enviados (${enviadosGlobal.length})`} />
         <Tab label={` ❌ Cancelados (${canceladosGlobal.length})`} />
       </Tabs>
 
@@ -2098,6 +2122,7 @@ function Departamental() {
         </Alert>
       </Snackbar>
     </Box>
+
   );
 }
 

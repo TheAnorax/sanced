@@ -39,7 +39,10 @@ const {
   getPaqueteriaByMonth,
   updatePaqueteriaUno,
   updatePaqueteriaBatch,
-  getPedidosdeAbril
+  getPedidosdeAbril,
+  obtenerDatosEtiqueta,
+  obtenerEtiquetasFusion,
+  getAllTransportes,
 } = require("../controller/TrasporteController");
 
 router.get("/getPaqueteriaData", getPaqueteriaData);
@@ -147,7 +150,13 @@ router.put("/Paqueteria/actualizarNuevoPorrateo", updatePaqueteriaUno);
 
 router.put("/Paqueteria/actualizar-batch", updatePaqueteriaBatch);
 
-
 router.get("/paqueteria/abril-hoy", getPedidosdeAbril);
+
+router.get("/etiquetas/:no_orden/:tipo_original", obtenerDatosEtiqueta);
+
+router.get("/etiquetasFusion", obtenerEtiquetasFusion);
+
+router.get('/allTransportes', getAllTransportes);
+
 
 module.exports = router;

@@ -1,6 +1,6 @@
     const express = require('express');
     const { getPrduSurtido, getPrduPaqueteria, getPrduEmbarque, getPrduRecibo,getHstorico2024, getTop102024, getTop102025, getTopProductosPorEstado, getPrduSurtidoPorRango, getPrduPaqueteriaPorrango, getHistorico2025,getHistorico2025Transportes,
-        getFletesClientes,   getVentasPorMunicipio,  getCostoLogisticoMunicipio, getHistorico2025Final
+        getFletesClientes,   getVentasPorMunicipio,  getCostoLogisticoMunicipio, getHistorico2025Final, getVentasAltasBajas
     } = require('../controller/reporteController');
 
     const router = express.Router();
@@ -23,4 +23,5 @@
     router.get('/getFletesClientes', getFletesClientes);
     router.get('/getVentasPorMunicipio', getVentasPorMunicipio);
     router.get('/getCostoLogisticoMunicipio', getCostoLogisticoMunicipio);
+    router.get('/getVentasAltasBajas', getVentasAltasBajas);
     module.exports = router; 

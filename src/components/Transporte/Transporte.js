@@ -26,6 +26,8 @@ import Divider from "@mui/material/Divider";
 import ButtonGroup from "@mui/material/ButtonGroup";
 import Chip from "@mui/material/Chip";
 import InputAdornment from "@mui/material/InputAdornment";
+import QrCodeIcon from "@mui/icons-material/QrCode";
+import PlaylistAddIcon from "@mui/icons-material/PlaylistAdd";
 
 import SearchIcon from "@mui/icons-material/Search";
 import DeleteSweepIcon from "@mui/icons-material/DeleteSweep";
@@ -5642,6 +5644,446 @@ function Transporte() {
     }
   };
 
+  const cargarImagenBase64 = (url) => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.src = url;
+
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0);
+
+        resolve({
+          dataUrl: canvas.toDataURL("image/png"),
+          width: img.width,
+          height: img.height,
+        });
+      };
+
+      img.onerror = reject;
+    });
+  };
+
+  const generarEtiquetas = async (row) => {
+    try {
+      const noOrden = row["NO ORDEN"];
+      const tipo = row["tipo_original"];
+
+      const response = await axios.get(
+        `http://66.232.105.87:3007/api/Trasporte/etiquetas/${noOrden}/${tipo}`
+      );
+
+      const {
+        pedido,
+        total_bultos,
+        total_cajas = 0,
+        total_atados = 0,
+        total_tarimas = 0,
+      } = response.data;
+
+      const logoObj = await cargarImagenBase64("/logob.png");
+      const logo = logoObj.dataUrl;
+
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: [100, 120],
+      });
+
+      const W = 100;
+
+      // Ajustar logo proporcional
+      const logoMaxW = 36;
+      const logoMaxH = 16;
+
+      let logoW = logoMaxW;
+      let logoH = (logoObj.height / logoObj.width) * logoW;
+
+      if (logoH > logoMaxH) {
+        logoH = logoMaxH;
+        logoW = (logoObj.width / logoObj.height) * logoH;
+      }
+
+      const logoX = (W - logoW) / 2;
+      const logoY = 6;
+
+      for (let i = 1; i <= total_bultos; i++) {
+        if (i > 1) pdf.addPage();
+
+        // Borde
+        pdf.setDrawColor(0);
+        pdf.setLineWidth(0.4);
+        pdf.rect(3, 3, 94, 114);
+
+        // Logo
+        pdf.addImage(logo, "PNG", logoX, logoY, logoW, logoH);
+
+        const lineY = logoY + logoH + 3;
+
+        pdf.setLineWidth(0.5);
+        pdf.line(10, lineY, 90, lineY);
+
+        let y = lineY + 18;
+
+        pdf.setFontSize(9);
+
+        // Pedido
+        pdf.setFont("helvetica", "normal");
+        pdf.text("Pedido:", 10, y);
+
+        pdf.setFont("helvetica", "bold");
+        pdf.text(`${pedido.no_orden} - ${pedido.tipo_original}`, 25, y);
+
+        y += 8;
+
+        // Cliente
+        pdf.setFont("helvetica", "normal");
+        pdf.text("Cliente:", 10, y);
+
+        y += 4;
+
+        pdf.setFont("helvetica", "bold");
+
+        const clienteLines = pdf.splitTextToSize(pedido.cliente || "", 80);
+        pdf.text(clienteLines, 10, y);
+
+        y += clienteLines.length * 4 + 3;
+
+        // Dirección
+        pdf.setFont("helvetica", "normal");
+        pdf.text("Dirección:", 10, y);
+
+        y += 4;
+
+        pdf.setFont("helvetica", "bold");
+
+        const dirLines = pdf.splitTextToSize(pedido.direccion || "", 80);
+        pdf.text(dirLines, 10, y);
+
+        y += dirLines.length * 4 + 3;
+
+        // Factura
+        pdf.setFont("helvetica", "normal");
+        pdf.text("Factura:", 10, y);
+
+        pdf.setFont("helvetica", "bold");
+        pdf.text(pedido.no_factura || "", 25, y);
+
+        y += 7;
+
+        // Paquetería
+        pdf.setFont("helvetica", "normal");
+        pdf.text("Paquetería:", 10, y);
+
+        pdf.setFont("helvetica", "bold");
+        pdf.text(pedido.paqueteria || "", 32, y);
+
+        y += 7;
+
+        // Guía
+        if (pedido.guia && pedido.guia.trim() !== "") {
+          pdf.setFont("helvetica", "normal");
+          pdf.text("Guía:", 10, y);
+
+          pdf.setFont("helvetica", "bold");
+          pdf.text(pedido.guia, 20, y);
+
+          y += 7;
+        }
+
+        // Conteo empaques
+        pdf.setFont("helvetica", "normal");
+
+        if (total_cajas > 0) {
+          pdf.text("Cajas:", 10, y);
+
+          pdf.setFont("helvetica", "bold");
+          pdf.text(String(total_cajas), 22, y);
+
+          y += 5;
+        }
+
+        if (total_atados > 0) {
+          pdf.setFont("helvetica", "normal");
+          pdf.text("Atados:", 10, y);
+
+          pdf.setFont("helvetica", "bold");
+          pdf.text(String(total_atados), 25, y);
+
+          y += 5;
+        }
+
+        if (total_tarimas > 0) {
+          pdf.setFont("helvetica", "normal");
+          pdf.text("Tarimas:", 10, y);
+
+          pdf.setFont("helvetica", "bold");
+          pdf.text(String(total_tarimas), 28, y);
+
+          y += 5;
+        }
+
+        // Consecutivo
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(20);
+
+        pdf.text(`${i} / ${total_bultos}`, 50, 108, { align: "center" });
+      }
+
+      pdf.save(`etiquetas_${pedido.no_orden}.pdf`);
+    } catch (error) {
+      console.error("Error generando etiquetas:", error);
+    }
+  };
+
+  const [openEtiquetasModal, setOpenEtiquetasModal] = useState(false);
+  const [rowEtiquetaBase, setRowEtiquetaBase] = useState(null);
+
+  const [tipoFusion, setTipoFusion] = useState("");
+  const [ordenesFusionTexto, setOrdenesFusionTexto] = useState("");
+  // aquí meterás: 60768,60769,60770  (separadas por coma o por enter)
+
+  const abrirModalEtiquetasFusion = (row) => {
+    setRowEtiquetaBase(row);
+
+    // Pre-llenar tipo con el del row
+    const tipoRow = String(row?.["tipo_original"] || "")
+      .toUpperCase()
+      .trim();
+    setTipoFusion(tipoRow);
+
+    // Pre-llenar con el pedido base como sugerencia
+    const baseOrden = String(row?.["NO ORDEN"] || "").trim();
+    setOrdenesFusionTexto(baseOrden);
+
+    setOpenEtiquetasModal(true);
+  };
+
+  const cerrarModalEtiquetasFusion = () => {
+    setOpenEtiquetasModal(false);
+  };
+
+  const parsearOrdenes = (texto) => {
+    return texto
+      .split(/[\n,;\t ]+/) // separa por coma, salto de línea, tab, espacio, ;
+      .map((s) => s.trim())
+      .filter(Boolean);
+  };
+
+  const generarEtiquetasFusionadas = async () => {
+    try {
+      if (!rowEtiquetaBase) return;
+
+      const ordenes = parsearOrdenes(ordenesFusionTexto);
+
+      if (ordenes.length === 0) {
+        alert("Ingresa al menos un NO ORDEN");
+        return;
+      }
+
+      if (!tipoFusion || tipoFusion.trim() === "") {
+        alert("Ingresa el tipo (ej: VW)");
+        return;
+      }
+
+      const response = await axios.get(
+        "http://66.232.105.87:3007/api/Trasporte/etiquetasFusion",
+        {
+          params: {
+            pedidos: ordenes.join(","),
+            tipo: tipoFusion.trim().toUpperCase(),
+          },
+        }
+      );
+
+      const data = response.data;
+
+      if (!data?.success) {
+        alert(data?.message || "No se pudo generar etiquetas");
+        return;
+      }
+
+      const {
+        pedidos = [],
+        clientes = [],
+        facturas = [],
+        direccion = "",
+        paqueteria = "",
+        guia = "",
+        total_bultos = 0,
+        total_cajas = 0,
+        total_atados = 0,
+        total_tarimas = 0,
+      } = data;
+
+      if (!total_bultos || total_bultos <= 0) {
+        alert("Este conjunto no tiene bultos (revisa pedido_finalizado).");
+        return;
+      }
+
+      // Logo
+      const logoObj = await cargarImagenBase64("/logob.png");
+      const logo = logoObj.dataUrl;
+
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: [100, 120],
+      });
+
+      const W = 100;
+
+      const logoMaxW = 36;
+      const logoMaxH = 16;
+
+      let logoW = logoMaxW;
+      let logoH = (logoObj.height / logoObj.width) * logoW;
+
+      if (logoH > logoMaxH) {
+        logoH = logoMaxH;
+        logoW = (logoObj.width / logoObj.height) * logoH;
+      }
+
+      const logoX = (W - logoW) / 2;
+      const logoY = 6;
+
+      // Texto compacto para mostrar pedidos / clientes / facturas
+      const pedidosTxt = pedidos.join(", ");
+      const clientesTxt =
+        clientes.length === 1 ? clientes[0] : clientes.join(" | ");
+      const facturasTxt = facturas.join(", ");
+
+      for (let i = 1; i <= total_bultos; i++) {
+        if (i > 1) pdf.addPage();
+
+        // Borde
+        pdf.setDrawColor(0);
+        pdf.setLineWidth(0.4);
+        pdf.rect(3, 3, 94, 114);
+
+        // Logo
+        pdf.addImage(logo, "PNG", logoX, logoY, logoW, logoH);
+
+        const lineY = logoY + logoH + 3;
+        pdf.setLineWidth(0.5);
+        pdf.line(10, lineY, 90, lineY);
+
+        // Título
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(11);
+        pdf.text("SANTUL LOGÍSTICA", 50, lineY + 8, { align: "center" });
+
+        let y = lineY + 18;
+
+        pdf.setFontSize(8.5);
+
+        // Pedidos
+        pdf.setFont("helvetica", "normal");
+        pdf.text("Pedidos:", 10, y);
+        y += 4;
+
+        pdf.setFont("helvetica", "bold");
+        const pedidosLines = pdf.splitTextToSize(pedidosTxt, 80);
+        pdf.text(pedidosLines, 10, y);
+        y += pedidosLines.length * 3.8 + 2;
+
+        // Clientes
+        pdf.setFont("helvetica", "normal");
+        pdf.text("Cliente(s):", 10, y);
+        y += 4;
+
+        pdf.setFont("helvetica", "bold");
+        const clientesLines = pdf.splitTextToSize(clientesTxt || "", 80);
+        pdf.text(clientesLines, 10, y);
+        y += clientesLines.length * 3.8 + 2;
+
+        // Dirección (opcional)
+        if (direccion && direccion.trim() !== "") {
+          pdf.setFont("helvetica", "normal");
+          pdf.text("Dirección:", 10, y);
+          y += 4;
+
+          pdf.setFont("helvetica", "bold");
+          const dirLines = pdf.splitTextToSize(direccion, 80);
+          pdf.text(dirLines, 10, y);
+          y += dirLines.length * 3.8 + 2;
+        }
+
+        // Facturas
+        if (facturasTxt && facturasTxt.trim() !== "") {
+          pdf.setFont("helvetica", "normal");
+          pdf.text("Facturas:", 10, y);
+          y += 4;
+
+          pdf.setFont("helvetica", "bold");
+          const factLines = pdf.splitTextToSize(facturasTxt, 80);
+          pdf.text(factLines, 10, y);
+          y += factLines.length * 3.8 + 2;
+        }
+
+        // Paquetería
+        if (paqueteria && paqueteria.trim() !== "") {
+          pdf.setFont("helvetica", "normal");
+          pdf.text("Paquetería:", 10, y);
+          pdf.setFont("helvetica", "bold");
+          pdf.text(paqueteria, 32, y);
+          y += 6;
+        }
+
+        // Guía
+        if (guia && guia.trim() !== "") {
+          pdf.setFont("helvetica", "normal");
+          pdf.text("Guía:", 10, y);
+          pdf.setFont("helvetica", "bold");
+          pdf.text(guia, 20, y);
+          y += 6;
+        }
+
+        // Conteos: solo mostrar si existen
+        pdf.setFont("helvetica", "normal");
+
+        if (total_cajas > 0) {
+          pdf.text("Cajas:", 10, y);
+          pdf.setFont("helvetica", "bold");
+          pdf.text(String(total_cajas), 24, y);
+          y += 4.5;
+        }
+
+        if (total_atados > 0) {
+          pdf.setFont("helvetica", "normal");
+          pdf.text("Atados:", 10, y);
+          pdf.setFont("helvetica", "bold");
+          pdf.text(String(total_atados), 24, y);
+          y += 4.5;
+        }
+
+        if (total_tarimas > 0) {
+          pdf.setFont("helvetica", "normal");
+          pdf.text("Tarimas:", 10, y);
+          pdf.setFont("helvetica", "bold");
+          pdf.text(String(total_tarimas), 26, y);
+          y += 4.5;
+        }
+
+        // Consecutivo
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(18);
+        pdf.text(`${i} / ${total_bultos}`, 50, 108, { align: "center" });
+      }
+
+      pdf.save(`etiquetas_fusion_${ordenes.join("_")}.pdf`);
+      cerrarModalEtiquetasFusion();
+    } catch (error) {
+      console.error(error);
+      alert("Error al generar etiquetas fusionadas (revisa consola).");
+    }
+  };
+
   return (
     <Paper elevation={3} style={{ padding: "20px" }}>
       {/* Pestañas */}
@@ -8701,6 +9143,27 @@ function Transporte() {
                                 </Grid>
 
                                 <Grid item>
+                                  <IconButton
+                                    style={{ color: "#2E7D32" }}
+                                    onClick={() => generarEtiquetas(routeData)}
+                                  >
+                                    <QrCodeIcon />
+                                  </IconButton>
+                                </Grid>
+
+                                <Grid item>
+                                  <IconButton
+                                    style={{ color: "#2E7D32" }}
+                                    onClick={() =>
+                                      abrirModalEtiquetasFusion(routeData)
+                                    }
+                                    title="Generar Etiquetas (Fusionar)"
+                                  >
+                                    <PlaylistAddIcon />
+                                  </IconButton>
+                                </Grid>
+
+                                <Grid item>
                                   {(user?.role === "Admin" ||
                                     user?.role === "Trans") && (
                                     <IconButton
@@ -9889,6 +10352,46 @@ function Transporte() {
           </Grid>
         </Box>
       </Modal>
+
+      {/* Modal fusion etiquetas */}
+      <Dialog
+        open={openEtiquetasModal}
+        onClose={cerrarModalEtiquetasFusion}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Generar Etiquetas (Fusionar pedidos)</DialogTitle>
+
+        <DialogContent dividers>
+          <Typography variant="body2" sx={{ mb: 2 }}>
+            Escribe los pedidos con su tipo, separados por coma o por enter.
+          </Typography>
+
+          <TextField
+            label="Pedidos (NO ORDEN:TIPO)"
+            value={ordenesFusionTexto}
+            onChange={(e) => setOrdenesFusionTexto(e.target.value)}
+            multiline
+            minRows={4}
+            fullWidth
+            placeholder={"60768:VW,60766:VW\n60773:TR"}
+          />
+        </DialogContent>
+
+        <DialogActions>
+          <Button onClick={cerrarModalEtiquetasFusion} color="inherit">
+            Cancelar
+          </Button>
+
+          <Button
+            onClick={generarEtiquetasFusionadas}
+            variant="contained"
+            color="success"
+          >
+            Generar PDF
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Snackbar
         open={snackbarOpen}

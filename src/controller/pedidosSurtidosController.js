@@ -106,7 +106,7 @@ const updatePedido = async (req, res) => {
       // 🔥 Determinar el estado dinámicamente
       const estado = (item.cant_surti + item.cant_no_env === item.cantidad) ? 'B' : 'S';
 
-      console.log(`Item ${item.id_pedi}: Estado calculado -> ${estado}`);
+      // console.log(`Item ${item.id_pedi}: Estado calculado -> ${estado}`);
 
       const params = [item.cant_surti, item.cant_no_env, estado, item.motivo, item.id_pedi];
 

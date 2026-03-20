@@ -76,6 +76,52 @@ const [loadingPlaneacion, setLoadingPlaneacion] = useState(false);
 const [selectedMonthPlaneacion, setSelectedMonthPlaneacion] = useState(null);
 // null = total general
 
+const [comparativos, setComparativos] = useState(null);
+const [loadingComparativos, setLoadingComparativos] = useState(false);
+
+
+useEffect(() => {
+  if (tabIndex !== 6) return;
+
+  const fetchComparativos = async () => {
+    try {
+      setLoadingComparativos(true);
+
+      const res = await axios.get(
+        "http://66.232.105.87:3007/api/kpi/getVentasAltasBajas"
+      );
+
+      setComparativos(res.data);
+
+    } catch (err) {
+      console.error("Error comparativos:", err);
+    } finally {
+      setLoadingComparativos(false);
+    }
+  };
+
+  fetchComparativos();
+}, [tabIndex]);
+
+const colorFlete = (pct) => {
+  if (!pct) return "default"; // 🔥 protección
+
+  const v = Number(String(pct).replace('%', ''));
+
+  if (v >= 8) return "error";
+  if (v >= 5) return "warning";
+  return "success";
+};
+
+const tendenciaTexto = (row) => {
+  const alta = Number(String(row.porcentaje_flete_alta_fmt || 0).replace('%', ''));
+  const baja = Number(String(row.porcentaje_flete_baja_fmt || 0).replace('%', ''));
+
+  if (alta > baja) return "Más caro en ALTA";
+  if (baja > alta) return "Más caro en BAJA";
+  return "Estable";
+};
+
 const toNumber = (v) => {
   if (v === null || v === undefined) return 0;
   if (typeof v === "number") return v;
@@ -798,7 +844,7 @@ useEffect(() => {
         <Tab label="Fletes por Cliente" />
         <Tab label="Zona noreste" />        
         <Tab label="Fletes por Transporte" />
-
+        <Tab label="Comparativos" />
       </Tabs>
         {tabIndex === 0 && (
         <Box>
@@ -1949,239 +1995,403 @@ useEffect(() => {
 
           </Box>
         )} 
+        {tabIndex === 4 && (
+          <Box>
+            <Stack direction="row" spacing={2} alignItems="center" mb={2}>
+          <Typography variant="body2" fontWeight={700}>
+            Periodo:
+          </Typography>
+
+          <ToggleButtonGroup
+            size="small"
+            exclusive
+            value={selectedMonthPlaneacion}
+            onChange={(e, newValue) => {
+              // 👉 Si newValue es null, volvemos a Total general
+              setSelectedMonthPlaneacion(newValue);
+            }}
+            sx={{
+              flexWrap: "wrap",
+              gap: 0.5,
+            }}
+          >
+            {/* 🔹 TOTAL GENERAL */}
+            <ToggleButton
+              value={null}
+              sx={{
+                fontWeight: 700,
+                px: 1.5,
+                bgcolor: selectedMonthPlaneacion === null ? "primary.main" : undefined,
+                color: selectedMonthPlaneacion === null ? "#fff" : undefined,
+                "&:hover": {
+                  bgcolor:
+                    selectedMonthPlaneacion === null
+                      ? "primary.dark"
+                      : "action.hover",
+                },
+              }}
+            >
+              TOTAL GENERAL
+            </ToggleButton>
+
+            {/* 🔹 MESES DINÁMICOS */}
+            {mesesPlaneacion.map((m) => (
+              <ToggleButton
+                key={m.value}
+                value={m.value}
+                sx={{
+                  fontWeight: 600,
+                  px: 1.5,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {m.label}
+              </ToggleButton>
+            ))}
+          </ToggleButtonGroup>
+        </Stack>
 
 
-{tabIndex === 4 && (
-  <Box>
-    <Stack direction="row" spacing={2} alignItems="center" mb={2}>
-  <Typography variant="body2" fontWeight={700}>
-    Periodo:
-  </Typography>
+            {loadingPlaneacion && <LinearProgress sx={{ mb: 2 }} />}
 
-  <ToggleButtonGroup
-    size="small"
-    exclusive
-    value={selectedMonthPlaneacion}
-    onChange={(e, newValue) => {
-      // 👉 Si newValue es null, volvemos a Total general
-      setSelectedMonthPlaneacion(newValue);
-    }}
-    sx={{
-      flexWrap: "wrap",
-      gap: 0.5,
-    }}
-  >
-    {/* 🔹 TOTAL GENERAL */}
-    <ToggleButton
-      value={null}
-      sx={{
-        fontWeight: 700,
-        px: 1.5,
-        bgcolor: selectedMonthPlaneacion === null ? "primary.main" : undefined,
-        color: selectedMonthPlaneacion === null ? "#fff" : undefined,
-        "&:hover": {
-          bgcolor:
-            selectedMonthPlaneacion === null
-              ? "primary.dark"
-              : "action.hover",
-        },
-      }}
-    >
-      TOTAL GENERAL
-    </ToggleButton>
+            <Grid container spacing={3}>
 
-    {/* 🔹 MESES DINÁMICOS */}
-    {mesesPlaneacion.map((m) => (
-      <ToggleButton
-        key={m.value}
-        value={m.value}
-        sx={{
-          fontWeight: 600,
-          px: 1.5,
-          whiteSpace: "nowrap",
-        }}
-      >
-        {m.label}
-      </ToggleButton>
-    ))}
-  </ToggleButtonGroup>
-</Stack>
+              {/* =====================  VENTAS POR MUNICIPIO  ===================== */}
+              <Grid item xs={12} md={6}>
+                <Paper sx={{ p: 2, borderRadius: 2, height: "100%" }}>
+                
+                <Stack spacing={1.5} mb={2}>
+                  <Stack direction="row" justifyContent="space-between" alignItems="center">
+                    <Typography variant="subtitle1" fontWeight={800}>
+                      📍 Ventas por Municipio
+                    </Typography>
 
+                    <Typography fontWeight={800} color="primary">
+                      {currency(totalVentasMunicipio.venta_total)}
+                    </Typography>
+                  </Stack>
 
-    {loadingPlaneacion && <LinearProgress sx={{ mb: 2 }} />}
+                  <Stack direction="row" spacing={1.5}>
+                    {Object.entries(totalesPorEstado)
+                      .sort((a, b) => b[1].venta_total - a[1].venta_total)
+                      .map(([estado, t]) => (
+                        <Box
+                          key={estado}
+                          sx={{
+                            px: 1.5,
+                            py: 1,
+                            borderRadius: 1.5,
+                            bgcolor: "grey.100",
+                            minWidth: 140,
+                          }}
+                        >
+                          <Typography variant="caption">{estado}</Typography>
+                          <Typography fontWeight={700}>
+                            {currency(t.venta_total)}
+                          </Typography>
+                        </Box>
+                      ))}
+                  </Stack>
+                </Stack>          
 
-    <Grid container spacing={3}>
+                  <TableContainer>
+                    <Table size="small">
+                      <TableHead>
+                        <TableRow sx={{ bgcolor: "#F6F7F9" }}>
+                          <TableCell sx={{ fontWeight: 700 }}>Municipio</TableCell>
+                          <TableCell sx={{ fontWeight: 700 }}>Estado</TableCell>
+                          <TableCell sx={{ fontWeight: 700 }}>Venta</TableCell>
+                          <TableCell sx={{ fontWeight: 700 }}>Pedidos</TableCell>
+                          <TableCell sx={{ fontWeight: 700 }}>Clientes</TableCell>
+                        </TableRow>
+                      </TableHead>
 
-      {/* =====================  VENTAS POR MUNICIPIO  ===================== */}
-      <Grid item xs={12} md={6}>
-        <Paper sx={{ p: 2, borderRadius: 2, height: "100%" }}>
-        
-        <Stack spacing={1.5} mb={2}>
+          <TableBody>
+            {ventasOrdenadas.map((row, i) => (
+              <TableRow key={i} hover>
+                <TableCell>{row.MUNICIPIO}</TableCell>
+                <TableCell>{row.ESTADO}</TableCell>
+
+                <TableCell sx={{ fontWeight: 700 }}>
+                  {currency(row.venta_total)}
+                </TableCell>
+
+                <TableCell>{fmtNumber(row.pedidos)}</TableCell>
+                <TableCell>{fmtNumber(row.clientes)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+
+                  </TableContainer>
+                </Paper>
+              </Grid>
+
+              {/* =====================  COSTO LOGÍSTICO VS VENTA  ===================== */}
+              <Grid item xs={12} md={6}>
+                <Paper sx={{ p: 2, borderRadius: 2, height: "100%" }}>
+                <Stack spacing={1.5} mb={2}>
           <Stack direction="row" justifyContent="space-between" alignItems="center">
             <Typography variant="subtitle1" fontWeight={800}>
-              📍 Ventas por Municipio
+              🚚 Costos 
             </Typography>
 
-            <Typography fontWeight={800} color="primary">
-              {currency(totalVentasMunicipio.venta_total)}
-            </Typography>
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Typography fontWeight={800} color="error">
+                {currency(totalCostoGeneral.costo_flete)}
+              </Typography>
+              <Chip
+                label={`${totalCostoGeneral.porcentaje.toFixed(2)}%`}
+                color={percentColor(totalCostoGeneral.porcentaje)}
+                size="small"
+              />
+            </Stack>
           </Stack>
 
           <Stack direction="row" spacing={1.5}>
-            {Object.entries(totalesPorEstado)
-              .sort((a, b) => b[1].venta_total - a[1].venta_total)
-              .map(([estado, t]) => (
-                <Box
-                  key={estado}
-                  sx={{
-                    px: 1.5,
-                    py: 1,
-                    borderRadius: 1.5,
-                    bgcolor: "grey.100",
-                    minWidth: 140,
-                  }}
-                >
-                  <Typography variant="caption">{estado}</Typography>
-                  <Typography fontWeight={700}>
-                    {currency(t.venta_total)}
-                  </Typography>
-                </Box>
-              ))}
+            {Object.entries(totalesCostoPorEstado)
+              .sort(
+                (a, b) =>
+                  b[1].costo_flete / b[1].venta_total -
+                  a[1].costo_flete / a[1].venta_total
+              )
+              .map(([estado, t]) => {
+                const pct = (t.costo_flete / t.venta_total) * 100;
+                return (
+                  <Box
+                    key={estado}
+                    sx={{
+                      px: 1.5,
+                      py: 1,
+                      borderRadius: 1.5,
+                      bgcolor: "grey.100",
+                      minWidth: 140,
+                    }}
+                  >
+                    <Typography variant="caption">{estado}</Typography>
+                    <Typography fontWeight={700}>
+                      {pct.toFixed(2)}%
+                    </Typography>
+                  </Box>
+                );
+              })}
           </Stack>
-        </Stack>          
+        </Stack>
 
-          <TableContainer>
-            <Table size="small">
-              <TableHead>
-                <TableRow sx={{ bgcolor: "#F6F7F9" }}>
-                  <TableCell sx={{ fontWeight: 700 }}>Municipio</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Estado</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Venta</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Pedidos</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Clientes</TableCell>
-                </TableRow>
-              </TableHead>
 
-  <TableBody>
-    {ventasOrdenadas.map((row, i) => (
-      <TableRow key={i} hover>
-        <TableCell>{row.MUNICIPIO}</TableCell>
-        <TableCell>{row.ESTADO}</TableCell>
 
-        <TableCell sx={{ fontWeight: 700 }}>
-          {currency(row.venta_total)}
-        </TableCell>
+                  <TableContainer>
+                  <Table size="small">
+          <TableHead>
+            <TableRow sx={{ bgcolor: "#F6F7F9" }}>
+              <TableCell sx={{ fontWeight: 700 }}>Municipio</TableCell>
+              <TableCell sx={{ fontWeight: 700 }}>Estado</TableCell>
+              <TableCell sx={{ fontWeight: 700 }}>% Logístico</TableCell>
+              <TableCell sx={{ fontWeight: 700 }}>Costo</TableCell>
+              <TableCell sx={{ fontWeight: 700 }}>Venta</TableCell>
+            </TableRow>
+          </TableHead>
 
-        <TableCell>{fmtNumber(row.pedidos)}</TableCell>
-        <TableCell>{fmtNumber(row.clientes)}</TableCell>
-      </TableRow>
-    ))}
-  </TableBody>
-</Table>
+          <TableBody>
+          {costoOrdenado.map((row, i) => {
+          const pct = toNumber(row.porcentaje_logistico);
 
-          </TableContainer>
-        </Paper>
-      </Grid>
+          return (
+            <TableRow key={i}>
+              <TableCell>{row.MUNICIPIO}</TableCell>
+              <TableCell>{row.ESTADO}</TableCell>
 
-      {/* =====================  COSTO LOGÍSTICO VS VENTA  ===================== */}
-      <Grid item xs={12} md={6}>
-        <Paper sx={{ p: 2, borderRadius: 2, height: "100%" }}>
-        <Stack spacing={1.5} mb={2}>
-  <Stack direction="row" justifyContent="space-between" alignItems="center">
-    <Typography variant="subtitle1" fontWeight={800}>
-      🚚 Costos 
-    </Typography>
+              <TableCell>
+                <Chip
+                  label={`${pct.toFixed(2)}%`}
+                  color={percentColor(pct)}
+                  size="small"
+                />
+              </TableCell>
 
-    <Stack direction="row" spacing={1} alignItems="center">
-      <Typography fontWeight={800} color="error">
-        {currency(totalCostoGeneral.costo_flete)}
-      </Typography>
-      <Chip
-        label={`${totalCostoGeneral.porcentaje.toFixed(2)}%`}
-        color={percentColor(totalCostoGeneral.porcentaje)}
-        size="small"
-      />
-    </Stack>
-  </Stack>
+              <TableCell>{currency(row.costo_flete)}</TableCell>
+              <TableCell>{currency(row.venta_total)}</TableCell>
+            </TableRow>
+          );
+        })}
 
-  <Stack direction="row" spacing={1.5}>
-    {Object.entries(totalesCostoPorEstado)
-      .sort(
-        (a, b) =>
-          b[1].costo_flete / b[1].venta_total -
-          a[1].costo_flete / a[1].venta_total
-      )
-      .map(([estado, t]) => {
-        const pct = (t.costo_flete / t.venta_total) * 100;
-        return (
-          <Box
-            key={estado}
-            sx={{
-              px: 1.5,
-              py: 1,
-              borderRadius: 1.5,
-              bgcolor: "grey.100",
-              minWidth: 140,
-            }}
-          >
-            <Typography variant="caption">{estado}</Typography>
-            <Typography fontWeight={700}>
-              {pct.toFixed(2)}%
-            </Typography>
+          </TableBody>
+        </Table>
+
+                  </TableContainer>
+                </Paper>
+              </Grid>
+
+            </Grid>
           </Box>
-        );
-      })}
-  </Stack>
-</Stack>
+        )}
+        {tabIndex === 6 && (
+          <Box>
 
+            <Typography variant="h5" fontWeight={800} mb={2}>
+              📊 Comparativo Logístico
+            </Typography>
 
+            {loadingComparativos && <LinearProgress />}
 
-          <TableContainer>
-           <Table size="small">
-  <TableHead>
-    <TableRow sx={{ bgcolor: "#F6F7F9" }}>
-      <TableCell sx={{ fontWeight: 700 }}>Municipio</TableCell>
-      <TableCell sx={{ fontWeight: 700 }}>Estado</TableCell>
-      <TableCell sx={{ fontWeight: 700 }}>% Logístico</TableCell>
-      <TableCell sx={{ fontWeight: 700 }}>Costo</TableCell>
-      <TableCell sx={{ fontWeight: 700 }}>Venta</TableCell>
-    </TableRow>
-  </TableHead>
+            {!loadingComparativos && comparativos && (
+              <>
+                {/* 🔥 RESUMEN GENERAL */}
+                <Paper sx={{ p: 2, mb: 3, borderRadius: 2 }}>
+                  <Typography fontWeight={700}>
+                    {comparativos.periodo}
+                  </Typography>
 
-  <TableBody>
-   {costoOrdenado.map((row, i) => {
-  const pct = toNumber(row.porcentaje_logistico);
+                  <Stack direction="row" spacing={2} mt={2}>
+                    {Object.entries(comparativos.resumen).map(([k, v]) => (
+                      <Chip
+                        key={k}
+                        label={`${k}: ${v}`}
+                        color="primary"
+                        variant="outlined"
+                      />
+                    ))}
+                  </Stack>
+                </Paper>
 
-  return (
-    <TableRow key={i}>
-      <TableCell>{row.MUNICIPIO}</TableCell>
-      <TableCell>{row.ESTADO}</TableCell>
+                {/* 🔥 BLOQUES POR TIPO */}
+                {Object.entries(comparativos.data).map(([tipo, items]) => {
 
-      <TableCell>
-        <Chip
-          label={`${pct.toFixed(2)}%`}
-          color={percentColor(pct)}
-          size="small"
-        />
-      </TableCell>
+                  const totalAlta = items.reduce((acc, i) => acc + i.flete_alta, 0);
+                  const totalBaja = items.reduce((acc, i) => acc + i.flete_baja, 0);
 
-      <TableCell>{currency(row.costo_flete)}</TableCell>
-      <TableCell>{currency(row.venta_total)}</TableCell>
-    </TableRow>
-  );
-})}
+                  const diff = totalAlta - totalBaja;
+                  const pct = totalAlta + totalBaja > 0
+                    ? (totalAlta / (totalAlta + totalBaja)) * 100
+                    : 0;
 
-  </TableBody>
-</Table>
+                  return (
+                    <Paper key={tipo} sx={{ p: 2, mb: 3, borderRadius: 2 }}>
 
-          </TableContainer>
-        </Paper>
-      </Grid>
+                      {/* HEADER */}
+                      <Stack direction="row" justifyContent="space-between">
+                        <Typography variant="h6" fontWeight={800}>
+                          {tipo}
+                        </Typography>
 
-    </Grid>
-  </Box>
-)}
+                        <Chip
+                          label={`Alta ${pct.toFixed(1)}%`}
+                          color={pct > 60 ? "error" : "success"}
+                        />
+                      </Stack>
 
+                      {/* KPIs */}
+                      <Stack direction="row" spacing={3} mt={2} mb={2}>
+                        <StatMini label="Flete Alta" value={currency(totalAlta)} />
+                        <StatMini label="Flete Baja" value={currency(totalBaja)} />
+                        <StatMini label="Diferencia" value={currency(diff)} />
+                      </Stack>
+
+                      {/* TABLA */}
+                      <TableContainer>
+                        <Table size="small">
+
+                          <TableHead>
+                            <TableRow>
+                              <TableCell>Municipio</TableCell>
+
+                              <TableCell>Pedidos A</TableCell>
+                              <TableCell>Pedidos B</TableCell>
+
+                              <TableCell>Venta A</TableCell>
+                              <TableCell>Venta B</TableCell>
+
+                              <TableCell>Flete A</TableCell>
+                              <TableCell>Flete B</TableCell>
+
+                              <TableCell>% Flete A</TableCell>
+                              <TableCell>% Flete B</TableCell>
+
+                              <TableCell>Diagnóstico</TableCell>
+                            </TableRow>
+                          </TableHead>
+
+                          <TableBody>
+                            {items.map((row, i) => {
+
+                              const pctAlta = row.porcentaje_flete_alta_fmt;
+                              const pctBaja = row.porcentaje_flete_baja_fmt;
+
+                              return (
+                                <TableRow key={i} hover>
+
+                                  {/* 📍 MUNICIPIO */}
+                                  <TableCell>
+                                    <strong>{row.municipio}</strong>
+                                  </TableCell>
+
+                                  {/* 📦 PEDIDOS */}
+                                  <TableCell>
+                                    <Chip label={row.pedidos_alta} size="small" />
+                                  </TableCell>
+
+                                  <TableCell>
+                                    <Chip label={row.pedidos_baja} size="small" />
+                                  </TableCell>
+
+                                  {/* 💰 VENTAS */}
+                                  <TableCell>{row.venta_alta_fmt}</TableCell>
+                                  <TableCell>{row.venta_baja_fmt}</TableCell>
+
+                                  {/* 🚛 FLETES */}
+                                  <TableCell sx={{ color: "error.main", fontWeight: 600 }}>
+                                    {row.flete_alta_fmt}
+                                  </TableCell>
+
+                                  <TableCell sx={{ color: "info.main", fontWeight: 600 }}>
+                                    {row.flete_baja_fmt}
+                                  </TableCell>
+
+                                  {/* 📊 % FLETE */}
+                                  <TableCell>
+                                    <Chip
+                                      label={pctAlta}
+                                      color={colorFlete(pctAlta)}
+                                      size="small"
+                                    />
+                                  </TableCell>
+
+                                  <TableCell>
+                                    <Chip
+                                      label={pctBaja}
+                                      color={colorFlete(pctBaja)}
+                                      size="small"
+                                    />
+                                  </TableCell>
+
+                                  {/* 🔥 DIAGNÓSTICO */}
+                                  <TableCell>
+                                    <Chip
+                                      label={tendenciaTexto(row)}
+                                      color={
+                                        tendenciaTexto(row).includes("BAJA")
+                                          ? "error"
+                                          : "success"
+                                      }
+                                      size="small"
+                                    />
+                                  </TableCell>
+
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+
+                        </Table>
+                      </TableContainer>
+
+                    </Paper>
+                  );
+                })}
+              </>
+            )}
+          </Box>
+        )}
 
 
 

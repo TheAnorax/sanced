@@ -608,6 +608,576 @@ const getProductividadAreas = async (req, res) => {
   }
 };
 
+const getEmpleadosPorDepartamento = async (req, res) => {
+  try {
+
+    const query = `
+      SELECT
+        e.id_empleado,
+        e.clave_empleado,
+        e.nombre_completo,
+        e.departamento,
+        e.puesto,
+        e.estatus,
+        e.fecha_ingreso,
+        u.id_usu,
+        u.name AS usuario,
+        u.role
+      FROM rh_empleados e
+      LEFT JOIN usuarios u 
+        ON u.id_usu = e.id_usuario
+      ORDER BY e.departamento, e.nombre_completo
+    `;
+
+    const [rows] = await pool.query(query);
+
+    // Agrupar por departamento
+    const departamentos = {};
+
+    rows.forEach(emp => {
+
+      if (!departamentos[emp.departamento]) {
+        departamentos[emp.departamento] = [];
+      }
+
+      departamentos[emp.departamento].push(emp);
+
+    });
+
+    res.json({
+      ok: true,
+      departamentos
+    });
+
+  } catch (error) {
+
+    console.error("getEmpleadosPorDepartamento error:", error);
+
+    res.status(500).json({
+      ok: false,
+      message: "Error al obtener empleados",
+      error: error.message
+    });
+
+  }
+};
+
+const getEmpleadoDetalle = async (req, res) => {
+
+  try {
+
+    const { id } = req.params;
+
+    const query = `
+      SELECT
+        e.id_empleado,
+        e.clave_empleado,
+        e.nombre_completo,
+        e.genero,
+        e.estatus,
+        e.fecha_ingreso,
+        e.tipo_nomina,
+        e.frecuencia_nomina,
+        e.unidad_negocio,
+        e.departamento,
+        e.centro_costo,
+        e.puesto,
+        e.id_cedis,
+        e.created_at,
+        e.updated_at,
+
+        u.id_usu,
+        u.name AS usuario,
+        u.email,
+        u.role
+
+      FROM rh_empleados e
+      LEFT JOIN usuarios u
+        ON u.id_usu = e.id_usuario
+      WHERE e.id_empleado = ?
+    `;
+
+    const [rows] = await pool.query(query, [id]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({
+        ok: false,
+        message: "Empleado no encontrado"
+      });
+    }
+
+    res.json({
+      ok: true,
+      empleado: rows[0]
+    });
+
+  } catch (error) {
+
+    console.error("getEmpleadoDetalle error:", error);
+
+    res.status(500).json({
+      ok: false,
+      message: "Error al obtener empleado",
+      error: error.message
+    });
+
+  }
+};
+
+const updateEmpleado = async (req, res) => {
+  try {
+
+    const { id } = req.params;
+
+    const {
+      clave_empleado,
+      nombre_completo,
+      genero,
+      estatus,
+      fecha_ingreso,
+      tipo_nomina,
+      frecuencia_nomina,
+      unidad_negocio,
+      departamento,
+      centro_costo,
+      puesto
+    } = req.body;
+
+    if (!id) {
+      return res.status(400).json({
+        ok: false,
+        message: "ID de empleado requerido"
+      });
+    }
+
+    const query = `
+      UPDATE rh_empleados
+      SET
+        clave_empleado = ?,
+        nombre_completo = ?,
+        genero = ?,
+        estatus = ?,
+        fecha_ingreso = ?,
+        tipo_nomina = ?,
+        frecuencia_nomina = ?,
+        unidad_negocio = ?,
+        departamento = ?,
+        centro_costo = ?,
+        puesto = ?
+      WHERE id_empleado = ?
+    `;
+
+    const values = [
+      clave_empleado,
+      nombre_completo,
+      genero,
+      estatus,
+      fecha_ingreso,
+      tipo_nomina,
+      frecuencia_nomina,
+      unidad_negocio,
+      departamento,
+      centro_costo,
+      puesto,
+      id
+    ];
+
+    const [result] = await pool.query(query, values);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        ok: false,
+        message: "Empleado no encontrado"
+      });
+    }
+
+    return res.json({
+      ok: true,
+      message: "Empleado actualizado correctamente"
+    });
+
+  } catch (error) {
+
+    console.error("updateEmpleado error:", error);
+
+    res.status(500).json({
+      ok: false,
+      message: "Error actualizando empleado",
+      error: error.message
+    });
+
+  }
+};
+
+const createEmpleado = async (req, res) => {
+
+  try {
+
+    const data = req.body;
+
+    if (!data.clave_empleado || !data.nombre_completo) {
+      return res.status(400).json({
+        ok: false,
+        message: "Clave y nombre del empleado son obligatorios"
+      });
+    }
+
+    // 🔎 Validar si la clave ya existe
+    const [exist] = await pool.query(
+      "SELECT id_empleado FROM rh_empleados WHERE clave_empleado = ? LIMIT 1",
+      [data.clave_empleado]
+    );
+
+    if (exist.length > 0) {
+      return res.status(400).json({
+        ok: false,
+        message: `La clave de empleado ${data.clave_empleado} ya está registrada`
+      });
+    }
+
+    const query = `
+      INSERT INTO rh_empleados
+      (
+        clave_empleado,
+        nombre_completo,
+        genero,
+        estatus,
+        fecha_ingreso,
+        tipo_nomina,
+        frecuencia_nomina,
+        unidad_negocio,
+        departamento,
+        puesto
+      )
+      VALUES (?,?,?,?,?,?,?,?,?,?)
+    `;
+
+    const values = [
+      data.clave_empleado,
+      data.nombre_completo,
+      data.genero,
+      data.estatus,
+      data.fecha_ingreso,
+      data.tipo_nomina,
+      data.frecuencia_nomina,
+      data.unidad_negocio,
+      data.departamento,
+      data.puesto
+    ];
+
+    await pool.query(query, values);
+
+    return res.json({
+      ok: true,
+      message: "Colaborador creado correctamente"
+    });
+
+  } catch (error) {
+
+    console.error(error);
+
+    res.status(500).json({
+      ok: false,
+      message: "Error creando colaborador"
+    });
+
+  }
+
+};
+
+const obtenerAmonestacionesEmpleado = async (req, res) => {
+
+  try {
+
+    const { id } = req.params;
+
+    const query = `
+      SELECT
+        a.id,
+        a.fecha,
+        a.descripcion,
+        a.reincidencia,
+        a.tipo_sancion,
+        a.dias_suspension,
+        a.afecta_vales,
+        f.nombre_falta,
+        f.categoria,
+        f.nivel_gravedad
+      FROM rh_amonestaciones a
+      LEFT JOIN rh_faltas_catalogo f
+        ON f.id_falta = a.id_falta
+      WHERE a.id_empleado = ?
+      ORDER BY a.fecha DESC
+    `;
+
+    const [amonestaciones] = await pool.query(query, [id]);
+
+    // 🔹 ahora obtenemos evidencias
+    for (const amo of amonestaciones) {
+
+      const [evidencias] = await pool.query(`
+        SELECT
+          id,
+          archivo,
+          descripcion
+        FROM rh_amonestaciones_evidencias
+        WHERE id_amonestacion = ?
+      `, [amo.id]);
+
+      amo.evidencias = evidencias;
+
+    }
+
+    res.json({
+      ok: true,
+      amonestaciones
+    });
+
+  } catch (error) {
+
+    console.error(error);
+
+    res.status(500).json({
+      ok: false,
+      message: "Error obteniendo amonestaciones"
+    });
+
+  }
+
+};
+
+const crearAmonestacion = async (req, res) => {
+
+  const connection = await pool.getConnection();
+
+  try {
+
+    const {
+      id_empleado,
+      id_falta,
+      descripcion,
+      fecha,
+      creado_por
+    } = req.body;
+
+    if (!id_empleado || !id_falta) {
+      return res.status(400).json({
+        ok: false,
+        message: "Empleado y falta son requeridos"
+      });
+    }
+
+    await connection.beginTransaction();
+
+    // 1️⃣ calcular reincidencia
+    const [reincidenciaResult] = await connection.query(
+      `
+      SELECT COUNT(*) + 1 AS reincidencia
+      FROM rh_amonestaciones
+      WHERE id_empleado = ?
+      AND id_falta = ?
+      `,
+      [id_empleado, id_falta]
+    );
+
+    const reincidencia = reincidenciaResult[0].reincidencia;
+
+    // 2️⃣ buscar regla de sanción
+    const [regla] = await connection.query(
+      `
+      SELECT *
+      FROM rh_faltas_reglas
+      WHERE id_falta = ?
+      AND reincidencia = ?
+      `,
+      [id_falta, reincidencia]
+    );
+
+    let tipo_sancion = "Amonestación";
+    let dias_suspension = 0;
+    let afecta_vales = 0;
+
+    if (regla.length) {
+      tipo_sancion = regla[0].tipo_sancion;
+      dias_suspension = regla[0].dias_suspension;
+      afecta_vales = regla[0].afecta_vales;
+    }
+
+    // 3️⃣ insertar amonestación
+    const insertQuery = `
+      INSERT INTO rh_amonestaciones
+      (
+        id_empleado,
+        id_falta,
+        reincidencia,
+        tipo_sancion,
+        dias_suspension,
+        afecta_vales,
+        fecha,
+        descripcion,
+        creado_por
+      )
+      VALUES (?,?,?,?,?,?,?,?,?)
+    `;
+
+    const [result] = await connection.query(insertQuery, [
+  id_empleado,
+  id_falta,
+  reincidencia,
+  tipo_sancion,
+  dias_suspension,
+  afecta_vales,
+  fecha,
+  descripcion,
+  creado_por
+]);
+
+    await connection.commit();
+
+    res.json({
+  ok: true,
+  message: "Amonestación registrada",
+  id_amonestacion: result.insertId,
+  reincidencia,
+  tipo_sancion
+});
+
+  } catch (error) {
+
+    await connection.rollback();
+
+    console.error(error);
+
+    res.status(500).json({
+      ok: false,
+      message: "Error creando amonestación"
+    });
+
+  } finally {
+
+    connection.release();
+
+  }
+
+};
+
+const getFaltasCatalogo = async (req, res) => {
+  try {
+
+    const query = `
+      SELECT
+        id_falta,
+        nombre_falta,
+        categoria,
+        nivel_gravedad
+      FROM rh_faltas_catalogo
+      ORDER BY nombre_falta
+    `;
+
+    const [rows] = await pool.query(query);
+
+    res.json({
+      ok: true,
+      faltas: rows
+    });
+
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      ok: false,
+      message: "Error obteniendo catálogo de faltas"
+    });
+  }
+};
+
+
+const subirEvidenciaAmonestacion = async (req, res) => {
+
+  try {
+
+    const { id_amonestacion, descripcion } = req.body;
+
+    if (!req.file) {
+      return res.status(400).json({
+        ok: false,
+        message: "No se recibió archivo"
+      });
+    }
+
+    const archivo = req.file.filename;
+
+    const query = `
+      INSERT INTO rh_amonestaciones_evidencias
+      (
+        id_amonestacion,
+        archivo,
+        descripcion
+      )
+      VALUES (?,?,?)
+    `;
+
+    await pool.query(query, [
+      id_amonestacion,
+      archivo,
+      descripcion || null
+    ]);
+
+    res.json({
+      ok: true,
+      archivo
+    });
+
+  } catch (error) {
+
+    console.error(error);
+
+    res.status(500).json({
+      ok: false,
+      message: "Error subiendo evidencia"
+    });
+
+  }
+
+};
+
+const obtenerEvidenciasAmonestacion = async (req, res) => {
+
+  try {
+
+    const { id } = req.params;
+
+    const query = `
+      SELECT
+        id,
+        archivo,
+        descripcion,
+        created_at
+      FROM rh_amonestaciones_evidencias
+      WHERE id_amonestacion = ?
+      ORDER BY created_at DESC
+    `;
+
+    const [rows] = await pool.query(query, [id]);
+
+    res.json({
+      ok: true,
+      evidencias: rows
+    });
+
+  } catch (error) {
+
+    console.error(error);
+
+    res.status(500).json({
+      ok: false,
+      message: "Error obteniendo evidencias"
+    });
+
+  }
+
+};
+
 /* =========================
    EXPORTS
    ========================= */
@@ -631,7 +1201,14 @@ module.exports = {
   importTraspasosExcel,
 
     // RH CEDIS
-  getProductividadAreas
-
-  
+  getProductividadAreas,
+  getEmpleadosPorDepartamento,
+  getEmpleadoDetalle,
+  updateEmpleado,
+  createEmpleado,
+  obtenerAmonestacionesEmpleado,
+  crearAmonestacion,
+  getFaltasCatalogo,
+  subirEvidenciaAmonestacion,
+  obtenerEvidenciasAmonestacion
 };

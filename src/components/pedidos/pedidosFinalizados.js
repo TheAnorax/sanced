@@ -405,50 +405,97 @@ function Finalizados() {
       tableHeaders = [];
 
     if (mode === "surtido") {
-      const totalProductos = pedidoDetalles.length;
-      const y = drawHeader([
-        `Bahías: ${selectedPedido.ubi_bahia || "N/A"}`,
-        `Pedido: ${selectedPedido.tipo}: ${selectedPedido.pedido} (Total de Códigos: ${totalProductos})`,
-      ]);
 
-      tableHeaders = [
-        "Código",
-        "Descripción",
-        "Cantidad",
-        "Surtido",
-        "No Enviado",
-        "Motivo",
-        "Unificado",
-      ];
-      tableRows = pedidoDetalles.map((d) => [
-        d.codigo_ped,
-        d.descripcion,
-        d.cantidad,
-        d.cant_surti,
-        d.cant_no_env,
-        d.motivo,
-        d.unificado,
-      ]);
+  const doc = new jsPDF();
 
-      doc.autoTable({
-        head: [tableHeaders],
-        body: tableRows,
-        startY: y,
-        didParseCell: function (data) {
-          const row = data.row.raw;
-          const cantNoEnviado = Number(row[4]);
-          if (!isNaN(cantNoEnviado) && cantNoEnviado > 1) {
-            data.cell.styles.fillColor = [255, 0, 0];
-            data.cell.styles.textColor = [255, 255, 255];
-          }
-        },
-      });
+  const itemTipo = selectedPedido.tipo || "";
+  const totalCodigos = pedidoDetalles.length;
+  const bahiaFromItems = selectedPedido.ubi_bahia || "No asignadas";
+  const route = pedidoDetalles[0]?.routeName?.trim() || "N/A";
+ const nombreCliente = pedidoDetalles[0]?.nombre_cliente?.trim() || "N/A";
 
-      doc.setFontSize(12);
+  const unidos = pedidoDetalles.filter((i) => i.unido === 1);
+  const noUnidos = pedidoDetalles.filter((i) => i.unido !== 1);
 
-      doc.save(`Pedido_Surtido_${selectedPedido.pedido}.pdf`);
-      return;
-    }
+  const sortedItems = [...unidos, ...noUnidos].sort(
+    (a, b) => b.cant_no_env - a.cant_no_env
+  );
+
+  doc.setFontSize(14);
+  doc.text(
+    `Pedido: ${itemTipo} ${pedido} (Total códigos: ${totalCodigos})`,
+    10,
+    10
+  );
+
+  doc.setFontSize(11);
+  doc.text(`Bahías: ${bahiaFromItems}`, 10, 17);
+  doc.text(
+    `Cliente: ${nombreCliente}    |    Tipo de Ruta: ${route}`,
+    10,
+    24
+  );
+
+  let startY = 32;
+
+  
+  const tableHeaders = [
+    "Código",
+    "Descripción",
+    "Cantidad",
+    "Cant Surti",
+    "Cant No Enviado",
+    "Motivo",
+    "Unificado",
+    "Unido"
+  ];
+
+  const tableData = sortedItems.map((item) => {
+    const highlight = item.cant_no_env > 0;
+    const isUnido = item.unido === 1;
+
+    return [
+      item.codigo_ped,
+      item.descripcion,
+      item.cantidad,
+      item.cant_surti,
+      item.cant_no_env,
+      item.motivo || "",
+      item.unificado || "",
+      isUnido ? "SI" : "",
+      highlight,
+      isUnido
+    ];
+  });
+
+  doc.autoTable({
+    head: [tableHeaders],
+    body: tableData.map((row) => row.slice(0, -2)),
+    startY,
+    didParseCell(data) {
+
+      const rowData = tableData[data.row.index];
+
+      const highlight = rowData[rowData.length - 2];
+      const isUnido = rowData[rowData.length - 1];
+
+      if (data.section === "body") {
+
+        if (highlight) {
+          data.cell.styles.fillColor = [255, 0, 0];
+          data.cell.styles.textColor = [255, 255, 255];
+        }
+
+        if (isUnido && data.column.dataKey === tableHeaders.length - 1) {
+          data.cell.text = ["SI"];
+          data.cell.styles.textColor = [165, 42, 42];
+        }
+      }
+    },
+  });
+
+  doc.save(`Pedido-${pedido}.pdf`);
+}
 
     // Resto del código permanece sin cambios para los otros modos...
   };

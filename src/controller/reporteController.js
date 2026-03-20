@@ -2161,6 +2161,199 @@ const getCostoLogisticoMunicipio = async (req, res) => {
   }
 };
 
+      const getVentasAltasBajas = async (req, res) => {
+        try {
+
+          const [rows] = await pool.query(`
+            SELECT 
+              p.ESTADO,
+              p.MUNICIPIO,
+
+              CASE 
+                WHEN cc.cliente IS NOT NULL THEN 'CROSS'
+                WHEN p.ESTADO LIKE '%CMX%' THEN 'CDMX'
+                WHEN p.ESTADO LIKE '%MEX%' THEN 'EDOMEX'
+                ELSE 'OTROS'
+              END AS tipo_cliente,
+
+              -- 🔴 ALTA DEMANDA
+              SUM(CASE 
+                WHEN YEAR(f.fecha)=2025 AND MONTH(f.fecha) IN (9,10,11) 
+                THEN 1 ELSE 0 
+              END) AS pedidos_alta,
+
+              SUM(CASE 
+                WHEN YEAR(f.fecha)=2025 AND MONTH(f.fecha) IN (9,10,11) 
+                THEN CAST(p.SUMA_FLETE AS DECIMAL(12,2)) ELSE 0 
+              END) AS flete_alta,
+
+              -- 💰 VENTA ALTA
+              SUM(CASE 
+                WHEN YEAR(f.fecha)=2025 AND MONTH(f.fecha) IN (9,10,11)
+                THEN CAST(REPLACE(p.total_api, ',', '') AS DECIMAL(12,2)) 
+                ELSE 0 
+              END) AS venta_alta,
+
+              -- 🔵 BAJA DEMANDA
+              SUM(CASE 
+                WHEN YEAR(f.fecha)=2026 AND MONTH(f.fecha) IN (1,2,3) 
+                THEN 1 ELSE 0 
+              END) AS pedidos_baja,
+
+              SUM(CASE 
+                WHEN YEAR(f.fecha)=2026 AND MONTH(f.fecha) IN (1,2,3) 
+                THEN CAST(p.SUMA_FLETE AS DECIMAL(12,2)) ELSE 0 
+              END) AS flete_baja,
+
+              -- 💰 VENTA BAJA
+              SUM(CASE 
+                WHEN YEAR(f.fecha)=2026 AND MONTH(f.fecha) IN (1,2,3)
+                THEN CAST(REPLACE(p.total_api, ',', '') AS DECIMAL(12,2)) 
+                ELSE 0 
+              END) AS venta_baja,
+
+              -- 📊 COSTO PROMEDIO
+              SUM(CASE 
+                WHEN YEAR(f.fecha)=2025 AND MONTH(f.fecha) IN (9,10,11) 
+                THEN CAST(p.SUMA_FLETE AS DECIMAL(12,2)) ELSE 0 END)
+              / NULLIF(SUM(CASE 
+                WHEN YEAR(f.fecha)=2025 AND MONTH(f.fecha) IN (9,10,11) 
+                THEN 1 END),0)
+              AS costo_promedio_alta,
+
+              SUM(CASE 
+                WHEN YEAR(f.fecha)=2026 AND MONTH(f.fecha) IN (1,2,3) 
+                THEN CAST(p.SUMA_FLETE AS DECIMAL(12,2)) ELSE 0 END)
+              / NULLIF(SUM(CASE 
+                WHEN YEAR(f.fecha)=2026 AND MONTH(f.fecha) IN (1,2,3) 
+                THEN 1 END),0)
+              AS costo_promedio_baja
+
+            FROM paqueteria p
+
+            LEFT JOIN (
+              SELECT id, STR_TO_DATE(NULLIF(FECHA_DE_FACTURA,''), '%Y-%m-%d') AS fecha
+              FROM paqueteria
+            ) f ON f.id = p.id
+
+            LEFT JOIN clientes_cross cc
+              ON CAST(p.\`NUM. CLIENTE\` AS UNSIGNED) = cc.cliente
+
+            WHERE 
+              f.fecha IS NOT NULL
+              AND (
+                (YEAR(f.fecha)=2025 AND MONTH(f.fecha) IN (9,10,11))
+                OR
+                (YEAR(f.fecha)=2026 AND MONTH(f.fecha) IN (1,2,3))
+              )
+
+            GROUP BY 
+              p.ESTADO,
+              p.MUNICIPIO,
+              tipo_cliente
+
+            HAVING tipo_cliente IN ('CROSS','CDMX','EDOMEX')
+
+            ORDER BY p.MUNICIPIO ASC
+          `);
+
+          // 🔥 POST-PROCESAMIENTO
+          const dataProcesada = rows.map(row => {
+
+            const fleteAlta = Number(row.flete_alta || 0);
+            const fleteBaja = Number(row.flete_baja || 0);
+
+            const ventaAlta = Number(row.venta_alta || 0);
+            const ventaBaja = Number(row.venta_baja || 0);
+
+            const totalFlete = fleteAlta + fleteBaja;
+
+            // 📊 Distribución
+            const porcentajeAlta = totalFlete > 0 ? (fleteAlta / totalFlete) * 100 : 0;
+            const porcentajeBaja = totalFlete > 0 ? (fleteBaja / totalFlete) * 100 : 0;
+
+            const diferenciaPorcentaje = porcentajeAlta - porcentajeBaja;
+
+            // 💰 RENTABILIDAD
+            const pctFleteAlta = ventaAlta > 0 ? (fleteAlta / ventaAlta) * 100 : 0;
+            const pctFleteBaja = ventaBaja > 0 ? (fleteBaja / ventaBaja) * 100 : 0;
+
+            return {
+              estado: row.ESTADO,
+              municipio: row.MUNICIPIO,
+              tipo_cliente: row.tipo_cliente,
+
+              pedidos_alta: row.pedidos_alta,
+              pedidos_baja: row.pedidos_baja,
+
+              // 💰 VENTAS
+
+              venta_alta_fmt: `$${ventaAlta.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`,
+              venta_baja_fmt: `$${ventaBaja.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`,
+
+              // 🚛 FLETES
+
+              flete_alta_fmt: `$${fleteAlta.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`,
+              flete_baja_fmt: `$${fleteBaja.toLocaleString('es-MX', { minimumFractionDigits: 2 })}`,
+
+              // 📊 COSTOS PROMEDIO
+
+              costo_promedio_alta_fmt: `$${Number(row.costo_promedio_alta || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}`,
+              costo_promedio_baja_fmt: `$${Number(row.costo_promedio_baja || 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}`,
+
+              // 📊 PORCENTAJES
+
+              porcentaje_alta_fmt: `${porcentajeAlta.toFixed(2)}%`,
+              porcentaje_baja_fmt: `${porcentajeBaja.toFixed(2)}%`,
+
+             
+              diferencia_porcentaje_fmt: `${diferenciaPorcentaje.toFixed(2)}%`,
+
+              // 💰 % COSTO VS VENTA (🔥 CLAVE DE NEGOCIO)
+
+              porcentaje_flete_alta_fmt: `${pctFleteAlta.toFixed(2)}%`,
+              porcentaje_flete_baja_fmt: `${pctFleteBaja.toFixed(2)}%`,
+
+              // 🔥 TENDENCIA
+              tendencia:
+                diferenciaPorcentaje > 10 ? 'ALTA_DOMINA' :
+                diferenciaPorcentaje < -10 ? 'BAJA_DOMINA' :
+                'ESTABLE'
+            };
+          });
+
+          // 🔥 AGRUPACIÓN
+          const agrupado = dataProcesada.reduce((acc, item) => {
+            if (!acc[item.tipo_cliente]) acc[item.tipo_cliente] = [];
+            acc[item.tipo_cliente].push(item);
+            return acc;
+          }, {
+            CROSS: [],
+            CDMX: [],
+            EDOMEX: []
+          });
+
+          res.status(200).json({
+            periodo: "Alta: Sep-Nov 2025 vs Baja: Ene-Mar 2026",
+            total_registros: dataProcesada.length,
+
+            resumen: {
+              CROSS: agrupado.CROSS.length,
+              CDMX: agrupado.CDMX.length,
+              EDOMEX: agrupado.EDOMEX.length
+            },
+
+            data: agrupado
+          });
+
+        } catch (error) {
+          console.error("Error en getVentasAltasBajas:", error);
+          res.status(500).json({
+            message: "Error al obtener comparativo",
+            error: error.message
+          });
+        }
+      };
 
 module.exports = {
   getPrduSurtido,
@@ -2178,5 +2371,6 @@ module.exports = {
   getHistorico2025Transportes,
   getFletesClientes,
   getVentasPorMunicipio,
-  getCostoLogisticoMunicipio
+  getCostoLogisticoMunicipio,
+  getVentasAltasBajas
 };

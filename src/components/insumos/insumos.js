@@ -27,8 +27,13 @@ import EditIcon from "@mui/icons-material/Edit";
 import SyncAltIcon from "@mui/icons-material/SyncAlt";
 import Autocomplete from "@mui/material/Autocomplete";
 import CircularProgress from "@mui/material/CircularProgress";
+import LightModeIcon from "@mui/icons-material/LightMode";
+import DarkModeIcon from "@mui/icons-material/DarkMode";
+import WbTwilightIcon from "@mui/icons-material/WbTwilight";
 
 function Insumos() {
+  const hoy = new Date().getDay();
+  const esDiaLaboral = hoy >= 1 && hoy <= 5;
   const user = JSON.parse(localStorage.getItem("user"));
   const role = user?.role;
   const [insumos, setInsumos] = useState([]);
@@ -891,22 +896,24 @@ function Insumos() {
           </Button>
         )}
 
-        <Button
-          variant="outlined"
-          color="success"
-          startIcon={<AddIcon />}
-          onClick={() => {
-            setInsumoSeleccionado(null);
-            setCantidadSolicitud("");
-            setOpenSolicitud(true);
-          }}
-          sx={{
-            borderRadius: 2,
-            textTransform: "none",
-          }}
-        >
-          Solicitar Insumo
-        </Button>
+        {esDiaLaboral && (
+          <Button
+            variant="outlined"
+            color="success"
+            startIcon={<AddIcon />}
+            onClick={() => {
+              setInsumoSeleccionado(null);
+              setCantidadSolicitud("");
+              setOpenSolicitud(true);
+            }}
+            sx={{
+              borderRadius: 2,
+              textTransform: "none",
+            }}
+          >
+            Solicitar Insumo
+          </Button>
+        )}
 
         {(role === "Admin" || role === "Ins") && (
           <Button
@@ -1712,20 +1719,29 @@ function Insumos() {
                 gap={1}
                 mt={1}
               >
-                <img
-                  src={esHoy ? "/sol.png" : "/luna.png"}
-                  alt="turno"
-                  style={{ width: 26, height: 26 }}
-                />
                 <Typography variant="body2" fontWeight="bold">
-                  {esHoy ? "Se procesará hoy" : "Se procesará mañana"}
+                  {esHoy ? (
+                    <>
+                      <LightModeIcon sx={{ color: "#FFC107" }} />
+                      Se procesará hoy
+                    </>
+                  ) : (
+                    <>
+                      <DarkModeIcon sx={{ color: "#1976D2" }} />
+                      Se procesará mañana
+                    </>
+                  )}
+                  <br />
+                  {esHoy
+                    ? "Horario: 7:00 AM - 4:00 PM"
+                    : "Horario: 4:00 PM - 7:00 AM"}
                 </Typography>
               </Box>
               {/* Imagen */}
               <Box mt={2} textAlign="center">
                 {insumoSeleccionado.foto_insumos ? (
                   <img
-                    src={`http://localhost:3007/uploads/Insumos/${insumoSeleccionado.foto_insumos}`}
+                    src={`http://66.232.105.87:3007/uploads/Insumos/${insumoSeleccionado.foto_insumos}`}
                     alt="insumo"
                     style={{
                       width: 80,
@@ -1766,15 +1782,6 @@ function Insumos() {
                   insumoSeleccionado.minimo_compra
                 ).toLocaleString()}`}
               />
-
-              {/* Fecha estimada */}
-              <Box mt={1}>
-                <Typography variant="body2" fontWeight="bold">
-                  {esHoy
-                    ? "Se procesará hoy (7:00 AM - 4:00 PM)"
-                    : "Se procesará  para mañana (4:00 PM - 7:00 AM)"}
-                </Typography>
-              </Box>
 
               {/* Tiempo de entrega abajo */}
               <Typography variant="caption" color="text.secondary">

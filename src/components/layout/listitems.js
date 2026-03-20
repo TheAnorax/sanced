@@ -153,6 +153,15 @@ export const mainListItems = (user) => {
     },
     {
       role: [
+        "Admin",         
+        "AdminTran",
+      ],
+      path: "/dashboard/AdminTransportes",
+      icon: <GarageIcon />,
+      text: "Admin Transporte",
+    },
+    {
+      role: [
         "Admin", 
         "Master",
         "AdminAudi",
@@ -481,7 +490,7 @@ export const mainListItems = (user) => {
     // },
 
      {
-      role: ["Admin"],
+      role: ["Admin","RH"],
       path: "/dashboard/RH-CEDIS",
       icon: <ManageSearchIcon />,
       text: "RH. CEDIS",
@@ -537,7 +546,7 @@ export const mainListItems = (user) => {
       text: "Mercado Libre",
     },
     {
-      role: ["Admin","Master"],
+      role: ["Admin","Master","INV"],
       path: "/dashboard/Traspasos",
       icon: <FileUploadIcon />,
       text: "Traspasos",

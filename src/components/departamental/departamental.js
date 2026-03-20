@@ -31,6 +31,33 @@ import {
 } from "@mui/material";
 
 function Departamental() {
+
+  // consecutivo 
+
+  const [openConsecutivo, setOpenConsecutivo] = useState(false);
+
+  const [codigoInicio, setCodigoInicio] = useState("");
+  const [numeroCaja, setNumeroCaja] = useState("");
+  const [cantidadConsecutivo, setCantidadConsecutivo] = useState(1);
+  const [piezasConsecutivo, setPiezasConsecutivo] = useState(1);
+  const [impresora, setImpresora] = useState("192.168.3.59");
+
+  // consecutivo fin del consecutivo 
+
+
+  const [cajasProducto, setCajasProducto] = useState({});
+  const [piezasCaja, setPiezasCaja] = useState({});
+
+  const [openEtiquetasModal, setOpenEtiquetasModal] = useState(false);
+  const [productosEtiquetas, setProductosEtiquetas] = useState([]);
+  const [noEncontrados, setNoEncontrados] = useState([]);
+  const [totalCodigos, setTotalCodigos] = useState(0);
+  const [totalEncontrados, setTotalEncontrados] = useState(0);
+  const [totalNoEncontrados, setTotalNoEncontrados] = useState(0);
+
+  const [previewEtiqueta, setPreviewEtiqueta] = useState(null);
+  const [openPreview, setOpenPreview] = useState(false);
+
   const [data, setData] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [year, setYear] = useState(new Date().getFullYear().toString());
@@ -62,6 +89,8 @@ function Departamental() {
   const [clientesValidos, setClientesValidos] = useState([]);
 
   const [opcionesPorCliente, setOpcionesPorCliente] = useState({});
+
+  const [cantidadesEtiquetas, setCantidadesEtiquetas] = useState({});
 
   const camposObligatorios = [
     "FOLIO",
@@ -569,7 +598,25 @@ function Departamental() {
     const buffer = await file.arrayBuffer();
     const workbook = XLSX.read(buffer);
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(sheet);
+    const rows = XLSX.utils.sheet_to_json(sheet, {
+      raw: false, // 🔥 CLAVE
+    });
+
+    const limpiarEAN = (valor) => {
+      if (!valor) return "";
+
+      let ean = valor.toString().trim();
+
+      // Si viene en notación científica
+      if (ean.includes("E")) {
+        return Number(ean).toLocaleString("fullwide", {
+          useGrouping: false,
+        });
+      }
+
+      // Si viene normal
+      return ean.replace(/\D/g, ""); // solo números
+    };
 
     const folioBase = Number(form.FOLIO);
 
@@ -698,6 +745,38 @@ function Departamental() {
     }
   };
 
+  const limpiarPayload = (r) => ({
+    FOLIO: r.FOLIO,
+    CLIENTE: r.CLIENTE,
+    CEDIS: r.CEDIS,
+    DESTINO: r.DESTINO,
+    NO_DE_OC: r.NO_DE_OC,
+    VD: r.VD,
+    MONTO: normalizarMonto(r.MONTO),
+    FECHA_LLEGADA_OC: r.FECHA_LLEGADA_OC || null,
+    FECHA_CANCELACION: r.FECHA_CANCELACION || null,
+  });
+
+  const cerrarModalYRefrescar = async () => {
+    setOpenModal(false);
+    setRegistrosExcel([]);
+
+    try {
+      const user = JSON.parse(localStorage.getItem("user"));
+
+      const res = await axios.get(
+        "http://66.232.105.87:3007/api/departamental/datos",
+        {
+          params: { nombre: user?.name },
+        }
+      );
+
+      setData(res.data.data);
+    } catch (err) {
+      console.error("Error refrescando:", err);
+    }
+  };
+
   const guardarExcel = async () => {
     try {
       for (const r of registrosExcel) {
@@ -781,6 +860,140 @@ function Departamental() {
     acc[cliente].push(item);
     return acc;
   }, {});
+
+  // generador de etiquetas
+  const handleCsvEtiquetas = async (file) => {
+    const limpiarEAN = (valor) => {
+      if (!valor) return "";
+
+      let ean = valor.toString().trim();
+
+      // 🔥 CASO 1: Notación científica (PRIMERO)
+      if (/E/i.test(ean)) {
+        let [base, exp] = ean.split("E");
+        exp = parseInt(exp);
+
+        base = base.replace(".", "");
+
+        const zeros = exp - (base.length - 1);
+
+        return base + "0".repeat(zeros);
+      }
+
+      // 🔥 CASO 2: Decimal (.00)
+      if (ean.includes(".")) {
+        return ean.split(".")[0];
+      }
+
+      return ean;
+    };
+
+    const text = await file.text();
+
+    const rows = text.split("\n").map((r) => r.split(","));
+
+    const headers = rows[0];
+
+    const data = rows.slice(1).map((row) => {
+      let obj = {};
+
+      headers.forEach((h, i) => {
+        obj[h.trim()] = row[i];
+      });
+
+      // ✅ SOLO ESTO AGREGAS
+      obj["Ean/Upc"] = limpiarEAN(obj["Ean/Upc"]);
+
+      return obj;
+    });
+
+    const ocSeleccionada = registroSeleccionado?.NO_DE_OC?.toString();
+
+    const filtradas = data.filter(
+      (fila) => fila["Orden Compra"]?.toString() === ocSeleccionada
+    );
+
+    const res = await axios.post(
+      "http://66.232.105.87:3007/api/departamental/procesar-etiquetas",
+      { filas: filtradas }
+    );
+
+    setProductosEtiquetas(
+      res.data.encontrados.sort((a, b) => Number(a.codigo) - Number(b.codigo))
+    );
+
+    setNoEncontrados(res.data.noEncontrados);
+
+    setTotalCodigos(res.data.total);
+    setTotalEncontrados(res.data.totalEncontrados);
+    setTotalNoEncontrados(res.data.totalNoEncontrados);
+  };
+
+  const delay = (ms) => new Promise((res) => setTimeout(res, ms));
+
+  const imprimirEtiqueta = async (producto) => {
+    const piezas = cajasProducto[producto.ean] || 1;
+    const cajas = piezasCaja[producto.ean] || 1;
+
+    try {
+      for (let i = 1; i <= cajas; i++) {
+        await axios.post(
+          "http://66.232.105.87:3007/api/departamental/zebra/WALMART-PORTEOS",
+          {
+            codigo: producto.codigo,
+            ean: producto.ean,
+            descripcion: producto.descripcion,
+
+            oc: registroSeleccionado?.NO_DE_OC,
+            cedis: registroSeleccionado?.CEDIS,
+
+            numeroCaja: `${i}/${cajas}`,
+            piezas: piezas,
+          }
+        );
+      }
+
+      mostrarMensaje("Etiquetas enviadas a Zebra", "success");
+    } catch (error) {
+      mostrarMensaje("Error al imprimir", "error");
+    }
+  };
+
+  const imprimirTodas = async () => {
+    try {
+      for (const producto of productosEtiquetas) {
+        await imprimirEtiqueta(producto); // 🔥 reutilizas tu función
+      }
+
+      mostrarMensaje("Todas las etiquetas enviadas a Zebra", "success");
+    } catch (error) {
+      console.error(error);
+      mostrarMensaje("Error al imprimir etiquetas", "error");
+    }
+  };
+
+  //api del consecutivo de etiquetas
+  const generarConsecutivo = async () => {
+    try {
+      await axios.post("http://66.232.105.87:3007/api/departamental/consecutivo", {
+        codigoInicio,
+        cantidad: cantidadConsecutivo,
+        piezas: piezasConsecutivo,
+        numeroCaja, // 🔥 AQUÍ ESTÁ LA CLAVE
+        impresora
+      });
+
+      mostrarMensaje("Etiquetas enviadas", "success");
+      setOpenConsecutivo(false);
+
+    } catch (error) {
+      console.error(error);
+      mostrarMensaje("Error al generar etiquetas", "error");
+    }
+  };
+
+
+
 
   return (
     <Box p={4}>
@@ -885,6 +1098,15 @@ function Departamental() {
         </Button>
       )}
 
+      <Button
+        variant="contained"
+        color="secondary"
+        onClick={() => setOpenConsecutivo(true)}
+        sx={{ ml: 2 }}
+      >
+        🔢 Consecutivo
+      </Button>
+
       <Tabs
         value={tabVista}
         onChange={(e, v) => setTabVista(v)}
@@ -979,13 +1201,29 @@ function Departamental() {
                       <TableCell>{p.COMENTARIOS}</TableCell>
 
                       <TableCell>
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          onClick={() => abrirEditar(p)}
-                        >
-                          Editar
-                        </Button>
+                        <Box display="flex" gap={1} flexWrap="wrap">
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            onClick={() => abrirEditar(p)}
+                          >
+                            Editar
+                          </Button>
+
+                          {p.CLIENTE?.toUpperCase() === "WALMART PORTEOS" && (
+                            <Button
+                              size="small"
+                              variant="contained"
+                              color="secondary"
+                              onClick={() => {
+                                setRegistroSeleccionado(p);
+                                setOpenEtiquetasModal(true);
+                              }}
+                            >
+                              🏷 Generar Etiquetas
+                            </Button>
+                          )}
+                        </Box>
                       </TableCell>
                     </TableRow>
                   );
@@ -999,7 +1237,6 @@ function Departamental() {
       ))}
 
       {/* ------------------ Dialog de insercion / edicion ------------------ */}
-
       <Dialog
         open={openModal}
         onClose={() => setOpenModal(false)}
@@ -1558,6 +1795,292 @@ function Departamental() {
           )}
         </DialogActions>
       </Dialog>
+
+      {/* ------------------ Dialog de generacion de etiquetas  ------------------ */}
+      <Dialog
+        open={openEtiquetasModal}
+        onClose={() => setOpenEtiquetasModal(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          Generar etiquetas OC {registroSeleccionado?.NO_DE_OC}
+        </DialogTitle>
+
+        <DialogContent>
+          {/* BOTÓN SUBIR CSV */}
+          <Box mb={2}>
+            <Button variant="contained" component="label">
+              📄 Subir CSV
+              <input
+                type="file"
+                hidden
+                accept=".csv"
+                onChange={(e) => handleCsvEtiquetas(e.target.files[0])}
+              />
+            </Button>
+          </Box>
+
+          {/* RESUMEN */}
+          <Box display="flex" gap={3} mb={2} flexWrap="wrap">
+            <Typography color="green" fontWeight={700}>
+              ✔ Encontrados: {totalEncontrados}
+            </Typography>
+
+            <Typography color="error" fontWeight={700}>
+              ❌ No encontrados: {totalNoEncontrados}
+            </Typography>
+
+            <Typography fontWeight={700}>
+              📦 Total códigos: {totalCodigos}
+            </Typography>
+          </Box>
+
+          {/* TABLA PRODUCTOS */}
+          {productosEtiquetas.length > 0 && (
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Modelo Excel</TableCell>
+                  <TableCell>EAN</TableCell>
+                  <TableCell>Código</TableCell>
+                  <TableCell>Pz</TableCell>
+                  <TableCell>Etiquetas</TableCell>
+                  <TableCell>Vista</TableCell>
+                  <TableCell>Imprimir</TableCell>
+                </TableRow>
+              </TableHead>
+
+              <TableBody>
+                {productosEtiquetas.map((p, i) => (
+                  <TableRow key={p.ean || i}>
+                    <TableCell>{p.modelo_excel}</TableCell>
+
+                    <TableCell>{p.ean}</TableCell>
+
+                    <TableCell>{p.codigo}</TableCell>
+
+                    {/* PIEZAS POR CAJA */}
+                    <TableCell>
+                      <TextField
+                        size="small"
+                        type="number"
+                        sx={{ width: 80 }}
+                        value={cajasProducto[p.ean] || 1}
+                        onChange={(e) => {
+                          setCajasProducto({
+                            ...cajasProducto,
+                            [p.ean]: Number(e.target.value),
+                          });
+                        }}
+                      />
+                    </TableCell>
+
+                    {/* NÚMERO DE ETIQUETAS */}
+                    <TableCell>
+                      <TextField
+                        size="small"
+                        type="number"
+                        sx={{ width: 80 }}
+                        value={piezasCaja[p.ean] || 1}
+                        onChange={(e) => {
+                          setPiezasCaja({
+                            ...piezasCaja,
+                            [p.ean]: Number(e.target.value),
+                          });
+                        }}
+                      />
+                    </TableCell>
+
+                    {/* PREVIEW */}
+                    <TableCell>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={() => {
+                          setPreviewEtiqueta({
+                            ...p,
+                            piezas: piezasCaja[p.ean] || 1, // 👈 piezas por caja
+                            cajas: cajasProducto[p.ean] || 1, // 👈 número de etiquetas
+                          });
+
+                          setOpenPreview(true);
+                        }}
+                      >
+                        VER
+                      </Button>
+                    </TableCell>
+
+                    {/* IMPRIMIR */}
+                    <TableCell>
+                      <Button
+                        size="small"
+                        variant="contained"
+                        color="success"
+                        onClick={() => imprimirEtiqueta(p)}
+                      >
+                        ZEBRA
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+
+          {/* PRODUCTOS NO ENCONTRADOS */}
+          {noEncontrados.length > 0 && (
+            <Box mt={4}>
+              <Typography color="error" fontWeight={700}>
+                ⚠ Productos no encontrados
+              </Typography>
+
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Modelo Excel</TableCell>
+                    <TableCell>EAN</TableCell>
+                  </TableRow>
+                </TableHead>
+
+                <TableBody>
+                  {noEncontrados.map((p, i) => (
+                    <TableRow key={i}>
+                      <TableCell>{p.modelo_excel}</TableCell>
+                      <TableCell>{p.ean}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Box>
+          )}
+        </DialogContent>
+
+        <DialogActions>
+          <Button onClick={() => setOpenEtiquetasModal(false)}>Cerrar</Button>
+
+          <Button
+            variant="contained"
+            color="success"
+            onClick={() => imprimirTodas()}
+          >
+            🖨 Imprimir Zebra
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* VISTA PREVIA DE LA ETIQUETA  */}
+      <Dialog
+        open={openPreview}
+        onClose={() => setOpenPreview(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>Vista previa REAL (Zebra)</DialogTitle>
+
+        <DialogContent>
+          <Box display="flex" justifyContent="center">
+            <img
+              src={`http://66.232.105.87:3007/api/departamental/preview-etiqueta?cedis=${registroSeleccionado?.CEDIS}&oc=${registroSeleccionado?.NO_DE_OC}&ean=${previewEtiqueta?.ean}&piezas=${previewEtiqueta?.piezas}&numeroCaja=1/${previewEtiqueta?.cajas}&numeroEtiqueta=1`}
+              style={{
+                width: "100%",
+                maxWidth: 400,
+                border: "1px solid #ccc",
+              }}
+            />
+          </Box>
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL DE CONSECUTIVO */}
+
+      <Dialog
+        open={openConsecutivo}
+        onClose={() => setOpenConsecutivo(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Generar etiquetas consecutivas</DialogTitle>
+
+        <DialogContent dividers>
+
+          <Grid container spacing={2}>
+
+            {/* CÓDIGO INICIAL */}
+            <Grid item xs={12}>
+              <TextField
+                label="Código inicial"
+                fullWidth
+                value={codigoInicio}
+                onChange={(e) => setCodigoInicio(e.target.value)}
+              />
+            </Grid>
+
+            {/* CANTIDAD */}
+            <Grid item xs={12}>
+              <TextField
+                label="Cantidad de etiquetas"
+                type="number"
+                fullWidth
+                value={cantidadConsecutivo}
+                onChange={(e) => setCantidadConsecutivo(e.target.value)}
+              />
+            </Grid>
+
+            {/* PIEZAS */}
+            <Grid item xs={12}>
+              <TextField
+                label="Piezas"
+                type="number"
+                fullWidth
+                value={piezasConsecutivo}
+                onChange={(e) => setPiezasConsecutivo(e.target.value)}
+              />
+            </Grid>
+
+            <Grid item xs={12}>
+              <TextField
+                label="Número de Caja"
+                value={numeroCaja}
+                onChange={(e) => setNumeroCaja(e.target.value)}
+                fullWidth
+              />
+            </Grid>
+
+            {/* IMPRESORA */}
+            <Grid item xs={12}>
+              <TextField
+                select
+                label="Impresora"
+                fullWidth
+                value={impresora}
+                onChange={(e) => setImpresora(e.target.value)}
+              >
+                <MenuItem value="192.168.3.59">Z411</MenuItem>
+                <MenuItem value="192.168.0.70">Z410</MenuItem>
+                <MenuItem value="192.168.3.119">105SL</MenuItem>
+              </TextField>
+            </Grid>
+
+          </Grid>
+
+        </DialogContent>
+
+        <DialogActions>
+          <Button onClick={() => setOpenConsecutivo(false)}>
+            Cancelar
+          </Button>
+
+          <Button
+            variant="contained"
+            color="success"
+            onClick={generarConsecutivo}
+          >
+            GENERAR E IMPRIMIR
+          </Button>
+        </DialogActions>
+      </Dialog>
+
 
       <Snackbar
         open={snackbar.open}

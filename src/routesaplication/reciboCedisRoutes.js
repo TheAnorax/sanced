@@ -9,7 +9,7 @@ const {
   reciboUploadPDF,
   reciboActualizars
 } = require('../controlleraplication/reciboCedisController');
-const upload = require('../config/multerConfig'); // Importar correctamente el middleware multer
+const { upload } = require('../config/multerConfig');// Importar correctamente el middleware multer
 
 const router = express.Router();
 

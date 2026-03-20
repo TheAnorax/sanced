@@ -126,7 +126,9 @@ const insertarRutas = async (req, res) => {
       if (existe.length > 0) {
         contadorDuplicados++;
         console.log(
-          `⏭️ [${i + 1}/${rutas.length}] Pedido duplicado -> NO ORDEN: ${noOrden}, tipo_original: ${tipo_original}`
+          `⏭️ [${i + 1}/${
+            rutas.length
+          }] Pedido duplicado -> NO ORDEN: ${noOrden}, tipo_original: ${tipo_original}`
         );
         continue; // Saltar duplicados
       }
@@ -164,7 +166,7 @@ const insertarRutas = async (req, res) => {
       //   CLIENTE: nombreCliente,
       //   TOTAL,
       //   PARTIDAS,
-      //   PIEZAS, 
+      //   PIEZAS,
       //   TIPO,
       //   RUTA: routeName,
       //   GUIA,
@@ -203,7 +205,6 @@ const insertarRutas = async (req, res) => {
     connection.release();
   }
 };
-
 
 // Controlador: obtenerRutasDePaqueteria
 const obtenerRutasDePaqueteria = async (req, res) => {
@@ -299,11 +300,7 @@ const obtenerRutasDePaqueteria = async (req, res) => {
           LIMIT ? OFFSET ?
         `;
 
-        params.push(
-          fechaLimiteStr,
-          parseInt(limit),
-          parseInt(offset)
-        );
+        params.push(fechaLimiteStr, parseInt(limit), parseInt(offset));
       }
     }
 
@@ -337,7 +334,6 @@ const obtenerRutasDePaqueteria = async (req, res) => {
     });
   }
 };
-
 
 const obtenerRutasParaPDF = async (req, res) => {
   try {
@@ -1333,9 +1329,7 @@ const actualizarFacturasDesdeExcel = async (req, res) => {
     });
   } catch (error) {
     console.error(" Error al actualizar facturas:", error);
-    return res
-      .status(500)
-      .json({ message: " Error al actualizar facturas." });
+    return res.status(500).json({ message: " Error al actualizar facturas." });
   }
 };
 
@@ -1881,7 +1875,7 @@ const getPaqueteriaData = async (req, res) => {
     });
   }
 };
- 
+
 const getPedidosDia = async (req, res) => {
   try {
     const { fecha } = req.query;
@@ -2430,13 +2424,12 @@ async function actualizarTotalIvaMasivoDesdeAPI() {
 
       if (result.affectedRows > 0) {
         actualizados++;
-      // console.log(` Actualizado ${noOrden} ${tipoOriginal}: total_api=${wsTotal}, totalIva=${wsTotalIva}`);
+        // console.log(` Actualizado ${noOrden} ${tipoOriginal}: total_api=${wsTotal}, totalIva=${wsTotalIva}`);
       }
     }
 
     await conn.commit();
     console.log(` Proceso completado. Filas actualizadas: ${actualizados}`);
-
   } catch (error) {
     if (conn) await conn.rollback();
     console.error(" Error al actualizar pedidos:", error.message);
@@ -2444,7 +2437,6 @@ async function actualizarTotalIvaMasivoDesdeAPI() {
     if (conn) conn.release();
   }
 }
-
 
 actualizarTotalIvaMasivoDesdeAPI();
 
@@ -2755,6 +2747,374 @@ const getPedidosdeAbril = async (req, res) => {
   }
 };
 
+// Generador de etiquetas
+
+// 🔹 helper: limpia espacios múltiples (por si llega algo raro)
+const cleanSpaces = (str) => (str || "").toString().replace(/\s+/g, " ").trim();
+
+const contarEmpaquesPedido = async (pedido, tipo) => {
+  // Si tus cajas pueden ser más de 50 tokens, sube este límite.
+  const MAX_TOKENS = 200;
+
+  const [rows] = await pool.query(
+    `
+    WITH RECURSIVE seq AS (
+      SELECT 1 AS n
+      UNION ALL
+      SELECT n + 1 FROM seq WHERE n < ?
+    ),
+    tokens AS (
+      -- 1) token desde columna caja
+      SELECT
+        pf.tipo_caja,
+        TRIM(CONVERT(CAST(pf.caja AS CHAR) USING utf8mb4)) COLLATE utf8mb4_general_ci AS token
+      FROM pedido_finalizado pf
+      WHERE pf.pedido = ?
+        AND pf.tipo = ?
+        AND pf.caja IS NOT NULL
+
+      UNION ALL
+
+      -- 2) tokens desde columna cajas (CSV: "1,3,5")
+      SELECT
+        pf.tipo_caja,
+        TRIM(CONVERT(
+          SUBSTRING_INDEX(SUBSTRING_INDEX(pf.cajas, ',', seq.n), ',', -1)
+        USING utf8mb4)) COLLATE utf8mb4_general_ci AS token
+      FROM pedido_finalizado pf
+      JOIN seq
+        ON pf.cajas IS NOT NULL
+       AND pf.cajas <> ''
+       AND seq.n <= 1 + (LENGTH(pf.cajas) - LENGTH(REPLACE(pf.cajas, ',', '')))
+      WHERE pf.pedido = ?
+        AND pf.tipo = ?
+    )
+    SELECT
+      COUNT(DISTINCT token) AS total_bultos,
+      COUNT(DISTINCT CASE WHEN tipo_caja = 'CAJA'  THEN token END) AS total_cajas,
+      COUNT(DISTINCT CASE WHEN tipo_caja = 'ATADO' THEN token END) AS total_atados,
+      COUNT(DISTINCT CASE WHEN tipo_caja = 'TARIMA' THEN token END) AS total_tarimas
+    FROM tokens
+    WHERE token IS NOT NULL
+      AND token <> ''
+    `,
+    [MAX_TOKENS, String(pedido), String(tipo), String(pedido), String(tipo)]
+  );
+
+  const r = rows?.[0] || {};
+  return {
+    total_bultos: Number(r.total_bultos || 0),
+    total_cajas: Number(r.total_cajas || 0),
+    total_atados: Number(r.total_atados || 0),
+    total_tarimas: Number(r.total_tarimas || 0),
+  };
+};
+
+/**
+ * ✅ 1 pedido (endpoint que ya tienes)
+ * GET /api/Trasporte/etiquetas/:no_orden/:tipo_original
+ */
+const obtenerDatosEtiqueta = async (req, res) => {
+  try {
+    const { no_orden, tipo_original } = req.params;
+
+    const [pedido] = await pool.query(
+      `
+      SELECT 
+        \`NO ORDEN\` AS no_orden,
+        \`tipo_original\`,
+        TRIM(REGEXP_REPLACE(\`NOMBRE DEL CLIENTE\`, '\\\\s+', ' ')) AS cliente,
+        \`NO_FACTURA\` AS no_factura,
+        TRIM(REGEXP_REPLACE(\`DIRECCION\`, '\\\\s+', ' ')) AS direccion,
+        \`GUIA\` AS guia,
+        \`PAQUETERIA\` AS paqueteria
+      FROM paqueteria
+      WHERE \`NO ORDEN\` = ?
+        AND \`tipo_original\` = ?
+      LIMIT 1
+      `,
+      [no_orden, tipo_original]
+    );
+
+    if (!pedido || pedido.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Pedido no encontrado",
+      });
+    }
+
+    // Seguridad extra por si algo llega con espacios raros:
+    pedido[0].cliente = cleanSpaces(pedido[0].cliente);
+    pedido[0].direccion = cleanSpaces(pedido[0].direccion);
+    pedido[0].guia = cleanSpaces(pedido[0].guia);
+    pedido[0].paqueteria = cleanSpaces(pedido[0].paqueteria);
+
+    // ✅ conteo real desde finalizados
+    const conteo = await contarEmpaquesPedido(no_orden, tipo_original);
+
+    return res.json({
+      success: true,
+      pedido: pedido[0],
+      total_bultos: conteo.total_bultos || 0,
+      total_cajas: conteo.total_cajas || 0,
+      total_atados: conteo.total_atados || 0,
+      total_tarimas: conteo.total_tarimas || 0,
+    });
+  } catch (error) {
+    console.error("Error obteniendo etiquetas:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error del servidor",
+    });
+  }
+};
+
+/**
+ * ✅ Fusionados (distinto tipo por pedido)
+ * GET /api/Trasporte/etiquetasFusion?pedidos=60768:VW,60766:VW
+ * o por enter:
+ * pedidos=60768:VW\n60766:TR
+ */
+const obtenerEtiquetasFusion = async (req, res) => {
+  try {
+    const { pedidos } = req.query;
+
+    if (!pedidos || String(pedidos).trim() === "") {
+      return res.status(400).json({
+        success: false,
+        message: "Debe enviar pedidos",
+      });
+    }
+
+    // ✅ acepta coma o enter
+    // Formato: 60464:VW,60465:TR  ó 60464:VW\n60465:TR
+    const lista = String(pedidos)
+      .split(/[,\n]/)
+      .map((p) => p.trim())
+      .filter(Boolean);
+
+    // Parse: "60768:VW" -> { pedido:"60768", tipo:"VW" }
+    const pedidosProcesados = lista.map((item) => {
+      const [ped, tip] = item.split(":");
+      return {
+        pedido: cleanSpaces(ped),
+        tipo: cleanSpaces((tip || "").toUpperCase()),
+      };
+    });
+
+    // validar formato
+    const invalid = pedidosProcesados.find((x) => !x.pedido || !x.tipo);
+    if (invalid) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Formato inválido. Usa por ejemplo: 60768:VW,60766:TR (cada pedido debe traer :TIPO)",
+      });
+    }
+
+    const pedidosSolo = pedidosProcesados.map((p) => p.pedido);
+
+    // Info de pedidos (paqueteria, direccion, guia, cliente, factura)
+    const [infoPedidos] = await pool.query(
+      `
+      SELECT 
+        \`NO ORDEN\` AS no_orden,
+        TRIM(REGEXP_REPLACE(\`NOMBRE DEL CLIENTE\`, '\\\\s+', ' ')) AS cliente,
+        \`NO_FACTURA\` AS factura,
+        TRIM(REGEXP_REPLACE(\`DIRECCION\`, '\\\\s+', ' ')) AS direccion,
+        TRIM(REGEXP_REPLACE(\`PAQUETERIA\`, '\\\\s+', ' ')) AS paqueteria,
+        TRIM(REGEXP_REPLACE(\`GUIA\`, '\\\\s+', ' ')) AS guia,
+        \`tipo_original\` AS tipo_original
+      FROM paqueteria
+      WHERE \`NO ORDEN\` IN (?)
+      `,
+      [pedidosSolo]
+    );
+
+    if (!infoPedidos || infoPedidos.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Pedidos no encontrados",
+      });
+    }
+
+    // ✅ SUMA REAL (por pedido+tipo)
+    let total_bultos = 0;
+    let total_cajas = 0;
+    let total_atados = 0;
+    let total_tarimas = 0;
+
+    for (const p of pedidosProcesados) {
+      const conteo = await contarEmpaquesPedido(p.pedido, p.tipo);
+      total_bultos += conteo.total_bultos;
+      total_cajas += conteo.total_cajas;
+      total_atados += conteo.total_atados;
+      total_tarimas += conteo.total_tarimas;
+    }
+
+    // clientes únicos (si es mismo cliente, solo 1)
+    const clientes = [
+      ...new Set(infoPedidos.map((p) => cleanSpaces(p.cliente))),
+    ].filter(Boolean);
+
+    // facturas (aquí puedes deduplicar si quieres)
+    const facturas = infoPedidos
+      .map((p) => cleanSpaces(p.factura))
+      .filter(Boolean);
+
+    // Direccion / paqueteria / guia:
+    // Si son diferentes entre pedidos, yo te recomiendo mostrar "VARIOS".
+    const direccionesUnicas = [
+      ...new Set(infoPedidos.map((p) => cleanSpaces(p.direccion))),
+    ].filter(Boolean);
+
+    const paqueteriasUnicas = [
+      ...new Set(infoPedidos.map((p) => cleanSpaces(p.paqueteria))),
+    ].filter(Boolean);
+
+    const guiasUnicas = [
+      ...new Set(infoPedidos.map((p) => cleanSpaces(p.guia))),
+    ].filter(Boolean);
+
+    const direccionFinal =
+      direccionesUnicas.length === 1 ? direccionesUnicas[0] : "VARIAS";
+    const paqueteriaFinal =
+      paqueteriasUnicas.length === 1 ? paqueteriasUnicas[0] : "VARIAS";
+    const guiaFinal = guiasUnicas.length === 1 ? guiasUnicas[0] : "";
+
+    // Para imprimir bonito pedidos con tipo:
+    // ej: ["60768:VW","60766:TR"]
+    const pedidosConTipo = pedidosProcesados.map(
+      (p) => `${p.pedido}:${p.tipo}`
+    );
+
+    return res.json({
+      success: true,
+
+      pedidos: pedidosConTipo, // <-- importante para tu PDF
+      clientes,
+      facturas,
+
+      direccion: direccionFinal,
+      paqueteria: paqueteriaFinal,
+      guia: guiaFinal,
+
+      total_bultos,
+      total_cajas,
+      total_atados,
+      total_tarimas,
+    });
+  } catch (error) {
+    console.error("Error fusion etiquetas:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error del servidor",
+    });
+  }
+};
+
+
+const formatearFecha = (valor) => {
+  if (!valor) return valor;
+
+  const fecha = new Date(valor);
+
+  if (isNaN(fecha)) return valor;
+
+  const yyyy = fecha.getFullYear();
+  const mm = String(fecha.getMonth() + 1).padStart(2, "0");
+  const dd = String(fecha.getDate()).padStart(2, "0");
+
+  const hh = String(fecha.getHours()).padStart(2, "0");
+  const min = String(fecha.getMinutes()).padStart(2, "0");
+  const ss = String(fecha.getSeconds()).padStart(2, "0");
+
+  return `${yyyy}-${mm}-${dd} ${hh}:${min}:${ss}`;
+};
+const getAllTransportes = async (req, res) => {
+  try {
+
+    const { fecha } = req.query;
+    const fechaBase = fecha || new Date().toISOString().slice(0, 10);
+
+    const [rows] = await pool.query(`
+      SELECT 
+        *
+      FROM paqueteria
+      WHERE 
+        created_at >= ?
+        AND created_at < DATE_ADD(?, INTERVAL 1 DAY)
+      ORDER BY routeName ASC, created_at DESC
+    `, [fechaBase, fechaBase]);
+
+    // 🔥 FUNCIÓN LIMPIEZA
+    const limpiarTexto = (valor) => {
+      if (typeof valor !== "string") return valor;
+      return valor.replace(/\s+/g, " ").trim();
+    };
+
+    // 🔥 LIMPIAR TODAS LAS FILAS
+    const rowsLimpios = rows.map(row => {
+      const limpio = {};
+
+      for (const key in row) {
+  let valor = row[key];
+
+  // 🔥 limpiar strings
+  valor = limpiarTexto(valor);
+
+  // 🔥 detectar campos de fecha
+  if (
+    key.includes("FECHA") ||
+    key === "created_at" ||
+    key === "updated_at"
+  ) {
+    valor = formatearFecha(valor);
+  }
+
+  limpio[key] = valor;
+}
+
+      return limpio;
+    });
+
+    // 🔥 AGRUPACIÓN
+    const agrupado = rowsLimpios.reduce((acc, item) => {
+
+      const ruta = item.routeName || "SIN RUTA";
+
+      if (!acc[ruta]) {
+        acc[ruta] = {
+          routeName: ruta,
+          total: 0,
+          data: []
+        };
+      }
+
+      acc[ruta].data.push(item);
+      acc[ruta].total++;
+
+      return acc;
+
+    }, {});
+
+    const routesArray = Object.values(agrupado);
+
+    res.status(200).json({
+      fecha: fechaBase,
+      total_registros: rowsLimpios.length,
+      total_rutas: routesArray.length,
+      routes: routesArray
+    });
+
+  } catch (error) {
+    console.error("Error en getAllTransportes:", error);
+    res.status(500).json({
+      message: "Error al obtener transportes",
+      error: error.message
+    });
+  }
+};
 
 module.exports = {
   getReferenciasClientes,
@@ -2794,4 +3154,7 @@ module.exports = {
   updatePaqueteriaBatch,
   getPaqueteriaByMonth,
   getPedidosdeAbril,
+  obtenerDatosEtiqueta,
+  obtenerEtiquetasFusion,
+  getAllTransportes
 };

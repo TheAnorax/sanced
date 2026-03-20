@@ -4,6 +4,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const https = require('https');
+const http = require('http');
 const cors = require('cors'); // 👈 IMPORTANTE
 
 const app = express();
@@ -41,15 +42,57 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage, limits: { files: 5 } });
 
+
+
 // === Rutas estáticas ===
 app.use('/docs', express.static('C:/Users/rodrigo/Desktop/react/docs'));
 app.use('/docsOC', express.static('C:/Users/rodrigo/Desktop/react/docsOC'));
 app.use('/imagenes', express.static('C:/Users/rodrigo/Desktop/react/imagenes'));
-
+app.use(
+  '/rh-evidencias',
+  express.static("C:/Users/rodrigo/Desktop/react/rh-evidencias", {
+    setHeaders: (res, path) => {
+      if (path.endsWith('.pdf')) {
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', 'inline');
+      }
+    }
+  })
+);
 // === Levantar el servidor HTTPS ===
 https.createServer(sslOptions, app).listen(3011, () => {
   console.log('🔐 Servidor HTTPS corriendo en el puerto 3011 con CORS habilitado');
 });
 
-module.exports = upload;
+
+
+
+const storageRHEvidencias = multer.diskStorage({
+
+  destination: (req, file, cb) => {
+
+    cb(null, 'C:/Users/rodrigo/Desktop/react/rh-evidencias');
+
+  },
+
+  filename: (req, file, cb) => {
+
+    const timestamp = Date.now();
+    const ext = path.extname(file.originalname);
+
+    cb(null, `amo-${timestamp}${ext}`);
+
+  }
+
+});
+
+const uploadRHEvidencia = multer({
+  storage: storageRHEvidencias,
+  limits: { fileSize: 5 * 1024 * 1024 } // 5MB
+});
+
+module.exports = {
+  upload,
+  uploadRHEvidencia
+};
 

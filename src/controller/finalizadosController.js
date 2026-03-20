@@ -82,7 +82,7 @@ SELECT
     prod1.des AS descripcion,
     ps.cantidad,
     ps.cant_surti,
-    ps.cant_no_env,
+    ps.cant_no_env, 
     ps.ubi_bahia AS bahias,     
     ps.um,
     ps._pz,
@@ -103,12 +103,16 @@ SELECT
     NULL AS fin_embarque,
     ps.motivo,
     ps.unificado,
+    ps.unido,
+    pqs.\`NOMBRE DEL CLIENTE\` AS nombre_cliente,
+    pqs.\`routeName\`,
     NULL AS registro_fin
 FROM
     pedido_surtido ps
 LEFT JOIN productos prod1 ON ps.codigo_ped = prod1.codigo_pro
 LEFT JOIN usuarios us_surtido ON ps.id_usuario_surtido = us_surtido.id_usu
 LEFT JOIN usuarios us_paqueteria ON ps.id_usuario_paqueteria = us_paqueteria.id_usu
+LEFT JOIN paqueteria pqs ON ps.pedido = pqs.\`NO ORDEN\` AND ps.tipo = pqs.\`tipo_original\`
 WHERE
     ps.pedido = ? AND ps.tipo = ?
 
@@ -142,12 +146,16 @@ SELECT
     pe.fin_embarque,
     pe.motivo,
     pe.unificado,
+    pe.unido,
+    pqe.\`NOMBRE DEL CLIENTE\` AS nombre_cliente,
+    pqe.\`routeName\`,
     NULL AS registro_fin
 FROM
     pedido_embarque pe
 LEFT JOIN productos prod2 ON pe.codigo_ped = prod2.codigo_pro
 LEFT JOIN usuarios us_surtido ON pe.id_usuario_surtido = us_surtido.id_usu
 LEFT JOIN usuarios us_paqueteria ON pe.id_usuario_paqueteria = us_paqueteria.id_usu
+LEFT JOIN paqueteria pqe ON pe.pedido = pqe.\`NO ORDEN\` AND pe.tipo = pqe.\`tipo_original\`
 WHERE
     pe.pedido = ? AND pe.tipo = ?
 
@@ -181,12 +189,16 @@ SELECT
     pf.fin_embarque,
     pf.motivo,
     pf.unificado,
+    pf.unido,
+    pqf.\`NOMBRE DEL CLIENTE\` AS nombre_cliente,
+    pqf.\`routeName\`,
     pf.registro_fin
 FROM
     pedido_finalizado pf
 LEFT JOIN productos prod3 ON pf.codigo_ped = prod3.codigo_pro
 LEFT JOIN usuarios us_surtido ON pf.id_usuario_surtido = us_surtido.id_usu
 LEFT JOIN usuarios us_paqueteria ON pf.id_usuario_paqueteria = us_paqueteria.id_usu
+LEFT JOIN paqueteria pqf ON pf.pedido = pqf.\`NO ORDEN\` AND pf.tipo = pqf.\`tipo_original\`
 WHERE
     pf.pedido = ? AND pf.tipo = ?;
 `,

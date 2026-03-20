@@ -502,7 +502,20 @@ function UserBarcodesModal({ open, onClose, user }) {
   );
 }
 
-function EditUserModal({ open, onClose, isEditMode, form, setForm, onSave }) {
+function EditUserModal({ open, onClose, isEditMode, initialData, onSave }) {
+  const [form, setForm] = useState({
+    email: "",
+    name: "",
+    password: "",
+    unidad: "",
+    role: "",
+  });
+
+  useEffect(() => {
+    if (initialData) {
+      setForm(initialData);
+    }
+  }, [initialData]);
   return (
     <Modal open={open} onClose={onClose}>
       <Box
@@ -569,9 +582,13 @@ function EditUserModal({ open, onClose, isEditMode, form, setForm, onSave }) {
         />
 
         <Box sx={{ textAlign: "right" }}>
-          <Button variant="contained" color="primary" onClick={onSave}>
-            Guardar
-          </Button>
+          <Button
+  variant="contained"
+  color="primary"
+  onClick={() => onSave(form)} // 👈 mandar form
+>
+  Guardar
+</Button>
           <Button
             variant="contained"
             color="secondary"
@@ -735,26 +752,29 @@ function Usuarios() {
     });
     setOpenUserModal(true);
   };
-
-  const saveUser = async () => {
-    try {
-      if (isEditMode && selectedUser?.id_usu) {
-        await axios.put(
-          `${API_BASE}/usuarios/usuarios/${selectedUser.id_usu}`,
-          userForm,
-        );
-        alert("Usuario actualizado correctamente");
-      } else {
-        await axios.post(`${API_BASE}/usuarios/usuarios`, userForm);
-        alert("Usuario creado correctamente");
-      }
-      setOpenUserModal(false);
-      await fetchUsuarios();
-    } catch (e) {
-      console.error("saveUser", e);
-      alert("Error al guardar el usuario");
+const saveUser = async (data) => {
+  try {
+    if (isEditMode && selectedUser?.id_usu) {
+      await axios.put(
+        `${API_BASE}/usuarios/usuarios/${selectedUser.id_usu}`,
+        data   // 👈 usar data
+      );
+      alert("Usuario actualizado correctamente");
+    } else {
+      await axios.post(
+        `${API_BASE}/usuarios/usuarios`,
+        data   // 👈 usar data
+      );
+      alert("Usuario creado correctamente");
     }
-  };
+
+    setOpenUserModal(false);
+    await fetchUsuarios();
+  } catch (e) {
+    console.error("saveUser", e);
+    alert("Error al guardar el usuario");
+  }
+};
 
   const deleteUser = async (id_usu) => {
     const confirm = window.confirm(
@@ -1257,16 +1277,15 @@ function Usuarios() {
       />
 
       <EditUserModal
-        open={openUserModal}
-        onClose={() => {
-          setOpenUserModal(false);
-          setSelectedUser(null);
-        }}
-        isEditMode={isEditMode}
-        form={userForm}
-        setForm={setUserForm}
-        onSave={saveUser}
-      />
+  open={openUserModal}
+  onClose={() => {
+    setOpenUserModal(false);
+    setSelectedUser(null);
+  }}
+  isEditMode={isEditMode}
+  initialData={userForm}
+  onSave={(data) => saveUser(data)}
+/>
     </Box>
   );
 }

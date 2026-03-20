@@ -227,7 +227,7 @@ const createUsuario = async (req, res) => {
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
     const [result] = await pool.query(
-      'INSERT INTO usuarios (email, password, unidad, name, role) VALUES (?, ?, ?, ?, ?)',
+      'INSERT INTO usuarios (email, password, unidad, name, role, estado) VALUES (?, ?, ?, ?, ?, 1)',
       [email, hashedPassword, unidad, name, role]
     );
     res.status(201).json({ message: 'Usuario creado', id: result.insertId });
